@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Invertis Pulse | Campus Connect</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "outline": "#757778",
+                        "inverse-primary": "#fe9832",
+                        "surface-tint": "#8b4b00",
+                        "secondary": "#4953ac",
+                        "on-secondary-fixed": "#1f2882",
+                        "on-primary": "#fff0e6",
+                        "tertiary-dim": "#005959",
+                        "inverse-on-surface": "#9b9d9e",
+                        "primary": "#8b4b00",
+                        "on-background": "#2c2f30",
+                        "surface-container-highest": "#dadddf",
+                        "error-container": "#f95630",
+                        "surface-container-high": "#e0e3e4",
+                        "secondary-dim": "#3d469f",
+                        "tertiary-fixed": "#8dedec",
+                        "on-tertiary-container": "#005858",
+                        "primary-dim": "#7a4100",
+                        "on-tertiary": "#bbfffe",
+                        "on-primary-container": "#4d2700",
+                        "secondary-fixed-dim": "#babfff",
+                        "surface-dim": "#d1d5d7",
+                        "secondary-container": "#cbceff",
+                        "on-tertiary-fixed-variant": "#006262",
+                        "on-secondary-container": "#343d96",
+                        "primary-container": "#fe9832",
+                        "surface-container-lowest": "#ffffff",
+                        "on-error": "#ffefec",
+                        "on-surface-variant": "#595c5d",
+                        "secondary-fixed": "#cbceff",
+                        "error": "#b02500",
+                        "tertiary": "#006666",
+                        "surface-container-low": "#eff1f2",
+                        "primary-fixed": "#fe9832",
+                        "error-dim": "#b92902",
+                        "tertiary-container": "#8dedec",
+                        "surface-bright": "#f5f6f7",
+                        "on-secondary-fixed-variant": "#3e47a0",
+                        "surface": "#f5f6f7",
+                        "on-error-container": "#520c00",
+                        "outline-variant": "#abadae",
+                        "background": "#f5f6f7",
+                        "on-surface": "#2c2f30",
+                        "surface-container": "#e6e8ea",
+                        "on-primary-fixed-variant": "#592e00",
+                        "on-primary-fixed": "#291200",
+                        "surface-variant": "#dadddf",
+                        "tertiary-fixed-dim": "#7fdede",
+                        "on-tertiary-fixed": "#004343",
+                        "inverse-surface": "#0c0f10",
+                        "primary-fixed-dim": "#ed8b24",
+                        "on-secondary": "#f3f1ff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "3rem",
+                        "full": "9999px"
+                    },
+                    "fontFamily": {
+                        "headline": ["Plus Jakarta Sans"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; background-color: #f5f6f7; color: #2c2f30; -webkit-font-smoothing: antialiased; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .editorial-shadow { shadow: 0 32px 64px -15px rgba(44, 47, 48, 0.06); }
+        .glass-header { backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #dadddf; border-radius: 10px; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background">
+<!-- TopAppBar -->
+<header class="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl flex justify-between items-center px-6 py-4 w-full z-50 fixed top-0 shadow-sm">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-orange-500 dark:text-orange-400" data-icon="school">school</span>
+<h1 class="text-xl font-black text-orange-600 dark:text-orange-400 italic font-['Plus_Jakarta_Sans'] tracking-tight">Invertis Agora</h1>
+</div>
+<div class="hidden md:flex items-center gap-8">
+<nav class="flex gap-6">
+<a class="text-orange-600 dark:text-orange-400 font-bold font-['Plus_Jakarta_Sans'] hover:bg-orange-50 dark:hover:bg-orange-900/20 px-3 py-1 rounded-full transition-all" href="#">Home</a>
+<a class="text-slate-500 dark:text-slate-400 font-['Plus_Jakarta_Sans'] hover:bg-orange-50 dark:hover:bg-orange-900/20 px-3 py-1 rounded-full transition-all" href="#">Community</a>
+<a class="text-slate-500 dark:text-slate-400 font-['Plus_Jakarta_Sans'] hover:bg-orange-50 dark:hover:bg-orange-900/20 px-3 py-1 rounded-full transition-all" href="#">Venture</a>
+<a class="text-slate-500 dark:text-slate-400 font-['Plus_Jakarta_Sans'] hover:bg-orange-50 dark:hover:bg-orange-900/20 px-3 py-1 rounded-full transition-all" href="#">Career</a>
+</nav>
+<span class="material-symbols-outlined text-slate-500 cursor-pointer active:scale-95 transition-transform duration-200" data-icon="smart_toy">smart_toy</span>
+</div>
+<div class="md:hidden">
+<span class="material-symbols-outlined text-slate-900" data-icon="menu">menu</span>
+</div>
+</header>
+<main class="pt-24 pb-32 min-h-screen max-w-7xl mx-auto px-4 md:px-6 lg:flex lg:gap-8">
+<!-- Navigation Sidebar (Discord Style Hybrid) -->
+<aside class="hidden lg:block w-72 flex-shrink-0">
+<div class="sticky top-24 flex flex-col gap-2">
+<div class="p-4 bg-surface-container-low rounded-lg mb-4">
+<h2 class="text-sm font-bold uppercase tracking-widest text-on-surface-variant mb-4">Channels</h2>
+<div class="flex flex-col gap-1">
+<button class="flex items-center gap-3 w-full px-4 py-3 bg-primary-container text-on-primary-container font-bold rounded-full text-left">
+<span class="material-symbols-outlined" data-icon="tag">tag</span>
+<span>General</span>
+</button>
+<button class="flex items-center gap-3 w-full px-4 py-3 text-on-surface hover:bg-surface-container transition-colors rounded-full text-left">
+<span class="material-symbols-outlined" data-icon="groups">groups</span>
+<span>Clubs</span>
+</button>
+<button class="flex items-center gap-3 w-full px-4 py-3 text-on-surface hover:bg-surface-container transition-colors rounded-full text-left">
+<span class="material-symbols-outlined" data-icon="rocket_launch">rocket_launch</span>
+<span>Projects</span>
+</button>
+<button class="flex items-center gap-3 w-full px-4 py-3 text-on-surface hover:bg-surface-container transition-colors rounded-full text-left">
+<span class="material-symbols-outlined" data-icon="account_balance">account_balance</span>
+<span>Departments</span>
+</button>
+</div>
+</div>
+<div class="p-4 bg-surface-container-low rounded-lg">
+<h2 class="text-sm font-bold uppercase tracking-widest text-on-surface-variant mb-4">Trending</h2>
+<div class="flex flex-wrap gap-2">
+<span class="px-3 py-1 bg-secondary-container text-on-secondary-container rounded-full text-xs font-semibold">#BTechLife</span>
+<span class="px-3 py-1 bg-secondary-container text-on-secondary-container rounded-full text-xs font-semibold">#StartupIndia</span>
+<span class="px-3 py-1 bg-secondary-container text-on-secondary-container rounded-full text-xs font-semibold">#BareillyDevs</span>
+<span class="px-3 py-1 bg-secondary-container text-on-secondary-container rounded-full text-xs font-semibold">#InvertisHack</span>
+</div>
+</div>
+</div>
+</aside>
+<!-- Main Feed Canvas -->
+<div class="flex-1 space-y-8">
+<!-- Stories/Pulse Section -->
+<section class="overflow-x-auto pb-4 no-scrollbar">
+<div class="flex gap-4 min-w-max">
+<div class="w-20 h-20 rounded-full border-2 border-primary p-1 bg-white relative">
+<img class="w-full h-full rounded-full object-cover" data-alt="portrait of a young Indian male student smiling wearing a denim jacket in a campus setting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAan4ADBMApbfQhx3DdGKlC1Qbz7FLG7-9Wj-9bdCTWRyQ_aknpIvqI9bH00gEra1CdGikCY1LOOFpxPfp-9qJ1WxlrTlyQoQeH0G9SUsVGVGa6i3deqAZRszu_G44tcFS8X6FDT9rUY0kkZqbCxf5_YJYcSG-yrnnz2uLp41aizPLeZvW7TkT8HRDr7qtaKAeTR7FPViqISWNwr0ywTBGWMVqLqDV8R7pDA31XnTLhK_DwefP-USTgV2dNycsppsYvfAenyGXpZ8Bj"/>
+<div class="absolute -bottom-1 -right-1 bg-primary text-white p-1 rounded-full border-2 border-white">
+<span class="material-symbols-outlined text-xs leading-none" data-icon="add">add</span>
+</div>
+</div>
+<!-- Student Avatars Loop -->
+<div class="flex gap-4">
+<div class="w-20 h-20 rounded-full border-2 border-secondary-fixed p-1 bg-white">
+<img class="w-full h-full rounded-full object-cover" data-alt="young Indian woman student with glasses smiling warmly indoors with soft library background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAEufDCD0yz07U9OkEIYLl_QsaBw2KW-vhC8b_HG4tmnEdLtRU30Ik_VG0lnJm7QBkVlQ7K96bj4p_ZN0mR8oUofp7a3BxvNLYrTj2ce6-mFCrOmHH2WCFlvTfZJrooeU77SEDJovqTSHdxqQnp8bUwIqH37rpRZBzTEs-AXnqaHrK3iOL_EsYCxKkVnPd8XNPKncBEsttQP1urNWLhQCfGRUaWB4xW5wuBPBNHvK3G_GylFyTWltJzgbjp_4b2DrwRwFS-yLsjd20X"/>
+</div>
+<div class="w-20 h-20 rounded-full border-2 border-secondary-fixed p-1 bg-white">
+<img class="w-full h-full rounded-full object-cover" data-alt="close up of a confident young Indian man in a college hoodie against a blurred campus background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAUwB-AXzCyFbcV5tB5AuiA3ZuL6pTV8aQ0fp6Kw3mT7Tv__8GEy2Q079Hbr_Oo2AmHD8AYEq8SKfQhSxGL02o-9i6RxcegZYnI3o0fEgbi0_eQuUvAUwW6V_O8kI02K023EJ8LQPE5DJw1oyPXmtMV27t0T0uJnRvqekLmQMXwLD8NylOJ2q5H5j4TSkUSSTnuDXodJbBuKmPj9LhC1-W3msTQafgY_STYu0CWrsZ1WpCaMqGsWNYpvK3HPbWFENlsEc_DNrBUfNuI"/>
+</div>
+<div class="w-20 h-20 rounded-full border-2 border-secondary-fixed p-1 bg-white">
+<img class="w-full h-full rounded-full object-cover" data-alt="vibrant portrait of a college girl laughing with bright natural sunlight and greenery behind her" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC089IfqBVlCILO7KwBM4IwqPc8vmGacsonQMh86W_8D_IEq5dHxE2vbiqhyN6Z4BM0iAPVOdayfNpix72eRIn_pEdW64z0Q6gQ6ZJJsiOhFNET1fIrN8PLBUyT0oMC8Dkov_kq9hbTxjgHq-ycBZSS4sn8nL4EMycnj_UqNAn79l90v403iPuZ_eX_xI4zvUtiiGLJXBh4VnZhuHUK1P_-IwQDwnucqTV4Ki14gJp3PCZDru-FTGwc7Ldbjcwur6ryriXhyBznYSSo"/>
+</div>
+<div class="w-20 h-20 rounded-full border-2 border-secondary-fixed p-1 bg-white">
+<img class="w-full h-full rounded-full object-cover" data-alt="young Indian computer science student in front of a monitor with soft studio lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCJZvlkpJeGiy0KYM3xpU7AzRd8Ga-ri2ldwxRalvvCraZC5WWlIO85GeWm6LnnxX7DQxje4j8p3rJOPXKxPwHdGp7IcC4c4fNSVJXJXp--x3cKLrjyy5BbIm6pSGpee_V4ap9hudGTpWFa2lsYWf7UWdXZxjE-8vBFrJgZEWjv6n7MVeGhZ1KZtnibt-iaSXy_YxaNsUpfn8kHZdRLGhbR6jzknTldR9MwQs9MhWwHG2heV6xk7SWFojcanxWKvHpIsT7X3L1Q7SPr"/>
+</div>
+</div>
+</div>
+</section>
+<!-- Feed Content -->
+<div class="space-y-6">
+<!-- Feed Card: Club Activity -->
+<article class="bg-surface-container-lowest rounded-lg p-6 editorial-shadow border border-white/40">
+<div class="flex items-center justify-between mb-6">
+<div class="flex items-center gap-3">
+<div class="w-12 h-12 rounded-xl bg-primary flex items-center justify-center text-white">
+<span class="material-symbols-outlined" data-icon="code">code</span>
+</div>
+<div>
+<h3 class="font-bold text-on-surface">Invertis Coding Club</h3>
+<p class="text-xs text-on-surface-variant">2 hours ago • <span class="text-primary font-semibold">Hackathon</span></p>
+</div>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer" data-icon="more_horiz">more_horiz</span>
+</div>
+<div class="space-y-4">
+<h2 class="text-2xl font-['Plus_Jakarta_Sans'] font-extrabold tracking-tight leading-tight">Invertis Coding Club Hackathon 2024: Registration Open! 🚀</h2>
+<p class="text-on-surface-variant leading-relaxed">Join the biggest coding event on campus. 24 hours of pure innovation. Free food, stickers, and internship opportunities for the winners. Let's build the future of Bareilly together.</p>
+<div class="relative w-full aspect-video rounded-lg overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="energetic hackathon scene with college students working on laptops in a high-tech lab environment with neon accent lights" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCo-D3MJmX9df86ZCo_00jYGYLjFqoInOWyh4iDJH1ujiNw4BC5azHbETDK3BqY7GuJxzjXUUlVv8juthPbexXcW_6JSUjt85AyRfWNvbBC8jEp4Ee_cGlvh2AeBOx_ClsmdGBQaCtCjTUkL1LSJp2O7JUgqvYMUt14Ns15QG_wEmyplQX9_p5HX-Ln5EspNzRZlKCcHgIyCkIF-3eSNC-xyHpQXiw3FeLTY2LIbmwRqWVXGZ8bWDw5v_1pXDYFsU7rI22_Ui1HV2W5"/>
+</div>
+</div>
+<div class="mt-6 flex items-center justify-between border-t border-surface-container pt-4">
+<div class="flex gap-4">
+<button class="flex items-center gap-1.5 text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-xl" data-icon="favorite">favorite</span>
+<span class="text-sm font-semibold">124</span>
+</button>
+<button class="flex items-center gap-1.5 text-on-surface-variant hover:text-secondary transition-colors">
+<span class="material-symbols-outlined text-xl" data-icon="chat_bubble">chat_bubble</span>
+<span class="text-sm font-semibold">42</span>
+</button>
+</div>
+<button class="bg-primary text-white px-6 py-2 rounded-full font-bold text-sm shadow-lg shadow-primary/20 active:scale-95 transition-all">Join Squad</button>
+</div>
+</article>
+<!-- Feed Card: Departmental Announcement -->
+<article class="bg-surface-container-lowest rounded-lg p-6 editorial-shadow border border-white/40">
+<div class="flex items-center justify-between mb-6">
+<div class="flex items-center gap-3">
+<div class="w-12 h-12 rounded-xl bg-secondary flex items-center justify-center text-white">
+<span class="material-symbols-outlined" data-icon="precision_manufacturing">precision_manufacturing</span>
+</div>
+<div>
+<h3 class="font-bold text-on-surface">Mechanical Dept.</h3>
+<p class="text-xs text-on-surface-variant">5 hours ago • <span class="text-secondary font-semibold">Workshop</span></p>
+</div>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer" data-icon="more_horiz">more_horiz</span>
+</div>
+<div class="p-6 bg-surface-container-low rounded-lg mb-4 border-l-4 border-secondary">
+<h2 class="text-xl font-bold font-['Plus_Jakarta_Sans'] text-on-surface mb-2 italic">Hands-on Robotics &amp; Automation</h2>
+<p class="text-sm text-on-surface-variant mb-4">A specialized workshop focusing on modern industrial robotic arms. Limited to 30 students only from 3rd and 4th year B.Tech.</p>
+<div class="flex items-center gap-4 text-xs font-bold text-secondary">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-sm" data-icon="calendar_today">calendar_today</span> Oct 12</span>
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-sm" data-icon="location_on">location_on</span> Lab 4, Block B</span>
+</div>
+</div>
+<div class="mt-6 flex items-center justify-between border-t border-surface-container pt-4">
+<div class="flex gap-4">
+<button class="flex items-center gap-1.5 text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-xl" data-icon="favorite">favorite</span>
+<span class="text-sm font-semibold">88</span>
+</button>
+<button class="flex items-center gap-1.5 text-on-surface-variant hover:text-secondary transition-colors">
+<span class="material-symbols-outlined text-xl" data-icon="share">share</span>
+<span class="text-sm font-semibold">12</span>
+</button>
+</div>
+<button class="bg-secondary text-white px-6 py-2 rounded-full font-bold text-sm shadow-lg shadow-secondary/20 active:scale-95 transition-all">Reserve Spot</button>
+</div>
+</article>
+<!-- Feed Card: Student Project -->
+<article class="bg-surface-container-lowest rounded-lg p-6 editorial-shadow border border-white/40">
+<div class="flex items-center justify-between mb-6">
+<div class="flex items-center gap-3">
+<img class="w-12 h-12 rounded-full object-cover" data-alt="headshot of a focused Indian male student wearing glasses in a university corridor" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCgRBzoroScgcp07s23xiKNcCcYjpjAvjQx_urbuJDoFUp5h9DwnRtDVOT0fphXdX9m4c0fSgF1X-gP_IRC6MaBxfLy_pMkmQFhFUPdhKoS3zR9c1Fi_e1RGtmaFDUEE8RLFJfHz_41yVrzOqIic3deLaRYdYb9mSP7lwbUZkIgWnhLnYK7ge48c17jgIpy61CRA1Nz-USZxsfOQ3p14UqFkKBEgGEAHeiJbonl5wIxvgAiBU78tCl0w6-D3Ylvx0xFH4k8W2UfF_R3"/>
+<div>
+<h3 class="font-bold text-on-surface">Arjun Sharma</h3>
+<p class="text-xs text-on-surface-variant">Yesterday • <span class="text-tertiary font-semibold">Project Update</span></p>
+</div>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="more_horiz">more_horiz</span>
+</div>
+<div class="space-y-4">
+<div class="flex items-center gap-2">
+<span class="px-2 py-0.5 bg-tertiary-container text-on-tertiary-container text-[10px] font-bold uppercase rounded">Smart Campus App</span>
+</div>
+<p class="text-on-surface leading-relaxed">Just finished the UI for our campus navigation module! Using AR to find classrooms is going to be a game changer for freshers. What do you think?</p>
+<div class="grid grid-cols-2 gap-3">
+<div class="aspect-[3/4] rounded-lg overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="clean mobile application interface design with vibrant orange and blue color scheme for a campus map" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBfCllxSV0Auc9ttY8Ei4cStdoqVzzlf7HIkz_FzWD8ycDXjGsG-1oZBLYFo5LIXqp528Hf6l_5Qni7CJT1cE4EFOeeiMfkIOE047z8-yTSKDVSVXuh_xoAOOikdyZM0j3UhtTnsHOSUT_0y_MQag8QG8W3Wt0_US7fTVFDLuQalyjRbWz9lN-6rtbdFvwpiE6JI8W9as9mmHIuP5Kf6t6Q5X6S0puthLKrHABGxggzfn5v1_fZTn3AB2195NHCbaI6w7VbuUfJ8wyp"/>
+</div>
+<div class="aspect-[3/4] rounded-lg overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="modern mobile dashboard UI showing student schedules and university news with soft shadows" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBzWGwOrKq9V9uIEtmOk12mckRXwGLHJo0xXx8EhOI5CbPmGXY-d1f0Z6UO5PyVPOC-YVK7jKYn6zvjRoBu6vLf5fZKn010CXRvzlYWxZkY6ths4A44-_9-UVq3N9s-7Egbmiz5QC7-hjGYruUsJiEEKvDCK9n-w9GFkd1MFWuJ6B6o9VTJ8HMAPidvnhgEwBB4IbJW5RqsXf9NFn32Uv_u_5t_v87gzaZsaw1A-EFHfbJ-OtJve9ltkh8-9RpL_B3FZTceF8DJU7kQ"/>
+</div>
+</div>
+</div>
+<div class="mt-6 flex items-center justify-between border-t border-surface-container pt-4">
+<div class="flex gap-4">
+<button class="flex items-center gap-1.5 text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-xl" data-icon="favorite">favorite</span>
+<span class="text-sm font-semibold">210</span>
+</button>
+<button class="flex items-center gap-1.5 text-on-surface-variant hover:text-secondary transition-colors">
+<span class="material-symbols-outlined text-xl" data-icon="comment">comment</span>
+<span class="text-sm font-semibold">18</span>
+</button>
+</div>
+<button class="bg-surface-container-highest text-secondary px-6 py-2 rounded-full font-bold text-sm active:scale-95 transition-all">Support Project</button>
+</div>
+</article>
+</div>
+</div>
+<!-- Right Side: Faculty & Suggestions (Desktop Only) -->
+<aside class="hidden xl:block w-80 flex-shrink-0 space-y-6">
+<div class="sticky top-24 space-y-6">
+<!-- Invertis Pulse Card -->
+<div class="bg-gradient-to-br from-primary to-primary-container p-6 rounded-lg text-on-primary shadow-xl">
+<h4 class="font-black text-xl font-['Plus_Jakarta_Sans'] italic mb-2">The Pulse</h4>
+<p class="text-sm opacity-90 mb-4">You've reached Level 4 'Innovator' this week! Keep contributing to earn the Bareilly Tech badge.</p>
+<div class="w-full bg-white/20 h-2 rounded-full overflow-hidden">
+<div class="bg-white h-full w-3/4"></div>
+</div>
+</div>
+<!-- Active Peers -->
+<div class="bg-surface-container-low p-6 rounded-lg">
+<h4 class="text-sm font-bold uppercase tracking-widest text-on-surface-variant mb-6">Online Now</h4>
+<div class="space-y-4">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="relative">
+<img class="w-10 h-10 rounded-full object-cover" data-alt="portrait of a young indian female college student with a friendly expression" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBVuP3Xq_O-P5LcOl5xo7XbV98N-UQ2eD0i5xh2-yf8s7qNHail_Tph34KVoRzaXm2Cn6eJOJvyaoa4QCfp07nYOdns_cFpWANu53dS4OfhsnGWArrXudJYfoBKfs9ur-kp-MimB9SzD_rjQcr9ws9ciksbVntWRk34TErx8OZXJ81WIU6CiBwgxvjWPgh9n46AoMWFK7jaycRZx2DZY3AQ40UmNtcpsVs6uCmnClmOLdu13gBs67ZrPD-oIFMJi0Sa96LdciAHPu6t"/>
+<div class="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-surface-container-low rounded-full"></div>
+</div>
+<div>
+<p class="text-sm font-bold text-on-surface">Priya Verma</p>
+<p class="text-[10px] text-green-600 font-bold uppercase">Writing Code</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant text-lg" data-icon="forum">forum</span>
+</div>
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="relative">
+<img class="w-10 h-10 rounded-full object-cover" data-alt="portrait of a young indian male college student wearing professional glasses" src="https://lh3.googleusercontent.com/aida-public/AB6AXuApyd0p1QUdHXpAxm3HiPQIcoBkAtD0VV4cc-d31Nzbu-tcAAx-XVIL0R7rlgHhsb8cdmvRPD3LMAfAU-WXnrq5skpx7U-9JVql88IxFFuWDGCsQ7TrwtI22jXzb-W-Bggx2p2LyKRL48_aM3cQDRih843O1t674iDTH5I-FHW5EyPmdpZ0rehpDBzLaBwmwrmVOT-hrohePD-aUQAHh-xjNDb8XIcBbxROCXXAxzP_1zogWBFIZLHczvZDQ_J7Hh5AUh1t0a621dSa"/>
+<div class="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-surface-container-low rounded-full"></div>
+</div>
+<div>
+<p class="text-sm font-bold text-on-surface">Rohan Das</p>
+<p class="text-[10px] text-green-600 font-bold uppercase">Researching AI</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant text-lg" data-icon="forum">forum</span>
+</div>
+</div>
+<button class="w-full mt-6 py-2 text-primary text-sm font-bold border border-primary/20 rounded-full hover:bg-primary/5 transition-colors">View All Members</button>
+</div>
+</div>
+</aside>
+</main>
+<!-- BottomNavBar (Mobile Only) -->
+<nav class="md:hidden fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 pb-6 pt-2 bg-white/80 dark:bg-slate-950/80 backdrop-blur-2xl">
+<a class="bg-orange-500 text-white rounded-full px-5 py-2 flex flex-col items-center justify-center scale-105 shadow-lg shadow-orange-500/20 active:scale-90 transition-all duration-300 ease-out" href="#">
+<span class="material-symbols-outlined" data-icon="home">home</span>
+<span class="font-['Plus_Jakarta_Sans'] text-[11px] font-semibold tracking-wide uppercase">Home</span>
+</a>
+<a class="text-slate-400 dark:text-slate-500 flex flex-col items-center justify-center px-3 py-2 hover:bg-slate-100/50 dark:hover:bg-slate-800/50 transition-colors active:scale-90" href="#">
+<span class="material-symbols-outlined" data-icon="diversity_3">diversity_3</span>
+<span class="font-['Plus_Jakarta_Sans'] text-[11px] font-semibold tracking-wide uppercase">Community</span>
+</a>
+<a class="text-slate-400 dark:text-slate-500 flex flex-col items-center justify-center px-3 py-2 hover:bg-slate-100/50 dark:hover:bg-slate-800/50 transition-colors active:scale-90" href="#">
+<span class="material-symbols-outlined" data-icon="rocket_launch">rocket_launch</span>
+<span class="font-['Plus_Jakarta_Sans'] text-[11px] font-semibold tracking-wide uppercase">Venture</span>
+</a>
+<a class="text-slate-400 dark:text-slate-500 flex flex-col items-center justify-center px-3 py-2 hover:bg-slate-100/50 dark:hover:bg-slate-800/50 transition-colors active:scale-90" href="#">
+<span class="material-symbols-outlined" data-icon="account_circle">account_circle</span>
+<span class="font-['Plus_Jakarta_Sans'] text-[11px] font-semibold tracking-wide uppercase">Profile</span>
+</a>
+</nav>
+</body></html>

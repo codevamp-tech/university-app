@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Academic Attendance Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&amp;family=Inter:wght@300;400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-primary-fixed-variant": "#00419c",
+                    "on-error-container": "#93000a",
+                    "on-secondary-container": "#405381",
+                    "primary-fixed-dim": "#b0c6ff",
+                    "tertiary": "#964400",
+                    "surface-container-highest": "#e0e3e6",
+                    "outline": "#737785",
+                    "surface-bright": "#f7f9fc",
+                    "on-primary-container": "#fefcff",
+                    "background": "#f7f9fc",
+                    "on-background": "#191c1e",
+                    "surface-container": "#eceef1",
+                    "secondary-fixed": "#d9e2ff",
+                    "on-surface": "#191c1e",
+                    "error": "#ba1a1a",
+                    "surface-container-high": "#e6e8eb",
+                    "primary-container": "#2d6fe7",
+                    "primary-fixed": "#d9e2ff",
+                    "error-container": "#ffdad6",
+                    "surface-dim": "#d8dadd",
+                    "on-error": "#ffffff",
+                    "surface": "#f7f9fc",
+                    "surface-variant": "#e0e3e6",
+                    "outline-variant": "#c2c6d6",
+                    "on-secondary": "#ffffff",
+                    "on-primary": "#ffffff",
+                    "inverse-surface": "#2d3133",
+                    "tertiary-container": "#bd5700",
+                    "on-tertiary-container": "#fffbff",
+                    "surface-tint": "#0058cc",
+                    "on-secondary-fixed": "#001945",
+                    "on-tertiary-fixed": "#321200",
+                    "on-surface-variant": "#424654",
+                    "secondary": "#4a5d8c",
+                    "inverse-primary": "#b0c6ff",
+                    "on-secondary-fixed-variant": "#324673",
+                    "secondary-fixed-dim": "#b2c6fb",
+                    "primary": "#0055c7",
+                    "inverse-on-surface": "#eff1f4",
+                    "on-tertiary-fixed-variant": "#763400",
+                    "on-primary-fixed": "#001945",
+                    "on-tertiary": "#ffffff",
+                    "tertiary-fixed": "#ffdbc9",
+                    "surface-container-lowest": "#ffffff",
+                    "surface-container-low": "#f2f4f7",
+                    "secondary-container": "#b5c8fe",
+                    "tertiary-fixed-dim": "#ffb68c"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "fontFamily": {
+                    "headline": ["Manrope"],
+                    "body": ["Inter"],
+                    "label": ["Inter"]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+      .material-symbols-outlined {
+        font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+      }
+      .circular-progress {
+        background: radial-gradient(closest-side, white 79%, transparent 80% 100%),
+                    conic-gradient(#0055c7 82%, #eceef1 0);
+      }
+      .glass-effect {
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+      }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface font-body text-on-surface min-h-screen pb-24">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md shadow-sm shadow-slate-200/50 dark:shadow-none flex justify-between items-center px-6 py-3 w-full">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full overflow-hidden border-2 border-primary/10">
+<img alt="User Profile" class="w-full h-full object-cover" data-alt="Close up portrait of a young male student with a friendly expression in a brightly lit modern library setting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAyfxFbzLDN3TErW2y421H1EvE1KiT_9klftnAVI_m8Mw4xYSsmvwQjM18SdPfmp8Xx3WDqQ7NLB_nzYYTl49nFdhIn7mYXGPKLI755HGYLk_5fQXosKAfz-3gYFyDc_qMt03hRQ3ctVWXp_IGRCQD7CctQaKDtz2rrCjyct-JUuRavP6YKKHs8pLdI89sGfT4QraQAHEcQiBVblkOkXr31KLFP1pfnpcMxqpwfJwgWBwc9m7WweCTugVKfJbutMu7Od8aHKUMA1gRg"/>
+</div>
+<h1 class="font-headline text-lg font-bold tracking-tight text-on-surface">Welcome back</h1>
+</div>
+<button class="text-blue-600 dark:text-blue-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors p-2 rounded-full scale-95 active:scale-90 duration-200">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+</header>
+<main class="pt-20 px-6 max-w-5xl mx-auto">
+<!-- Hero Section: The Focus Float -->
+<section class="mt-8 mb-12">
+<div class="relative bg-surface-container-lowest rounded-[2rem] p-8 shadow-[0_32px_64px_-12px_rgba(0,0,0,0.04)] border border-outline-variant/10 overflow-hidden">
+<!-- Decorative background element -->
+<div class="absolute -top-24 -right-24 w-64 h-64 bg-primary/5 rounded-full blur-3xl"></div>
+<div class="grid md:grid-cols-2 gap-12 items-center relative z-10">
+<div class="space-y-6">
+<span class="font-label text-[10px] font-bold uppercase tracking-[0.1em] text-primary bg-primary/10 px-3 py-1 rounded-full">Overall Performance</span>
+<h2 class="font-headline text-4xl font-extrabold tracking-tight text-on-surface leading-tight">
+                            Your Academic <br/><span class="text-primary">Presence.</span>
+</h2>
+<p class="text-on-surface-variant body-md leading-relaxed max-w-sm">
+                            You've maintained consistent attendance this semester. Keep it above 75% to stay eligible for all final examinations.
+                        </p>
+<div class="flex gap-4 pt-2">
+<button class="bg-gradient-to-br from-primary to-primary-container text-on-primary px-6 py-3 rounded-xl font-semibold shadow-lg shadow-primary/20 transition-transform active:scale-95">
+                                View History
+                            </button>
+<button class="bg-surface-container-high text-primary px-6 py-3 rounded-xl font-semibold transition-colors hover:bg-surface-container-highest">
+                                Download Report
+                            </button>
+</div>
+</div>
+<div class="flex flex-col items-center justify-center">
+<!-- Circular Progress -->
+<div class="relative w-56 h-56 flex items-center justify-center">
+<div class="circular-progress w-full h-full rounded-full flex items-center justify-center">
+<div class="bg-white rounded-full w-[85%] h-[85%] flex flex-col items-center justify-center shadow-inner">
+<span class="font-headline text-5xl font-extrabold text-on-surface tracking-tighter">82%</span>
+<span class="font-label text-[10px] font-bold text-on-surface-variant uppercase tracking-widest mt-1">Total Attendance</span>
+</div>
+</div>
+</div>
+<div class="mt-8 flex gap-8">
+<div class="text-center">
+<div class="text-2xl font-bold text-on-surface">164</div>
+<div class="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Attended</div>
+</div>
+<div class="w-px h-8 bg-outline-variant/30 self-center"></div>
+<div class="text-center">
+<div class="text-2xl font-bold text-on-surface">200</div>
+<div class="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Total</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Subject-wise Breakdown -->
+<section class="space-y-6">
+<div class="flex justify-between items-end">
+<div>
+<span class="font-label text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Course Breakdown</span>
+<h3 class="font-headline text-2xl font-bold tracking-tight">Subject Analysis</h3>
+</div>
+<div class="flex gap-2">
+<span class="flex items-center gap-1.5 text-xs font-medium text-tertiary">
+<span class="w-2 h-2 rounded-full bg-tertiary"></span> Low Attendance
+                    </span>
+</div>
+</div>
+<!-- Bento Grid Layout for Subjects -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+<!-- Subject Card 1 -->
+<div class="group bg-surface-container-lowest p-6 rounded-[1.5rem] shadow-sm hover:shadow-md transition-all duration-300 border border-transparent hover:border-primary/5">
+<div class="flex justify-between items-start mb-6">
+<div class="p-3 bg-primary/10 rounded-2xl text-primary">
+<span class="material-symbols-outlined" data-icon="architecture">architecture</span>
+</div>
+<span class="text-2xl font-black text-on-surface/10 group-hover:text-primary/20 transition-colors">01</span>
+</div>
+<h4 class="font-headline text-xl font-bold mb-1">Advanced Calculus</h4>
+<p class="text-xs text-on-surface-variant mb-6 font-medium">Dr. Elena Rodriguez</p>
+<div class="space-y-2">
+<div class="flex justify-between text-xs font-bold uppercase tracking-wider">
+<span class="text-on-surface-variant">Attendance</span>
+<span class="text-primary">88%</span>
+</div>
+<div class="h-2 w-full bg-surface-container rounded-full overflow-hidden">
+<div class="h-full bg-gradient-to-r from-primary to-primary-container rounded-full w-[88%]"></div>
+</div>
+</div>
+</div>
+<!-- Subject Card 2 (Low Attendance Indicator) -->
+<div class="group bg-surface-container-lowest p-6 rounded-[1.5rem] shadow-sm hover:shadow-md transition-all duration-300 border border-tertiary/10">
+<div class="flex justify-between items-start mb-6">
+<div class="p-3 bg-tertiary/10 rounded-2xl text-tertiary">
+<span class="material-symbols-outlined" data-icon="biotech">biotech</span>
+</div>
+<div class="bg-tertiary/10 px-2 py-1 rounded-lg">
+<span class="material-symbols-outlined text-tertiary text-sm" data-icon="warning">warning</span>
+</div>
+</div>
+<h4 class="font-headline text-xl font-bold mb-1">Molecular Biology</h4>
+<p class="text-xs text-on-surface-variant mb-6 font-medium">Prof. Julian Vane</p>
+<div class="space-y-2">
+<div class="flex justify-between text-xs font-bold uppercase tracking-wider">
+<span class="text-on-surface-variant">Attendance</span>
+<span class="text-tertiary">64%</span>
+</div>
+<div class="h-2 w-full bg-surface-container rounded-full overflow-hidden">
+<div class="h-full bg-tertiary rounded-full w-[64%]"></div>
+</div>
+</div>
+<p class="mt-4 text-[10px] font-bold text-tertiary uppercase tracking-tight">Requires immediate attention</p>
+</div>
+<!-- Subject Card 3 -->
+<div class="group bg-surface-container-lowest p-6 rounded-[1.5rem] shadow-sm hover:shadow-md transition-all duration-300 border border-transparent hover:border-primary/5">
+<div class="flex justify-between items-start mb-6">
+<div class="p-3 bg-primary/10 rounded-2xl text-primary">
+<span class="material-symbols-outlined" data-icon="history_edu">history_edu</span>
+</div>
+<span class="text-2xl font-black text-on-surface/10 group-hover:text-primary/20 transition-colors">03</span>
+</div>
+<h4 class="font-headline text-xl font-bold mb-1">Modern Literature</h4>
+<p class="text-xs text-on-surface-variant mb-6 font-medium">Dr. Sarah Jenkins</p>
+<div class="space-y-2">
+<div class="flex justify-between text-xs font-bold uppercase tracking-wider">
+<span class="text-on-surface-variant">Attendance</span>
+<span class="text-primary">92%</span>
+</div>
+<div class="h-2 w-full bg-surface-container rounded-full overflow-hidden">
+<div class="h-full bg-gradient-to-r from-primary to-primary-container rounded-full w-[92%]"></div>
+</div>
+</div>
+</div>
+<!-- Subject Card 4 -->
+<div class="group bg-surface-container-lowest p-6 rounded-[1.5rem] shadow-sm hover:shadow-md transition-all duration-300 border border-transparent hover:border-primary/5">
+<div class="flex justify-between items-start mb-6">
+<div class="p-3 bg-primary/10 rounded-2xl text-primary">
+<span class="material-symbols-outlined" data-icon="code">code</span>
+</div>
+<span class="text-2xl font-black text-on-surface/10 group-hover:text-primary/20 transition-colors">04</span>
+</div>
+<h4 class="font-headline text-xl font-bold mb-1">Data Structures</h4>
+<p class="text-xs text-on-surface-variant mb-6 font-medium">Prof. Michael Chen</p>
+<div class="space-y-2">
+<div class="flex justify-between text-xs font-bold uppercase tracking-wider">
+<span class="text-on-surface-variant">Attendance</span>
+<span class="text-primary">78%</span>
+</div>
+<div class="h-2 w-full bg-surface-container rounded-full overflow-hidden">
+<div class="h-full bg-gradient-to-r from-primary to-primary-container rounded-full w-[78%]"></div>
+</div>
+</div>
+</div>
+<!-- Subject Card 5 (Low Attendance Indicator) -->
+<div class="group bg-surface-container-lowest p-6 rounded-[1.5rem] shadow-sm hover:shadow-md transition-all duration-300 border border-tertiary/10">
+<div class="flex justify-between items-start mb-6">
+<div class="p-3 bg-tertiary/10 rounded-2xl text-tertiary">
+<span class="material-symbols-outlined" data-icon="psychology">psychology</span>
+</div>
+<div class="bg-tertiary/10 px-2 py-1 rounded-lg">
+<span class="material-symbols-outlined text-tertiary text-sm" data-icon="warning">warning</span>
+</div>
+</div>
+<h4 class="font-headline text-xl font-bold mb-1">Cognitive Psychology</h4>
+<p class="text-xs text-on-surface-variant mb-6 font-medium">Dr. Lisa Markram</p>
+<div class="space-y-2">
+<div class="flex justify-between text-xs font-bold uppercase tracking-wider">
+<span class="text-on-surface-variant">Attendance</span>
+<span class="text-tertiary">71%</span>
+</div>
+<div class="h-2 w-full bg-surface-container rounded-full overflow-hidden">
+<div class="h-full bg-tertiary rounded-full w-[71%]"></div>
+</div>
+</div>
+<p class="mt-4 text-[10px] font-bold text-tertiary uppercase tracking-tight">Below threshold</p>
+</div>
+<!-- Decorative Insight Card -->
+<div class="relative group bg-primary rounded-[1.5rem] p-6 text-on-primary overflow-hidden shadow-xl shadow-primary/20 flex flex-col justify-end min-h-[220px]">
+<img alt="Academic Achievement" class="absolute inset-0 w-full h-full object-cover mix-blend-overlay opacity-40" data-alt="Dreamy low angle shot of a university clock tower against a clear blue sky with soft lens flare" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDlpjx10_hbVEnrk4eVjyvaVI1mVO10dX1526k2ncHeyN7S756kjc0LEDidHHOaeG1YfZc5YuG9CjD83ZzY_E0hLtebTBXsMHbT3cN867N-lxaHIGiZpLCSOlYHLsfRlwozGFFA_WjU4u-wRzjvAnP00gtxwW8LjTj0QQhN6wQ9qcuQh5qTdQ5GbwHWZIgIkevEk_kYXYDSHzYczaFKgvdX1912X3oZ6jWY7BW27MiixhWDIx_NIvclbJvOzVAmk_zIHOTGDjLLjG_b"/>
+<div class="relative z-10">
+<h4 class="font-headline text-xl font-bold leading-tight mb-2">Consistency is the key to mastery.</h4>
+<p class="text-xs text-primary-fixed-dim font-medium mb-4">You're ranked in the top 15% of your class for attendance.</p>
+<span class="material-symbols-outlined text-3xl" data-icon="stars">stars</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Activity Summary (Tonal Layering example) -->
+<section class="mt-12 bg-surface-container-low rounded-[2rem] p-8">
+<h3 class="font-headline text-xl font-bold mb-6">Recent Records</h3>
+<div class="space-y-1">
+<div class="flex items-center justify-between p-4 bg-surface-container-lowest rounded-xl hover:bg-surface-container-high transition-colors cursor-pointer group">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-green-50 flex items-center justify-center text-green-600">
+<span class="material-symbols-outlined" data-icon="check_circle">check_circle</span>
+</div>
+<div>
+<div class="font-bold text-sm">Advanced Calculus</div>
+<div class="text-[10px] font-medium text-on-surface-variant">Today, 09:00 AM • Lecture Hall A</div>
+</div>
+</div>
+<span class="font-label text-[10px] font-bold text-green-600 uppercase tracking-widest bg-green-50 px-2 py-1 rounded">Present</span>
+</div>
+<div class="flex items-center justify-between p-4 bg-surface-container-lowest rounded-xl hover:bg-surface-container-high transition-colors cursor-pointer group">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center text-red-600">
+<span class="material-symbols-outlined" data-icon="cancel">cancel</span>
+</div>
+<div>
+<div class="font-bold text-sm">Molecular Biology</div>
+<div class="text-[10px] font-medium text-on-surface-variant">Yesterday, 02:30 PM • Lab 4</div>
+</div>
+</div>
+<span class="font-label text-[10px] font-bold text-red-600 uppercase tracking-widest bg-red-50 px-2 py-1 rounded">Absent</span>
+</div>
+<div class="flex items-center justify-between p-4 bg-surface-container-lowest rounded-xl hover:bg-surface-container-high transition-colors cursor-pointer group">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-green-50 flex items-center justify-center text-green-600">
+<span class="material-symbols-outlined" data-icon="check_circle">check_circle</span>
+</div>
+<div>
+<div class="font-bold text-sm">Modern Literature</div>
+<div class="text-[10px] font-medium text-on-surface-variant">Yesterday, 11:00 AM • Seminar Room 2</div>
+</div>
+</div>
+<span class="font-label text-[10px] font-bold text-green-600 uppercase tracking-widest bg-green-50 px-2 py-1 rounded">Present</span>
+</div>
+</div>
+</section>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 w-full z-50 rounded-t-3xl border-t border-slate-100/50 dark:border-slate-800/50 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md shadow-[0_-4px_24px_0_rgba(0,0,0,0.04)] flex justify-around items-center w-full px-4 pb-6 pt-2">
+<a class="flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 px-5 py-2 hover:text-blue-500 dark:hover:text-blue-400" href="#">
+<span class="material-symbols-outlined" data-icon="home">home</span>
+<span class="font-manrope text-[10px] font-bold uppercase tracking-widest mt-1">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-2xl px-5 py-2 Active: scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="school">school</span>
+<span class="font-manrope text-[10px] font-bold uppercase tracking-widest mt-1">Academics</span>
+</a>
+<a class="flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 px-5 py-2 hover:text-blue-500 dark:hover:text-blue-400" href="#">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+<span class="font-manrope text-[10px] font-bold uppercase tracking-widest mt-1">Alerts</span>
+</a>
+<a class="flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 px-5 py-2 hover:text-blue-500 dark:hover:text-blue-400" href="#">
+<span class="material-symbols-outlined" data-icon="person_text_pilled">inbox_text_person</span>
+<span class="font-manrope text-[10px] font-bold uppercase tracking-widest mt-1">Profile</span>
+</a>
+</nav>
+</body></html>

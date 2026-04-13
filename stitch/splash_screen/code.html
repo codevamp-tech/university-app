@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Academic Curator | Loading</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@200..800&amp;family=Inter:wght@100..900&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-tertiary-container": "#fffbff",
+                        "inverse-surface": "#2d3133",
+                        "surface-variant": "#e0e3e6",
+                        "on-primary-fixed": "#001945",
+                        "inverse-primary": "#b0c6ff",
+                        "primary-fixed": "#d9e2ff",
+                        "surface-container-lowest": "#ffffff",
+                        "background": "#f7f9fc",
+                        "surface-container-highest": "#e0e3e6",
+                        "on-primary-fixed-variant": "#00419c",
+                        "outline": "#737785",
+                        "on-tertiary": "#ffffff",
+                        "secondary-container": "#b5c8fe",
+                        "on-tertiary-fixed-variant": "#763400",
+                        "surface": "#f7f9fc",
+                        "on-secondary-fixed-variant": "#324673",
+                        "inverse-on-surface": "#eff1f4",
+                        "surface-container-high": "#e6e8eb",
+                        "error-container": "#ffdad6",
+                        "tertiary-fixed": "#ffdbc9",
+                        "on-background": "#191c1e",
+                        "surface-container-low": "#f2f4f7",
+                        "primary": "#0055c7",
+                        "on-secondary": "#ffffff",
+                        "surface-container": "#eceef1",
+                        "secondary": "#4a5d8c",
+                        "on-primary-container": "#fefcff",
+                        "primary-container": "#2d6fe7",
+                        "tertiary-fixed-dim": "#ffb68c",
+                        "on-secondary-container": "#405381",
+                        "surface-tint": "#0058cc",
+                        "tertiary": "#964400",
+                        "secondary-fixed": "#d9e2ff",
+                        "outline-variant": "#c2c6d6",
+                        "surface-bright": "#f7f9fc",
+                        "surface-dim": "#d8dadd",
+                        "on-surface": "#191c1e",
+                        "on-surface-variant": "#424654",
+                        "on-tertiary-fixed": "#321200",
+                        "primary-fixed-dim": "#b0c6ff",
+                        "on-secondary-fixed": "#001945",
+                        "on-primary": "#ffffff",
+                        "secondary-fixed-dim": "#b2c6fb",
+                        "on-error": "#ffffff",
+                        "on-error-container": "#93000a",
+                        "tertiary-container": "#bd5700",
+                        "error": "#ba1a1a"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "1.5rem",
+                        "full": "9999px"
+                    },
+                    "fontFamily": {
+                        "headline": ["Manrope"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        @keyframes pulse-soft {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.8; transform: scale(0.98); }
+        }
+        .animate-soft {
+            animation: pulse-soft 3s ease-in-out infinite;
+        }
+        .glass-blur {
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-[#FFFFFF] font-body text-on-surface selection:bg-primary-fixed overflow-hidden">
+<!-- Suppression Logic: Splash screen is a focused transactional journey, therefore no global Shell navigation is rendered. -->
+<main class="relative min-h-screen flex flex-col items-center justify-center overflow-hidden">
+<!-- Background Accents (Subtle Tonal Shifts) -->
+<div class="absolute inset-0 z-0 pointer-events-none">
+<div class="absolute -top-[10%] -left-[10%] w-[40%] h-[40%] rounded-full bg-primary/5 blur-[120px]"></div>
+<div class="absolute -bottom-[10%] -right-[10%] w-[40%] h-[40%] rounded-full bg-primary-container/5 blur-[120px]"></div>
+</div>
+<!-- Central Identity Cluster -->
+<div class="relative z-10 flex flex-col items-center text-center px-6">
+<!-- College Logo Container -->
+<div class="mb-12 relative animate-soft">
+<div class="w-24 h-24 flex items-center justify-center rounded-xl bg-white shadow-[0_32px_64px_-12px_rgba(0,85,199,0.08)] mb-6 overflow-hidden">
+<img alt="College Logo" class="w-16 h-16 object-contain" data-alt="Modern geometric emblem representing academic excellence with interlocking clean lines and deep blue gradient finish" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAkIfMTeipb5vNMjcdz3eOsQ0ehG7CXz0tDTAq74oaKFiHybOChkUNuY634tQqgThEluNe0oO_HhR9Gu6gILgZpQBSWevWVOhsL2pkKIy5EoychK45Raft4uWEzMsRKQABM0nJJhg0-Zpf_hXGtNQkVa5bUJ8zeUkePQAblrtSRnRZ0LwjwP5_0emXRpyhb-YCZJg3p2Jkb4P7Q6d0-TAhuUyfd6fVNJetZIhTOXgCRs0oVqKsmXjPlci-nsCpp7194ScS5oaupTcci"/>
+</div>
+<!-- Refined Branding -->
+<h1 class="font-headline text-3xl font-extrabold tracking-tighter text-on-surface mb-2">
+                    ACADEMIC <span class="text-primary">CURATOR</span>
+</h1>
+<p class="font-label text-xs uppercase tracking-[0.2em] text-on-surface-variant font-medium">
+                    University Portal
+                </p>
+</div>
+<!-- Focus Float Style Loading Indicator -->
+<div class="w-48 h-[6px] bg-surface-container-low rounded-full overflow-hidden relative">
+<div class="absolute top-0 left-0 h-full bg-gradient-to-r from-primary to-primary-container rounded-full w-1/3" style="background-color: #3474EC; animation: loading-slide 2s cubic-bezier(0.65, 0, 0.35, 1) infinite;">
+</div>
+</div>
+<!-- Semantic Footer Text -->
+<div class="mt-12">
+<p class="text-on-surface-variant font-body text-sm tracking-tight opacity-60">
+                    Preparing your workspace...
+                </p>
+</div>
+</div>
+<!-- Editorial Detail: Asymmetric Composition Element -->
+<div class="absolute bottom-12 right-12 hidden md:block opacity-10">
+<span class="font-headline font-black text-9xl tracking-tighter select-none">ED.01</span>
+</div>
+</main>
+<style>
+        @keyframes loading-slide {
+            0% { left: -40%; width: 30%; }
+            50% { left: 40%; width: 50%; }
+            100% { left: 110%; width: 30%; }
+        }
+    </style>
+</body></html>

@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Student Profile | Invertis Pulse</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-background": "#2c2f30",
+                        "error": "#b02500",
+                        "surface": "#f5f6f7",
+                        "secondary-fixed": "#cbceff",
+                        "inverse-primary": "#fe9832",
+                        "on-primary": "#fff0e6",
+                        "surface-dim": "#d1d5d7",
+                        "surface-container": "#e6e8ea",
+                        "primary-fixed-dim": "#ed8b24",
+                        "primary-container": "#fe9832",
+                        "surface-tint": "#8b4b00",
+                        "outline": "#757778",
+                        "tertiary-container": "#8dedec",
+                        "on-secondary-container": "#343d96",
+                        "on-primary-container": "#4d2700",
+                        "tertiary-fixed-dim": "#7fdede",
+                        "secondary-dim": "#3d469f",
+                        "tertiary-dim": "#005959",
+                        "surface-container-high": "#e0e3e4",
+                        "secondary-container": "#cbceff",
+                        "on-secondary": "#f3f1ff",
+                        "on-primary-fixed-variant": "#592e00",
+                        "surface-variant": "#dadddf",
+                        "on-surface": "#2c2f30",
+                        "tertiary-fixed": "#8dedec",
+                        "on-tertiary-fixed-variant": "#006262",
+                        "inverse-surface": "#0c0f10",
+                        "on-secondary-fixed": "#1f2882",
+                        "error-dim": "#b92902",
+                        "surface-container-low": "#eff1f2",
+                        "on-error": "#ffefec",
+                        "secondary": "#4953ac",
+                        "on-tertiary-fixed": "#004343",
+                        "primary-dim": "#7a4100",
+                        "surface-container-highest": "#dadddf",
+                        "primary-fixed": "#fe9832",
+                        "on-secondary-fixed-variant": "#3e47a0",
+                        "on-tertiary": "#bbfffe",
+                        "tertiary": "#006666",
+                        "outline-variant": "#abadae",
+                        "on-error-container": "#520c00",
+                        "inverse-on-surface": "#9b9d9e",
+                        "on-primary-fixed": "#291200",
+                        "error-container": "#f95630",
+                        "secondary-fixed-dim": "#babfff",
+                        "on-surface-variant": "#595c5d",
+                        "primary": "#8b4b00",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-bright": "#f5f6f7",
+                        "background": "#f5f6f7",
+                        "on-tertiary-container": "#005858"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "3rem",
+                        "full": "9999px"
+                    },
+                    "fontFamily": {
+                        "headline": ["Plus Jakarta Sans"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body { font-family: 'Inter', sans-serif; background-color: #f5f6f7; }
+        h1, h2, h3 { font-family: 'Plus Jakarta Sans', sans-serif; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="text-on-surface min-h-screen pb-32">
+<!-- Top Navigation Anchor -->
+<header class="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl shadow-sm flex justify-between items-center px-6 py-4 w-full z-50 sticky top-0">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-orange-500 dark:text-orange-400" data-icon="school">school</span>
+<span class="text-xl font-black text-orange-600 dark:text-orange-400 italic font-['Plus_Jakarta_Sans'] tracking-tight">Invertis Agora</span>
+</div>
+<div class="flex items-center gap-4">
+<button class="material-symbols-outlined p-2 rounded-full hover:bg-orange-50 transition-all active:scale-95 text-slate-500 dark:text-slate-400" data-icon="smart_toy">smart_toy</button>
+<div class="w-10 h-10 rounded-full overflow-hidden border-2 border-primary">
+<img class="w-full h-full object-cover" data-alt="portrait of a young indian student with a confident smile against a campus background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDkLv_4TT5iWRS7U2tDOQsNyHlYbfh4dGvbie0E0YDC7EZXGW3hqxO7SbwOS6OA0aAsq7xjaxf-xvBfEi8Z8cKbkiIhNvfKDgXPjANyUjX7wcgFnibmNayzwA_yEdSRVOEX9a098JWa8JUwF8YZTDDWNFahsIjm-dvntywxZv4yzj4Q7vut3mQqA7RKbZPUOIuEIZQVzZS8wtuWTxiB2GOEUeT43dCyBwxXJsoIBOiZvBNk7S2mwmqdWqfeRBl1lMo_yo2i_DPOdkfw"/>
+</div>
+</div>
+</header>
+<main class="max-w-screen-xl mx-auto px-6 pt-8 space-y-12">
+<!-- 1. Header: Student Info (Asymmetric Layout) -->
+<section class="grid grid-cols-1 md:grid-cols-12 gap-8 items-end">
+<div class="md:col-span-4 relative group">
+<div class="rounded-xl overflow-hidden shadow-2xl transition-transform duration-300 group-hover:scale-[1.02]">
+<img class="w-full h-72 md:h-96 object-cover" data-alt="stylized professional portrait of a male college student in a casual blazer in bright daylight" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC6mmtjUA28NY_AB8YFu2Ri2e3lSkRbJCYpAbrgwHHzzLntRM9rNTLFJIT-pf3fW5gQ-_hRX8LB8ZDdqw5ls_d4bA10oIXuBlKp8kv7onee50cVXADdy7BPVn6kAg4Co9Gbp6XiTx5yITLttWLtkQQag4sVTILELHpLT0_-WAXmJWUVCHpSfhFuYmROstnRxdO_T4ym_KOCd8CmJm60WORR2yoPF8RiqYCiJsTUrQcbumydveuPeijNqG_991IufFMlU7g1DbJ3nqtG"/>
+<div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
+<div class="absolute bottom-6 left-6 text-white">
+<span class="bg-primary px-3 py-1 rounded-full text-xs font-bold tracking-widest uppercase mb-2 inline-block">Pulse Elite</span>
+<h1 class="text-4xl font-extrabold tracking-tight">Aryan Sharma</h1>
+</div>
+</div>
+</div>
+<div class="md:col-span-8 flex flex-col justify-end">
+<div class="space-y-2 mb-6">
+<p class="text-secondary font-bold text-lg">B.Tech Computer Science Engineering</p>
+<p class="text-on-surface-variant font-medium">Batch of 2025 • Invertis University Bareilly</p>
+</div>
+<div class="flex flex-wrap gap-4">
+<div class="bg-surface-container-low px-6 py-4 rounded-lg flex flex-col">
+<span class="text-xs text-on-surface-variant font-bold uppercase tracking-wider">Current Year</span>
+<span class="text-2xl font-bold text-primary">3rd Year</span>
+</div>
+<div class="bg-surface-container-low px-6 py-4 rounded-lg flex flex-col">
+<span class="text-xs text-on-surface-variant font-bold uppercase tracking-wider">Student ID</span>
+<span class="text-2xl font-bold text-secondary">INV-2022-094</span>
+</div>
+<div class="bg-surface-container-low px-6 py-4 rounded-lg flex flex-col">
+<span class="text-xs text-on-surface-variant font-bold uppercase tracking-wider">Vibe Check</span>
+<span class="text-2xl font-bold text-tertiary">Innovator</span>
+</div>
+</div>
+</div>
+</section>
+<!-- 2. AI Insights (Glassmorphism & Vibrant Accents) -->
+<section>
+<div class="bg-gradient-to-br from-primary to-primary-container p-1 rounded-lg">
+<div class="bg-surface-container-lowest/90 backdrop-blur-md p-8 rounded-lg flex flex-col md:flex-row items-center gap-8">
+<div class="bg-primary/10 p-6 rounded-full">
+<span class="material-symbols-outlined text-primary text-5xl" data-icon="auto_awesome" data-weight="fill">auto_awesome</span>
+</div>
+<div class="space-y-4">
+<h2 class="text-2xl font-extrabold text-on-primary-container tracking-tight">Personalized AI Pulse</h2>
+<p class="text-lg leading-relaxed text-on-surface-variant italic font-body">
+                            "Aryan, your trajectory in <span class="text-secondary font-bold">Cloud Computing</span> is exceptional. 
+                            Maintaining your 8.9 GPA while leading SkyDrone projects puts you in the top 5% of your batch. 
+                            Consider bridging your <span class="text-primary font-bold">social credits</span> with your startup venture for maximum placement impact."
+                        </p>
+</div>
+</div>
+</div>
+</section>
+<!-- 3. Academics & 4. Mental Health (Bento Grid) -->
+<section class="grid grid-cols-1 md:grid-cols-3 gap-6">
+<div class="md:col-span-2 bg-surface-container-lowest p-8 rounded-lg space-y-6">
+<div class="flex justify-between items-center">
+<h2 class="text-xl font-extrabold tracking-tight">Academic Performance</h2>
+<span class="material-symbols-outlined text-secondary" data-icon="trending_up">trending_up</span>
+</div>
+<div class="grid grid-cols-2 gap-8">
+<div class="space-y-2">
+<div class="flex items-baseline gap-2">
+<span class="text-5xl font-black text-secondary tracking-tighter">8.9</span>
+<span class="text-on-surface-variant font-bold">/ 10.0</span>
+</div>
+<p class="text-sm font-semibold uppercase tracking-widest text-on-surface-variant">Cumulative GPA</p>
+<div class="w-full bg-surface-container h-2 rounded-full overflow-hidden">
+<div class="bg-secondary h-full rounded-full" style="width: 89%"></div>
+</div>
+</div>
+<div class="space-y-2">
+<div class="flex items-baseline gap-2">
+<span class="text-5xl font-black text-primary tracking-tighter">85%</span>
+</div>
+<p class="text-sm font-semibold uppercase tracking-widest text-on-surface-variant">Attendance</p>
+<div class="w-full bg-surface-container h-2 rounded-full overflow-hidden">
+<div class="bg-primary h-full rounded-full" style="width: 85%"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Mental Health Pulse -->
+<div class="bg-tertiary-container/30 backdrop-blur-sm p-8 rounded-lg flex flex-col justify-between">
+<div class="space-y-2">
+<h2 class="text-xl font-extrabold tracking-tight flex items-center gap-2">
+                        Pulse Check 
+                        <span class="w-3 h-3 bg-tertiary rounded-full animate-pulse"></span>
+</h2>
+<p class="text-sm font-medium text-on-tertiary-container">Your well-being is our priority.</p>
+</div>
+<div class="py-6 flex flex-col items-center">
+<span class="material-symbols-outlined text-6xl text-tertiary" data-icon="sentiment_satisfied" data-weight="fill">sentiment_satisfied</span>
+<p class="mt-4 font-bold text-tertiary">Current State: Focused</p>
+</div>
+<button class="w-full bg-white/50 py-3 rounded-full font-bold text-tertiary-dim hover:bg-white transition-all text-sm uppercase tracking-widest">Update Mood</button>
+</div>
+</section>
+<!-- 5. Social Impact & 6. Venture Proofs -->
+<section class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+<!-- Social Impact -->
+<div class="bg-white p-8 rounded-lg shadow-[0_32px_64px_-15px_rgba(44,47,48,0.06)] space-y-6">
+<div class="flex justify-between items-center">
+<div>
+<h2 class="text-xl font-extrabold tracking-tight">Social Impact Credits</h2>
+<p class="text-sm text-on-surface-variant">Community Service &amp; Volunteering</p>
+</div>
+<div class="bg-secondary-container px-4 py-2 rounded-full text-secondary font-black">420 pts</div>
+</div>
+<div class="space-y-4">
+<div class="flex items-center justify-between p-4 bg-surface-container-low rounded-lg">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-secondary" data-icon="volunteer_activism">volunteer_activism</span>
+<div>
+<p class="font-bold">Bareilly Green Drive</p>
+<p class="text-xs text-on-surface-variant">12 Hours • NGO Partner</p>
+</div>
+</div>
+<button class="text-secondary font-bold text-xs uppercase tracking-widest hover:underline">View Proof</button>
+</div>
+<div class="flex items-center justify-between p-4 bg-surface-container-low rounded-lg">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-secondary" data-icon="groups">groups</span>
+<div>
+<p class="font-bold">Peer Mentorship</p>
+<p class="text-xs text-on-surface-variant">Spring Semester '24</p>
+</div>
+</div>
+<button class="text-secondary font-bold text-xs uppercase tracking-widest hover:underline">View Proof</button>
+</div>
+</div>
+</div>
+<!-- Venture Proofs -->
+<div class="bg-inverse-surface text-white p-8 rounded-lg space-y-6 overflow-hidden relative">
+<div class="relative z-10 space-y-6">
+<div class="flex justify-between items-center">
+<h2 class="text-xl font-extrabold tracking-tight">Venture Lab</h2>
+<span class="bg-primary/20 text-primary-container px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border border-primary/30">Active Project</span>
+</div>
+<div class="space-y-2">
+<h3 class="text-3xl font-black text-primary-fixed">SkyDrone Bareilly</h3>
+<p class="text-surface-variant leading-relaxed">Leading a team of 5 to develop autonomous delivery drones for last-mile pharmaceutical logistics in rural Uttar Pradesh.</p>
+</div>
+<div class="flex gap-4">
+<a class="flex items-center gap-2 bg-white/10 px-4 py-2 rounded-full hover:bg-white/20 transition-all text-sm font-semibold" href="#">
+<span class="material-symbols-outlined text-sm" data-icon="link">link</span>
+                            Project Proofs
+                        </a>
+<a class="flex items-center gap-2 bg-white/10 px-4 py-2 rounded-full hover:bg-white/20 transition-all text-sm font-semibold" href="#">
+<span class="material-symbols-outlined text-sm" data-icon="rocket_launch">rocket_launch</span>
+                            Startup ID
+                        </a>
+</div>
+</div>
+<!-- Background Decorative Element -->
+<div class="absolute -right-12 -bottom-12 w-48 h-48 bg-primary/20 blur-3xl rounded-full"></div>
+</div>
+</section>
+<!-- 7. Certificates Carousel -->
+<section class="space-y-6 pb-12">
+<div class="flex justify-between items-end">
+<h2 class="text-2xl font-extrabold tracking-tight">Earned Digital Certificates</h2>
+<button class="text-primary font-bold text-sm uppercase tracking-widest flex items-center gap-2">
+                    View All <span class="material-symbols-outlined" data-icon="arrow_forward">arrow_forward</span>
+</button>
+</div>
+<div class="flex gap-6 overflow-x-auto pb-6 scrollbar-hide no-scrollbar">
+<!-- Certificate Card 1 -->
+<div class="min-w-[300px] bg-white p-6 rounded-lg border border-surface-variant/20 shadow-sm flex flex-col gap-4">
+<div class="aspect-video bg-surface-container-low rounded-lg overflow-hidden flex items-center justify-center relative">
+<img class="w-full h-full object-cover" data-alt="digital certificate badge with gold emblem and modern typography for cloud foundations" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDeMp8KExPP-mtUke2kOSExXY2ZF0-KPSr4_BWISAEV96WQMjZ8c-gIN8N3MDVuNL3W9P2_QTb65_Gb1bjdLEqfql5syAODPJ8LX2PiNu4gT15Aa5_NiE57znpo1K5waCxyCC5oGtICTefR_R_YtqVaBM8u_bJp8nBmneBlPCkLW-FDAJEFU_VJrSE7KazdaU4cW2QJ7QRo-YUED9COkt-K6YA3QZrsOTsdzy4dr4_Pdh4gj6aVDhwuB7x3XKOzPxkBc24eqBNAMZnf"/>
+</div>
+<div>
+<p class="font-bold text-lg">Cloud Foundations</p>
+<p class="text-xs text-on-surface-variant font-medium">Issued by AWS Academy • June 2024</p>
+</div>
+</div>
+<!-- Certificate Card 2 -->
+<div class="min-w-[300px] bg-white p-6 rounded-lg border border-surface-variant/20 shadow-sm flex flex-col gap-4">
+<div class="aspect-video bg-surface-container-low rounded-lg overflow-hidden flex items-center justify-center relative">
+<img class="w-full h-full object-cover" data-alt="abstract tech visualization with glowing lines and binary code representing full stack development" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCFxNwf4tljvU2VUw0hoE1MaYbT7rBYyYSN8DZsmFulMlYTRxq9XVsza7Ng0S5c_JtrU4OCXX7gY6VAdV87Dv6_UqlY9sBl8Jm52Z3ZUo1YYjTmuQI1QcuyIlny77qhXJvJA7d5zsC1LOFO6kjBJh9cFwYrupFj-gtmeFEFxBMExwb6ClkG16Q9VR1PMBUuNrExWGoLA5l9Bt_TAu2QHprIfZzE9ogRIW4ekHFeA4-QW7rhISgJoqcnmcOeZ0Vn891YbiFqPciNPBct"/>
+</div>
+<div>
+<p class="font-bold text-lg">Full Stack Dev</p>
+<p class="text-xs text-on-surface-variant font-medium">Issued by Invertis Venture Lab • Mar 2024</p>
+</div>
+</div>
+<!-- Certificate Card 3 -->
+<div class="min-w-[300px] bg-white p-6 rounded-lg border border-surface-variant/20 shadow-sm flex flex-col gap-4">
+<div class="aspect-video bg-surface-container-low rounded-lg overflow-hidden flex items-center justify-center relative">
+<img class="w-full h-full object-cover" data-alt="colorful graphic design showing neural networks and ai nodes" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBV1spwICIjS0yeGtwtCa1uDkaS8mI_1Kb25iEEa_bkxZT8MN6twjwZHla4Org1HgYJA83radaF3FdV37QZ4lWOU_RfCgiThuwoyn_f1J2K-L5HZW8z5EX7_UgWNX73USOwYsaYuxlj5O0KAjAmZVwQveYJUK0lzr_iT5xkZB1xuVsCt-mEmNpbgd62d7VULeUfkrjjVWFybMdc9StWmDN4HFw9BRejfwWicMt6BmpgXjk1XCuxHyToRO-zEDp6FjABtjWVsOb-ZDyr"/>
+</div>
+<div>
+<p class="font-bold text-lg">AI Ethics &amp; Bias</p>
+<p class="text-xs text-on-surface-variant font-medium">Issued by Google Cloud • Jan 2024</p>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- Bottom Navigation Shell -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 pb-6 pt-2 bg-white/80 dark:bg-slate-950/80 backdrop-blur-2xl">
+<div class="flex flex-col items-center justify-center px-3 py-2 text-slate-400 dark:text-slate-500 hover:bg-slate-100/50 dark:hover:bg-slate-800/50 transition-colors active:scale-90 duration-300">
+<span class="material-symbols-outlined" data-icon="home">home</span>
+<span class="font-['Plus_Jakarta_Sans'] text-[11px] font-semibold tracking-wide uppercase">Home</span>
+</div>
+<div class="flex flex-col items-center justify-center px-3 py-2 text-slate-400 dark:text-slate-500 hover:bg-slate-100/50 dark:hover:bg-slate-800/50 transition-colors active:scale-90 duration-300">
+<span class="material-symbols-outlined" data-icon="diversity_3">diversity_3</span>
+<span class="font-['Plus_Jakarta_Sans'] text-[11px] font-semibold tracking-wide uppercase">Community</span>
+</div>
+<div class="flex flex-col items-center justify-center px-3 py-2 text-slate-400 dark:text-slate-500 hover:bg-slate-100/50 dark:hover:bg-slate-800/50 transition-colors active:scale-90 duration-300">
+<span class="material-symbols-outlined" data-icon="rocket_launch">rocket_launch</span>
+<span class="font-['Plus_Jakarta_Sans'] text-[11px] font-semibold tracking-wide uppercase">Venture</span>
+</div>
+<div class="flex flex-col items-center justify-center px-3 py-2 text-slate-400 dark:text-slate-500 hover:bg-slate-100/50 dark:hover:bg-slate-800/50 transition-colors active:scale-90 duration-300">
+<span class="material-symbols-outlined" data-icon="work">work</span>
+<span class="font-['Plus_Jakarta_Sans'] text-[11px] font-semibold tracking-wide uppercase">Career</span>
+</div>
+<!-- Active Tab: Profile -->
+<div class="bg-orange-500 text-white rounded-full px-5 py-2 flex flex-col items-center justify-center scale-105 shadow-lg shadow-orange-500/20 active:scale-90 transition-all duration-300 ease-out">
+<span class="material-symbols-outlined" data-icon="account_circle" data-weight="fill">account_circle</span>
+<span class="font-['Plus_Jakarta_Sans'] text-[11px] font-semibold tracking-wide uppercase">Profile</span>
+</div>
+</nav>
+</body></html>

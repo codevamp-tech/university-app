@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Invertis Agora | Student Profile &amp; AI Career Hub</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "outline": "#757778",
+                      "inverse-primary": "#fe9832",
+                      "surface-tint": "#8b4b00",
+                      "secondary": "#4953ac",
+                      "on-secondary-fixed": "#1f2882",
+                      "on-primary": "#fff0e6",
+                      "tertiary-dim": "#005959",
+                      "inverse-on-surface": "#9b9d9e",
+                      "primary": "#8b4b00",
+                      "on-background": "#2c2f30",
+                      "surface-container-highest": "#dadddf",
+                      "error-container": "#f95630",
+                      "surface-container-high": "#e0e3e4",
+                      "secondary-dim": "#3d469f",
+                      "tertiary-fixed": "#8dedec",
+                      "on-tertiary-container": "#005858",
+                      "primary-dim": "#7a4100",
+                      "on-tertiary": "#bbfffe",
+                      "on-primary-container": "#4d2700",
+                      "secondary-fixed-dim": "#babfff",
+                      "surface-dim": "#d1d5d7",
+                      "secondary-container": "#cbceff",
+                      "on-tertiary-fixed-variant": "#006262",
+                      "on-secondary-container": "#343d96",
+                      "primary-container": "#fe9832",
+                      "surface-container-lowest": "#ffffff",
+                      "on-error": "#ffefec",
+                      "on-surface-variant": "#595c5d",
+                      "secondary-fixed": "#cbceff",
+                      "error": "#b02500",
+                      "tertiary": "#006666",
+                      "surface-container-low": "#eff1f2",
+                      "primary-fixed": "#fe9832",
+                      "error-dim": "#b92902",
+                      "tertiary-container": "#8dedec",
+                      "surface-bright": "#f5f6f7",
+                      "on-secondary-fixed-variant": "#3e47a0",
+                      "surface": "#f5f6f7",
+                      "on-error-container": "#520c00",
+                      "outline-variant": "#abadae",
+                      "background": "#f5f6f7",
+                      "on-surface": "#2c2f30",
+                      "surface-container": "#e6e8ea",
+                      "on-primary-fixed-variant": "#592e00",
+                      "on-primary-fixed": "#291200",
+                      "surface-variant": "#dadddf",
+                      "tertiary-fixed-dim": "#7fdede",
+                      "on-tertiary-fixed": "#004343",
+                      "inverse-surface": "#0c0f10",
+                      "primary-fixed-dim": "#ed8b24",
+                      "on-secondary": "#f3f1ff"
+              },
+              "borderRadius": {
+                      "DEFAULT": "1rem",
+                      "lg": "2rem",
+                      "xl": "3rem",
+                      "full": "9999px"
+              },
+              "fontFamily": {
+                      "headline": ["Plus Jakarta Sans"],
+                      "body": ["Inter"],
+                      "label": ["Inter"]
+              }
+            },
+          },
+        }
+      </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .bg-glass {
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+        .asymmetric-shadow {
+            box-shadow: 20px 20px 60px #d1d5d7, -20px -20px 60px #ffffff;
+        }
+      </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background font-body text-on-surface">
+<!-- TopAppBar -->
+<header class="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl flex justify-between items-center px-6 py-4 w-full z-50 sticky top-0 shadow-sm">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-orange-500 dark:text-orange-400" data-icon="school">school</span>
+<span class="text-xl font-black text-orange-600 dark:text-orange-400 italic font-['Plus_Jakarta_Sans'] tracking-tight">Invertis Agora</span>
+</div>
+<div class="flex items-center gap-4">
+<button class="material-symbols-outlined text-slate-500 dark:text-slate-400 hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-all p-2 rounded-full active:scale-95 duration-200" data-icon="smart_toy">smart_toy</button>
+<div class="w-10 h-10 rounded-full overflow-hidden border-2 border-primary-container">
+<img alt="Student Profile" class="w-full h-full object-cover" data-alt="Close-up portrait of a young Indian university student with a friendly expression and stylish glasses in soft campus lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDnc4LJhIuzNTfg7EnhBzHA1bZdlo0iBmxhuvYD8mqssuqMwqDtV16rf0sYfet3PPDMbv3oogXNvBMVXrWtwblo4whEmUolfkqGF8Nc4f840Cn9OpyoSGUeQqMwLOSf_37GVjpsjQJlw5T6DdpB7tMBzX--yQBJQYAQ44bzfrIofza2ovFWxEPKW0HriYyMIuN7k94AET4-sb0VLmKMSZ2XEiji6nGYgl3i72c_zYxoWquSu0gG5r0OuqYM6ZyTDMIzEkMJ29FLV7Km"/>
+</div>
+</div>
+</header>
+<main class="max-w-7xl mx-auto px-6 pt-8 pb-32">
+<!-- Hero Section: Student Profile Header -->
+<section class="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-12">
+<div class="lg:col-span-8 bg-surface-container-lowest p-8 rounded-lg shadow-[0_32px_64px_-15px_rgba(44,47,48,0.06)] relative overflow-hidden">
+<div class="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full -mr-20 -mt-20 blur-3xl"></div>
+<div class="flex flex-col md:flex-row md:items-end gap-6 relative z-10">
+<div class="space-y-2">
+<h1 class="text-4xl md:text-5xl font-headline font-extrabold tracking-tight text-on-surface">Hello, Aryan</h1>
+<p class="text-on-surface-variant text-lg">Senior B.Tech CSE • Class of 2024</p>
+</div>
+<div class="flex flex-wrap gap-4 md:ml-auto">
+<div class="bg-primary-container/10 border border-primary-container/20 px-6 py-3 rounded-lg flex flex-col items-center">
+<span class="text-primary font-headline font-extrabold text-2xl">8.9</span>
+<span class="text-[10px] uppercase font-bold tracking-widest text-primary-dim">Academic CGPA</span>
+</div>
+<div class="bg-secondary-container/30 border border-secondary-container/50 px-6 py-3 rounded-lg flex flex-col items-center">
+<span class="text-secondary font-headline font-extrabold text-2xl">850</span>
+<span class="text-[10px] uppercase font-bold tracking-widest text-on-secondary-container">Social Credits</span>
+</div>
+</div>
+</div>
+<!-- AI Suggestion Insight Bar -->
+<div class="mt-10 bg-tertiary-container/40 p-5 rounded-lg flex items-center gap-4">
+<div class="bg-tertiary w-12 h-12 rounded-full flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-white" data-icon="psychology">psychology</span>
+</div>
+<p class="text-on-tertiary-container font-medium">
+<span class="font-bold">AI Suggestion:</span> Based on your performance in Python, you're a <span class="text-tertiary font-bold">92% match</span> for Senior Dev roles.
+                    </p>
+</div>
+</div>
+<!-- Wellbeing Section -->
+<div class="lg:col-span-4 bg-white p-8 rounded-lg shadow-sm flex flex-col justify-between border-l-4 border-primary">
+<div>
+<h3 class="text-xl font-headline font-bold mb-4">Pulse Check</h3>
+<p class="text-on-surface-variant mb-6 text-sm">How are you feeling today, Aryan?</p>
+<div class="flex justify-between gap-2 mb-8">
+<button class="w-12 h-12 rounded-full bg-surface-container-low hover:bg-primary-container hover:text-white transition-all flex items-center justify-center">
+<span class="material-symbols-outlined" data-icon="sentiment_very_satisfied">sentiment_very_satisfied</span>
+</button>
+<button class="w-12 h-12 rounded-full bg-surface-container-low hover:bg-primary-container hover:text-white transition-all flex items-center justify-center">
+<span class="material-symbols-outlined" data-icon="sentiment_satisfied">sentiment_satisfied</span>
+</button>
+<button class="w-12 h-12 rounded-full bg-primary-container text-white flex items-center justify-center scale-110 shadow-lg shadow-primary-container/20">
+<span class="material-symbols-outlined" data-icon="sentiment_neutral">sentiment_neutral</span>
+</button>
+<button class="w-12 h-12 rounded-full bg-surface-container-low hover:bg-primary-container hover:text-white transition-all flex items-center justify-center">
+<span class="material-symbols-outlined" data-icon="sentiment_dissatisfied">sentiment_dissatisfied</span>
+</button>
+</div>
+</div>
+<div class="bg-surface-container-low p-4 rounded-lg flex items-start gap-3">
+<div class="w-8 h-8 rounded-full bg-secondary flex items-center justify-center shrink-0 mt-1">
+<span class="material-symbols-outlined text-white text-sm" data-icon="support_agent">support_agent</span>
+</div>
+<div>
+<p class="text-xs text-on-surface-variant leading-relaxed">"Stress levels look slightly high before the Python finals. Want to schedule a quick 5-min mindfulness break?"</p>
+<button class="mt-2 text-xs font-bold text-secondary uppercase tracking-wider">Talk to Mentally</button>
+</div>
+</div>
+</div>
+</section>
+<!-- AI Hub Section -->
+<section class="mb-12">
+<div class="flex items-end justify-between mb-8">
+<div>
+<span class="text-primary font-bold tracking-widest uppercase text-xs">Innovation Hub</span>
+<h2 class="text-3xl font-headline font-extrabold text-on-surface">Career AI Catalyst</h2>
+</div>
+<button class="hidden md:flex items-center gap-2 text-secondary font-bold hover:underline">
+                    Explore All Tools <span class="material-symbols-outlined" data-icon="arrow_forward">arrow_forward</span>
+</button>
+</div>
+<!-- Bento Grid for Career Tools -->
+<div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
+<!-- AI Resume Builder -->
+<div class="md:col-span-2 bg-surface-container-lowest p-8 rounded-lg group hover:bg-primary-container/5 transition-all duration-300 relative overflow-hidden">
+<div class="absolute -right-4 -bottom-4 opacity-5 group-hover:opacity-10 transition-opacity">
+<span class="material-symbols-outlined text-[120px]" data-icon="description">description</span>
+</div>
+<div class="w-14 h-14 bg-primary-container rounded-lg flex items-center justify-center mb-6">
+<span class="material-symbols-outlined text-on-primary-container text-3xl" data-icon="auto_awesome">auto_awesome</span>
+</div>
+<h3 class="text-2xl font-headline font-bold mb-3">AI Resume Builder</h3>
+<p class="text-on-surface-variant mb-6 max-w-sm">Smart tailoring based on your 8.9 CGPA and technical skills in Invertis labs.</p>
+<button class="bg-primary text-white px-8 py-3 rounded-xl font-bold hover:shadow-lg hover:shadow-primary/30 transition-all active:scale-95">Update Resume</button>
+</div>
+<!-- Mock Interview -->
+<div class="bg-secondary p-8 rounded-lg text-white flex flex-col justify-between group cursor-pointer hover:scale-[1.02] transition-transform">
+<div>
+<span class="material-symbols-outlined text-4xl mb-6 text-secondary-fixed-dim" data-icon="mic">mic</span>
+<h3 class="text-xl font-headline font-bold mb-2">Mock Interview</h3>
+<p class="text-secondary-fixed text-sm opacity-80">Practice with specialized AI for 'Cloud Architect' roles.</p>
+</div>
+<div class="mt-8 flex items-center gap-3">
+<div class="flex -space-x-2">
+<div class="w-8 h-8 rounded-full border-2 border-secondary bg-slate-300 overflow-hidden">
+<img alt="User 1" data-alt="Profile portrait of a young professional woman smiling warmly, clean studio background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDG8Bu9QJB1JB0dHPy__4nMG6V5Pmx5mAWQtZFHNrXGtsaeRrCOG8mtqiOgr6NOefTTs0MlfUtag4mlItUErAmNrXrk6Sfg-wNHvqd6pi2IK8d1S641YxvqAGpPJntOJM2MMMiuwIPrHvsNXOj3jWi6OLBPi2KEEFCyKKsjO0mPTVCnp6UbOc5d-Jv3Zvb6xvZTmMacatA1beKg_VIZr-Pw-6RXnPDwgibtkEifqHkb1dnkN9UoKqDbpihYjvtlDwUGy9uzhvjrCD5X"/>
+</div>
+<div class="w-8 h-8 rounded-full border-2 border-secondary bg-slate-400 overflow-hidden flex items-center justify-center text-[10px] font-bold">
+                                +12
+                            </div>
+</div>
+<span class="text-xs font-medium">Practicing now</span>
+</div>
+</div>
+<!-- Small Grid Items -->
+<div class="bg-surface-container p-6 rounded-lg flex flex-col items-center justify-center text-center gap-4 group cursor-pointer hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined text-tertiary text-4xl" data-icon="network_intelligence_history">network_intelligence_history</span>
+<div>
+<h4 class="font-bold">Skill Gap Analysis</h4>
+<p class="text-xs text-on-surface-variant mt-1">What's missing for FAANG?</p>
+</div>
+</div>
+<!-- Career Roadmap Visualization (Wide) -->
+<div class="md:col-span-3 lg:col-span-4 bg-surface-container-low p-8 rounded-lg">
+<div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+<div>
+<h3 class="text-2xl font-headline font-bold">Career Roadmap</h3>
+<p class="text-on-surface-variant text-sm">Your projected path from Student to Senior Dev</p>
+</div>
+<div class="flex gap-2">
+<span class="bg-secondary/10 text-secondary px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest">Year 4: Specialization</span>
+</div>
+</div>
+<!-- Roadmap Graphic -->
+<div class="relative py-12 px-4 overflow-x-auto">
+<div class="min-w-[800px] flex justify-between items-center relative">
+<!-- Line -->
+<div class="absolute h-1 top-1/2 left-0 right-0 bg-outline-variant/30 -translate-y-1/2 z-0"></div>
+<div class="absolute h-1 top-1/2 left-0 w-[65%] bg-primary -translate-y-1/2 z-0"></div>
+<!-- Steps -->
+<div class="relative z-10 flex flex-col items-center gap-3">
+<div class="w-12 h-12 rounded-full bg-primary text-white flex items-center justify-center shadow-lg shadow-primary/30">
+<span class="material-symbols-outlined" data-icon="check">check</span>
+</div>
+<span class="font-bold text-sm">Fundamentals</span>
+</div>
+<div class="relative z-10 flex flex-col items-center gap-3">
+<div class="w-12 h-12 rounded-full bg-primary text-white flex items-center justify-center shadow-lg shadow-primary/30">
+<span class="material-symbols-outlined" data-icon="check">check</span>
+</div>
+<span class="font-bold text-sm">Full-Stack Lab</span>
+</div>
+<div class="relative z-10 flex flex-col items-center gap-3">
+<div class="w-16 h-16 rounded-full bg-surface-container-lowest border-4 border-primary flex items-center justify-center shadow-xl scale-110">
+<span class="material-symbols-outlined text-primary" data-icon="bolt">bolt</span>
+</div>
+<span class="font-bold text-sm text-primary">Senior Capstone</span>
+</div>
+<div class="relative z-10 flex flex-col items-center gap-3 grayscale opacity-50">
+<div class="w-12 h-12 rounded-full bg-white border-2 border-outline-variant flex items-center justify-center">
+<span class="material-symbols-outlined text-outline-variant" data-icon="work">work</span>
+</div>
+<span class="font-bold text-sm">Corporate Internship</span>
+</div>
+<div class="relative z-10 flex flex-col items-center gap-3 grayscale opacity-30">
+<div class="w-12 h-12 rounded-full bg-white border-2 border-outline-variant flex items-center justify-center">
+<span class="material-symbols-outlined text-outline-variant" data-icon="rocket_launch">rocket_launch</span>
+</div>
+<span class="font-bold text-sm">SDE-1 Placement</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 pb-6 pt-2 bg-white/80 dark:bg-slate-950/80 backdrop-blur-2xl">
+<a class="text-slate-400 dark:text-slate-500 flex flex-col items-center justify-center px-3 py-2 hover:bg-slate-100/50 dark:hover:bg-slate-800/50 transition-colors active:scale-90 duration-300 ease-out" href="#">
+<span class="material-symbols-outlined" data-icon="home">home</span>
+<span class="font-['Plus_Jakarta_Sans'] text-[11px] font-semibold tracking-wide uppercase mt-1">Home</span>
+</a>
+<a class="text-slate-400 dark:text-slate-500 flex flex-col items-center justify-center px-3 py-2 hover:bg-slate-100/50 dark:hover:bg-slate-800/50 transition-colors active:scale-90 duration-300 ease-out" href="#">
+<span class="material-symbols-outlined" data-icon="diversity_3">diversity_3</span>
+<span class="font-['Plus_Jakarta_Sans'] text-[11px] font-semibold tracking-wide uppercase mt-1">Community</span>
+</a>
+<a class="text-slate-400 dark:text-slate-500 flex flex-col items-center justify-center px-3 py-2 hover:bg-slate-100/50 dark:hover:bg-slate-800/50 transition-colors active:scale-90 duration-300 ease-out" href="#">
+<span class="material-symbols-outlined" data-icon="rocket_launch">rocket_launch</span>
+<span class="font-['Plus_Jakarta_Sans'] text-[11px] font-semibold tracking-wide uppercase mt-1">Venture</span>
+</a>
+<a class="text-slate-400 dark:text-slate-500 flex flex-col items-center justify-center px-3 py-2 hover:bg-slate-100/50 dark:hover:bg-slate-800/50 transition-colors active:scale-90 duration-300 ease-out" href="#">
+<span class="material-symbols-outlined" data-icon="work">work</span>
+<span class="font-['Plus_Jakarta_Sans'] text-[11px] font-semibold tracking-wide uppercase mt-1">Career</span>
+</a>
+<a class="bg-orange-500 text-white rounded-full px-5 py-2 flex flex-col items-center justify-center scale-105 shadow-lg shadow-orange-500/20 active:scale-90 transition-all duration-300 ease-out" href="#">
+<span class="material-symbols-outlined" data-icon="account_circle">account_circle</span>
+<span class="font-['Plus_Jakarta_Sans'] text-[11px] font-semibold tracking-wide uppercase mt-1">Profile</span>
+</a>
+</nav>
+<!-- Contextual FAB -->
+<button class="fixed bottom-24 right-6 w-16 h-16 bg-primary text-white rounded-full shadow-2xl flex items-center justify-center group active:scale-90 transition-transform">
+<span class="material-symbols-outlined text-3xl group-hover:rotate-12 transition-transform" data-icon="chat_bubble">chat_bubble</span>
+</button>
+</body></html>

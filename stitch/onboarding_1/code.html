@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Onboarding - Track Attendance Easily</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-tertiary-container": "#fffbff",
+                        "inverse-surface": "#2d3133",
+                        "surface-variant": "#e0e3e6",
+                        "on-primary-fixed": "#001945",
+                        "inverse-primary": "#b0c6ff",
+                        "primary-fixed": "#d9e2ff",
+                        "surface-container-lowest": "#ffffff",
+                        "background": "#f7f9fc",
+                        "surface-container-highest": "#e0e3e6",
+                        "on-primary-fixed-variant": "#00419c",
+                        "outline": "#737785",
+                        "on-tertiary": "#ffffff",
+                        "secondary-container": "#b5c8fe",
+                        "on-tertiary-fixed-variant": "#763400",
+                        "surface": "#f7f9fc",
+                        "on-secondary-fixed-variant": "#324673",
+                        "inverse-on-surface": "#eff1f4",
+                        "surface-container-high": "#e6e8eb",
+                        "error-container": "#ffdad6",
+                        "tertiary-fixed": "#ffdbc9",
+                        "on-background": "#191c1e",
+                        "surface-container-low": "#f2f4f7",
+                        "primary": "#0055c7",
+                        "on-secondary": "#ffffff",
+                        "surface-container": "#eceef1",
+                        "secondary": "#4a5d8c",
+                        "on-primary-container": "#fefcff",
+                        "primary-container": "#2d6fe7",
+                        "tertiary-fixed-dim": "#ffb68c",
+                        "on-secondary-container": "#405381",
+                        "surface-tint": "#0058cc",
+                        "tertiary": "#964400",
+                        "secondary-fixed": "#d9e2ff",
+                        "outline-variant": "#c2c6d6",
+                        "surface-bright": "#f7f9fc",
+                        "surface-dim": "#d8dadd",
+                        "on-surface": "#191c1e",
+                        "on-surface-variant": "#424654",
+                        "on-tertiary-fixed": "#321200",
+                        "primary-fixed-dim": "#b0c6ff",
+                        "on-secondary-fixed": "#001945",
+                        "on-primary": "#ffffff",
+                        "secondary-fixed-dim": "#b2c6fb",
+                        "on-error": "#ffffff",
+                        "on-error-container": "#93000a",
+                        "tertiary-container": "#bd5700",
+                        "error": "#ba1a1a"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "2xl": "1rem",
+                        "3xl": "1.5rem",
+                        "full": "9999px"
+                    },
+                    "fontFamily": {
+                        "headline": ["Manrope"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f7f9fc;
+        }
+        h1, h2, h3 {
+            font-family: 'Manrope', sans-serif;
+        }
+        .soft-shadow {
+            shadow: 0 4px 32px rgba(25, 28, 30, 0.04);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="flex items-center justify-center min-h-screen p-4 md:p-8">
+<!-- Onboarding Container -->
+<main class="relative w-full max-w-md bg-surface-container-lowest rounded-3xl overflow-hidden shadow-[0_4px_32px_rgba(25,28,30,0.04)] border border-outline-variant/10 flex flex-col min-h-[700px]">
+<!-- Top Action Bar (Skip) -->
+<div class="flex justify-end p-6 z-10">
+<button class="text-on-surface-variant font-label text-sm font-semibold tracking-wide hover:text-primary transition-colors duration-200">
+                Skip
+            </button>
+</div>
+<!-- Illustration Section (Focus Float concept) -->
+<div class="flex-grow flex flex-col items-center justify-center px-8 relative">
+<!-- Asymmetric Decorative Elements -->
+<div class="absolute top-10 -left-4 w-24 h-24 bg-primary-container/10 rounded-full blur-2xl"></div>
+<div class="absolute bottom-20 -right-4 w-32 h-32 bg-secondary-container/10 rounded-full blur-2xl"></div>
+<!-- Central Illustration -->
+<div class="relative w-full aspect-square flex items-center justify-center mb-12">
+<!-- Stacked "Sheets of Paper" Layering Principle -->
+<div class="absolute inset-0 bg-surface-container-low rounded-3xl rotate-3 scale-95 opacity-50"></div>
+<div class="absolute inset-0 bg-white rounded-3xl shadow-sm -rotate-2"></div>
+<div class="relative z-10 w-full h-full p-8 flex flex-col items-center justify-center">
+<img alt="Modern classroom setting with a digital interface showing a clean student attendance list" class="w-full h-full object-contain rounded-2xl" data-alt="Clean minimalist 3D illustration of a digital tablet showing a checkmark list with soft blue accents on a white desk" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCRdj41qB-WR67-TNnmcrZ7rKOCu1uI0Zxap7T6RRlRSjllFYE7cfUJeN3ylMdIKwDEVWPnyVDOajqFCg6zeZfLi63zYJX40CbmLhtgyW2886LrDx-ofZWAhbWfKmBD2ybAmPsxpMbEdJxP_Y3sKiTAU3EleVbmgfymn9x9cTUq5bYXHilGT_GQiL2HOyYOKuV5df-L-SifjBm2lEPz_lkqIzyk6A9I8oONDAiQGfYR-ykU-tjPDp_wsvk1vIvcSsqTOyoRgKCxscOh"/>
+<!-- Floating Focus Element (Glassmorphism) -->
+<div class="absolute -bottom-4 right-4 bg-white/80 backdrop-blur-xl p-4 rounded-2xl shadow-lg border border-white/40 flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-primary flex items-center justify-center">
+<span class="material-symbols-outlined text-white" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</div>
+<div>
+<p class="text-[10px] font-label font-bold text-primary uppercase tracking-widest leading-none mb-1">Status</p>
+<p class="text-on-surface font-semibold text-sm">Present</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Content Hierarchy -->
+<div class="text-center space-y-4 max-w-[280px]">
+<h1 class="text-on-surface text-3xl font-extrabold tracking-tight leading-tight">
+                    Track Attendance <span class="text-primary">Easily</span>.
+                </h1>
+<p class="text-on-surface-variant text-base leading-relaxed font-body">
+                    Manage your classroom presence with a single tap. Stay focused on your learning while we handle the rest.
+                </p>
+</div>
+</div>
+<!-- Pagination & Navigation -->
+<div class="p-8 space-y-8">
+<!-- Progress Dots -->
+<div class="flex justify-center gap-2">
+<div class="h-1.5 w-8 rounded-full bg-primary transition-all duration-300"></div>
+<div class="h-1.5 w-1.5 rounded-full bg-outline-variant transition-all duration-300"></div>
+<div class="h-1.5 w-1.5 rounded-full bg-outline-variant transition-all duration-300"></div>
+</div>
+<!-- Primary Action (The "Action Ink" Gradient) -->
+<button class="w-full bg-gradient-to-br from-primary to-primary-container text-on-primary py-4 px-6 rounded-2xl font-semibold text-lg flex items-center justify-center gap-2 shadow-lg shadow-primary/20 active:scale-[0.98] transition-all duration-200">
+                Next
+                <span class="material-symbols-outlined" data-icon="arrow_forward">arrow_forward</span>
+</button>
+</div>
+</main>
+<!-- Contextual "Focus Float" Decor in background -->
+<div class="fixed top-20 right-20 hidden xl:block w-64 h-64 bg-white/40 backdrop-blur-md rounded-3xl p-6 border border-white/20 shadow-2xl -z-10 rotate-12">
+<div class="w-full h-4 bg-surface-container rounded-full mb-4"></div>
+<div class="w-2/3 h-4 bg-surface-container rounded-full mb-8"></div>
+<div class="grid grid-cols-2 gap-4">
+<div class="aspect-square bg-primary-container/20 rounded-xl"></div>
+<div class="aspect-square bg-secondary-container/20 rounded-xl"></div>
+</div>
+</div>
+<div class="fixed bottom-20 left-20 hidden xl:block w-48 h-48 bg-white/40 backdrop-blur-md rounded-3xl p-6 border border-white/20 shadow-2xl -z-10 -rotate-12">
+<div class="flex items-center gap-3 mb-4">
+<div class="w-8 h-8 rounded-full bg-tertiary"></div>
+<div class="w-1/2 h-2 bg-surface-container rounded-full"></div>
+</div>
+<div class="space-y-3">
+<div class="w-full h-2 bg-surface-container rounded-full"></div>
+<div class="w-full h-2 bg-surface-container rounded-full"></div>
+<div class="w-3/4 h-2 bg-surface-container rounded-full"></div>
+</div>
+</div>
+</body></html>

@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Student Academic Results</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&amp;family=Inter:wght@300;400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-primary-fixed-variant": "#00419c",
+                    "on-error-container": "#93000a",
+                    "on-secondary-container": "#405381",
+                    "primary-fixed-dim": "#b0c6ff",
+                    "tertiary": "#964400",
+                    "surface-container-highest": "#e0e3e6",
+                    "outline": "#737785",
+                    "surface-bright": "#f7f9fc",
+                    "on-primary-container": "#fefcff",
+                    "background": "#f7f9fc",
+                    "on-background": "#191c1e",
+                    "surface-container": "#eceef1",
+                    "secondary-fixed": "#d9e2ff",
+                    "on-surface": "#191c1e",
+                    "error": "#ba1a1a",
+                    "surface-container-high": "#e6e8eb",
+                    "primary-container": "#2d6fe7",
+                    "primary-fixed": "#d9e2ff",
+                    "error-container": "#ffdad6",
+                    "surface-dim": "#d8dadd",
+                    "on-error": "#ffffff",
+                    "surface": "#f7f9fc",
+                    "surface-variant": "#e0e3e6",
+                    "outline-variant": "#c2c6d6",
+                    "on-secondary": "#ffffff",
+                    "on-primary": "#ffffff",
+                    "inverse-surface": "#2d3133",
+                    "tertiary-container": "#bd5700",
+                    "on-tertiary-container": "#fffbff",
+                    "surface-tint": "#0058cc",
+                    "on-secondary-fixed": "#001945",
+                    "on-tertiary-fixed": "#321200",
+                    "on-surface-variant": "#424654",
+                    "secondary": "#4a5d8c",
+                    "inverse-primary": "#b0c6ff",
+                    "on-secondary-fixed-variant": "#324673",
+                    "secondary-fixed-dim": "#b2c6fb",
+                    "primary": "#0055c7",
+                    "inverse-on-surface": "#eff1f4",
+                    "on-tertiary-fixed-variant": "#763400",
+                    "on-primary-fixed": "#001945",
+                    "on-tertiary": "#ffffff",
+                    "tertiary-fixed": "#ffdbc9",
+                    "surface-container-lowest": "#ffffff",
+                    "surface-container-low": "#f2f4f7",
+                    "secondary-container": "#b5c8fe",
+                    "tertiary-fixed-dim": "#ffb68c"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "fontFamily": {
+                    "headline": ["Manrope"],
+                    "body": ["Inter"],
+                    "label": ["Inter"]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+        h1, h2, h3, .font-headline { font-family: 'Manrope', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface text-on-surface">
+<!-- TopAppBar -->
+<header class="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md shadow-sm shadow-slate-200/50 dark:shadow-none fixed top-0 w-full z-50">
+<div class="flex justify-between items-center px-6 py-3 w-full">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full overflow-hidden border-2 border-primary-container">
+<img class="w-full h-full object-cover" data-alt="Portrait of a young male university student with a professional look and a friendly smile" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDxQwvAl4adRgupoKefzydnwlE-jQcdjixwk3gpmc9NJi09Gy3Jle0xcpxsvycfKEvmBFc9lZQ1t2iw-db0IHUpxJCZ7RjNjnJOtft-7gJSsqy0_HRwEyfXfEZ-OmB1SKGHyY9pXxmcalEO4JiwwrjJRcdsKyAkJwgrJAqeRKWO3AOoxU6ps8VHj46XYDjxaN4fVp6i4BvNyTuXjMHYdFxb6_jY1t2kaxUGely6HuMv1NY4iS9re30LlHH2lI51xSB6VuiNepdH4cw1"/>
+</div>
+<h1 class="font-manrope text-lg font-bold tracking-tight text-blue-600 dark:text-blue-400">Welcome back</h1>
+</div>
+<div class="flex items-center gap-2">
+<button class="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-slate-500 dark:text-slate-400">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+</div>
+</div>
+</header>
+<main class="pt-20 pb-28 px-6 max-w-5xl mx-auto">
+<!-- GPA Hero Section (The Focus Float) -->
+<section class="relative mb-12">
+<div class="bg-gradient-to-br from-primary to-primary-container rounded-[2rem] p-8 text-on-primary shadow-xl shadow-primary/20 flex flex-col md:flex-row justify-between items-center overflow-hidden">
+<div class="relative z-10 text-center md:text-left mb-6 md:mb-0">
+<p class="font-label text-xs font-bold uppercase tracking-widest text-on-primary/80 mb-2">CUMULATIVE GPA</p>
+<h2 class="font-headline text-6xl font-extrabold tracking-tighter">3.85</h2>
+<p class="font-body text-on-primary/90 mt-2 text-lg">Dean's List Status · Senior Year</p>
+</div>
+<div class="relative z-10 flex gap-4 md:gap-8">
+<div class="text-center">
+<div class="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-2">
+<span class="material-symbols-outlined text-3xl">school</span>
+</div>
+<p class="font-label text-[10px] font-bold uppercase tracking-widest">128 Credits</p>
+</div>
+<div class="text-center">
+<div class="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-2">
+<span class="material-symbols-outlined text-3xl">trending_up</span>
+</div>
+<p class="font-label text-[10px] font-bold uppercase tracking-widest">Top 5%</p>
+</div>
+</div>
+<!-- Abstract Decorative Element -->
+<div class="absolute -right-10 -bottom-10 w-64 h-64 bg-white/10 rounded-full blur-3xl"></div>
+<div class="absolute -left-10 -top-10 w-48 h-48 bg-primary-container/30 rounded-full blur-2xl"></div>
+</div>
+</section>
+<!-- Semester Tabs (Asymmetric Composition) -->
+<div class="flex flex-col gap-8">
+<header class="flex justify-between items-end">
+<div class="max-w-md">
+<h3 class="font-headline text-3xl font-bold tracking-tight text-on-surface">Academic Performance</h3>
+<p class="text-on-surface-variant font-body mt-2">Comprehensive breakdown of your modular achievements and historical transcript data.</p>
+</div>
+<button class="bg-surface-container-low text-primary px-6 py-3 rounded-xl font-headline font-bold text-sm hover:bg-surface-container-high transition-colors">
+                    Download Full PDF
+                </button>
+</header>
+<!-- Results Section: Semester Fall 2023 -->
+<div class="bg-surface-container-low rounded-[1.5rem] p-1 overflow-hidden">
+<div class="bg-surface-container-lowest rounded-[1.25rem] p-6 shadow-sm">
+<div class="flex justify-between items-center mb-8">
+<div>
+<span class="font-label text-[10px] font-bold uppercase tracking-widest text-primary bg-primary/10 px-3 py-1 rounded-full">FALL 2023</span>
+<h4 class="font-headline text-xl font-bold mt-2">Current Semester</h4>
+</div>
+<div class="text-right">
+<p class="font-label text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">SEMESTER GPA</p>
+<p class="font-headline text-2xl font-bold text-primary">3.92</p>
+</div>
+</div>
+<div class="flex flex-col gap-2">
+<!-- Table-like row -->
+<div class="grid grid-cols-12 gap-4 items-center p-4 rounded-xl hover:bg-surface-container-low transition-colors group">
+<div class="col-span-6 flex items-center gap-4">
+<div class="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600">
+<span class="material-symbols-outlined">data_object</span>
+</div>
+<div>
+<p class="font-headline font-bold text-on-surface">Advanced Algorithms</p>
+<p class="font-body text-xs text-on-surface-variant">CS-402 · Prof. Aris Thorne</p>
+</div>
+</div>
+<div class="col-span-2 text-center">
+<p class="font-label text-[10px] text-on-surface-variant uppercase tracking-widest">CREDITS</p>
+<p class="font-body font-semibold">4.0</p>
+</div>
+<div class="col-span-2 text-center">
+<p class="font-label text-[10px] text-on-surface-variant uppercase tracking-widest">GRADE</p>
+<p class="font-headline font-bold text-primary">A</p>
+</div>
+<div class="col-span-2 text-right">
+<button class="opacity-0 group-hover:opacity-100 transition-opacity text-on-surface-variant">
+<span class="material-symbols-outlined">chevron_right</span>
+</button>
+</div>
+</div>
+<div class="grid grid-cols-12 gap-4 items-center p-4 rounded-xl hover:bg-surface-container-low transition-colors group">
+<div class="col-span-6 flex items-center gap-4">
+<div class="w-10 h-10 rounded-xl bg-orange-50 flex items-center justify-center text-orange-600">
+<span class="material-symbols-outlined">psychology</span>
+</div>
+<div>
+<p class="font-headline font-bold text-on-surface">Cognitive Neuroscience</p>
+<p class="font-body text-xs text-on-surface-variant">PSY-310 · Dr. Elena Vance</p>
+</div>
+</div>
+<div class="col-span-2 text-center">
+<p class="font-label text-[10px] text-on-surface-variant uppercase tracking-widest">CREDITS</p>
+<p class="font-body font-semibold">3.0</p>
+</div>
+<div class="col-span-2 text-center">
+<p class="font-label text-[10px] text-on-surface-variant uppercase tracking-widest">GRADE</p>
+<p class="font-headline font-bold text-primary">A-</p>
+</div>
+<div class="col-span-2 text-right">
+<button class="opacity-0 group-hover:opacity-100 transition-opacity text-on-surface-variant">
+<span class="material-symbols-outlined">chevron_right</span>
+</button>
+</div>
+</div>
+<div class="grid grid-cols-12 gap-4 items-center p-4 rounded-xl hover:bg-surface-container-low transition-colors group">
+<div class="col-span-6 flex items-center gap-4">
+<div class="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center text-purple-600">
+<span class="material-symbols-outlined">draw</span>
+</div>
+<div>
+<p class="font-headline font-bold text-on-surface">Digital UI Systems</p>
+<p class="font-body text-xs text-on-surface-variant">DES-441 · Sarah Jenkins</p>
+</div>
+</div>
+<div class="col-span-2 text-center">
+<p class="font-label text-[10px] text-on-surface-variant uppercase tracking-widest">CREDITS</p>
+<p class="font-body font-semibold">3.0</p>
+</div>
+<div class="col-span-2 text-center">
+<p class="font-label text-[10px] text-on-surface-variant uppercase tracking-widest">GRADE</p>
+<p class="font-headline font-bold text-primary">A</p>
+</div>
+<div class="col-span-2 text-right">
+<button class="opacity-0 group-hover:opacity-100 transition-opacity text-on-surface-variant">
+<span class="material-symbols-outlined">chevron_right</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Results Section: Semester Spring 2023 -->
+<div class="bg-surface-container-low rounded-[1.5rem] p-1 overflow-hidden opacity-80 hover:opacity-100 transition-opacity">
+<div class="bg-surface-container-lowest rounded-[1.25rem] p-6">
+<div class="flex justify-between items-center mb-8">
+<div>
+<span class="font-label text-[10px] font-bold uppercase tracking-widest text-on-surface-variant bg-surface-container-high px-3 py-1 rounded-full">SPRING 2023</span>
+<h4 class="font-headline text-xl font-bold mt-2">Archived Results</h4>
+</div>
+<div class="text-right">
+<p class="font-label text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">SEMESTER GPA</p>
+<p class="font-headline text-2xl font-bold text-on-surface">3.78</p>
+</div>
+</div>
+<div class="flex flex-col gap-2">
+<div class="grid grid-cols-12 gap-4 items-center p-4 rounded-xl hover:bg-surface-container-low transition-colors group">
+<div class="col-span-6 flex items-center gap-4">
+<div class="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-600">
+<span class="material-symbols-outlined">calculate</span>
+</div>
+<div>
+<p class="font-headline font-bold text-on-surface">Discrete Mathematics</p>
+<p class="font-body text-xs text-on-surface-variant">MAT-201 · Prof. Harold Finney</p>
+</div>
+</div>
+<div class="col-span-2 text-center">
+<p class="font-label text-[10px] text-on-surface-variant uppercase tracking-widest">CREDITS</p>
+<p class="font-body font-semibold">4.0</p>
+</div>
+<div class="col-span-2 text-center">
+<p class="font-label text-[10px] text-on-surface-variant uppercase tracking-widest">GRADE</p>
+<p class="font-headline font-bold text-on-surface">B+</p>
+</div>
+<div class="col-span-2 text-right">
+<button class="opacity-0 group-hover:opacity-100 transition-opacity text-on-surface-variant">
+<span class="material-symbols-outlined">chevron_right</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 w-full z-50 rounded-t-3xl border-t border-slate-100/50 dark:border-slate-800/50 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md shadow-[0_-4px_24px_0_rgba(0,0,0,0.04)]">
+<div class="flex justify-around items-center w-full px-4 pb-safe pt-2">
+<a class="flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 px-5 py-2 hover:text-blue-500 dark:hover:text-blue-400 transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="home">home</span>
+<span class="font-manrope text-[10px] font-bold uppercase tracking-widest mt-1">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-2xl px-5 py-2 active:scale-95 transition-transform cubic-bezier(0.34, 1.56, 0.64, 1)" href="#">
+<span class="material-symbols-outlined" data-icon="school" style="font-variation-settings: 'FILL' 1;">school</span>
+<span class="font-manrope text-[10px] font-bold uppercase tracking-widest mt-1">Academics</span>
+</a>
+<a class="flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 px-5 py-2 hover:text-blue-500 dark:hover:text-blue-400 transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+<span class="font-manrope text-[10px] font-bold uppercase tracking-widest mt-1">Alerts</span>
+</a>
+<a class="flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 px-5 py-2 hover:text-blue-500 dark:hover:text-blue-400 transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="person_text_pilled">inbox_text_person</span>
+<span class="font-manrope text-[10px] font-bold uppercase tracking-widest mt-1">Profile</span>
+</a>
+</div>
+</nav>
+</body></html>

@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;700;800&amp;family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-container-lowest": "#ffffff",
+                        "inverse-surface": "#2d3133",
+                        "inverse-primary": "#b0c6ff",
+                        "tertiary-container": "#bd5700",
+                        "on-tertiary-fixed": "#321200",
+                        "on-primary": "#ffffff",
+                        "on-tertiary": "#ffffff",
+                        "primary-fixed-dim": "#b0c6ff",
+                        "on-secondary": "#ffffff",
+                        "inverse-on-surface": "#eff1f4",
+                        "on-surface": "#191c1e",
+                        "on-surface-variant": "#424654",
+                        "error-container": "#ffdad6",
+                        "surface-dim": "#d8dadd",
+                        "surface-container-low": "#f2f4f7",
+                        "on-secondary-fixed": "#001945",
+                        "on-secondary-fixed-variant": "#324673",
+                        "surface-tint": "#0058cc",
+                        "tertiary": "#964400",
+                        "secondary-fixed-dim": "#b2c6fb",
+                        "secondary-container": "#b5c8fe",
+                        "surface-container-high": "#e6e8eb",
+                        "secondary-fixed": "#d9e2ff",
+                        "primary": "#0055c7",
+                        "outline": "#737785",
+                        "on-primary-fixed": "#001945",
+                        "surface-container": "#eceef1",
+                        "primary-fixed": "#d9e2ff",
+                        "on-error-container": "#93000a",
+                        "tertiary-fixed": "#ffdbc9",
+                        "secondary": "#4a5d8c",
+                        "surface": "#f7f9fc",
+                        "background": "#f7f9fc",
+                        "on-secondary-container": "#405381",
+                        "tertiary-fixed-dim": "#ffb68c",
+                        "surface-variant": "#e0e3e6",
+                        "surface-bright": "#f7f9fc",
+                        "on-background": "#191c1e",
+                        "on-tertiary-fixed-variant": "#763400",
+                        "error": "#ba1a1a",
+                        "on-error": "#ffffff",
+                        "on-primary-fixed-variant": "#00419c",
+                        "on-primary-container": "#fefcff",
+                        "surface-container-highest": "#e0e3e6",
+                        "outline-variant": "#c2c6d6",
+                        "on-tertiary-container": "#fffbff",
+                        "primary-container": "#2d6fe7"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "fontFamily": {
+                        "headline": ["Manrope"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface font-body text-on-surface">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 bg-slate-50/80 dark:bg-slate-900/80 backdrop-blur-xl shadow-sm dark:shadow-none flex justify-between items-center px-6 h-16 w-full">
+<div class="flex items-center gap-4">
+<img alt="Teacher profile photo" class="w-10 h-10 rounded-full object-cover" data-alt="professional portrait of a university faculty member in a bright modern office setting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCexcVq_0nKBgjOnTJ1hcRC9U4WqDojaq86n_j3H8CA5Rklrfh0PCaEy2_Y7RC9qv9YdLbvIcx_AFtJsiSHFJHcypkHytfPJFndJASf_pjfyF1EByS46_Vi2GJe9rLASAo47LmsRcdUc5jXJjtpjZmm05m-lvZ8jd7eym_exxfwVM78XIQk6mXX95iZobZAlfAEthIQrccNlP2RgiSO1cJvjcn72ihw-LYluLvpJllVtFGxZHX3kHjT7G-Onwc3_hCgw7TUpo-xp9wf"/>
+<span class="text-xl font-black text-blue-700 dark:text-blue-400 tracking-tighter">Scholar Stream</span>
+</div>
+<div class="flex items-center gap-2">
+<button class="p-2 text-slate-500 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 rounded-full transition-colors active:scale-95 transition-transform duration-200">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+</div>
+<div class="bg-slate-200/50 dark:bg-slate-800/50 h-px w-full absolute bottom-0"></div>
+</header>
+<main class="pt-24 pb-32 px-6 max-w-7xl mx-auto">
+<!-- Hero Section: Course Identity -->
+<section class="mb-12">
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-6">
+<div>
+<span class="font-label text-[10px] font-semibold tracking-wider uppercase text-tertiary mb-2 block">COURSE MANAGEMENT</span>
+<h1 class="font-headline text-4xl font-extrabold tracking-tight text-on-surface">B.Tech CSE - 3rd Year</h1>
+<p class="text-on-surface-variant font-medium mt-1">Section A • Academic Session 2023-24</p>
+</div>
+<div class="flex gap-4">
+<button class="bg-surface-container-high text-primary px-6 py-3 rounded-xl font-semibold text-sm transition-all hover:bg-surface-container-highest">
+                        Generate Report
+                    </button>
+<button class="bg-gradient-to-br from-primary to-primary-container text-on-primary px-6 py-3 rounded-xl font-semibold text-sm shadow-lg shadow-primary/20">
+                        Manage Batch
+                    </button>
+</div>
+</div>
+</section>
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+<!-- Left Column: Stats & Students -->
+<div class="lg:col-span-4 space-y-8">
+<!-- Section Attendance Focus Float -->
+<div class="glass-card p-8 rounded-[2rem] shadow-[0_8px_32px_rgba(0,88,204,0.08)] border border-white/20 relative overflow-hidden">
+<div class="relative z-10">
+<div class="flex justify-between items-start mb-6">
+<h3 class="font-headline font-bold text-xl">Section Attendance</h3>
+<span class="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-bold">LIVE</span>
+</div>
+<div class="text-5xl font-black text-primary mb-2">87.4%</div>
+<p class="text-sm text-on-surface-variant mb-6">Average daily presence this semester</p>
+<div class="w-full bg-surface-container-low h-3 rounded-full overflow-hidden">
+<div class="h-full bg-gradient-to-r from-primary to-primary-container" style="width: 87.4%"></div>
+</div>
+</div>
+<div class="absolute -right-4 -bottom-4 opacity-5">
+<span class="material-symbols-outlined text-[120px]" data-icon="analytics">analytics</span>
+</div>
+</div>
+<!-- Student List Card -->
+<div class="bg-surface-container-lowest rounded-[2rem] p-8">
+<div class="flex justify-between items-center mb-6">
+<h3 class="font-headline font-bold text-xl">Student Roster</h3>
+<span class="text-primary font-semibold text-sm">64 Enrolled</span>
+</div>
+<div class="space-y-4">
+<div class="flex items-center gap-4 p-3 rounded-xl hover:bg-surface-container-low transition-colors group">
+<img alt="Student" class="w-10 h-10 rounded-full object-cover" data-alt="candid portrait of a male university student in a library setting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAghLHNZqX7AFtl-6uaLE-mdX4_6442BdWQQGmF3FINZxd6CsYmSWvj4_JXlr1x0HbGFyHUQm-_kA3nBdG43qVUxbRhdkGXxVAfn-QYgOym0IdfV_v0wNlpfV49p9-Yc9zEUe8IaLzUNvD18xRpEgFXajsvmXmnmmjTu9rJg5ePlhoty8Itt94Bx9cJSqCViWm3X9QO_Q4iCLTFYaJvCBoGCaA-NToSgt0yJQMw2KM_XPs60KC8FB7CLvVv1y4ARwNXJ9JSVsXBQNK8"/>
+<div class="flex-1">
+<p class="font-bold text-sm">Aravind Sharma</p>
+<p class="text-xs text-on-surface-variant">Roll No: 102</p>
+</div>
+<span class="material-symbols-outlined text-slate-400 group-hover:text-primary transition-colors" data-icon="chevron_right">chevron_right</span>
+</div>
+<div class="flex items-center gap-4 p-3 rounded-xl hover:bg-surface-container-low transition-colors group">
+<img alt="Student" class="w-10 h-10 rounded-full object-cover" data-alt="portrait of a confident female engineering student wearing glasses" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA2wtHW46tSGYMzXmOqY_p6pcrTPrtb5CREVjnd9r3440W_O-b7PgeKGJYRkbGvNU6gS6-bQLlxAw3sgK3BeGnR6n77TN4uZMFkju0w2MftjgBO_Hsmb_rBQXP5M-IRNpdjDgSW-Vo7tM4VPcvHCHg71mI-HvNxB7TukIEn0r2f4uerMNtb067J43mfFTOdr1aL5wxcDWyeLFds_KEdgVCr1pDuljydqdwi3zz_Wt0xYhMMSp_GErIY6FbToM1YoJIuIExWqvIPY4E_"/>
+<div class="flex-1">
+<p class="font-bold text-sm">Meera Patel</p>
+<p class="text-xs text-on-surface-variant">Roll No: 108</p>
+</div>
+<span class="material-symbols-outlined text-slate-400 group-hover:text-primary transition-colors" data-icon="chevron_right">chevron_right</span>
+</div>
+<div class="flex items-center gap-4 p-3 rounded-xl hover:bg-surface-container-low transition-colors group">
+<img alt="Student" class="w-10 h-10 rounded-full object-cover" data-alt="smiling university student of south asian descent in a campus park" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAly7JDBFF41_uXaZZAhy8-KtPZXS1cclGwU2OKCAWDxj_7j1MP2SW_su5wYrGNNXqC9A-FSus3MGGgJlCMlb-lkBvqyKppFaHwZKl6mYW05Uizb3pzvxejZUxWSkD1ag2lUAckoFYDiP4YW2sVmspQCRgw_sYDB1odiVae3TS6mMFbWtsN05TwE6yo3Nk2A2Er9ADhmluVxbXRDZCu14Wjd_eATwZTDwQQXrMbJ3lPlz11-LvfUtwFzfNrSH9DgTP6XeyiXkMKTQmL"/>
+<div class="flex-1">
+<p class="font-bold text-sm">Rohan Verma</p>
+<p class="text-xs text-on-surface-variant">Roll No: 115</p>
+</div>
+<span class="material-symbols-outlined text-slate-400 group-hover:text-primary transition-colors" data-icon="chevron_right">chevron_right</span>
+</div>
+</div>
+<button class="w-full mt-6 py-3 text-sm font-bold text-on-surface-variant border-t border-surface-container-low hover:text-primary transition-colors">
+                        VIEW FULL DIRECTORY
+                    </button>
+</div>
+</div>
+<!-- Right Column: Subjects & Faculty -->
+<div class="lg:col-span-8">
+<div class="flex items-center justify-between mb-8">
+<h2 class="font-headline font-bold text-2xl">Curriculum Oversight</h2>
+<div class="flex gap-2">
+<span class="bg-surface-container-high p-2 rounded-lg cursor-pointer hover:bg-primary hover:text-white transition-all">
+<span class="material-symbols-outlined" data-icon="grid_view">grid_view</span>
+</span>
+<span class="bg-surface-container-high p-2 rounded-lg cursor-pointer">
+<span class="material-symbols-outlined" data-icon="list">list</span>
+</span>
+</div>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<!-- Subject Card: Data Structures -->
+<div class="bg-surface-container-lowest p-8 rounded-[2rem] hover:shadow-xl transition-all border border-transparent hover:border-primary/10">
+<div class="flex justify-between items-start mb-6">
+<div class="bg-blue-50 text-blue-700 p-4 rounded-2xl">
+<span class="material-symbols-outlined text-3xl" data-icon="account_tree">account_tree</span>
+</div>
+<span class="text-[10px] font-bold tracking-widest uppercase bg-surface px-3 py-1 rounded-full text-on-surface-variant">CORE SUBJECT</span>
+</div>
+<h3 class="font-headline text-2xl font-bold mb-2">Data Structures</h3>
+<p class="text-on-surface-variant text-sm mb-6 line-clamp-2">Algorithmic complexity, tree traversals, and advanced heap implementations.</p>
+<div class="space-y-4 pt-4 border-t border-surface-container-low">
+<p class="text-[10px] font-bold text-outline uppercase tracking-wider">Faculty Assigned</p>
+<div class="flex items-center gap-3">
+<img alt="Faculty" class="w-8 h-8 rounded-full" data-alt="professional portrait of a female computer science professor with a kind smile" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCcMFvKVTUfH30pC7gxiEtjp0hNr4GqcSWk9RDd4bN8SIZ8ylxvGawlSO4VdE3d9xNn3z9uZJVNPnnHrsJg0QBGT4LgI7QJs-P5xDin1A0bQM2O9HDG43vAluWFjfXG_d8iCgeB0t_lRYs0BeXIrmbfN5uqR27aIsvguS4pfD36ejrG3APEQ7KY7ir38X7Q9stM6sD54gnjSttqR5jLs0M6jlkK_Y8MN6srtz9yelohkpGL3VE4GxJR_tZKbWOuuPqV_pgwfiiMENYS"/>
+<div>
+<p class="text-sm font-bold">Dr. Elena Gilbert</p>
+<p class="text-xs text-on-surface-variant">PhD in Algorithms</p>
+</div>
+</div>
+<div class="flex justify-between items-center text-xs font-semibold pt-2">
+<span class="text-on-surface-variant">Syllabus Progress</span>
+<span class="text-primary">65%</span>
+</div>
+<div class="w-full bg-surface-container-low h-1.5 rounded-full overflow-hidden">
+<div class="h-full bg-primary" style="width: 65%"></div>
+</div>
+</div>
+</div>
+<!-- Subject Card: Operating Systems -->
+<div class="bg-surface-container-lowest p-8 rounded-[2rem] hover:shadow-xl transition-all border border-transparent hover:border-primary/10">
+<div class="flex justify-between items-start mb-6">
+<div class="bg-orange-50 text-orange-700 p-4 rounded-2xl">
+<span class="material-symbols-outlined text-3xl" data-icon="memory">memory</span>
+</div>
+<span class="text-[10px] font-bold tracking-widest uppercase bg-surface px-3 py-1 rounded-full text-on-surface-variant">LAB INTEGRATED</span>
+</div>
+<h3 class="font-headline text-2xl font-bold mb-2">Operating Systems</h3>
+<p class="text-on-surface-variant text-sm mb-6 line-clamp-2">Kernel architecture, process synchronization, and memory management strategies.</p>
+<div class="space-y-4 pt-4 border-t border-surface-container-low">
+<p class="text-[10px] font-bold text-outline uppercase tracking-wider">Faculty Assigned</p>
+<div class="flex items-center gap-3">
+<img alt="Faculty" class="w-8 h-8 rounded-full" data-alt="corporate headshot of a middle-aged male professor with scholarly appearance" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCNDTg0QiUWlYkSKsoBLunUEbeZNSN66-WStyWnOS1aPGizEMn5jNQdIzXJmMA-VTx7LxFHPQF9KQRgksQZY3ccRX5JR00G5jnR1z22OrIckUgDUSnOekhKzh-N4_ZSLRLQInH-P9-4WD5Q5CdbJI5mvG6tGNkK_ImAiWyqYNDsayU_MzB9TEvjWLLIXQgZeUuzJEDRhMm7qN9tBpaWmmIm-0isCdUp8uDjPyLeViBkP1n6v2qmj-7KNS7Fo52CQoeFR_d_bEY6kJg2"/>
+<div>
+<p class="text-sm font-bold">Prof. Marcus Thorne</p>
+<p class="text-xs text-on-surface-variant">Senior System Architect</p>
+</div>
+</div>
+<div class="flex justify-between items-center text-xs font-semibold pt-2">
+<span class="text-on-surface-variant">Syllabus Progress</span>
+<span class="text-primary">42%</span>
+</div>
+<div class="w-full bg-surface-container-low h-1.5 rounded-full overflow-hidden">
+<div class="h-full bg-primary" style="width: 42%"></div>
+</div>
+</div>
+</div>
+<!-- Subject Card: Artificial Intelligence -->
+<div class="bg-surface-container-lowest p-8 rounded-[2rem] hover:shadow-xl transition-all border border-transparent hover:border-primary/10">
+<div class="flex justify-between items-start mb-6">
+<div class="bg-purple-50 text-purple-700 p-4 rounded-2xl">
+<span class="material-symbols-outlined text-3xl" data-icon="psychology">psychology</span>
+</div>
+<span class="text-[10px] font-bold tracking-widest uppercase bg-surface px-3 py-1 rounded-full text-on-surface-variant">ELECTIVE</span>
+</div>
+<h3 class="font-headline text-2xl font-bold mb-2">Artificial Intelligence</h3>
+<p class="text-on-surface-variant text-sm mb-6 line-clamp-2">Neural networks, search heuristics, and logic-based expert systems.</p>
+<div class="space-y-4 pt-4 border-t border-surface-container-low">
+<p class="text-[10px] font-bold text-outline uppercase tracking-wider">Faculty Assigned</p>
+<div class="flex items-center gap-3">
+<img alt="Faculty" class="w-8 h-8 rounded-full" data-alt="portrait of a young female academic focusing on artificial intelligence research" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDZM3F6jFUuMmskktJE5Q1DOHPQ2Bwr126wmHmG36hZi_dEMLPrH4yjGghS9lgzShxBpyiGmeo4oHUNlqm0dQc0Ze2R0-FmXcpABDPdJF0Dn6LCzgUB586oyGoF5aXRcD8iIBSkaSO4Rr6n1Na3F32eXNbjr8strFHFlykXKuizGCpYcZqXTzK9Y5ZeNWlOTqcYQXctbsrHBzFEDD1JvIdgexLZ-fPGZslWPzNKWbR9GLiaQXYTUUUs5pZ2v0WAzJNXttJ1fx0YtClz"/>
+<div>
+<p class="text-sm font-bold">Dr. Sarah Chen</p>
+<p class="text-xs text-on-surface-variant">ML Research Head</p>
+</div>
+</div>
+<div class="flex justify-between items-center text-xs font-semibold pt-2">
+<span class="text-on-surface-variant">Syllabus Progress</span>
+<span class="text-primary">28%</span>
+</div>
+<div class="w-full bg-surface-container-low h-1.5 rounded-full overflow-hidden">
+<div class="h-full bg-primary" style="width: 28%"></div>
+</div>
+</div>
+</div>
+<!-- Add New Subject Placeholder -->
+<div class="border-2 border-dashed border-outline-variant p-8 rounded-[2rem] flex flex-col items-center justify-center text-center group cursor-pointer hover:border-primary hover:bg-primary/5 transition-all">
+<div class="bg-surface-container-high p-4 rounded-full mb-4 group-hover:bg-primary group-hover:text-white transition-all">
+<span class="material-symbols-outlined text-3xl" data-icon="add">add</span>
+</div>
+<p class="font-bold text-on-surface">Assign New Subject</p>
+<p class="text-xs text-on-surface-variant mt-1">Configure elective or minor courses</p>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- BottomNavBar (Visible on Mobile) -->
+<nav class="md:hidden fixed bottom-0 w-full z-50 rounded-t-[2rem] border-t border-slate-200/30 dark:border-slate-800/30 bg-slate-50/80 dark:bg-slate-900/80 backdrop-blur-xl shadow-[0_-4px_20px_0_rgba(0,0,0,0.05)] flex justify-around items-center w-full px-4 pb-6 pt-3">
+<div class="flex flex-col items-center justify-center text-slate-500 dark:text-slate-400 px-5 py-2.5 transition-all hover:text-blue-600 dark:hover:text-blue-400 active:scale-90 transition-all duration-300 ease-out">
+<span class="material-symbols-outlined" data-icon="home_app_logo">home_app_logo</span>
+<span class="font-inter text-[10px] font-semibold tracking-wider uppercase mt-1">Home</span>
+</div>
+<div class="flex flex-col items-center justify-center bg-blue-600 dark:bg-blue-500 text-white rounded-2xl px-5 py-2.5 shadow-lg shadow-blue-500/30 active:scale-90 transition-all duration-300 ease-out">
+<span class="material-symbols-outlined" data-icon="domain" style="font-variation-settings: 'FILL' 1;">domain</span>
+<span class="font-inter text-[10px] font-semibold tracking-wider uppercase mt-1">Academic</span>
+</div>
+<div class="flex flex-col items-center justify-center text-slate-500 dark:text-slate-400 px-5 py-2.5 transition-all hover:text-blue-600 dark:hover:text-blue-400 active:scale-90 transition-all duration-300 ease-out">
+<span class="material-symbols-outlined" data-icon="analytics">analytics</span>
+<span class="font-inter text-[10px] font-semibold tracking-wider uppercase mt-1">Reports</span>
+</div>
+<div class="flex flex-col items-center justify-center text-slate-500 dark:text-slate-400 px-5 py-2.5 transition-all hover:text-blue-600 dark:hover:text-blue-400 active:scale-90 transition-all duration-300 ease-out">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+<span class="font-inter text-[10px] font-semibold tracking-wider uppercase mt-1">Profile</span>
+</div>
+</nav>
+<!-- FAB Suppression: On Management screens, we only use specific contextual actions -->
+</body></html>

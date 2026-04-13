@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Scholar Stream | Teacher Dashboard</title>
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&amp;family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<!-- Icons -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-container-lowest": "#ffffff",
+                        "inverse-surface": "#2d3133",
+                        "inverse-primary": "#b0c6ff",
+                        "tertiary-container": "#bd5700",
+                        "on-tertiary-fixed": "#321200",
+                        "on-primary": "#ffffff",
+                        "on-tertiary": "#ffffff",
+                        "primary-fixed-dim": "#b0c6ff",
+                        "on-secondary": "#ffffff",
+                        "inverse-on-surface": "#eff1f4",
+                        "on-surface": "#191c1e",
+                        "on-surface-variant": "#424654",
+                        "error-container": "#ffdad6",
+                        "surface-dim": "#d8dadd",
+                        "surface-container-low": "#f2f4f7",
+                        "on-secondary-fixed": "#001945",
+                        "on-secondary-fixed-variant": "#324673",
+                        "surface-tint": "#0058cc",
+                        "tertiary": "#964400",
+                        "secondary-fixed-dim": "#b2c6fb",
+                        "secondary-container": "#b5c8fe",
+                        "surface-container-high": "#e6e8eb",
+                        "secondary-fixed": "#d9e2ff",
+                        "primary": "#0055c7",
+                        "outline": "#737785",
+                        "on-primary-fixed": "#001945",
+                        "surface-container": "#eceef1",
+                        "primary-fixed": "#d9e2ff",
+                        "on-error-container": "#93000a",
+                        "tertiary-fixed": "#ffdbc9",
+                        "secondary": "#4a5d8c",
+                        "surface": "#f7f9fc",
+                        "background": "#f7f9fc",
+                        "on-secondary-container": "#405381",
+                        "tertiary-fixed-dim": "#ffb68c",
+                        "surface-variant": "#e0e3e6",
+                        "surface-bright": "#f7f9fc",
+                        "on-background": "#191c1e",
+                        "on-tertiary-fixed-variant": "#763400",
+                        "error": "#ba1a1a",
+                        "on-error": "#ffffff",
+                        "on-primary-fixed-variant": "#00419c",
+                        "on-primary-container": "#fefcff",
+                        "surface-container-highest": "#e0e3e6",
+                        "outline-variant": "#c2c6d6",
+                        "on-tertiary-container": "#fffbff",
+                        "primary-container": "#2d6fe7"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "fontFamily": {
+                        "headline": ["Manrope"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            display: inline-block;
+            vertical-align: middle;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface font-body text-on-surface antialiased">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 bg-slate-50/80 dark:bg-slate-900/80 backdrop-blur-xl shadow-sm dark:shadow-none">
+<div class="flex justify-between items-center px-6 h-16 w-full relative">
+<div class="flex items-center gap-3">
+<img alt="Prof. Vikram Sharma" class="w-10 h-10 rounded-full object-cover border-2 border-primary/20" data-alt="professional headshot of an Indian male professor with short dark hair, wearing a crisp light blue shirt in a bright office" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDfkBJrc0d1lkSnmaViVmI-NaYD9Qvd_78op8PzGOO31THZ7wsoKKQycA4Jz-HAJ8B3_obrB1H5shV4ozEVuJqoGghxYcVAnpn4SsnvHdcEr3snlXdxwupq7vDokSXN-lzxBFkytFk2hjyUHA6khLGV1aFN10qvhH53aF01xd1dqA8sB2HM0C2xG-924HuM2ah_XGcd1dpCid7xma__ImbMRvAv_TY1Q81QryYS2zlqxU-8qeCeW-IOUbYVcMsxSVsv4SRoD7jxDuYJ"/>
+<span class="text-xl font-black text-blue-700 dark:text-blue-400 tracking-tighter font-headline">Scholar Stream</span>
+</div>
+<div class="flex items-center gap-4">
+<button class="p-2 text-slate-500 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 rounded-full transition-colors active:scale-95 transition-transform duration-200">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+</div>
+<div class="bg-slate-200/50 dark:bg-slate-800/50 h-px w-full absolute bottom-0 left-0"></div>
+</div>
+</header>
+<main class="pt-24 pb-32 px-6 max-w-7xl mx-auto">
+<!-- Hero Welcome / Focus Float Section -->
+<section class="mb-12 relative">
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-6">
+<div>
+<span class="font-label text-[10px] font-semibold tracking-wider uppercase text-primary mb-2 block">DASHBOARD</span>
+<h1 class="text-4xl md:text-5xl font-headline font-extrabold tracking-tight text-on-surface">Namaste, Prof. Vikram.</h1>
+<p class="text-on-surface-variant mt-2 text-lg">Department of B.Tech Computer Science &amp; Engineering</p>
+</div>
+<div class="hidden md:block">
+<button class="bg-gradient-to-br from-primary to-primary-container text-on-primary px-8 py-4 rounded-xl font-semibold shadow-lg shadow-primary/20 active:scale-95 transition-all">
+                        Department Overview
+                    </button>
+</div>
+</div>
+</section>
+<!-- Bento Grid Layout -->
+<div class="grid grid-cols-1 md:grid-cols-12 gap-6">
+<!-- CURRENT LECTURE - Focus Float Principle -->
+<div class="md:col-span-8 bg-surface-container-lowest rounded-[2rem] p-8 shadow-2xl shadow-on-surface/5 relative overflow-hidden group">
+<div class="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full -mr-20 -mt-20 group-hover:scale-110 transition-transform duration-700"></div>
+<div class="relative z-10">
+<div class="flex items-center gap-3 mb-8">
+<div class="w-2 h-2 rounded-full bg-error animate-pulse"></div>
+<span class="font-label text-[10px] font-bold tracking-widest text-error uppercase">Current Lecture</span>
+</div>
+<div class="flex flex-col lg:flex-row lg:items-center justify-between gap-8">
+<div>
+<h2 class="text-3xl font-headline font-bold mb-2">AI &amp; ML</h2>
+<p class="text-on-surface-variant text-lg">B.Tech CSE — 3rd Year</p>
+<div class="flex flex-wrap gap-4 mt-6">
+<div class="flex items-center gap-2 px-4 py-2 bg-surface-container-low rounded-full">
+<span class="material-symbols-outlined text-primary text-sm" data-icon="location_on">location_on</span>
+<span class="text-sm font-semibold">Room 101</span>
+</div>
+<div class="flex items-center gap-2 px-4 py-2 bg-surface-container-low rounded-full">
+<span class="material-symbols-outlined text-primary text-sm" data-icon="schedule">schedule</span>
+<span class="text-sm font-semibold">10:00 AM - 11:30 AM</span>
+</div>
+</div>
+</div>
+<div class="flex flex-col gap-3">
+<button class="bg-primary text-white px-6 py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-primary-container transition-colors shadow-lg shadow-primary/20">
+<span class="material-symbols-outlined" data-icon="how_to_reg">how_to_reg</span>
+                                Mark Attendance
+                            </button>
+<button class="bg-surface-container-high text-primary px-6 py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-surface-container-highest transition-colors">
+<span class="material-symbols-outlined" data-icon="upload_file">upload_file</span>
+                                Presentation Mode
+                            </button>
+</div>
+</div>
+</div>
+</div>
+<!-- QUICK ACTIONS -->
+<div class="md:col-span-4 flex flex-col gap-6">
+<div class="bg-surface-container-low rounded-[2rem] p-6 h-full">
+<h3 class="font-headline font-bold text-lg mb-6 px-2">Quick Actions</h3>
+<div class="grid grid-cols-1 gap-3">
+<button class="flex items-center justify-between p-4 bg-surface-container-lowest rounded-2xl hover:bg-white hover:shadow-md transition-all group">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined" data-icon="assignment">assignment</span>
+</div>
+<span class="font-semibold">Post Assignment</span>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant group-hover:translate-x-1 transition-transform" data-icon="chevron_right">chevron_right</span>
+</button>
+<button class="flex items-center justify-between p-4 bg-surface-container-lowest rounded-2xl hover:bg-white hover:shadow-md transition-all group">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-tertiary/10 flex items-center justify-center text-tertiary">
+<span class="material-symbols-outlined" data-icon="grade">grade</span>
+</div>
+<span class="font-semibold">Internal Marks</span>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant group-hover:translate-x-1 transition-transform" data-icon="chevron_right">chevron_right</span>
+</button>
+<button class="flex items-center justify-between p-4 bg-surface-container-lowest rounded-2xl hover:bg-white hover:shadow-md transition-all group">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-secondary/10 flex items-center justify-center text-secondary">
+<span class="material-symbols-outlined" data-icon="mail">mail</span>
+</div>
+<span class="font-semibold">Broadcast Message</span>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant group-hover:translate-x-1 transition-transform" data-icon="chevron_right">chevron_right</span>
+</button>
+</div>
+</div>
+</div>
+<!-- DEPARTMENT OVERVIEW - Tonal Architecture -->
+<div class="md:col-span-5 bg-surface-container-low rounded-[2rem] p-8">
+<div class="flex justify-between items-center mb-8">
+<h3 class="font-headline font-bold text-xl">Department Stats</h3>
+<a class="text-primary text-sm font-bold underline underline-offset-4" href="#">HOD View</a>
+</div>
+<div class="space-y-6">
+<div>
+<div class="flex justify-between text-sm font-bold mb-2">
+<span class="text-on-surface-variant">CSE Stream Attendance</span>
+<span class="text-primary">84%</span>
+</div>
+<div class="h-2 w-full bg-surface-container-highest rounded-full overflow-hidden">
+<div class="h-full bg-primary w-[84%] rounded-full"></div>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-4">
+<div class="bg-surface-container-lowest p-4 rounded-2xl">
+<p class="text-xs text-on-surface-variant font-medium uppercase tracking-wider mb-1">Students</p>
+<p class="text-2xl font-headline font-bold">1,240</p>
+</div>
+<div class="bg-surface-container-lowest p-4 rounded-2xl">
+<p class="text-xs text-on-surface-variant font-medium uppercase tracking-wider mb-1">Faculty</p>
+<p class="text-2xl font-headline font-bold">42</p>
+</div>
+</div>
+</div>
+</div>
+<!-- UPCOMING SCHEDULE - High-end List UI -->
+<div class="md:col-span-7 bg-surface-container-lowest rounded-[2rem] p-8 shadow-sm">
+<h3 class="font-headline font-bold text-xl mb-6">Upcoming Today</h3>
+<div class="space-y-4">
+<div class="flex items-center gap-6 p-4 rounded-2xl hover:bg-surface-container-low transition-colors group">
+<div class="flex flex-col items-center justify-center min-w-[60px]">
+<span class="text-lg font-bold">12:30</span>
+<span class="text-[10px] text-on-surface-variant font-bold uppercase">PM</span>
+</div>
+<div class="h-10 w-px bg-outline-variant"></div>
+<div class="flex-1">
+<h4 class="font-bold">Neural Networks Lab</h4>
+<p class="text-sm text-on-surface-variant">B.Tech CSE — 4th Year | Lab 202</p>
+</div>
+<div class="w-10 h-10 rounded-full border-2 border-primary/10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+<span class="material-symbols-outlined text-primary text-sm" data-icon="edit">edit</span>
+</div>
+</div>
+<div class="flex items-center gap-6 p-4 rounded-2xl hover:bg-surface-container-low transition-colors group">
+<div class="flex flex-col items-center justify-center min-w-[60px]">
+<span class="text-lg font-bold">02:30</span>
+<span class="text-[10px] text-on-surface-variant font-bold uppercase">PM</span>
+</div>
+<div class="h-10 w-px bg-outline-variant"></div>
+<div class="flex-1">
+<h4 class="font-bold">Staff Meeting</h4>
+<p class="text-sm text-on-surface-variant">Conference Hall | Academic Audit</p>
+</div>
+<div class="w-10 h-10 rounded-full border-2 border-primary/10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+<span class="material-symbols-outlined text-primary text-sm" data-icon="notifications_active">notifications_active</span>
+</div>
+</div>
+<div class="flex items-center gap-6 p-4 rounded-2xl hover:bg-surface-container-low transition-colors group">
+<div class="flex flex-col items-center justify-center min-w-[60px]">
+<span class="text-lg font-bold">04:00</span>
+<span class="text-[10px] text-on-surface-variant font-bold uppercase">PM</span>
+</div>
+<div class="h-10 w-px bg-outline-variant"></div>
+<div class="flex-1">
+<h4 class="font-bold">Office Hours</h4>
+<p class="text-sm text-on-surface-variant">Cabin A-12 | Project Guidance</p>
+</div>
+<div class="w-10 h-10 rounded-full border-2 border-primary/10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+<span class="material-symbols-outlined text-primary text-sm" data-icon="calendar_month">calendar_month</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 w-full z-50 rounded-t-[2rem] bg-slate-50/80 dark:bg-slate-900/80 backdrop-blur-xl shadow-[0_-4px_20px_0_rgba(0,0,0,0.05)] md:hidden">
+<div class="flex justify-around items-center w-full px-4 pb-6 pt-3">
+<a class="flex flex-col items-center justify-center bg-blue-600 dark:bg-blue-500 text-white rounded-2xl px-5 py-2.5 shadow-lg shadow-blue-500/30 active:scale-90 transition-all duration-300 ease-out" href="#">
+<span class="material-symbols-outlined" data-icon="home_app_logo" style="font-variation-settings: 'FILL' 1;">home_app_logo</span>
+<span class="font-inter text-[10px] font-semibold tracking-wider uppercase mt-1">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-slate-500 dark:text-slate-400 px-5 py-2.5 hover:text-blue-600 dark:hover:text-blue-400 transition-all active:scale-90 transition-all duration-300 ease-out" href="#">
+<span class="material-symbols-outlined" data-icon="domain">domain</span>
+<span class="font-inter text-[10px] font-semibold tracking-wider uppercase mt-1">Academic</span>
+</a>
+<a class="flex flex-col items-center justify-center text-slate-500 dark:text-slate-400 px-5 py-2.5 hover:text-blue-600 dark:hover:text-blue-400 transition-all active:scale-90 transition-all duration-300 ease-out" href="#">
+<span class="material-symbols-outlined" data-icon="analytics">analytics</span>
+<span class="font-inter text-[10px] font-semibold tracking-wider uppercase mt-1">Reports</span>
+</a>
+<a class="flex flex-col items-center justify-center text-slate-500 dark:text-slate-400 px-5 py-2.5 hover:text-blue-600 dark:hover:text-blue-400 transition-all active:scale-90 transition-all duration-300 ease-out" href="#">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+<span class="font-inter text-[10px] font-semibold tracking-wider uppercase mt-1">Profile</span>
+</a>
+</div>
+</nav>
+<!-- FAB (Suppressed on Dashboard as per rules, but can be added if primary action is needed) -->
+<!-- Not rendering FAB as per "Suppression on Dashboard/Settings" unless highly contextual - Here we have quick actions in grid -->
+</body></html>
