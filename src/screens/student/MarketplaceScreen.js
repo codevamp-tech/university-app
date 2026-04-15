@@ -177,7 +177,7 @@ const MarketplaceScreen = () => {
                 <Text style={styles.itemDesc} numberOfLines={2}>All core subjects included.</Text>
                 <View style={styles.itemFooter}>
                   <Text style={styles.itemPrice}>₹650</Text>
-                  <MaterialIcons name="favorite" size={18} color="#6B7280" />
+                  <MaterialIcons name="favorite-outline" size={18} color="#6B7280" />
                 </View>
               </View>
             </View>
@@ -194,7 +194,296 @@ const MarketplaceScreen = () => {
                 <Text style={styles.itemDesc} numberOfLines={2}>Only used for one semester.</Text>
                 <View style={styles.itemFooter}>
                   <Text style={styles.itemPrice}>₹250</Text>
-                  <MaterialIcons name="favorite" size={18} color="#6B7280" />
+                  <MaterialIcons name="favorite-outline" size={18} color="#6B7280" />
+                </View>
+              </View>
+            </View>
+
+            <View style={styles.itemCard}>
+              <View style={styles.itemImgBox}>
+                <Image source={{ uri: 'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?q=80&w=2000&auto=format&fit=crop' }} style={styles.itemImg} />
+                <View style={[styles.itemBadge, { backgroundColor: '#FEE2E2' }]}>
+                  <Text style={[styles.itemBadgeText, { color: '#991B1B' }]}>BEST DEAL</Text>
+                </View>
+              </View>
+              <View style={styles.itemContent}>
+                <Text style={styles.itemTitle}>MacBook Air M1</Text>
+                <Text style={styles.itemDesc} numberOfLines={2}>Perfect for coding, 8GB/256GB.</Text>
+                <View style={styles.itemFooter}>
+                  <Text style={styles.itemPrice}>₹45,000</Text>
+                  <MaterialIcons name="favorite-outline" size={18} color="#6B7280" />
+                </View>
+              </View>
+            </View>
+
+            <View style={styles.itemCard}>
+              <View style={styles.itemImgBox}>
+                <Image source={{ uri: 'https://images.unsplash.com/photo-1589118949245-7d48d24f8450?q=80&w=2000&auto=format&fit=crop' }} style={styles.itemImg} />
+                <View style={[styles.itemBadge, { backgroundColor: '#F3F4F6' }]}>
+                  <Text style={[styles.itemBadgeText, { color: '#374151' }]}>BIKE</Text>
+                </View>
+              </View>
+              <View style={styles.itemContent}>
+                <Text style={styles.itemTitle}>Hercules Cycle</Text>
+                <Text style={styles.itemDesc} numberOfLines={2}>21 speed, disc brakes, 1yr old.</Text>
+                <View style={styles.itemFooter}>
+                  <Text style={styles.itemPrice}>₹5,500</Text>
+                  <MaterialIcons name="favorite-outline" size={18} color="#6B7280" />
+                </View>
+              </View>
+            </View>
+
+            <View style={styles.itemCard}>
+              <View style={styles.itemImgBox}>
+                <Image source={{ uri: 'https://images.unsplash.com/photo-1544244015-0cd4b3ffc6b0?q=80&w=2000&auto=format&fit=crop' }} style={styles.itemImg} />
+                <View style={[styles.itemBadge, { backgroundColor: '#FEF3C7' }]}>
+                  <Text style={[styles.itemBadgeText, { color: '#92400E' }]}>GADGET</Text>
+                </View>
+              </View>
+              <View style={styles.itemContent}>
+                <Text style={styles.itemTitle}>iPad Air 4th Gen</Text>
+                <Text style={styles.itemDesc} numberOfLines={2}>With Apple Pencil 2 support.</Text>
+                <View style={styles.itemFooter}>
+                  <Text style={styles.itemPrice}>₹28,000</Text>
+                  <MaterialIcons name="favorite-outline" size={18} color="#6B7280" />
+                </View>
+              </View>
+            </View>
+
+            <View style={styles.itemCard}>
+              <View style={styles.itemImgBox}>
+                <Image source={{ uri: 'https://images.unsplash.com/photo-1543163521-1bf539c55dd2?q=80&w=2000&auto=format&fit=crop' }} style={styles.itemImg} />
+                <View style={[styles.itemBadge, { backgroundColor: '#ECFDF5' }]}>
+                  <Text style={[styles.itemBadgeText, { color: '#065F46' }]}>FOOTWEAR</Text>
+                </View>
+              </View>
+              <View style={styles.itemContent}>
+                <Text style={styles.itemTitle}>Nike Air Jordan 1</Text>
+                <Text style={styles.itemDesc} numberOfLines={2}>Size 9, rarely used, original box.</Text>
+                <View style={styles.itemFooter}>
+                  <Text style={styles.itemPrice}>₹8,900</Text>
+                  <MaterialIcons name="favorite-outline" size={18} color="#6B7280" />
+                </View>
+              </View>
+            </View>
+
+            <View style={styles.itemCard}>
+              <View style={styles.itemImgBox}>
+                <Image source={{ uri: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=2000&auto=format&fit=crop' }} style={styles.itemImg} />
+                <View style={[styles.itemBadge, { backgroundColor: '#FFFFFF' }]}>
+                  <Text style={styles.itemBadgeText}>ELECTRONICS</Text>
+                </View>
+              </View>
+              <View style={styles.itemContent}>
+                <Text style={styles.itemTitle}>Sony WH-1000XM4</Text>
+                <Text style={styles.itemDesc} numberOfLines={2}>Noise cancelling headphones.</Text>
+                <View style={styles.itemFooter}>
+                  <Text style={styles.itemPrice}>₹14,500</Text>
+                  <MaterialIcons name="favorite-outline" size={18} color="#6B7280" />
+                </View>
+              </View>
+            </View>
+
+            <View style={styles.itemCard}>
+              <View style={styles.itemImgBox}>
+                <Image source={{ uri: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?q=80&w=2000&auto=format&fit=crop' }} style={styles.itemImg} />
+                <View style={[styles.itemBadge, { backgroundColor: '#DBEAFE' }]}>
+                  <Text style={[styles.itemBadgeText, { color: '#1E40AF' }]}>FASHION</Text>
+                </View>
+              </View>
+              <View style={styles.itemContent}>
+                <Text style={styles.itemTitle}>Fossil Gen 6 Smartwatch</Text>
+                <Text style={styles.itemDesc} numberOfLines={2}>Black leather strap, mint cond.</Text>
+                <View style={styles.itemFooter}>
+                  <Text style={styles.itemPrice}>₹7,200</Text>
+                  <MaterialIcons name="favorite-outline" size={18} color="#6B7280" />
+                </View>
+              </View>
+            </View>
+
+            <View style={styles.itemCard}>
+              <View style={styles.itemImgBox}>
+                <Image source={{ uri: 'https://images.unsplash.com/photo-1546435770-a3e426bf472b?q=80&w=2000&auto=format&fit=crop' }} style={styles.itemImg} />
+                <View style={[styles.itemBadge, { backgroundColor: '#EF4444' }]}>
+                  <Text style={[styles.itemBadgeText, { color: '#FFFFFF' }]}>HOT</Text>
+                </View>
+              </View>
+              <View style={styles.itemContent}>
+                <Text style={styles.itemTitle}>Marshall Major IV</Text>
+                <Text style={styles.itemDesc} numberOfLines={2}>Iconic headphones with 80+ hours.</Text>
+                <View style={styles.itemFooter}>
+                  <Text style={styles.itemPrice}>₹11,999</Text>
+                  <MaterialIcons name="favorite-outline" size={18} color="#6B7280" />
+                </View>
+              </View>
+            </View>
+
+            <View style={styles.itemCard}>
+              <View style={styles.itemImgBox}>
+                <Image source={{ uri: 'https://images.unsplash.com/photo-1525547719571-a2d4ac8945e2?q=80&w=2000&auto=format&fit=crop' }} style={styles.itemImg} />
+                <View style={[styles.itemBadge, { backgroundColor: '#F3F4F6' }]}>
+                  <Text style={[styles.itemBadgeText, { color: '#374151' }]}>GAMING</Text>
+                </View>
+              </View>
+              <View style={styles.itemContent}>
+                <Text style={styles.itemTitle}>Razer DeathAdder V2</Text>
+                <Text style={styles.itemDesc} numberOfLines={2}>Ergonomic wired gaming mouse.</Text>
+                <View style={styles.itemFooter}>
+                  <Text style={styles.itemPrice}>₹3,250</Text>
+                  <MaterialIcons name="favorite-outline" size={18} color="#6B7280" />
+                </View>
+              </View>
+            </View>
+
+            <View style={styles.itemCard}>
+              <View style={styles.itemImgBox}>
+                <Image source={{ uri: 'https://images.unsplash.com/photo-1496181133206-80ce9b88a853?q=80&w=2000&auto=format&fit=crop' }} style={styles.itemImg} />
+                <View style={[styles.itemBadge, { backgroundColor: '#FFFFFF' }]}>
+                  <Text style={styles.itemBadgeText}>OPEN BOX</Text>
+                </View>
+              </View>
+              <View style={styles.itemContent}>
+                <Text style={styles.itemTitle}>Dell XPS 13</Text>
+                <Text style={styles.itemDesc} numberOfLines={2}>Touch screen, i7, 16GB RAM.</Text>
+                <View style={styles.itemFooter}>
+                  <Text style={styles.itemPrice}>₹72,000</Text>
+                  <MaterialIcons name="favorite-outline" size={18} color="#6B7280" />
+                </View>
+              </View>
+            </View>
+
+            <View style={styles.itemCard}>
+              <View style={styles.itemImgBox}>
+                <Image source={{ uri: 'https://images.unsplash.com/photo-1593305841991-05c297ba4575?q=80&w=2000&auto=format&fit=crop' }} style={styles.itemImg} />
+                <View style={[styles.itemBadge, { backgroundColor: '#E0F2FE' }]}>
+                  <Text style={[styles.itemBadgeText, { color: '#0369A1' }]}>TV</Text>
+                </View>
+              </View>
+              <View style={styles.itemContent}>
+                <Text style={styles.itemTitle}>PlayStation 5 Console</Text>
+                <Text style={styles.itemDesc} numberOfLines={2}>Disc edition with 2 dualsense.</Text>
+                <View style={styles.itemFooter}>
+                  <Text style={styles.itemPrice}>₹38,500</Text>
+                  <MaterialIcons name="favorite-outline" size={18} color="#6B7280" />
+                </View>
+              </View>
+            </View>
+
+            <View style={styles.itemCard}>
+              <View style={styles.itemImgBox}>
+                <Image source={{ uri: 'https://images.unsplash.com/photo-1523381210434-271e8be1f52b?q=80&w=2000&auto=format&fit=crop' }} style={styles.itemImg} />
+                <View style={[styles.itemBadge, { backgroundColor: '#FEE2E2' }]}>
+                  <Text style={[styles.itemBadgeText, { color: '#991B1B' }]}>APPAREL</Text>
+                </View>
+              </View>
+              <View style={styles.itemContent}>
+                <Text style={styles.itemTitle}>Invertis Hoodie</Text>
+                <Text style={styles.itemDesc} numberOfLines={2}>Limited edition, size L.</Text>
+                <View style={styles.itemFooter}>
+                  <Text style={styles.itemPrice}>₹899</Text>
+                  <MaterialIcons name="favorite-outline" size={18} color="#6B7280" />
+                </View>
+              </View>
+            </View>
+
+            <View style={styles.itemCard}>
+              <View style={styles.itemImgBox}>
+                <Image source={{ uri: 'https://images.unsplash.com/photo-1491553895911-0055eca6402d?q=80&w=2000&auto=format&fit=crop' }} style={styles.itemImg} />
+                <View style={[styles.itemBadge, { backgroundColor: '#F5F3FF' }]}>
+                  <Text style={[styles.itemBadgeText, { color: '#5B21B6' }]}>SNEAKERS</Text>
+                </View>
+              </View>
+              <View style={styles.itemContent}>
+                <Text style={styles.itemTitle}>Adidas Ultraboost</Text>
+                <Text style={styles.itemDesc} numberOfLines={2}>Cloud white, size 10, unworn.</Text>
+                <View style={styles.itemFooter}>
+                  <Text style={styles.itemPrice}>₹6,200</Text>
+                  <MaterialIcons name="favorite-outline" size={18} color="#6B7280" />
+                </View>
+              </View>
+            </View>
+
+            <View style={styles.itemCard}>
+              <View style={styles.itemImgBox}>
+                <Image source={{ uri: 'https://images.unsplash.com/photo-1611186871348-b1ec696e52c9?q=80&w=2000&auto=format&fit=crop' }} style={styles.itemImg} />
+                <View style={[styles.itemBadge, { backgroundColor: '#F3F4F6' }]}>
+                  <Text style={[styles.itemBadgeText, { color: '#374151' }]}>GADGET</Text>
+                </View>
+              </View>
+              <View style={styles.itemContent}>
+                <Text style={styles.itemTitle}>Kindle Paperwhite</Text>
+                <Text style={styles.itemDesc} numberOfLines={2}>Waterproof, 32GB, with case.</Text>
+                <View style={styles.itemFooter}>
+                  <Text style={styles.itemPrice}>₹7,500</Text>
+                  <MaterialIcons name="favorite-outline" size={18} color="#6B7280" />
+                </View>
+              </View>
+            </View>
+
+            <View style={styles.itemCard}>
+              <View style={styles.itemImgBox}>
+                <Image source={{ uri: 'https://images.unsplash.com/photo-1541807084-5c52b6b3adef?q=80&w=2000&auto=format&fit=crop' }} style={styles.itemImg} />
+                <View style={[styles.itemBadge, { backgroundColor: '#FFFFFF' }]}>
+                  <Text style={styles.itemBadgeText}>FURNITURE</Text>
+                </View>
+              </View>
+              <View style={styles.itemContent}>
+                <Text style={styles.itemTitle}>Ergonomic Chair</Text>
+                <Text style={styles.itemDesc} numberOfLines={2}>Mesh back, perfect for hostellers.</Text>
+                <View style={styles.itemFooter}>
+                  <Text style={styles.itemPrice}>₹3,800</Text>
+                  <MaterialIcons name="favorite-outline" size={18} color="#6B7280" />
+                </View>
+              </View>
+            </View>
+
+            <View style={styles.itemCard}>
+              <View style={styles.itemImgBox}>
+                <Image source={{ uri: 'https://images.unsplash.com/photo-1572635196237-14b3f281503f?q=80&w=2000&auto=format&fit=crop' }} style={styles.itemImg} />
+                <View style={[styles.itemBadge, { backgroundColor: '#FEF3C7' }]}>
+                  <Text style={[styles.itemBadgeText, { color: '#B45309' }]}>ACCESSORY</Text>
+                </View>
+              </View>
+              <View style={styles.itemContent}>
+                <Text style={styles.itemTitle}>Ray-Ban Aviators</Text>
+                <Text style={styles.itemDesc} numberOfLines={2}>Classic gold G-15, original case.</Text>
+                <View style={styles.itemFooter}>
+                  <Text style={styles.itemPrice}>₹5,200</Text>
+                  <MaterialIcons name="favorite-outline" size={18} color="#6B7280" />
+                </View>
+              </View>
+            </View>
+
+            <View style={styles.itemCard}>
+              <View style={styles.itemImgBox}>
+                <Image source={{ uri: 'https://images.unsplash.com/photo-1503602642458-232111445657?q=80&w=2000&auto=format&fit=crop' }} style={styles.itemImg} />
+                <View style={[styles.itemBadge, { backgroundColor: '#F3F4F6' }]}>
+                  <Text style={[styles.itemBadgeText, { color: '#374151' }]}>UTIL</Text>
+                </View>
+              </View>
+              <View style={styles.itemContent}>
+                <Text style={styles.itemTitle}>Steel Water Bottle</Text>
+                <Text style={styles.itemDesc} numberOfLines={2}>Insulated, 1L, keeps cold 24h.</Text>
+                <View style={styles.itemFooter}>
+                  <Text style={styles.itemPrice}>₹450</Text>
+                  <MaterialIcons name="favorite-outline" size={18} color="#6B7280" />
+                </View>
+              </View>
+            </View>
+
+            <View style={styles.itemCard}>
+              <View style={styles.itemImgBox}>
+                <Image source={{ uri: 'https://images.unsplash.com/photo-1611078489935-0cb964de46d6?q=80&w=2000&auto=format&fit=crop' }} style={styles.itemImg} />
+                <View style={[styles.itemBadge, { backgroundColor: '#F9FAFB' }]}>
+                  <Text style={[styles.itemBadgeText, { color: '#111827' }]}>LAPTOP</Text>
+                </View>
+              </View>
+              <View style={styles.itemContent}>
+                <Text style={styles.itemTitle}>HP Pavilion Gaming</Text>
+                <Text style={styles.itemDesc} numberOfLines={2}>Ryzen 5, GTX 1650, 512GB SSD.</Text>
+                <View style={styles.itemFooter}>
+                  <Text style={styles.itemPrice}>₹42,000</Text>
+                  <MaterialIcons name="favorite-outline" size={18} color="#6B7280" />
                 </View>
               </View>
             </View>

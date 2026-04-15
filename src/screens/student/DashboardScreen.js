@@ -1,6 +1,6 @@
 import React from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Dimensions, Platform
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Dimensions, Platform, Modal, Switch,
 } from 'react-native';
 import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -11,6 +11,8 @@ const { width } = Dimensions.get('window');
 const DashboardScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const [activeMood, setActiveMood] = React.useState(2);
+  const [showProfileMenu, setShowProfileMenu] = React.useState(false);
+  const [isDarkMode, setIsDarkMode] = React.useState(false);
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -29,12 +31,80 @@ const DashboardScreen = ({ navigation }) => {
           <TouchableOpacity style={styles.headerIconBtn}>
             <MaterialIcons name="qr-code-scanner" size={22} color="#4B5563" />
           </TouchableOpacity>
-          <Image
-            source={{ uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuC6mmtjUA28NY_AB8YFu2Ri2e3lSkRbJCYpAbrgwHHzzLntRM9rNTLFJIT-pf3fW5gQ-_hRX8LB8ZDdqw5ls_d4bA10oIXuBlKp8kv7onee50cVXADdy7BPVn6kAg4Co9Gbp6XiTx5yITLttWLtkQQag4sVTILELHpLT0_-WAXmJWUVCHpSfhFuYmROstnRxdO_T4ym_KOCd8CmJm60WORR2yoPF8RiqYCiJsTUrQcbumydveuPeijNqG_991IufFMlU7g1DbJ3nqtG' }}
-            style={styles.avatarSmall}
-          />
+          <TouchableOpacity onPress={() => setShowProfileMenu(true)}>
+            <Image
+              source={{ uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuC6mmtjUA28NY_AB8YFu2Ri2e3lSkRbJCYpAbrgwHHzzLntRM9rNTLFJIT-pf3fW5gQ-_hRX8LB8ZDdqw5ls_d4bA10oIXuBlKp8kv7onee50cVXADdy7BPVn6kAg4Co9Gbp6XiTx5yITLttWLtkQQag4sVTILELHpLT0_-WAXmJWUVCHpSfhFuYmROstnRxdO_T4ym_KOCd8CmJm60WORR2yoPF8RiqYCiJsTUrQcbumydveuPeijNqG_991IufFMlU7g1DbJ3nqtG' }}
+              style={styles.avatarSmall}
+            />
+          </TouchableOpacity>
         </View>
       </View>
+
+      {/* Profile Dropdown Modal */}
+      <Modal
+        visible={showProfileMenu}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowProfileMenu(false)}
+      >
+        <TouchableOpacity 
+          style={styles.modalOverlay} 
+          activeOpacity={1} 
+          onPress={() => setShowProfileMenu(false)}
+        >
+          <View style={[styles.profileMenu, { top: insets.top + 50 }]}>
+            <View style={styles.menuHeader}>
+              <Image
+                source={{ uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuC6mmtjUA28NY_AB8YFu2Ri2e3lSkRbJCYpAbrgwHHzzLntRM9rNTLFJIT-pf3fW5gQ-_hRX8LB8ZDdqw5ls_d4bA10oIXuBlKp8kv7onee50cVXADdy7BPVn6kAg4Co9Gbp6XiTx5yITLttWLtkQQag4sVTILELHpLT0_-WAXmJWUVCHpSfhFuYmROstnRxdO_T4ym_KOCd8CmJm60WORR2yoPF8RiqYCiJsTUrQcbumydveuPeijNqG_991IufFMlU7g1DbJ3nqtG' }}
+                style={styles.menuAvatar}
+              />
+              <View>
+                <Text style={styles.menuName}>Aryan Kumar</Text>
+                <Text style={styles.menuSub}>Student Account</Text>
+              </View>
+            </View>
+            
+            <View style={styles.menuDivider} />
+            
+            <TouchableOpacity 
+              style={styles.menuItem}
+              onPress={() => {
+                setShowProfileMenu(false);
+                navigation.navigate('Settings');
+              }}
+            >
+              <MaterialCommunityIcons name="cog-outline" size={20} color="#4B5563" />
+              <Text style={styles.menuItemText}>Setting</Text>
+            </TouchableOpacity>
+
+            <View style={styles.menuItem}>
+              <View style={styles.menuItemLeft}>
+                <MaterialCommunityIcons name="moon-waning-crescent" size={20} color="#4B5563" />
+                <Text style={styles.menuItemText}>Dark Mode</Text>
+              </View>
+              <Switch 
+                value={isDarkMode}
+                onValueChange={setIsDarkMode}
+                trackColor={{ false: '#E5E7EB', true: '#EA580C' }}
+                thumbColor="#FFFFFF"
+              />
+            </View>
+
+            <View style={styles.menuDivider} />
+
+            <TouchableOpacity 
+              style={[styles.menuItem, styles.logoutItem]}
+              onPress={() => {
+                setShowProfileMenu(false);
+                navigation.replace('Login');
+              }}
+            >
+              <MaterialCommunityIcons name="logout" size={20} color="#EF4444" />
+              <Text style={[styles.menuItemText, styles.logoutText]}>Log out</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
 
@@ -117,7 +187,7 @@ const DashboardScreen = ({ navigation }) => {
               onPress={() => navigation.navigate('ERPHub')}
             >
               <LinearGradient colors={['#D97706', '#92400E']} style={styles.launchIconBg}>
-                <MaterialCommunityIcons name="account-balance-wallet" size={24} color="#FFFFFF" />
+                <MaterialCommunityIcons name="office-building" size={24} color="#FFFFFF" />
               </LinearGradient>
               <Text style={styles.launchText}>ERP</Text>
             </TouchableOpacity>
@@ -411,6 +481,83 @@ const styles = StyleSheet.create({
     borderRadius: 21,
     borderWidth: 2,
     borderColor: '#EA580C',
+  },
+  // Profile Dropdown Menu Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.12)',
+  },
+  profileMenu: {
+    position: 'absolute',
+    right: 16,
+    width: 250,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    padding: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.12,
+    shadowRadius: 24,
+    elevation: 10,
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
+  },
+  menuHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 10,
+    marginBottom: 4,
+  },
+  menuAvatar: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    borderWidth: 2,
+    borderColor: '#EA580C',
+  },
+  menuName: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#111827',
+  },
+  menuSub: {
+    fontSize: 12,
+    color: '#6B7280',
+    fontWeight: '500',
+    marginTop: 1,
+  },
+  menuDivider: {
+    height: 1,
+    backgroundColor: '#F3F4F6',
+    marginVertical: 6,
+    marginHorizontal: 4,
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 13,
+    paddingHorizontal: 12,
+    borderRadius: 16,
+  },
+  menuItemLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  menuItemText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#374151',
+    marginLeft: 12,
+  },
+  logoutItem: {
+    backgroundColor: '#FEF2F2',
+    marginTop: 2,
+  },
+  logoutText: {
+    color: '#EF4444',
   },
   scroll: {
     paddingBottom: 20,

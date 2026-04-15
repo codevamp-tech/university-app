@@ -27,6 +27,13 @@ import StudentSearchScreen from '../screens/student/StudentSearchScreen';
 import OtherStudentProfileScreen from '../screens/student/OtherStudentProfileScreen';
 import RaiseIssueScreen from '../screens/student/RaiseIssueScreen';
 
+// Guest Detail Screens
+import FeeStructureScreen from '../screens/guest/FeeStructureScreen';
+import PlacementRecordScreen from '../screens/guest/PlacementRecordScreen';
+import HostelAmenitiesScreen from '../screens/guest/HostelAmenitiesScreen';
+import CourseEligibilityScreen from '../screens/guest/CourseEligibilityScreen';
+import AdmissionFormScreen from '../screens/guest/AdmissionFormScreen';
+
 // Teacher standalone screens
 import MarkAttendanceScreen from '../screens/teacher/MarkAttendanceScreen';
 import DepartmentOverviewScreen from '../screens/teacher/DepartmentOverviewScreen';
@@ -72,6 +79,13 @@ const AppNavigator = () => {
       <Stack.Screen name="StudentSearch" component={StudentSearchScreen} options={{ animation: 'fade', presentation: 'transparentModal' }} />
       <Stack.Screen name="OtherStudentProfile" component={OtherStudentProfileScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="RaiseIssue" component={RaiseIssueScreen} options={{ animation: 'slide_from_bottom' }} />
+
+      {/* Guest Info Screens */}
+      <Stack.Screen name="FeeStructure" component={FeeStructureScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="PlacementRecord" component={PlacementRecordScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="HostelAmenities" component={HostelAmenitiesScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="CourseEligibility" component={CourseEligibilityScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="AdmissionForm" component={AdmissionFormScreen} options={{ animation: 'slide_from_bottom' }} />
 
       {/* Teacher Main */}
 

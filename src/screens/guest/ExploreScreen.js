@@ -15,13 +15,13 @@ import { Feather, MaterialCommunityIcons, FontAwesome5, Ionicons } from '@expo/v
 
 const { width } = Dimensions.get('window');
 
-const ExploreScreen = () => {
+const ExploreScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
 
   const campusEvents = [
     {
-      title: 'Invertia 2026',
-      date: '13-14 FEB',
+      title: 'Invertis 2026',
+      date: '14 FEB',
       category: 'Annual Fest',
       image: 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&q=80&w=400',
       color: '#EA580C'
@@ -142,7 +142,7 @@ const ExploreScreen = () => {
             <Text style={styles.heroTitle}>Shape Your Future{'\n'}with Excellence</Text>
             <Text style={styles.heroDesc}>Explore industry-aligned programs and a world-class campus designed for your success.</Text>
 
-            <TouchableOpacity style={styles.primaryButton}>
+            <TouchableOpacity style={styles.primaryButton} onPress={() => navigation.navigate('AdmissionForm')}>
               <LinearGradient
                 colors={['#FFFFFF', '#F9FAFB']}
                 style={styles.primaryButtonGradient}

@@ -15,15 +15,15 @@ import { Feather, MaterialCommunityIcons, Ionicons, FontAwesome5 } from '@expo/v
 
 const { width } = Dimensions.get('window');
 
-const HubScreen = () => {
+const HubScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const [expandedQuery, setExpandedQuery] = useState(null);
 
   const quickLinks = [
-    { id: 1, title: 'Fee Structure', icon: 'cash-multiple', gradient: ['#EA580C', '#9A3412'] },
-    { id: 2, title: 'Placement Record', icon: 'trending-up', gradient: ['#4338CA', '#312E81'] },
-    { id: 3, title: 'Hostel & Amenities', icon: 'home-city', gradient: ['#16A34A', '#0A6C34'] },
-    { id: 4, title: 'Course Eligibility', icon: 'clipboard-check', gradient: ['#0891B2', '#065F73'] },
+    { id: 1, title: 'Fee Structure', icon: 'cash-multiple', gradient: ['#EA580C', '#9A3412'], screen: 'FeeStructure' },
+    { id: 2, title: 'Placement Record', icon: 'trending-up', gradient: ['#4338CA', '#312E81'], screen: 'PlacementRecord' },
+    { id: 3, title: 'Hostel & Amenities', icon: 'home-city', gradient: ['#16A34A', '#0A6C34'], screen: 'HostelAmenities' },
+    { id: 4, title: 'Course Eligibility', icon: 'clipboard-check', gradient: ['#0891B2', '#065F73'], screen: 'CourseEligibility' },
   ];
 
   const mentors = [
@@ -105,19 +105,25 @@ const HubScreen = () => {
         {/* Quick Links Grid */}
         <View style={styles.linksGrid}>
           {quickLinks.map((link) => (
-            <LinearGradient
+            <TouchableOpacity
               key={link.id}
-              colors={['#FFFFFF', '#F9FAFB']}
-              style={styles.linkCard}
+              activeOpacity={0.85}
+              onPress={() => navigation.navigate(link.screen)}
             >
               <LinearGradient
-                colors={link.gradient}
-                style={styles.linkIconContainer}
+                colors={['#FFFFFF', '#F9FAFB']}
+                style={styles.linkCard}
               >
-                <MaterialCommunityIcons name={link.icon} size={24} color="#FFFFFF" />
+                <LinearGradient
+                  colors={link.gradient}
+                  style={styles.linkIconContainer}
+                >
+                  <MaterialCommunityIcons name={link.icon} size={24} color="#FFFFFF" />
+                </LinearGradient>
+                <Text style={styles.linkTitle}>{link.title}</Text>
+                <MaterialCommunityIcons name="chevron-right" size={16} color="#9CA3AF" style={{ marginTop: 4 }} />
               </LinearGradient>
-              <Text style={styles.linkTitle}>{link.title}</Text>
-            </LinearGradient>
+            </TouchableOpacity>
           ))}
         </View>
 
