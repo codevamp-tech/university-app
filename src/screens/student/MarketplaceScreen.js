@@ -13,7 +13,7 @@ const MarketplaceScreen = () => {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      
+
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
@@ -30,20 +30,20 @@ const MarketplaceScreen = () => {
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        
-        {/* Agora Marketplace Hero Banner */}
+
+        {/* Invertis Marketplace Hero Banner */}
         <View style={styles.sectionContainer}>
           <View style={styles.heroCard}>
-            <ImageBackground 
-              source={{ uri: 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?q=80&w=2071&auto=format&fit=crop' }} 
+            <ImageBackground
+              source={{ uri: 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?q=80&w=2071&auto=format&fit=crop' }}
               style={styles.heroBg}
             >
-              <LinearGradient 
-                colors={['rgba(234,88,12,0.8)', 'rgba(154,52,18,0.9)']} 
+              <LinearGradient
+                colors={['rgba(234,88,12,0.8)', 'rgba(154,52,18,0.9)']}
                 style={styles.heroOverlay}
               >
                 <View style={styles.heroBadge}>
-                  <Text style={styles.heroBadgeText}>AGORA MARKETPLACE</Text>
+                  <Text style={styles.heroBadgeText}>Invertis MARKETPLACE</Text>
                 </View>
                 <Text style={styles.heroTitle}>Turn your skills into Campus Credits.</Text>
                 <Text style={styles.heroSub}>The student economy is booming. Hire a peer or sell your gear.</Text>
@@ -52,56 +52,70 @@ const MarketplaceScreen = () => {
           </View>
         </View>
 
-        {/* Quick Requests */}
+        {/* Quick Requests - Redesigned to match screen.png */}
         <View style={styles.sectionContainer}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Quick Requests</Text>
-            <TouchableOpacity><Text style={styles.viewAllText}>View All</Text></TouchableOpacity>
+            <View>
+              <Text style={styles.sectionTitle}>Quick Requests</Text>
+              <Text style={styles.sectionSubtitle}>Help others & earn rewards</Text>
+            </View>
+            <TouchableOpacity style={styles.viewAllBtn}>
+              <Text style={styles.viewAllText}>View All</Text>
+              <MaterialIcons name="arrow-forward" size={14} color="#EA580C" />
+            </TouchableOpacity>
           </View>
-          
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.hScroll}>
-            <View style={styles.quickCard}>
-              <View style={styles.quickHeader}>
-                <MaterialCommunityIcons name="lightning-bolt" size={16} color="#065F46" />
-                <Text style={styles.quickBadge}>FLASH TASK</Text>
-              </View>
-              <Text style={styles.quickTitle}>Need a calculator at Seminar Hall 1</Text>
-              <View style={styles.quickFooter}>
-                <Text style={styles.quickReward}>₹50 Reward</Text>
-                <TouchableOpacity style={styles.quickBtn}>
-                  <Text style={styles.quickBtnText}>I'll do it</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
 
-            <View style={[styles.quickCard, { backgroundColor: '#EEF2FF', borderColor: '#C7D2FE' }]}>
-              <View style={styles.quickHeader}>
-                <MaterialCommunityIcons name="printer" size={16} color="#3730A3" />
-                <Text style={[styles.quickBadge, { color: '#3730A3' }]}>URGENT</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.hScroll}>
+            {[
+              { id: 1, title: 'Need a calculator at Seminar Hall 1', reward: '₹50', type: 'FLASH', icon: 'lightning-bolt', color: '#10B981' },
+              { id: 2, title: 'Need lab manual prints at Block B', reward: '₹100', type: 'URGENT', icon: 'printer', color: '#3B82F6' },
+              { id: 3, title: 'Python help needed in Library', reward: '₹80', type: 'STUDY', icon: 'account-group', color: '#F59E0B' },
+              { id: 4, title: 'Coffee pickup from Canteen', reward: '₹40', type: 'FOOD', icon: 'coffee', color: '#EC4899' },
+              { id: 5, title: 'Lost USB drive near Block C', reward: '₹200', type: 'LOST', icon: 'magnify', color: '#8B5CF6' },
+              { id: 6, title: 'Tech Fest setup volunteers', reward: 'Perk', type: 'VOLUNTEER', icon: 'calendar-star', color: '#EF4444' },
+            ].map(item => (
+              <View key={item.id} style={styles.quickCard}>
+                <View style={styles.quickCardHeader}>
+                  <View style={[styles.quickIconWrapper, { backgroundColor: item.color + '15' }]}>
+                    <MaterialCommunityIcons name={item.icon} size={20} color={item.color} />
+                  </View>
+                  <View style={[styles.quickBadge, { backgroundColor: item.color + '15' }]}>
+                    <Text style={[styles.quickBadgeText, { color: item.color }]}>{item.type}</Text>
+                  </View>
+                </View>
+                <Text style={styles.quickTitle} numberOfLines={2}>{item.title}</Text>
+                <View style={styles.quickDivider} />
+                <View style={styles.quickFooter}>
+                  <View>
+                    <Text style={styles.quickRewardLabel}>{item.reward === 'Perk' ? 'BENEFIT' : 'REWARD'}</Text>
+                    <Text style={[styles.quickReward, { color: '#111827' }]}>{item.reward === 'Perk' ? 'Certificate' : item.reward}</Text>
+                  </View>
+                  <TouchableOpacity style={styles.quickBtn}>
+                    <LinearGradient colors={['#EA580C', '#C2410C']} style={styles.quickBtnGradient}>
+                      <Text style={styles.quickBtnText}>Accept</Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
+                </View>
               </View>
-              <Text style={styles.quickTitle}>Need printouts of lab manual at Block B</Text>
-              <View style={styles.quickFooter}>
-                <Text style={[styles.quickReward, { color: '#3730A3' }]}>₹100 Reward</Text>
-              </View>
-            </View>
+            ))}
           </ScrollView>
         </View>
 
         {/* Featured Gigs */}
         <View style={styles.sectionContainer}>
           <Text style={styles.sectionTitle}>Featured Gigs</Text>
-          
+
           {/* Gig 1 */}
           <View style={styles.gigCard}>
             <Image source={{ uri: 'https://images.unsplash.com/photo-1542831371-29b0f74f9713?q=80&w=2070&auto=format&fit=crop' }} style={styles.gigImg} />
             <View style={styles.gigPopularBadge}>
               <Text style={styles.gigPopularText}>Popular</Text>
             </View>
-            
+
             <View style={styles.gigContent}>
               <Text style={styles.gigTitle}>Python Debugging & Code Review</Text>
               <Text style={styles.gigDesc}>Struggling with your semester projects? I provide professional code audits and logic debugging for Python applications.</Text>
-              
+
               <View style={styles.gigAuthorRow}>
                 <Image source={{ uri: 'https://i.pravatar.cc/100?u=rahul' }} style={styles.gigAuthorImg} />
                 <View>
@@ -109,7 +123,7 @@ const MarketplaceScreen = () => {
                   <Text style={styles.gigAuthorSub}>B.Tech CS, 3rd Year</Text>
                 </View>
               </View>
-              
+
               <View style={styles.gigFooter}>
                 <Text style={styles.gigPrice}>₹499<Text style={styles.gigPriceSub}>/hr</Text></Text>
                 <TouchableOpacity style={styles.bookGigBtn}>
@@ -148,9 +162,9 @@ const MarketplaceScreen = () => {
         {/* The Bazaar */}
         <View style={styles.sectionContainer}>
           <Text style={styles.sectionTitle}>The Bazaar</Text>
-          
+
           <View style={styles.bazaarGrid}>
-            
+
             <View style={styles.itemCard}>
               <View style={styles.itemImgBox}>
                 <Image source={{ uri: 'https://images.unsplash.com/photo-1512820790803-83ca734da794?q=80&w=2098&auto=format&fit=crop' }} style={styles.itemImg} />
@@ -191,11 +205,6 @@ const MarketplaceScreen = () => {
 
         <View style={{ height: 100 }} />
       </ScrollView>
-
-      {/* Floating Add Item Button */}
-      <TouchableOpacity style={styles.fab}>
-        <Ionicons name="add" size={32} color="#FFFFFF" />
-      </TouchableOpacity>
     </View>
   );
 };
@@ -318,51 +327,81 @@ const styles = StyleSheet.create({
     paddingRight: 16,
   },
   quickCard: {
-    backgroundColor: '#D1FAE5',
-    width: 240,
+    width: 280,
+    backgroundColor: '#FFFFFF',
     borderRadius: 24,
     padding: 20,
     borderWidth: 1,
-    borderColor: '#A7F3D0',
+    borderColor: '#E5E7EB',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 2,
   },
-  quickHeader: {
+  quickCardHeader: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    gap: 6,
-    marginBottom: 12,
+    marginBottom: 16,
+  },
+  quickIconWrapper: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   quickBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 10,
+  },
+  quickBadgeText: {
     fontSize: 10,
     fontWeight: '800',
-    color: '#065F46',
-    letterSpacing: 1,
+    letterSpacing: 0.5,
   },
   quickTitle: {
     fontSize: 16,
     fontWeight: '700',
     color: '#111827',
-    marginBottom: 20,
+    marginBottom: 16,
+    lineHeight: 22,
+    height: 44,
+  },
+  quickDivider: {
+    height: 1,
+    backgroundColor: '#F3F4F6',
+    marginBottom: 16,
   },
   quickFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  quickReward: {
-    fontSize: 12,
+  quickRewardLabel: {
+    fontSize: 9,
     fontWeight: '800',
-    color: '#065F46',
+    color: '#9CA3AF',
+    letterSpacing: 1,
+  },
+  quickReward: {
+    fontSize: 18,
+    fontWeight: '900',
   },
   quickBtn: {
-    backgroundColor: '#065F46',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  quickBtnGradient: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
   },
   quickBtnText: {
     color: '#FFFFFF',
     fontWeight: '800',
-    fontSize: 11,
+    fontSize: 13,
   },
   gigCard: {
     backgroundColor: '#FFFFFF',

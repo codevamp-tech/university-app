@@ -33,12 +33,12 @@ const VentureScreen = () => {
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         {/* Venture Launchpad Hero */}
         <View style={styles.heroSection}>
-          <Image 
-            source={{ uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBJYwvpBtdoJt5aKLdQ72OYOygma4LnW_oNAVjJu2C_VvQZx-o-1JqrQht7GAy50UqE6UC4mGjQhFbFfZaJEmjgSWF6AaAdNbDn_9DSGxhASKaEhR5J6E_ce19eohauoRtH8UzVZmwqwd9U-ynvnfSDT6rKBAcQ1PLQrR4J4ApuUj0-Gvh4oOWUD58xaxKVznX_fIhfS5GwjQbAUVch42xxoKuwk405fU04rM_q4zuMMPVrYoXve-cBe7dniDZGiUjjuqvTapsWklN3' }} 
-            style={styles.heroImg} 
+          <Image
+            source={{ uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBJYwvpBtdoJt5aKLdQ72OYOygma4LnW_oNAVjJu2C_VvQZx-o-1JqrQht7GAy50UqE6UC4mGjQhFbFfZaJEmjgSWF6AaAdNbDn_9DSGxhASKaEhR5J6E_ce19eohauoRtH8UzVZmwqwd9U-ynvnfSDT6rKBAcQ1PLQrR4J4ApuUj0-Gvh4oOWUD58xaxKVznX_fIhfS5GwjQbAUVch42xxoKuwk405fU04rM_q4zuMMPVrYoXve-cBe7dniDZGiUjjuqvTapsWklN3' }}
+            style={styles.heroImg}
           />
-          <LinearGradient 
-            colors={['rgba(139, 75, 0, 0.95)', 'rgba(122, 65, 0, 0.4)']} 
+          <LinearGradient
+            colors={['rgba(139, 75, 0, 0.95)', 'rgba(122, 65, 0, 0.4)']}
             style={styles.heroOverlay}
           >
             <View style={styles.heroBadge}>
@@ -128,12 +128,12 @@ const VentureScreen = () => {
         <View style={styles.pitchCard}>
           <Text style={styles.pitchTitle}>Pitch Your Idea</Text>
           <Text style={styles.pitchSub}>Ready to disrupt the market? Submit your pitch deck.</Text>
-          
+
           <View style={styles.inputGroup}>
             <Text style={styles.label}>VENTURE NAME</Text>
             <TextInput style={styles.input} placeholder="e.g. Invertis AI" />
           </View>
-          
+
           <View style={styles.inputGroup}>
             <Text style={styles.label}>ONE-SENTENCE PITCH</Text>
             <TextInput style={[styles.input, { height: 80, textAlignVertical: 'top' }]} placeholder="What problem are you solving?" multiline />
@@ -153,9 +153,7 @@ const VentureScreen = () => {
       </ScrollView>
 
       {/* FAB */}
-      <TouchableOpacity style={styles.fab}>
-        <Ionicons name="add" size={32} color="#FFFFFF" />
-      </TouchableOpacity>
+
     </View>
   );
 };
@@ -395,6 +393,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 10,
     elevation: 3,
+    marginBottom: 20,
   },
   startupIcon: {
     width: 56,

@@ -11,7 +11,7 @@ export const STUDENT_USER = {
 
 export const TEACHER_USER = {
   id: 'FAC-2021-042',
-  name: 'Prof. Gulam Ali',
+  name: 'Prof. Vikram',
   role: 'teacher',
   department: 'Department of B.Tech Computer Science & Engineering',
   avatar: null,

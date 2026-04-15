@@ -9,7 +9,8 @@ import CommunityScreen from '../screens/student/CommunityScreen';
 import TalentIdentityScreen from '../screens/student/TalentIdentityScreen';
 import VentureScreen from '../screens/student/VentureScreen';
 import MarketplaceScreen from '../screens/student/MarketplaceScreen';
-import ProfileScreen from '../screens/student/ProfileScreen';
+import AlertsScreen from '../screens/student/AlertsScreen';
+// import ProfileScreen from '../screens/student/ProfileScreen';
 
 const Tab = createBottomTabNavigator();
 
@@ -52,6 +53,10 @@ const StudentTabs = () => {
             IconLibrary = MaterialCommunityIcons;
             iconName = 'storefront-outline';
             label = 'MARKETPLACE';
+          } else if (route.name === 'Alerts') {
+            IconLibrary = Feather;
+            iconName = 'bell';
+            label = 'ALERTS';
           } else if (route.name === 'Profile') {
             IconLibrary = Feather;
             iconName = 'user';
@@ -67,7 +72,7 @@ const StudentTabs = () => {
                 <View style={styles.iconContainer}>
                   <IconLibrary name={iconName} size={26} color={color} />
                 </View>
-                <Text 
+                <Text
                   style={[styles.tabLabel, focused && styles.tabLabelActive]}
                   numberOfLines={1}
                   adjustsFontSizeToFit={true}
@@ -86,7 +91,8 @@ const StudentTabs = () => {
       <Tab.Screen name="Identity" component={TalentIdentityScreen} />
       <Tab.Screen name="Venture" component={VentureScreen} />
       <Tab.Screen name="Marketplace" component={MarketplaceScreen} />
-      <Tab.Screen name="Profile" component={ProfileScreen} />
+      <Tab.Screen name="Alerts" component={AlertsScreen} />
+      {/* <Tab.Screen name="Profile" component={ProfileScreen} /> */}
     </Tab.Navigator>
   );
 };

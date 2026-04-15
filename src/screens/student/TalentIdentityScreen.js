@@ -34,15 +34,23 @@ const TalentIdentityScreen = () => {
         {/* Profile Header Image */}
         <View style={styles.profileHeroSection}>
           <View style={styles.profileHeroCard}>
-            <Image 
-              source={{ uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuC6mmtjUA28NY_AB8YFu2Ri2e3lSkRbJCYpAbrgwHHzzLntRM9rNTLFJIT-pf3fW5gQ-_hRX8LB8ZDdqw5ls_d4bA10oIXuBlKp8kv7onee50cVXADdy7BPVn6kAg4Co9Gbp6XiTx5yITLttWLtkQQag4sVTILELHpLT0_-WAXmJWUVCHpSfhFuYmROstnRxdO_T4ym_KOCd8CmJm60WORR2yoPF8RiqYCiJsTUrQcbumydveuPeijNqG_991IufFMlU7g1DbJ3nqtG' }} 
-              style={styles.heroImg} 
+            <Image
+              source={{ uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuC6mmtjUA28NY_AB8YFu2Ri2e3lSkRbJCYpAbrgwHHzzLntRM9rNTLFJIT-pf3fW5gQ-_hRX8LB8ZDdqw5ls_d4bA10oIXuBlKp8kv7onee50cVXADdy7BPVn6kAg4Co9Gbp6XiTx5yITLttWLtkQQag4sVTILELHpLT0_-WAXmJWUVCHpSfhFuYmROstnRxdO_T4ym_KOCd8CmJm60WORR2yoPF8RiqYCiJsTUrQcbumydveuPeijNqG_991IufFMlU7g1DbJ3nqtG' }}
+              style={styles.heroImg}
             />
             <LinearGradient colors={['transparent', 'rgba(0,0,0,0.85)']} style={styles.heroOverlay}>
-              <View style={styles.eliteBadge}>
-                <Text style={styles.eliteBadgeText}>PULSE ELITE</Text>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+                <View>
+                  <View style={styles.eliteBadge}>
+                    <Text style={styles.eliteBadgeText}>PULSE ELITE</Text>
+                  </View>
+                  <Text style={styles.heroName}>Aryan Sharma</Text>
+                </View>
+                {/* Editable Profile Picture Icon */}
+                <TouchableOpacity style={styles.editPicBtn}>
+                  <Ionicons name="camera" size={20} color="#1F2937" />
+                </TouchableOpacity>
               </View>
-              <Text style={styles.heroName}>Aryan Sharma</Text>
             </LinearGradient>
           </View>
         </View>
@@ -51,7 +59,14 @@ const TalentIdentityScreen = () => {
         <View style={styles.basicInfo}>
           <Text style={styles.majorText}>B.Tech Computer Science Engineering</Text>
           <Text style={styles.batchSubText}>Batch of 2025 • Invertis University Bareilly</Text>
-          
+
+          {/* LinkedIn-style Connections */}
+          <View style={styles.networkStats}>
+            <Text style={styles.networkText}><Text style={styles.networkBold}>1.2K</Text> Followers</Text>
+            <Text style={styles.networkDivider}>•</Text>
+            <Text style={styles.networkText}><Text style={styles.networkBold}>500+</Text> Connections</Text>
+          </View>
+
           <View style={styles.capsuleRow}>
             <View style={styles.capsule}>
               <Text style={styles.capsuleLabel}>CURRENT YEAR</Text>
@@ -68,27 +83,22 @@ const TalentIdentityScreen = () => {
           </View>
         </View>
 
-        {/* AI Pulse Card */}
-        <View style={styles.aiPulseWrap}>
-          <LinearGradient 
-            colors={['#FFF7ED', '#FFFFFF']} 
-            style={styles.aiPulseInner}
-          >
-            <View style={styles.aiSparkleBox}>
-              <MaterialCommunityIcons name="star-four-points" size={28} color="#8b4b00" />
-            </View>
-            <Text style={styles.aiPulseTitle}>Personalized AI Pulse</Text>
-            <Text style={styles.aiPulseText}>
-              "Aryan, your trajectory in <Text style={{ color: '#4953ac', fontWeight: '800' }}>Cloud Computing</Text> is exceptional. 
-              Maintaining your 8.9 GPA while leading SkyDrone projects puts you in the top 5% of your batch. 
-              Consider bridging your <Text style={{ color: '#8b4b00', fontStyle: 'italic', fontWeight: '800' }}>social credits</Text> with your startup venture for maximum placement impact."
-            </Text>
-            {/* The orange border effect */}
-            <View style={styles.orangeBorder} />
-          </LinearGradient>
+        {/* Editable About / Bio Section */}
+        <View style={styles.aboutSection}>
+          <View style={styles.aboutHeader}>
+            <Text style={styles.aboutTitle}>About</Text>
+            <TouchableOpacity style={styles.editBioBtn}>
+              <MaterialIcons name="edit" size={18} color="#6B7280" />
+            </TouchableOpacity>
+          </View>
+          <Text style={styles.aboutText}>
+            Passionate software engineering student deeply interested in Full Stack Development and AI.
+            Leading the SkyDrone project in the Venture Lab and actively organizing the Invertis Coding Club Hackathons.
+            Always looking to connect with like-minded innovators!
+          </Text>
         </View>
 
-        {/* Academic Performance */}
+        {/* AI Pulse Card */}
         <View style={styles.sectionCard}>
           <View style={styles.sectionHeader}>
             <Text style={styles.cardTitle}>Academic Performance</Text>
@@ -135,7 +145,7 @@ const TalentIdentityScreen = () => {
             </View>
             <View style={styles.scoreBadge}><Text style={styles.scoreText}>420 pts</Text></View>
           </View>
-          
+
           <View style={styles.proofList}>
             <View style={styles.proofItem}>
               <View style={styles.proofLeadIcon}><MaterialIcons name="volunteer-activism" size={18} color="#4953ac" /></View>
@@ -145,7 +155,7 @@ const TalentIdentityScreen = () => {
               </View>
               <TouchableOpacity><Text style={styles.viewProofText}>VIEW PROOF</Text></TouchableOpacity>
             </View>
-            
+
             <View style={styles.proofItem}>
               <View style={styles.proofLeadIcon}><MaterialIcons name="groups" size={18} color="#4953ac" /></View>
               <View style={{ flex: 1 }}>
@@ -194,17 +204,17 @@ const TalentIdentityScreen = () => {
           </View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.certScroll}>
             <View style={styles.certCard}>
-              <Image 
-                source={{ uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDeMp8KExPP-mtUke2kOSExXY2ZF0-KPSr4_BWISAEV96WQMjZ8c-gIN8N3MDVuNL3W9P2_QTb65_Gb1bjdLEqfql5syAODPJ8LX2PiNu4gT15Aa5_NiE57znpo1K5waCxyCC5oGtICTefR_R_YtqVaBM8u_bJp8nBmneBlPCkLW-FDAJEFU_VJrSE7KazdaU4cW2QJ7QRo-YUED9COkt-K6YA3QZrsOTsdzy4dr4_Pdh4gj6aVDhwuB7x3XKOzPxkBc24eqBNAMZnf' }} 
-                style={styles.certImg} 
+              <Image
+                source={{ uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDeMp8KExPP-mtUke2kOSExXY2ZF0-KPSr4_BWISAEV96WQMjZ8c-gIN8N3MDVuNL3W9P2_QTb65_Gb1bjdLEqfql5syAODPJ8LX2PiNu4gT15Aa5_NiE57znpo1K5waCxyCC5oGtICTefR_R_YtqVaBM8u_bJp8nBmneBlPCkLW-FDAJEFU_VJrSE7KazdaU4cW2QJ7QRo-YUED9COkt-K6YA3QZrsOTsdzy4dr4_Pdh4gj6aVDhwuB7x3XKOzPxkBc24eqBNAMZnf' }}
+                style={styles.certImg}
               />
               <Text style={styles.certName}>Cloud Foundations</Text>
               <Text style={styles.certIssuer}>Issued by AWS Academy • June 2024</Text>
             </View>
             <View style={styles.certCard}>
-              <Image 
-                source={{ uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCFxNwf4tljvU2VUw0hoE1MaYbT7rBYyYSN8DZsmFulMlYTRxq9XVsza7Ng0S5c_JtrU4OCXX7gY6VAdV87Dv6_UqlY9sBl8Jm52Z3ZUo1YYjTmuQI1QcuyIlny77qhXJvJA7d5zsC1LOFO6kjBJh9cFwYrupFj-gtmeFEFxBMExwb6ClkG16Q9VR1PMBUuNrExWGoLA5l9Bt_TAu2QHprIfZzE9ogRIW4ekHFeA4-QW7rhISgJoqcnmcOeZ0Vn891YbiFqPciNPBct' }} 
-                style={styles.certImg} 
+              <Image
+                source={{ uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCFxNwf4tljvU2VUw0hoE1MaYbT7rBYyYSN8DZsmFulMlYTRxq9XVsza7Ng0S5c_JtrU4OCXX7gY6VAdV87Dv6_UqlY9sBl8Jm52Z3ZUo1YYjTmuQI1QcuyIlny77qhXJvJA7d5zsC1LOFO6kjBJh9cFwYrupFj-gtmeFEFxBMExwb6ClkG16Q9VR1PMBUuNrExWGoLA5l9Bt_TAu2QHprIfZzE9ogRIW4ekHFeA4-QW7rhISgJoqcnmcOeZ0Vn891YbiFqPciNPBct' }}
+                style={styles.certImg}
               />
               <Text style={styles.certName}>Full Stack Dev</Text>
               <Text style={styles.certIssuer}>Invertis Venture Lab • Mar 2024</Text>
@@ -401,12 +411,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 16, paddingLeft: 20,
+    paddingRight: 20,
   },
   cardTitle: {
     fontSize: 18,
     fontWeight: '800',
     color: '#1F2937',
+
   },
   cardSubSub: {
     fontSize: 12,
@@ -639,6 +651,72 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#6B7280',
     marginTop: 4,
+  },
+  editPicBtn: {
+    backgroundColor: '#FFFFFF',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  networkStats: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+    gap: 8,
+  },
+  networkText: {
+    fontSize: 14,
+    color: '#3474ec',
+  },
+  networkBold: {
+    fontWeight: '800',
+  },
+  networkDivider: {
+    color: '#9CA3AF',
+    fontSize: 16,
+  },
+  aboutSection: {
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: 16,
+    marginTop: 16,
+    borderRadius: 24,
+    padding: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 2,
+  },
+  aboutHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  aboutTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#1F2937',
+  },
+  editBioBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#F3F4F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  aboutText: {
+    fontSize: 14,
+    color: '#4B5563',
+    lineHeight: 22,
   },
 });
 

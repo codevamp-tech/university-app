@@ -77,6 +77,20 @@ const TeacherSettingsScreen = ({ navigation }) => {
           icon: 'globe-outline' 
         },
       ]
+    },
+    {
+      title: 'SESSION',
+      items: [
+        { 
+          id: 'logout', 
+          label: 'Log Out', 
+          type: 'button',
+          icon: 'log-out-outline',
+          onPress: () => {
+            navigation.replace('Login');
+          }
+        },
+      ]
     }
   ];
 

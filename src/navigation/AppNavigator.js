@@ -9,6 +9,8 @@ import LoginScreen from '../screens/LoginScreen';
 // Tab Navigators
 import StudentTabs from './StudentTabs';
 import TeacherTabs from './TeacherTabs';
+import GuestTabs from './GuestTabs';
+import GuestOnboardingScreen from '../screens/guest/GuestOnboardingScreen';
 
 // Student standalone screens
 import PersonalInfoScreen from '../screens/student/PersonalInfoScreen';
@@ -19,8 +21,11 @@ import PrivacyScreen from '../screens/student/PrivacyScreen';
 import SmartCampusScreen from '../screens/student/SmartCampusScreen';
 import MarketplaceScreen from '../screens/student/MarketplaceScreen';
 import TheHustleScreen from '../screens/student/TheHustleScreen';
+import ERPTabs from './ERPTabs';
 import ChatScreen from '../screens/student/ChatScreen';
-
+import StudentSearchScreen from '../screens/student/StudentSearchScreen';
+import OtherStudentProfileScreen from '../screens/student/OtherStudentProfileScreen';
+import RaiseIssueScreen from '../screens/student/RaiseIssueScreen';
 
 // Teacher standalone screens
 import MarkAttendanceScreen from '../screens/teacher/MarkAttendanceScreen';
@@ -47,6 +52,10 @@ const AppNavigator = () => {
       {/* Student Main */}
       <Stack.Screen name="StudentMain" component={StudentTabs} options={{ animation: 'fade' }} />
 
+      {/* Guest Flow */}
+      <Stack.Screen name="GuestOnboarding" component={GuestOnboardingScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="GuestMain" component={GuestTabs} options={{ animation: 'fade' }} />
+
       {/* Student Profile Screens */}
       <Stack.Screen name="PersonalInfo" component={PersonalInfoScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="AcademicDetails" component={AcademicDetailsScreen} options={{ animation: 'slide_from_right' }} />
@@ -58,7 +67,11 @@ const AppNavigator = () => {
       <Stack.Screen name="SmartCampus" component={SmartCampusScreen} options={{ animation: 'fade' }} />
       <Stack.Screen name="Marketplace" component={MarketplaceScreen} options={{ animation: 'fade' }} />
       <Stack.Screen name="TheHustle" component={TheHustleScreen} options={{ animation: 'fade' }} />
+      <Stack.Screen name="ERPHub" component={ERPTabs} options={{ animation: 'fade' }} />
       <Stack.Screen name="Chat" component={ChatScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="StudentSearch" component={StudentSearchScreen} options={{ animation: 'fade', presentation: 'transparentModal' }} />
+      <Stack.Screen name="OtherStudentProfile" component={OtherStudentProfileScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="RaiseIssue" component={RaiseIssueScreen} options={{ animation: 'slide_from_bottom' }} />
 
       {/* Teacher Main */}
 

@@ -37,7 +37,7 @@ const DashboardScreen = ({ navigation }) => {
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        
+
         {/* Main User Card with Gradient */}
         <View style={styles.sectionContainer}>
           <LinearGradient
@@ -53,7 +53,7 @@ const DashboardScreen = ({ navigation }) => {
               </View>
               <MaterialCommunityIcons name="star-shooting-outline" size={32} color="#EA580C" style={{ opacity: 0.2 }} />
             </View>
-            
+
             {/* Stats Row */}
             <View style={styles.statsRow}>
               <LinearGradient colors={['#FFF7ED', '#FFEDD5']} style={styles.statPillOrange}>
@@ -82,7 +82,7 @@ const DashboardScreen = ({ navigation }) => {
         <View style={styles.sectionContainer}>
           <Text style={styles.moduleTitle}>Campus Launchpad</Text>
           <View style={styles.launchpadGrid}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.launchBtn}
               onPress={() => navigation.navigate('SmartCampus')}
             >
@@ -92,17 +92,17 @@ const DashboardScreen = ({ navigation }) => {
               <Text style={styles.launchText}>Smart Campus</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.launchBtn}
-              onPress={() => navigation.navigate('Marketplace')}
+              onPress={() => navigation.navigate('RaiseIssue')}
             >
-              <LinearGradient colors={['#EA580C', '#9A3412']} style={styles.launchIconBg}>
-                <MaterialCommunityIcons name="storefront-outline" size={24} color="#FFFFFF" />
+              <LinearGradient colors={['#FFD700', '#B8860B']} style={styles.launchIconBg}>
+                <MaterialCommunityIcons name="alert-circle-outline" size={24} color="#111827" />
               </LinearGradient>
-              <Text style={styles.launchText}>Invertis Hub</Text>
+              <Text style={styles.launchText}>Raise Issue</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.launchBtn}
               onPress={() => navigation.navigate('TheHustle')}
             >
@@ -112,14 +112,14 @@ const DashboardScreen = ({ navigation }) => {
               <Text style={styles.launchText}>The Hustle</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.launchBtn}
-              onPress={() => navigation.navigate('Chat')}
+              onPress={() => navigation.navigate('ERPHub')}
             >
               <LinearGradient colors={['#D97706', '#92400E']} style={styles.launchIconBg}>
-                <MaterialCommunityIcons name="chat-processing-outline" size={24} color="#FFFFFF" />
+                <MaterialCommunityIcons name="account-balance-wallet" size={24} color="#FFFFFF" />
               </LinearGradient>
-              <Text style={styles.launchText}>Channels</Text>
+              <Text style={styles.launchText}>ERP</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -134,7 +134,7 @@ const DashboardScreen = ({ navigation }) => {
               </View>
               <MaterialCommunityIcons name="heart-pulse" size={28} color="#EA580C" opacity={0.5} />
             </View>
-            
+
             <View style={styles.moodRow}>
               {[
                 { id: 0, icon: 'emoticon-excited-outline' },
@@ -142,7 +142,7 @@ const DashboardScreen = ({ navigation }) => {
                 { id: 2, icon: 'emoticon-neutral-outline' },
                 { id: 3, icon: 'emoticon-sad-outline' },
               ].map((mood) => (
-                <TouchableOpacity 
+                <TouchableOpacity
                   key={mood.id}
                   onPress={() => setActiveMood(mood.id)}
                 >
@@ -150,10 +150,10 @@ const DashboardScreen = ({ navigation }) => {
                     colors={activeMood === mood.id ? ['#F97316', '#EA580C'] : ['#F3F4F6', '#E5E7EB']}
                     style={[styles.moodIcon, activeMood === mood.id && styles.moodIconActive]}
                   >
-                    <MaterialCommunityIcons 
-                      name={mood.icon} 
-                      size={28} 
-                      color={activeMood === mood.id ? '#FFFFFF' : '#4B5563'} 
+                    <MaterialCommunityIcons
+                      name={mood.icon}
+                      size={28}
+                      color={activeMood === mood.id ? '#FFFFFF' : '#4B5563'}
                     />
                   </LinearGradient>
                 </TouchableOpacity>
@@ -188,7 +188,7 @@ const DashboardScreen = ({ navigation }) => {
               <MaterialCommunityIcons name="file-document-edit-outline" size={28} color="#EA580C" />
             </View>
             <Text style={styles.cardTitle}>AI Resume Builder</Text>
-            <Text style={styles.cardDesc}>Smart tailoring based on your 8.9 CGPA and technical skills.</Text>
+            <Text style={styles.cardDesc}>Smart tailoring based on your 8.9 CGPA and technical skills in Invertis labs.</Text>
             <TouchableOpacity style={styles.resumeBtn}>
               <Text style={styles.resumeBtnText}>Update Resume</Text>
               <MaterialIcons name="arrow-forward" size={16} color="#FFFFFF" style={{ marginLeft: 4 }} />
@@ -221,18 +221,136 @@ const DashboardScreen = ({ navigation }) => {
           </LinearGradient>
         </View>
 
+        {/* ========== SKILL GAP ANALYSIS ========== */}
+        <View style={styles.sectionContainer}>
+          <TouchableOpacity style={styles.skillGapCard}>
+            <View style={styles.skillGapHeader}>
+              <View style={styles.skillGapIconWrapper}>
+                <MaterialCommunityIcons name="chart-areaspline" size={24} color="#EA580C" />
+              </View>
+              <MaterialIcons name="chevron-right" size={24} color="#9CA3AF" />
+            </View>
+            <Text style={styles.skillGapTitle}>Skill Gap Analysis</Text>
+            <Text style={styles.skillGapDesc}>What's missing for FAANG?</Text>
+            <View style={styles.skillGapProgressSection}>
+              <View style={styles.skillProgressItem}>
+                <View style={styles.skillProgressHeader}>
+                  <Text style={styles.skillName}>DSA</Text>
+                  <Text style={styles.skillPercent}>65%</Text>
+                </View>
+                <View style={styles.progressBarBg}>
+                  <View style={[styles.progressBarFill, { width: '65%', backgroundColor: '#F59E0B' }]} />
+                </View>
+              </View>
+              <View style={styles.skillProgressItem}>
+                <View style={styles.skillProgressHeader}>
+                  <Text style={styles.skillName}>System Design</Text>
+                  <Text style={styles.skillPercent}>40%</Text>
+                </View>
+                <View style={styles.progressBarBg}>
+                  <View style={[styles.progressBarFill, { width: '40%', backgroundColor: '#EF4444' }]} />
+                </View>
+              </View>
+              <View style={styles.skillProgressItem}>
+                <View style={styles.skillProgressHeader}>
+                  <Text style={styles.skillName}>Cloud Computing</Text>
+                  <Text style={styles.skillPercent}>78%</Text>
+                </View>
+                <View style={styles.progressBarBg}>
+                  <View style={[styles.progressBarFill, { width: '78%', backgroundColor: '#10B981' }]} />
+                </View>
+              </View>
+            </View>
+            <TouchableOpacity style={styles.analyzeBtn}>
+              <Text style={styles.analyzeBtnText}>Deep Dive Analysis →</Text>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </View>
+
+        {/* ========== CAREER ROADMAP ========== */}
+        <View style={styles.sectionContainer}>
+          <View style={styles.roadmapHeader}>
+            <Text style={styles.roadmapTitle}>Career Roadmap</Text>
+            <Text style={styles.roadmapSubtitle}>Your projected path from Student to Senior Dev</Text>
+          </View>
+
+          <View style={styles.timelineContainer}>
+            {/* Year 1 */}
+            <View style={styles.timelineItem}>
+              <View style={styles.timelineDotWrapper}>
+                <LinearGradient colors={['#10B981', '#059669']} style={styles.timelineDot} />
+                <View style={styles.timelineLine} />
+              </View>
+              <LinearGradient colors={['#F0FDF4', '#DCFCE7']} style={styles.timelineCard}>
+                <Text style={styles.timelineYear}>YEAR 1: FOUNDATION</Text>
+                <Text style={styles.timelineCardTitle}>Build Core CS Fundamentals</Text>
+                <View style={styles.timelineTags}>
+                  <View style={styles.tag}><Text style={styles.tagText}>Python</Text></View>
+                  <View style={styles.tag}><Text style={styles.tagText}>DSA Basics</Text></View>
+                  <View style={styles.tag}><Text style={styles.tagText}>SQL</Text></View>
+                </View>
+              </LinearGradient>
+            </View>
+
+            {/* Year 2 */}
+            <View style={styles.timelineItem}>
+              <View style={styles.timelineDotWrapper}>
+                <LinearGradient colors={['#F59E0B', '#D97706']} style={styles.timelineDot} />
+                <View style={styles.timelineLine} />
+              </View>
+              <LinearGradient colors={['#FFFBEB', '#FEF3C7']} style={styles.timelineCard}>
+                <Text style={styles.timelineYear}>YEAR 2: INTERMEDIATE</Text>
+                <Text style={styles.timelineCardTitle}>Specialize & Build Projects</Text>
+                <View style={styles.timelineTags}>
+                  <View style={styles.tag}><Text style={styles.tagText}>Web Dev</Text></View>
+                  <View style={styles.tag}><Text style={styles.tagText}>DBMS</Text></View>
+                  <View style={styles.tag}><Text style={styles.tagText}>OS</Text></View>
+                </View>
+              </LinearGradient>
+            </View>
+
+            {/* Year 3 */}
+            <View style={styles.timelineItem}>
+              <View style={styles.timelineDotWrapper}>
+                <LinearGradient colors={['#3B82F6', '#2563EB']} style={styles.timelineDot} />
+                <View style={styles.timelineLine} />
+              </View>
+              <LinearGradient colors={['#EFF6FF', '#DBEAFE']} style={styles.timelineCard}>
+                <Text style={styles.timelineYear}>YEAR 3: ADVANCED</Text>
+                <Text style={styles.timelineCardTitle}>Internship & Open Source</Text>
+                <View style={styles.timelineTags}>
+                  <View style={styles.tag}><Text style={styles.tagText}>React/Node</Text></View>
+                  <View style={styles.tag}><Text style={styles.tagText}>Cloud</Text></View>
+                  <View style={styles.tag}><Text style={styles.tagText}>DevOps</Text></View>
+                </View>
+              </LinearGradient>
+            </View>
+
+            {/* Year 4: SPECIALIZATION (Active) */}
+            <View style={styles.timelineItem}>
+              <View style={styles.timelineDotWrapper}>
+                <LinearGradient colors={['#EA580C', '#9A3412']} style={[styles.timelineDot, styles.timelineDotActive]} />
+              </View>
+              <LinearGradient colors={['#FFF7ED', '#FFEDD5']} style={[styles.timelineCard, styles.timelineCardActive]}>
+                <View style={styles.activeBadge}>
+                  <Text style={styles.activeBadgeText}>CURRENT</Text>
+                </View>
+                <Text style={styles.timelineYear}>YEAR 4: SPECIALIZATION</Text>
+                <Text style={styles.timelineCardTitle}>Mastery & Placement Prep</Text>
+                <View style={styles.timelineTags}>
+                  <View style={[styles.tag, styles.tagActive]}><Text style={[styles.tagText, styles.tagTextActive]}>System Design</Text></View>
+                  <View style={[styles.tag, styles.tagActive]}><Text style={[styles.tagText, styles.tagTextActive]}>Advanced DSA</Text></View>
+                  <View style={[styles.tag, styles.tagActive]}><Text style={[styles.tagText, styles.tagTextActive]}>Leadership</Text></View>
+                </View>
+              </LinearGradient>
+            </View>
+          </View>
+        </View>
+
         <View style={{ height: 100 }} />
       </ScrollView>
 
-      {/* Floating Action Button */}
-      <TouchableOpacity style={styles.fab}>
-        <LinearGradient
-          colors={['#EA580C', '#9A3412']}
-          style={styles.fabInner}
-        >
-          <MaterialCommunityIcons name="message-plus" size={28} color="#FFFFFF" />
-        </LinearGradient>
-      </TouchableOpacity>
+
     </View>
   );
 };
@@ -667,6 +785,197 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 13,
     fontWeight: '800',
+  },
+  // Skill Gap Analysis Styles
+  skillGapCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 28,
+    padding: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 16,
+    elevation: 2,
+  },
+  skillGapHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  skillGapIconWrapper: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#FFF7ED',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  skillGapTitle: {
+    fontSize: 22,
+    fontWeight: '900',
+    color: '#111827',
+    marginBottom: 4,
+  },
+  skillGapDesc: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginBottom: 20,
+  },
+  skillGapProgressSection: {
+    gap: 16,
+    marginBottom: 24,
+  },
+  skillProgressItem: {
+    gap: 8,
+  },
+  skillProgressHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  skillName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#374151',
+  },
+  skillPercent: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#111827',
+  },
+  progressBarBg: {
+    height: 8,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  progressBarFill: {
+    height: '100%',
+    borderRadius: 4,
+  },
+  analyzeBtn: {
+    alignSelf: 'flex-start',
+    paddingVertical: 12,
+    paddingHorizontal: 0,
+  },
+  analyzeBtnText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#EA580C',
+  },
+  // Career Roadmap Styles
+  roadmapHeader: {
+    marginBottom: 20,
+    paddingHorizontal: 4,
+  },
+  roadmapTitle: {
+    fontSize: 22,
+    fontWeight: '900',
+    color: '#111827',
+  },
+  roadmapSubtitle: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginTop: 4,
+  },
+  timelineContainer: {
+    marginTop: 8,
+  },
+  timelineItem: {
+    flexDirection: 'row',
+    marginBottom: 16,
+  },
+  timelineDotWrapper: {
+    width: 40,
+    alignItems: 'center',
+    position: 'relative',
+  },
+  timelineDot: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    marginTop: 20,
+  },
+  timelineDotActive: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 4,
+    borderColor: '#FED7AA',
+  },
+  timelineLine: {
+    width: 2,
+    flex: 1,
+    backgroundColor: '#E5E7EB',
+    position: 'absolute',
+    top: 36,
+    bottom: -20,
+    left: '50%',
+    marginLeft: -1,
+  },
+  timelineCard: {
+    flex: 1,
+    borderRadius: 20,
+    padding: 16,
+    marginLeft: 8,
+    marginBottom: 8,
+  },
+  timelineCardActive: {
+    borderWidth: 2,
+    borderColor: '#EA580C',
+  },
+  timelineYear: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#6B7280',
+    letterSpacing: 1,
+    marginBottom: 8,
+  },
+  timelineCardTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#111827',
+    marginBottom: 12,
+  },
+  timelineTags: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  tag: {
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  tagActive: {
+    backgroundColor: '#EA580C',
+    borderColor: '#EA580C',
+  },
+  tagText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#4B5563',
+  },
+  tagTextActive: {
+    color: '#FFFFFF',
+  },
+  activeBadge: {
+    backgroundColor: '#EA580C',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+    alignSelf: 'flex-start',
+    marginBottom: 10,
+  },
+  activeBadgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
   },
   fab: {
     position: 'absolute',

@@ -2,7 +2,6 @@
   "expo": {
     "name": "Invertis University",
     "slug": "invertis-university",
-
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -16,7 +15,6 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.invertis.university"
-
     },
     "android": {
       "adaptiveIcon": {
@@ -24,11 +22,15 @@
         "backgroundColor": "#F0F4FF"
       },
       "package": "com.invertis.university",
-
       "edgeToEdgeEnabled": true
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "099af92f-eeca-4b11-8330-4c3a8c7f84d3"
+      }
     }
   }
 }

@@ -38,12 +38,12 @@ const LoginScreen = ({ navigation }) => {
   };
 
   const handleGuest = () => {
-    navigation.replace('StudentMain');
+    navigation.replace('GuestOnboarding');
   };
 
   return (
     <LinearGradient
-      colors={['#e0e5ff', '#f6e5ff', '#ffffff', '#ffffff', '#ffffff']}
+      colors={['#ffedd5', '#fff7ed', '#ffffff', '#ffffff', '#ffffff']}
       locations={[0, 0.3, 0.55, 0.8, 1]}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
@@ -253,7 +253,7 @@ const styles = StyleSheet.create({
   forgotLink: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#8B2FC9',
+    color: '#4338CA',
     letterSpacing: 0.5,
   },
   input: {
@@ -265,7 +265,7 @@ const styles = StyleSheet.create({
     borderBottomColor: '#E5E7EB',
   },
   signInButton: {
-    backgroundColor: '#8B2FC9',
+    backgroundColor: '#EA580C',
     borderRadius: 999,
     paddingVertical: 16,
     alignItems: 'center',
@@ -297,13 +297,13 @@ const styles = StyleSheet.create({
   },
   guestButton: {
     borderWidth: 1,
-    borderColor: '#8B2FC9',
+    borderColor: '#EA580C',
     borderRadius: 999,
     paddingVertical: 16,
     alignItems: 'center',
   },
   guestButtonText: {
-    color: '#8B2FC9',
+    color: '#EA580C',
     fontSize: 16,
     fontWeight: '600',
     letterSpacing: 0.3,
@@ -315,7 +315,7 @@ const styles = StyleSheet.create({
   },
   enrollmentLink: {
     fontSize: 14,
-    color: '#8B2FC9',
+    color: '#4338CA',
     fontWeight: '500',
     textDecorationLine: 'underline',
     marginBottom: 20,

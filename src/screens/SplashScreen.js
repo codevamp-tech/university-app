@@ -69,7 +69,7 @@ const SplashScreen = ({ navigation }) => {
       <Animated.View style={{ opacity: textAnim }}>
         <Text style={styles.appName}>
           <Text style={styles.appNameDark}>INVERTIS </Text>
-          <Text style={styles.appNameBlue}>UNIVERSITY</Text>
+          <Text style={styles.appNameAccent}>UNIVERSITY</Text>
         </Text>
 
         <Text style={styles.tagline}>UNIVERSITY PORTAL</Text>
@@ -89,7 +89,7 @@ const SplashScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F7FF',
+    backgroundColor: '#F9FAFB',
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 32,
@@ -104,7 +104,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.white,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: Colors.primary,
+    shadowColor: '#EA580C',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.2,
     shadowRadius: 20,
@@ -114,7 +114,7 @@ const styles = StyleSheet.create({
     width: 78,
     height: 78,
     borderRadius: 20,
-    backgroundColor: Colors.primary,
+    backgroundColor: '#EA580C',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -127,8 +127,8 @@ const styles = StyleSheet.create({
     color: Colors.textPrimary,
     fontWeight: '900',
   },
-  appNameBlue: {
-    color: Colors.primary,
+  appNameAccent: {
+    color: '#EA580C',
     fontWeight: '900',
   },
   tagline: {
@@ -152,7 +152,7 @@ const styles = StyleSheet.create({
   },
   progressFill: {
     height: 4,
-    backgroundColor: Colors.primary,
+    backgroundColor: '#EA580C',
     borderRadius: 2,
   },
   preparingText: {

@@ -106,6 +106,20 @@ const SettingsScreen = ({ navigation }) => {
         </View>
 
         <View style={styles.section}>
+          <Text style={styles.sectionTitle}>SESSION</Text>
+          <View style={styles.card}>
+            <SettingItem 
+              icon="log-out-outline" 
+              label="Log Out" 
+              type="danger" 
+              onPress={() => {
+                navigation.replace('Login');
+              }}
+            />
+          </View>
+        </View>
+
+        <View style={styles.section}>
           <Text style={styles.sectionTitle}>DANGER ZONE</Text>
           <View style={styles.card}>
             <SettingItem 

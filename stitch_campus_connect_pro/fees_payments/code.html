@@ -1,0 +1,314 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Academic Agora - Fees &amp; Payments</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "secondary-fixed": "#cbceff",
+                    "on-secondary-fixed-variant": "#3e47a0",
+                    "surface-dim": "#d1d5d7",
+                    "on-tertiary": "#bbfffe",
+                    "surface-container-high": "#e0e3e4",
+                    "on-primary-fixed-variant": "#592e00",
+                    "primary-fixed": "#fe9832",
+                    "on-error-container": "#520c00",
+                    "outline": "#757778",
+                    "surface": "#f5f6f7",
+                    "on-primary-fixed": "#291200",
+                    "surface-bright": "#f5f6f7",
+                    "surface-container-low": "#eff1f2",
+                    "surface-container-lowest": "#ffffff",
+                    "primary-dim": "#7a4100",
+                    "surface-tint": "#8b4b00",
+                    "primary-container": "#fe9832",
+                    "on-secondary-fixed": "#1f2882",
+                    "on-surface": "#2c2f30",
+                    "tertiary": "#006666",
+                    "on-secondary-container": "#343d96",
+                    "secondary-container": "#cbceff",
+                    "inverse-surface": "#0c0f10",
+                    "error-dim": "#b92902",
+                    "on-error": "#ffefec",
+                    "primary": "#8b4b00",
+                    "surface-variant": "#dadddf",
+                    "inverse-primary": "#fe9832",
+                    "on-surface-variant": "#595c5d",
+                    "surface-container": "#e6e8ea",
+                    "on-primary-container": "#4d2700",
+                    "secondary-dim": "#3d469f",
+                    "outline-variant": "#abadae",
+                    "error-container": "#f95630",
+                    "on-background": "#2c2f30",
+                    "on-tertiary-fixed-variant": "#006262",
+                    "tertiary-fixed-dim": "#7fdede",
+                    "inverse-on-surface": "#9b9d9e",
+                    "secondary-fixed-dim": "#babfff",
+                    "on-secondary": "#f3f1ff",
+                    "tertiary-dim": "#005959",
+                    "error": "#b02500",
+                    "secondary": "#4953ac",
+                    "background": "#f5f6f7",
+                    "tertiary-container": "#8dedec",
+                    "tertiary-fixed": "#8dedec",
+                    "primary-fixed-dim": "#ed8b24",
+                    "on-primary": "#fff0e6",
+                    "on-tertiary-container": "#005858",
+                    "on-tertiary-fixed": "#004343",
+                    "surface-container-highest": "#dadddf"
+            },
+            "borderRadius": {
+                    "DEFAULT": "1rem",
+                    "lg": "2rem",
+                    "xl": "3rem",
+                    "full": "9999px"
+            },
+            "fontFamily": {
+                    "headline": ["Plus Jakarta Sans"],
+                    "body": ["Inter"],
+                    "label": ["Inter"]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body { font-family: 'Inter', sans-serif; }
+        h1, h2, h3 { font-family: 'Plus Jakarta Sans', sans-serif; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface text-on-surface min-h-screen pb-24">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 bg-white/80 backdrop-blur-xl shadow-sm shadow-indigo-900/5 px-6 h-16 flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full overflow-hidden bg-surface-container-high border-2 border-primary-container">
+<img class="w-full h-full object-cover" data-alt="professional portrait of a south asian student with short dark hair in a clean university setting with soft warm lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBmQp3wM3TZpu_BWnAYwNap8sUsP0cq4D9v96D_K1aClrsKLyGLr0LlvDXqWfZXZ_RXOtgAQFYgOI7pVz3dMK4xCw9DcQtRTfPO3Ymb1IaJG38tvDoS3GXEQrGoWMDXEm88kY9wJy2vkQU9t9OyagD4Lw9uuKJZq1AGZ9i0oilZctUS6B1WKnEfF4RKfM8VYtkNWlsp28BcaCWZG_sqOfBhfE48kWz0Tf1jBN2xJ9ZZNaXhxkPyHsCevu_YOqalnUCHxbHP8EgwO0U9" style="">
+</div>
+<span class="text-xl font-black text-indigo-900 tracking-tight" style="">Fee &amp; Payment<br></span>
+</div>
+<button class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-orange-50 transition-colors active:scale-95 duration-200" style="">
+<span class="material-symbols-outlined text-slate-500" style="">notifications</span>
+</button>
+</header>
+<main class="pt-24 px-6 max-w-5xl mx-auto space-y-8">
+<!-- Hero Section: Total Outstanding -->
+<section class="relative overflow-hidden rounded-xl bg-gradient-to-br from-primary to-primary-fixed p-8 text-on-primary shadow-xl shadow-orange-500/20">
+<div class="relative z-10 flex flex-col md:flex-row md:items-end justify-between gap-6">
+<div>
+<span class="text-xs font-bold uppercase tracking-widest opacity-80 mb-2 block" style="">Outstanding Dues</span>
+<h1 class="text-4xl md:text-5xl font-black tracking-tighter mb-1" style="">₹ 48,500</h1>
+<p class="text-sm opacity-90 font-medium" style="">Academic Year 2024-25 | VII Semester</p>
+</div>
+<div class="flex flex-col sm:flex-row gap-3">
+<button class="bg-white text-primary px-8 py-3 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg hover:scale-[1.02] active:scale-95 transition-all" style="">
+<span class="material-symbols-outlined" style="">payments</span>
+                        Pay Now
+                    </button>
+<button class="bg-primary-dim/30 backdrop-blur-md text-white border border-white/20 px-6 py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-primary-dim/50 transition-all" style="">
+<span class="material-symbols-outlined" style="">download</span>
+                        Full Ledger
+                    </button>
+</div>
+</div>
+<div class="absolute -right-12 -top-12 w-64 h-64 bg-white/10 rounded-full blur-3xl"></div>
+</section>
+<!-- Bento Grid: Fee Breakdown -->
+<section class="grid grid-cols-1 md:grid-cols-3 gap-6">
+<!-- Semester Fees -->
+<div class="md:col-span-2 bg-surface-container-lowest rounded-xl p-6 shadow-sm border border-transparent hover:shadow-md transition-shadow">
+<div class="flex justify-between items-start mb-8">
+<div>
+<h3 class="text-xl font-extrabold text-secondary tracking-tight" style="">Semester Fees</h3>
+<p class="text-sm text-on-surface-variant" style="">B.Tech Computer Science Engineering</p>
+</div>
+<span class="bg-error-container text-on-error-container px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider" style="">Pending</span>
+</div>
+<div class="space-y-4">
+<div class="flex justify-between items-center p-4 bg-surface-container-low rounded-lg">
+<div>
+<p class="font-bold text-on-surface" style="">Tuition Fee</p>
+<p class="text-xs text-on-surface-variant" style="">Due Date: 15 Aug 2024</p>
+</div>
+<p class="text-lg font-black text-secondary" style="">₹ 42,000</p>
+</div>
+<div class="flex justify-between items-center p-4 bg-surface-container-low rounded-lg">
+<div>
+<p class="font-bold text-on-surface" style="">Development Fee</p>
+<p class="text-xs text-on-surface-variant" style="">Mandatory annual component</p>
+</div>
+<p class="text-lg font-black text-secondary" style="">₹ 6,500</p>
+</div>
+</div>
+</div>
+<!-- Hostel & Exam -->
+<div class="flex flex-col gap-6">
+<div class="bg-tertiary-container/30 rounded-xl p-6 border-b-4 border-tertiary shadow-sm">
+<div class="flex justify-between items-start mb-4">
+<h3 class="text-lg font-bold text-tertiary" style="">Hostel Fee</h3>
+<span class="bg-tertiary text-on-tertiary px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-tighter" style="">Paid</span>
+</div>
+<p class="text-2xl font-black text-tertiary" style="">₹ 35,000</p>
+<p class="text-xs text-tertiary/70 mt-1" style="">Himalaya Hostel - Room 302</p>
+</div>
+<div class="bg-surface-container-lowest rounded-xl p-6 shadow-sm border border-transparent">
+<div class="flex justify-between items-start mb-4">
+<h3 class="text-lg font-bold text-secondary" style="">Exam Fees</h3>
+<span class="bg-secondary-container text-on-secondary-container px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-tighter" style="">Paid</span>
+</div>
+<p class="text-2xl font-black text-secondary" style="">₹ 2,500</p>
+<p class="text-xs text-on-surface-variant mt-1" style="">Odd Sem 2024 (Reg)</p>
+</div>
+</div>
+</section>
+<!-- Payment Methods (Pulse Exclusive) -->
+<section class="bg-surface-container rounded-xl p-8">
+<h2 class="text-2xl font-black text-on-surface mb-6 flex items-center gap-2" style="">
+<span class="material-symbols-outlined text-primary" style="">account_balance_wallet</span>
+                Quick Pay Integration
+            </h2>
+<div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+<button class="bg-surface-container-lowest p-4 rounded-xl flex flex-col items-center gap-3 hover:bg-orange-50 transition-colors group" style="">
+<div class="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-slate-600" style="">qr_code_2</span>
+</div>
+<span class="text-xs font-bold text-on-surface-variant" style="">UPI Apps</span>
+</button>
+<button class="bg-surface-container-lowest p-4 rounded-xl flex flex-col items-center gap-3 hover:bg-orange-50 transition-colors group" style="">
+<div class="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-slate-600" style="">account_balance</span>
+</div>
+<span class="text-xs font-bold text-on-surface-variant" style="">Net Banking</span>
+</button>
+<button class="bg-surface-container-lowest p-4 rounded-xl flex flex-col items-center gap-3 hover:bg-orange-50 transition-colors group" style="">
+<div class="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-slate-600" style="">credit_card</span>
+</div>
+<span class="text-xs font-bold text-on-surface-variant" style="">Debit/Credit</span>
+</button>
+<button class="bg-surface-container-lowest p-4 rounded-xl flex flex-col items-center gap-3 hover:bg-orange-50 transition-colors group" style="">
+<div class="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-slate-600" style="">history_edu</span>
+</div>
+<span class="text-xs font-bold text-on-surface-variant" style="">Bank Challan</span>
+</button>
+</div>
+</section>
+<!-- Transaction History (Editorial Style) -->
+<section class="space-y-6">
+<div class="flex items-center justify-between">
+<h2 class="text-2xl font-black text-indigo-900" style="">Recent Transactions</h2>
+<button class="text-primary font-bold text-sm hover:underline" style="">View All</button>
+</div>
+<div class="space-y-4">
+<!-- Transaction Item -->
+<div class="bg-white p-5 rounded-xl flex items-center justify-between hover:bg-slate-50 transition-colors shadow-sm">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-full bg-orange-100 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined" style="font-variation-settings: &quot;FILL&quot; 1;">receipt_long</span>
+</div>
+<div>
+<h4 class="font-bold text-on-surface" style="">Hostel Admission Fee</h4>
+<p class="text-xs text-on-surface-variant" style="">Transaction ID: #INV-982341 | 12 Jul 2024</p>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<div class="text-right">
+<p class="text-lg font-black text-secondary" style="">₹ 35,000</p>
+<span class="text-[10px] font-bold text-tertiary uppercase" style="">Success</span>
+</div>
+<button class="w-10 h-10 rounded-full border border-slate-200 flex items-center justify-center hover:bg-slate-100 active:scale-90 transition-all" style="">
+<span class="material-symbols-outlined text-slate-500 text-sm" style="">download</span>
+</button>
+</div>
+</div>
+<!-- Transaction Item -->
+<div class="bg-white p-5 rounded-xl flex items-center justify-between hover:bg-slate-50 transition-colors shadow-sm">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-400">
+<span class="material-symbols-outlined" style="font-variation-settings: &quot;FILL&quot; 1;">grade</span>
+</div>
+<div>
+<h4 class="font-bold text-on-surface" style="">Carry Over Exam Fee</h4>
+<p class="text-xs text-on-surface-variant" style="">Transaction ID: #INV-982105 | 05 Jun 2024</p>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<div class="text-right">
+<p class="text-lg font-black text-secondary" style="">₹ 1,500</p>
+<span class="text-[10px] font-bold text-tertiary uppercase" style="">Success</span>
+</div>
+<button class="w-10 h-10 rounded-full border border-slate-200 flex items-center justify-center hover:bg-slate-100 active:scale-90 transition-all" style="">
+<span class="material-symbols-outlined text-slate-500 text-sm" style="">download</span>
+</button>
+</div>
+</div>
+</div>
+</section>
+<!-- Campus Info (Localized) -->
+<footer class="bg-indigo-900 rounded-[2.5rem] p-10 text-white mt-12 mb-20 relative overflow-hidden">
+<div class="relative z-10 grid grid-cols-1 md:grid-cols-2 gap-10 items-center">
+<div>
+<h2 class="text-3xl font-black mb-4" style="">Invertis University</h2>
+<p class="text-indigo-100 opacity-80 mb-6 leading-relaxed" style="">
+                        NH-24, Bareilly-Lucknow Highway, <br>
+                        Bareilly, Uttar Pradesh 243123 <br>
+                        Contact: +91 0581-2460442
+                    </p>
+<div class="flex gap-4">
+<div class="flex flex-col">
+<span class="text-xs font-bold uppercase text-orange-400" style="">Finance Helpdesk</span>
+<span class="font-medium" style="">finance@invertis.org</span>
+</div>
+<div class="w-[1px] bg-white/20"></div>
+<div class="flex flex-col">
+<span class="text-xs font-bold uppercase text-orange-400" style="">Timing</span>
+<span class="font-medium" style="">09:00 AM - 04:30 PM</span>
+</div>
+</div>
+</div>
+<div class="rounded-2xl overflow-hidden h-48 md:h-64 shadow-2xl">
+<img class="w-full h-full object-cover" data-alt="modern university campus building with traditional brick architecture and green gardens in Bareilly under a bright afternoon sky" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCw_rgdZOJWH3yU47o9CIvc9iKsXU-LpGaXHVo4q4k4sZQK9LaSroEXvcX0PxwNhZ2HnbQXM3GNvDhwJmNRS6-NlgsVP3YeSWKmHCBjqrP2O5AlPCEUSTOoU0wxTkcyCNl9wVinwLh5K8Q40SJ2EqXCxa3Jkox4BIQuAbd_JmnhOLk_s2fmxGb27m2OMRCX_hKFUYzbnMCkLPTT3lOB-be3CwF9UBvJCbdnfZGM6_SXypNz1e7WNuRuUoBnN5saykmMM6jDRHN-uGmU" style="">
+</div>
+</div>
+<div class="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-orange-500 via-white to-orange-500"></div>
+</footer>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 pb-6 pt-3 bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl shadow-[0_-8px_32px_rgba(0,0,0,0.06)]">
+<a class="flex flex-col items-center justify-center text-slate-400 px-5 py-2 hover:text-orange-500 transition-colors active:scale-90 duration-300" href="#" style="">
+<span class="material-symbols-outlined" style="">home</span>
+<span class="font-['Inter'] text-[11px] font-semibold uppercase tracking-wider mt-1" style="">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-slate-400 px-5 py-2 hover:text-orange-500 transition-colors active:scale-90 duration-300" href="#" style="">
+<span class="material-symbols-outlined" style="">confirmation_number</span>
+<span class="font-['Inter'] text-[11px] font-semibold uppercase tracking-wider mt-1" style="">Outpass</span>
+</a>
+<a class="flex flex-col items-center justify-center text-slate-400 px-5 py-2 hover:text-orange-500 transition-colors active:scale-90 duration-300" href="#" style="">
+<span class="material-symbols-outlined" style="">directions_bus</span>
+<span class="font-['Inter'] text-[11px] font-semibold uppercase tracking-wider mt-1" style="">Bus</span>
+</a>
+<a class="flex flex-col items-center justify-center text-slate-400 px-5 py-2 hover:text-orange-500 transition-colors active:scale-90 duration-300" href="#" style="">
+<span class="material-symbols-outlined" style="">local_library</span>
+<span class="font-['Inter'] text-[11px] font-semibold uppercase tracking-wider mt-1" style="">Library</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-orange-100 text-orange-600 rounded-full px-5 py-2 active:scale-90 transition-transform duration-300 cubic-bezier(0.34,1.56,0.64,1)" href="#" style="">
+<span class="material-symbols-outlined" style="font-variation-settings: &quot;FILL&quot; 1;">account_balance_wallet</span>
+<span class="font-['Inter'] text-[11px] font-semibold uppercase tracking-wider mt-1" style="">ERP</span>
+</a>
+</nav>
+</body></html>

@@ -12,28 +12,28 @@ const slides = [
   {
     id: '1',
     title: 'Track Attendance',
-    titleBlue: 'Easily.',
+    titleAccent: 'Easily.',
     description: 'Manage your classroom presence with a single tap. Stay focused on your learning while we handle the rest.',
     icon: 'checkbox-outline',
-    iconBg: '#3474ec',
+    iconBg: '#EA580C',
     badge: { label: 'STATUS', value: 'Present', icon: 'checkmark-circle' },
   },
   {
     id: '2',
     title: 'Manage Fees &',
-    titleBlue: 'Results',
+    titleAccent: 'Results',
     description: 'Keep track of your academic standing and financial commitments in one streamlined interface.',
     icon: 'card-outline',
-    iconBg: '#3474ec',
+    iconBg: '#EA580C',
     badge: { label: 'FINAL GPA', value: '3.92', icon: 'stats-chart' },
   },
   {
     id: '3',
     title: 'Stay Updated with',
-    titleBlue: 'Notifications',
+    titleAccent: 'Notifications',
     description: 'Get real-time updates on your grades, schedule changes, and important campus announcements.',
     icon: 'notifications-outline',
-    iconBg: '#3474ec',
+    iconBg: '#EA580C',
     badge: null,
     lastSlide: true,
   },
@@ -59,7 +59,7 @@ const OnboardingScreen = ({ navigation }) => {
 
   return (
     <LinearGradient
-      colors={['#c4ccff', '#b6c0ff', '#eef1ff', '#e0e5ff', '#d2d9ff',]}
+      colors={['#ffedd5', '#fff7ed', '#f9fafb', '#f9fafb', '#f9fafb']}
       locations={[0, 0.3, 0.55, 0.8, 1]}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
@@ -75,7 +75,7 @@ const OnboardingScreen = ({ navigation }) => {
         <View style={styles.illustrationCard}>
           <View style={styles.iconContainer}>
             <View style={styles.iconCircle}>
-              <Ionicons name={slide.icon} size={64} color="#3474ec" />
+              <Ionicons name={slide.icon} size={64} color="#EA580C" />
             </View>
           </View>
 
@@ -95,7 +95,7 @@ const OnboardingScreen = ({ navigation }) => {
             <View style={styles.notifStack}>
               <View style={styles.notifItem}>
                 <View style={styles.notifIcon}>
-                  <Ionicons name="notifications-outline" size={20} color="#3474ec" />
+                  <Ionicons name="notifications-outline" size={20} color="#EA580C" />
                 </View>
                 <View style={styles.notifLines}>
                   <View style={styles.notifLine} />
@@ -113,7 +113,7 @@ const OnboardingScreen = ({ navigation }) => {
               </View>
               <View style={styles.notifItem}>
                 <View style={styles.notifIcon}>
-                  <Ionicons name="calendar-outline" size={20} color="#3474ec" />
+                  <Ionicons name="calendar-outline" size={20} color="#EA580C" />
                 </View>
                 <View style={styles.notifLines}>
                   <View style={styles.notifLine} />
@@ -129,7 +129,7 @@ const OnboardingScreen = ({ navigation }) => {
       <View style={styles.content}>
         <Text style={styles.title}>
           {slide.title}{'\n'}
-          <Text style={styles.titleBlue}>{slide.titleBlue}</Text>
+          <Text style={styles.titleAccent}>{slide.titleAccent}</Text>
         </Text>
         <Text style={styles.description}>{slide.description}</Text>
 
@@ -208,7 +208,7 @@ const styles = StyleSheet.create({
     width: 110,
     height: 110,
     borderRadius: 20,
-    backgroundColor: '#3474ec20',
+    backgroundColor: '#EA580C20',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -231,14 +231,14 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#3474ec',
+    backgroundColor: '#EA580C',
     alignItems: 'center',
     justifyContent: 'center',
   },
   badgeLabel: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#3474ec',
+    color: '#EA580C',
     letterSpacing: 0.5,
   },
   badgeValue: {
@@ -265,13 +265,13 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   notifItemActive: {
-    backgroundColor: '#3474ec',
+    backgroundColor: '#EA580C',
   },
   notifIcon: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#3474ec20',
+    backgroundColor: '#EA580C20',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -301,8 +301,8 @@ const styles = StyleSheet.create({
     lineHeight: 40,
     marginBottom: 14,
   },
-  titleBlue: {
-    color: '#3474ec',
+  titleAccent: {
+    color: '#EA580C',
   },
   description: {
     fontSize: 15,
@@ -325,16 +325,16 @@ const styles = StyleSheet.create({
   },
   dotActive: {
     width: 28,
-    backgroundColor: '#3474ec',
+    backgroundColor: '#EA580C',
   },
   primaryBtn: {
-    backgroundColor: '#3474ec',
+    backgroundColor: '#EA580C',
     borderRadius: 16,
     paddingVertical: 16,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#3474ec',
+    shadowColor: '#EA580C',
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.3,
     shadowRadius: 12,
