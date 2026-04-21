@@ -2,12 +2,13 @@ import React from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import { DEPT_STREAMS } from '../../constants/data';
 
 const FACULTY_ACTIVITIES = [
-  { id: '1', name: 'Dr. Ananya Ray', action: 'Published 2 new assignments for 3rd Year AI course.', time: '10 mins ago', color: '#8b2fc9' },
+  { id: '1', name: 'Dr. Ananya Ray', action: 'Published 2 new assignments for 3rd Year AI course.', time: '10 mins ago', color: '#EA580C' },
   { id: '2', name: 'Prof. Vikram Singh', action: 'Marked mid-term attendance for CSE-A.', time: '45 mins ago', color: '#F59E0B' },
   { id: '3', name: 'Sarah Jenkins (TA)', action: 'Uploaded Lab Manual v2.1 to Student Portal.', time: '2 hours ago', color: '#10B981' },
 ];
@@ -23,16 +24,29 @@ const DepartmentOverviewScreen = ({ navigation }) => {
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       {/* Header */}
-      <View style={styles.header}>
+      <LinearGradient
+        colors={['#FFFFFF', '#F9FAFB']}
+        style={styles.header}
+      >
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={22} color="#111827" />
+          <LinearGradient
+            colors={['#FFF7ED', '#FFEDD5']}
+            style={styles.backButtonBg}
+          >
+            <Ionicons name="arrow-back" size={20} color="#EA580C" />
+          </LinearGradient>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Dept. Overview</Text>
         <TouchableOpacity style={styles.bellBtn}>
-          <Ionicons name="notifications-outline" size={20} color="#111827" />
-          <View style={styles.bellBadge} />
+          <LinearGradient
+            colors={['#FFFFFF', '#F9FAFB']}
+            style={styles.bellGradient}
+          >
+            <Ionicons name="notifications-outline" size={20} color="#EA580C" />
+            <View style={styles.bellBadge} />
+          </LinearGradient>
         </TouchableOpacity>
-      </View>
+      </LinearGradient>
 
       <ScrollView
         contentContainerStyle={styles.scroll}
@@ -40,43 +54,71 @@ const DepartmentOverviewScreen = ({ navigation }) => {
       >
         {/* Page Title */}
         <View style={styles.titleSection}>
-          <Text style={styles.pageBadge}>CSE DEPARTMENT</Text>
+          <LinearGradient
+            colors={['#FFF7ED', '#FFEDD5']}
+            style={styles.pageBadge}
+          >
+            <Text style={styles.pageBadgeText}>CSE DEPARTMENT</Text>
+          </LinearGradient>
           <Text style={styles.pageTitle}>Computer Science & Engineering</Text>
           <Text style={styles.pageSubtitle}>B.Tech Program • 2023-24</Text>
           <TouchableOpacity style={styles.reportBtn} activeOpacity={0.85}>
-            <Ionicons name="download-outline" size={16} color="#FFFFFF" />
-            <Text style={styles.reportBtnText}>Generate Report</Text>
+            <LinearGradient
+              colors={['#EA580C', '#9A3412']}
+              style={styles.reportBtnGradient}
+            >
+              <Ionicons name="download-outline" size={16} color="#FFFFFF" />
+              <Text style={styles.reportBtnText}>Generate Report</Text>
+            </LinearGradient>
           </TouchableOpacity>
         </View>
 
         {/* Stats Grid */}
         <View style={styles.statsGrid}>
-          <View style={styles.statCard}>
-            <View style={[styles.statIcon, { backgroundColor: '#8b2fc910' }]}>
-              <Ionicons name="people-outline" size={22} color="#8b2fc9" />
-            </View>
+          <LinearGradient
+            colors={['#FFFFFF', '#F9FAFB']}
+            style={styles.statCard}
+          >
+            <LinearGradient
+              colors={['#FFF7ED', '#FFEDD5']}
+              style={styles.statIcon}
+            >
+              <Ionicons name="people-outline" size={22} color="#EA580C" />
+            </LinearGradient>
             <Text style={styles.statLabel}>TOTAL STUDENTS</Text>
             <Text style={styles.statValue}>1,248</Text>
             <Text style={styles.statSub}>+12 from last semester</Text>
-          </View>
+          </LinearGradient>
 
-          <View style={styles.statCard}>
-            <View style={[styles.statIcon, { backgroundColor: '#F59E0B10' }]}>
+          <LinearGradient
+            colors={['#FFFFFF', '#F9FAFB']}
+            style={styles.statCard}
+          >
+            <LinearGradient
+              colors={['#FFFBEB', '#FEF3C7']}
+              style={[styles.statIcon, { backgroundColor: '#F59E0B10' }]}
+            >
               <Ionicons name="person-outline" size={22} color="#F59E0B" />
-            </View>
+            </LinearGradient>
             <Text style={styles.statLabel}>FACULTY COUNT</Text>
             <Text style={styles.statValue}>42</Text>
             <Text style={styles.statSub}>8 Ph.D holders</Text>
-          </View>
+          </LinearGradient>
 
-          <View style={styles.statCard}>
-            <View style={[styles.statIcon, { backgroundColor: '#EF444410' }]}>
+          <LinearGradient
+            colors={['#FFFFFF', '#F9FAFB']}
+            style={styles.statCard}
+          >
+            <LinearGradient
+              colors={['#FEF2F2', '#FEE2E2']}
+              style={[styles.statIcon, { backgroundColor: '#EF444410' }]}
+            >
               <Ionicons name="bar-chart-outline" size={22} color="#EF4444" />
-            </View>
+            </LinearGradient>
             <Text style={styles.statLabel}>AVG. ATTENDANCE</Text>
             <Text style={styles.statValue}>88.4%</Text>
             <Text style={styles.statSub}>Needs attention in 2nd Year</Text>
-          </View>
+          </LinearGradient>
         </View>
 
         {/* Academic Streams */}
@@ -88,12 +130,19 @@ const DepartmentOverviewScreen = ({ navigation }) => {
         </View>
 
         {DEPT_STREAMS.map((stream) => (
-          <View key={stream.id} style={styles.streamCard}>
+          <LinearGradient
+            key={stream.id}
+            colors={['#FFFFFF', '#F9FAFB']}
+            style={styles.streamCard}
+          >
             <View style={styles.streamHeader}>
               <Text style={styles.streamYear}>{stream.year}</Text>
-              <View style={[styles.statusBadge, { backgroundColor: stream.statusColor + '10' }]}>
+              <LinearGradient
+                colors={[stream.statusColor + '15', stream.statusColor + '08']}
+                style={styles.statusBadge}
+              >
                 <Text style={[styles.statusText, { color: stream.statusColor }]}>{stream.status}</Text>
-              </View>
+              </LinearGradient>
             </View>
 
             {stream.sections.map((sec, i) => (
@@ -116,26 +165,38 @@ const DepartmentOverviewScreen = ({ navigation }) => {
                 <Text style={styles.streamAlertText}>{stream.alert}</Text>
               </View>
             )}
-          </View>
+          </LinearGradient>
         ))}
 
         {/* Dept. Alerts */}
         <View style={styles.alertsSection}>
           <View style={styles.alertsHeader}>
-            <Ionicons name="warning-outline" size={18} color="#F59E0B" />
+            <LinearGradient
+              colors={['#FFFBEB', '#FEF3C7']}
+              style={styles.alertsIconWrapper}
+            >
+              <Ionicons name="warning-outline" size={16} color="#F59E0B" />
+            </LinearGradient>
             <Text style={styles.alertsTitle}>Department Alerts</Text>
           </View>
 
           {DEPT_ALERTS.map((alert) => (
-            <View key={alert.id} style={styles.alertCard}>
-              <View style={[styles.alertIcon, { backgroundColor: alert.color + '10' }]}>
+            <LinearGradient
+              key={alert.id}
+              colors={['#FFFFFF', '#F9FAFB']}
+              style={styles.alertCard}
+            >
+              <LinearGradient
+                colors={[alert.color + '15', alert.color + '08']}
+                style={styles.alertIcon}
+              >
                 <Ionicons name={alert.icon} size={18} color={alert.color} />
-              </View>
+              </LinearGradient>
               <View style={styles.alertContent}>
                 <Text style={[styles.alertType, { color: alert.color }]}>{alert.type}</Text>
                 <Text style={styles.alertDesc}>{alert.desc}</Text>
               </View>
-            </View>
+            </LinearGradient>
           ))}
         </View>
 
@@ -143,7 +204,11 @@ const DepartmentOverviewScreen = ({ navigation }) => {
         <Text style={styles.sectionTitle}>Recent Activity</Text>
 
         {FACULTY_ACTIVITIES.map((fa) => (
-          <View key={fa.id} style={styles.activityCard}>
+          <LinearGradient
+            key={fa.id}
+            colors={['#FFFFFF', '#F9FAFB']}
+            style={styles.activityCard}
+          >
             <View style={[styles.activityDot, { backgroundColor: fa.color }]} />
             <View style={styles.activityContent}>
               <View style={styles.activityHeader}>
@@ -152,7 +217,7 @@ const DepartmentOverviewScreen = ({ navigation }) => {
               </View>
               <Text style={styles.activityAction}>{fa.action}</Text>
             </View>
-          </View>
+          </LinearGradient>
         ))}
 
         <View style={{ height: 40 }} />
@@ -160,7 +225,12 @@ const DepartmentOverviewScreen = ({ navigation }) => {
 
       {/* FAB */}
       <TouchableOpacity style={styles.fab} activeOpacity={0.85}>
-        <Ionicons name="add" size={26} color="#FFFFFF" />
+        <LinearGradient
+          colors={['#EA580C', '#9A3412']}
+          style={styles.fabGradient}
+        >
+          <Ionicons name="add" size={26} color="#FFFFFF" />
+        </LinearGradient>
       </TouchableOpacity>
     </View>
   );
@@ -169,37 +239,48 @@ const DepartmentOverviewScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#F3F4F6',
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingVertical: 12,
-    backgroundColor: '#FFFFFF',
+    paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
+    borderBottomColor: '#F3F4F6',
   },
   backButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
+    overflow: 'hidden',
+  },
+  backButtonBg: {
+    width: '100%',
+    height: '100%',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#F8FAFC',
   },
   headerTitle: {
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: '900',
     color: '#111827',
-    letterSpacing: -0.2,
+    letterSpacing: -0.5,
   },
   bellBtn: {
+    borderRadius: 20,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  bellGradient: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#F8FAFC',
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
@@ -217,52 +298,59 @@ const styles = StyleSheet.create({
   },
   scroll: {
     paddingHorizontal: 20,
-    paddingTop: 18,
+    paddingTop: 20,
   },
   titleSection: {
-    marginBottom: 20,
+    marginBottom: 24,
   },
   pageBadge: {
-    fontSize: 11,
-    color: '#8b2fc9',
-    fontWeight: '600',
+    alignSelf: 'flex-start',
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 20,
+    marginBottom: 8,
+  },
+  pageBadgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#EA580C',
     letterSpacing: 0.8,
-    marginBottom: 4,
-    textTransform: 'uppercase',
   },
   pageTitle: {
-    fontSize: 22,
-    fontWeight: '700',
+    fontSize: 24,
+    fontWeight: '900',
     color: '#111827',
-    marginBottom: 2,
-    letterSpacing: -0.3,
-    lineHeight: 28,
+    marginBottom: 4,
+    letterSpacing: -0.5,
+    lineHeight: 32,
   },
   pageSubtitle: {
     fontSize: 13,
-    color: '#64748B',
-    marginBottom: 14,
+    color: '#6B7280',
+    marginBottom: 16,
     fontWeight: '500',
   },
   reportBtn: {
+    borderRadius: 40,
+    overflow: 'hidden',
+    alignSelf: 'flex-start',
+    shadowColor: '#EA580C',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  reportBtnGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    backgroundColor: '#8b2fc9',
-    borderRadius: 40,
     paddingHorizontal: 18,
     paddingVertical: 11,
-    alignSelf: 'flex-start',
-    shadowColor: '#8b2fc9',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
-    elevation: 3,
   },
   reportBtnText: {
     color: '#FFFFFF',
-    fontWeight: '600',
+    fontWeight: '800',
     fontSize: 13,
   },
   statsGrid: {
@@ -270,44 +358,43 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   statCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 18,
+    borderRadius: 20,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#F1F5F9',
+    borderColor: '#FFFFFF',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.03,
-    shadowRadius: 8,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.04,
+    shadowRadius: 12,
+    elevation: 3,
   },
   statIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
+    width: 48,
+    height: 48,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 12,
   },
   statLabel: {
     fontSize: 10,
-    color: '#64748B',
-    fontWeight: '600',
+    color: '#6B7280',
+    fontWeight: '700',
     letterSpacing: 0.6,
     marginBottom: 4,
     textTransform: 'uppercase',
   },
   statValue: {
-    fontSize: 24,
-    fontWeight: '700',
+    fontSize: 26,
+    fontWeight: '900',
     color: '#111827',
     marginBottom: 2,
-    letterSpacing: -0.3,
-    lineHeight: 30,
+    letterSpacing: -0.5,
+    lineHeight: 32,
   },
   statSub: {
     fontSize: 11,
-    color: '#94A3B8',
+    color: '#9CA3AF',
     fontWeight: '500',
   },
   streamsHeader: {
@@ -317,28 +404,28 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 18,
+    fontWeight: '900',
     color: '#111827',
-    letterSpacing: -0.2,
+    letterSpacing: -0.3,
+    marginBottom: 14,
   },
   viewAllText: {
     fontSize: 13,
-    color: '#8b2fc9',
-    fontWeight: '600',
+    color: '#EA580C',
+    fontWeight: '800',
   },
   streamCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 18,
+    borderRadius: 20,
     padding: 16,
     marginBottom: 10,
     borderWidth: 1,
-    borderColor: '#F1F5F9',
+    borderColor: '#FFFFFF',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.03,
-    shadowRadius: 8,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.04,
+    shadowRadius: 12,
+    elevation: 3,
   },
   streamHeader: {
     flexDirection: 'row',
@@ -347,33 +434,33 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   streamYear: {
-    fontSize: 15,
-    fontWeight: '600',
+    fontSize: 16,
+    fontWeight: '800',
     color: '#111827',
-    letterSpacing: -0.2,
+    letterSpacing: -0.3,
   },
   statusBadge: {
-    paddingHorizontal: 9,
-    paddingVertical: 3,
-    borderRadius: 16,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
   },
   statusText: {
     fontSize: 10,
-    fontWeight: '600',
-    letterSpacing: 0.4,
+    fontWeight: '800',
+    letterSpacing: 0.5,
     textTransform: 'uppercase',
   },
   sectionRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 9,
+    paddingVertical: 10,
     borderTopWidth: 1,
-    borderTopColor: '#F1F5F9',
+    borderTopColor: '#F3F4F6',
   },
   sectionName: {
     fontSize: 13,
-    color: '#64748B',
+    color: '#6B7280',
     fontWeight: '500',
   },
   sectionStats: {
@@ -383,7 +470,7 @@ const styles = StyleSheet.create({
   },
   sectionAtt: {
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '700',
     color: '#111827',
   },
   sectionAttAlert: {
@@ -393,15 +480,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    marginTop: 9,
-    paddingTop: 9,
+    marginTop: 10,
+    paddingTop: 10,
     borderTopWidth: 1,
-    borderTopColor: '#F1F5F9',
+    borderTopColor: '#F3F4F6',
   },
   streamAlertText: {
     fontSize: 11,
     color: '#F59E0B',
-    fontWeight: '500',
+    fontWeight: '600',
   },
   alertsSection: {
     marginBottom: 24,
@@ -413,32 +500,38 @@ const styles = StyleSheet.create({
     gap: 8,
     marginBottom: 14,
   },
+  alertsIconWrapper: {
+    width: 28,
+    height: 28,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   alertsTitle: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '800',
     color: '#111827',
-    letterSpacing: -0.2,
+    letterSpacing: -0.3,
   },
   alertCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
+    borderRadius: 18,
     padding: 14,
     marginBottom: 10,
     gap: 12,
     borderWidth: 1,
-    borderColor: '#F1F5F9',
+    borderColor: '#FFFFFF',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.03,
-    shadowRadius: 6,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.04,
+    shadowRadius: 10,
+    elevation: 3,
   },
   alertIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
+    width: 44,
+    height: 44,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -447,14 +540,14 @@ const styles = StyleSheet.create({
   },
   alertType: {
     fontSize: 11,
-    fontWeight: '700',
+    fontWeight: '800',
     letterSpacing: 0.5,
     marginBottom: 2,
     textTransform: 'uppercase',
   },
   alertDesc: {
     fontSize: 12,
-    color: '#64748B',
+    color: '#6B7280',
     fontWeight: '500',
     lineHeight: 18,
   },
@@ -462,7 +555,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 12,
     marginBottom: 14,
-    paddingVertical: 6,
+    padding: 14,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.04,
+    shadowRadius: 10,
+    elevation: 3,
   },
   activityDot: {
     width: 8,
@@ -477,24 +578,24 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 3,
+    marginBottom: 4,
   },
   activityName: {
-    fontSize: 13,
-    fontWeight: '600',
+    fontSize: 14,
+    fontWeight: '700',
     color: '#111827',
-    letterSpacing: -0.1,
+    letterSpacing: -0.2,
   },
   activityTime: {
     fontSize: 11,
-    color: '#94A3B8',
+    color: '#9CA3AF',
     fontWeight: '500',
   },
   activityAction: {
     fontSize: 12,
-    color: '#64748B',
+    color: '#6B7280',
     lineHeight: 18,
-    fontWeight: '400',
+    fontWeight: '500',
   },
   fab: {
     position: 'absolute',
@@ -503,14 +604,18 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#8b2fc9',
+    overflow: 'hidden',
+    shadowColor: '#EA580C',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.35,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  fabGradient: {
+    width: '100%',
+    height: '100%',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#8b2fc9',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.25,
-    shadowRadius: 14,
-    elevation: 8,
   },
 });
 

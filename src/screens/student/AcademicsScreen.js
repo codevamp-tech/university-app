@@ -7,12 +7,16 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Svg, Circle } from 'react-native-svg';
 import { ATTENDANCE_SUBJECTS, RECENT_RECORDS } from '../../constants/data';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useTheme } from '../../hooks/useTheme';
+
 
 const RADIUS = 60;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 
 const DonutChart = ({ percent }) => {
+  const { colors, isDark } = useTheme();
   const strokeDash = (percent / 100) * CIRCUMFERENCE;
+
   return (
     <View style={styles.donutWrap}>
       <Svg width={150} height={150} viewBox="0 0 150 150">
@@ -21,45 +25,53 @@ const DonutChart = ({ percent }) => {
           cy="75"
           r={RADIUS}
           fill="none"
-          stroke="#F3F4F6"
+          stroke={colors.border}
           strokeWidth="10"
         />
+
         <Circle
           cx="75"
           cy="75"
           r={RADIUS}
           fill="none"
-          stroke="#8b2fc9"
+          stroke={colors.primary}
           strokeWidth="10"
           strokeDasharray={`${strokeDash} ${CIRCUMFERENCE}`}
           strokeDashoffset={CIRCUMFERENCE * 0.25}
           strokeLinecap="round"
         />
+
       </Svg>
       <View style={styles.donutCenter}>
-        <Text style={styles.donutPercent}>{percent}%</Text>
-        <Text style={styles.donutLabel}>ATTENDANCE</Text>
+        <Text style={[styles.donutPercent, { color: colors.textPrimary }]}>{percent}%</Text>
+        <Text style={[styles.donutLabel, { color: colors.textSecondary }]}>ATTENDANCE</Text>
       </View>
+
     </View>
   );
 };
 
 const AcademicsScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
+  const { colors, isDark } = useTheme();
+
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
+
       {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton} activeOpacity={0.7}>
-          <Ionicons name="arrow-back" size={22} color="#111827" />
+      <View style={[styles.header, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={[styles.backButton, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]} activeOpacity={0.7}>
+          <Ionicons name="arrow-back" size={22} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Academics</Text>
-        <TouchableOpacity onPress={() => navigation.navigate('Alerts')} style={styles.bellButton} activeOpacity={0.7}>
-          <Ionicons name="notifications-outline" size={20} color="#111827" />
-          <View style={styles.notificationBadge} />
+        <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Academics</Text>
+        <TouchableOpacity onPress={() => navigation.navigate('Alerts')} style={[styles.bellButton, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]} activeOpacity={0.7}>
+          <Ionicons name="notifications-outline" size={20} color={colors.textPrimary} />
+          <View style={[styles.notificationBadge, { borderColor: colors.card }]} />
         </TouchableOpacity>
       </View>
+
+
 
       <ScrollView
         contentContainerStyle={styles.scroll}
@@ -67,86 +79,97 @@ const AcademicsScreen = ({ navigation }) => {
       >
         {/* Hero Section */}
         <View style={styles.hero}>
-          <Text style={styles.heroBadge}>OVERALL PERFORMANCE</Text>
-          <Text style={styles.heroTitle}>
+          <Text style={[styles.heroBadge, { color: colors.primary }]}>OVERALL PERFORMANCE</Text>
+          <Text style={[styles.heroTitle, { color: colors.textPrimary }]}>
             Your Academic{' '}
-            <Text style={styles.heroHighlight}>Presence.</Text>
+            <Text style={[styles.heroHighlight, { color: colors.primary }]}>Presence.</Text>
           </Text>
-          <Text style={styles.heroDesc}>
+          <Text style={[styles.heroDesc, { color: colors.textSecondary }]}>
             You've maintained consistent attendance this semester. Keep it above 75% to stay eligible for final examinations.
           </Text>
+
           <View style={styles.heroButtons}>
-            <TouchableOpacity style={styles.heroPrimaryBtn} activeOpacity={0.85}>
+            <TouchableOpacity style={[styles.heroPrimaryBtn, { backgroundColor: colors.primary, shadowColor: colors.primary }]} activeOpacity={0.85}>
               <Text style={styles.heroPrimaryBtnText}>View History</Text>
               <Ionicons name="arrow-forward" size={16} color="#FFFFFF" />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.heroSecondaryBtn} activeOpacity={0.85}>
-              <Ionicons name="download-outline" size={16} color="#111827" />
-              <Text style={styles.heroSecondaryBtnText}>Report</Text>
+            <TouchableOpacity style={[styles.heroSecondaryBtn, { backgroundColor: isDark ? colors.card : '#FFFFFF', borderColor: colors.border }]} activeOpacity={0.85}>
+              <Ionicons name="download-outline" size={16} color={colors.textPrimary} />
+              <Text style={[styles.heroSecondaryBtnText, { color: colors.textPrimary }]}>Report</Text>
             </TouchableOpacity>
           </View>
+
+
         </View>
 
         {/* Donut Chart Card */}
-        <View style={styles.chartCard}>
+        <View style={[styles.chartCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <DonutChart percent={82} />
           <View style={styles.chartStats}>
             <View style={styles.chartStat}>
-              <Text style={styles.chartStatValue}>164</Text>
-              <Text style={styles.chartStatLabel}>ATTENDED</Text>
+              <Text style={[styles.chartStatValue, { color: colors.textPrimary }]}>164</Text>
+              <Text style={[styles.chartStatLabel, { color: colors.textSecondary }]}>ATTENDED</Text>
             </View>
-            <View style={styles.chartDivider} />
+            <View style={[styles.chartDivider, { backgroundColor: colors.border }]} />
             <View style={styles.chartStat}>
-              <Text style={styles.chartStatValue}>200</Text>
-              <Text style={styles.chartStatLabel}>TOTAL</Text>
+              <Text style={[styles.chartStatValue, { color: colors.textPrimary }]}>200</Text>
+              <Text style={[styles.chartStatLabel, { color: colors.textSecondary }]}>TOTAL</Text>
             </View>
           </View>
-          <View style={styles.chartTrend}>
+
+
+          <View style={[styles.chartTrend, { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.15)' : '#F1F5F9' }]}>
             <Ionicons name="trending-up" size={14} color="#10B981" />
-            <Text style={styles.chartTrendText}>
-              <Text style={styles.trendHighlight}>+5%</Text> from last month
+            <Text style={[styles.chartTrendText, { color: colors.textSecondary }]}>
+              <Text style={[styles.trendHighlight, { color: '#10B981' }]}>+5%</Text> from last month
             </Text>
           </View>
+
+
         </View>
+
 
         {/* Subject Analysis Header */}
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Subject Analysis</Text>
-          <View style={styles.warningBadge}>
+          <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Subject Analysis</Text>
+          <View style={[styles.warningBadge, { backgroundColor: isDark ? 'rgba(239, 68, 68, 0.2)' : '#FEF2F2' }]}>
             <View style={styles.warningDot} />
             <Text style={styles.warningText}>2 Subjects Need Attention</Text>
           </View>
         </View>
 
+
         {/* Subject Cards */}
         {ATTENDANCE_SUBJECTS.map((subj, index) => (
           <TouchableOpacity
             key={subj.id}
-            style={styles.subjectCard}
+            style={[styles.subjectCard, { backgroundColor: colors.card, borderColor: colors.border }]}
             activeOpacity={0.8}
           >
+
             <View style={styles.subjectHeader}>
               <View style={styles.subjectLeft}>
-                <View style={[styles.subjectCodeBox, { backgroundColor: subj.color + '15' }]}>
+                <View style={[styles.subjectCodeBox, { backgroundColor: isDark ? subj.color + '25' : subj.color + '15' }]}>
                   <Text style={[styles.subjectCode, { color: subj.color }]}>{subj.code}</Text>
                 </View>
                 <View style={styles.subjectInfo}>
-                  <Text style={styles.subjectName}>{subj.name}</Text>
-                  <Text style={styles.subjectProfessor}>{subj.professor}</Text>
+                  <Text style={[styles.subjectName, { color: colors.textPrimary }]}>{subj.name}</Text>
+                  <Text style={[styles.subjectProfessor, { color: colors.textSecondary }]}>{subj.professor}</Text>
                 </View>
               </View>
-              <Text style={[styles.subjectNumber, { color: subj.color + '30' }]}>
+
+              <Text style={[styles.subjectNumber, { color: subj.color, opacity: 0.15 }]}>
                 {String(index + 1).padStart(2, '0')}
               </Text>
             </View>
 
             <View style={styles.progressSection}>
               <View style={styles.progressHeader}>
-                <Text style={styles.progressLabel}>ATTENDANCE</Text>
+                <Text style={[styles.progressLabel, { color: colors.textSecondary }]}>ATTENDANCE</Text>
                 <Text style={[styles.progressValue, { color: subj.color }]}>{subj.attendance}%</Text>
               </View>
 
-              <View style={styles.progressBarBg}>
+              <View style={[styles.progressBarBg, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F1F5F9' }]}>
                 <View
                   style={[
                     styles.progressBarFill,
@@ -169,38 +192,44 @@ const AcademicsScreen = ({ navigation }) => {
           </TouchableOpacity>
         ))}
 
+
         {/* Achievement Banner */}
         <LinearGradient
-          colors={['#9ba9ff', '#eccaff', '#c4baff', '#e0e5ff', '#d2d9ff']}
-          locations={[0, 0.3, 0.55, 0.8, 1]}
+          colors={isDark ? ['#1E1B4B', '#111827'] : ['#F97316', '#EA580C']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
-          style={styles.achievementCard}
+          style={[styles.achievementCard, { borderColor: isDark ? colors.border : 'transparent', borderWidth: isDark ? 1 : 0 }]}
         >
+
           <View style={styles.achievementContent}>
             <View style={styles.achievementLeft}>
-              <Text style={styles.achievementBadge}>🏆 ACHIEVEMENT UNLOCKED</Text>
-              <Text style={styles.achievementTitle}>Consistency is the key to mastery.</Text>
-              <Text style={styles.achievementDesc}>
+              <Text style={[styles.achievementBadge, { color: 'rgba(255,255,255,0.7)' }]}>🏆 ACHIEVEMENT UNLOCKED</Text>
+              <Text style={[styles.achievementTitle, { color: '#FFFFFF' }]}>Consistency is the key to mastery.</Text>
+              <Text style={[styles.achievementDesc, { color: 'rgba(255,255,255,0.85)' }]}>
                 You're ranked in the top 15% of your class for attendance.
               </Text>
             </View>
-            <View style={styles.achievementIcon}>
-              <Ionicons name="star" size={24} color="#8B2FC9" />
+
+
+            <View style={[styles.achievementIcon, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#FFFFFF' }]}>
+              <Ionicons name="star" size={24} color={isDark ? '#FACC15' : '#EA580C'} />
             </View>
           </View>
+
         </LinearGradient>
+
 
         {/* Recent Records */}
         <View style={styles.recentHeader}>
-          <Text style={styles.recentTitle}>Recent Records</Text>
+          <Text style={[styles.recentTitle, { color: colors.textPrimary }]}>Recent Records</Text>
           <TouchableOpacity activeOpacity={0.7}>
-            <Text style={styles.viewAllText}>View All →</Text>
+            <Text style={[styles.viewAllText, { color: colors.primary }]}>View All →</Text>
           </TouchableOpacity>
         </View>
 
+
         {RECENT_RECORDS.map((rec) => (
-          <View key={rec.id} style={styles.recordCard}>
+          <View key={rec.id} style={[styles.recordCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <View style={[styles.recordDot, { backgroundColor: rec.isPresent ? '#10B981' : '#EF4444' }]}>
               <Ionicons
                 name={rec.isPresent ? 'checkmark' : 'close'}
@@ -208,17 +237,19 @@ const AcademicsScreen = ({ navigation }) => {
                 color="#FFFFFF"
               />
             </View>
+
             <View style={styles.recordInfo}>
-              <Text style={styles.recordSubject}>{rec.subject}</Text>
-              <Text style={styles.recordTime}>{rec.time}</Text>
+              <Text style={[styles.recordSubject, { color: colors.textPrimary }]}>{rec.subject}</Text>
+              <Text style={[styles.recordTime, { color: colors.textSecondary }]}>{rec.time}</Text>
             </View>
-            <View style={[styles.recordStatusBadge, { backgroundColor: rec.isPresent ? '#10B98115' : '#EF444415' }]}>
+            <View style={[styles.recordStatusBadge, { backgroundColor: rec.isPresent ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)' }]}>
               <Text style={[styles.recordStatus, { color: rec.isPresent ? '#10B981' : '#EF4444' }]}>
                 {rec.status}
               </Text>
             </View>
           </View>
         ))}
+
 
         <View style={{ height: 40 }} />
       </ScrollView>
@@ -229,41 +260,40 @@ const AcademicsScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
   },
+
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 12,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
   },
+
+
   backButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#F8FAFC',
   },
+
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#111827',
     letterSpacing: -0.2,
   },
+
   bellButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#F8FAFC',
     position: 'relative',
   },
+
   notificationBadge: {
     position: 'absolute',
     top: 9,
@@ -273,8 +303,8 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     backgroundColor: '#EF4444',
     borderWidth: 1.5,
-    borderColor: '#FFFFFF',
   },
+
   scroll: {
     paddingHorizontal: 20,
     paddingTop: 18,
@@ -284,48 +314,48 @@ const styles = StyleSheet.create({
   },
   heroBadge: {
     fontSize: 11,
-    color: '#8b2fc9',
     fontWeight: '600',
     letterSpacing: 1,
     marginBottom: 8,
     textTransform: 'uppercase',
   },
+
   heroTitle: {
     fontSize: 26,
     fontWeight: '700',
-    color: '#111827',
     lineHeight: 34,
     marginBottom: 8,
     letterSpacing: -0.3,
   },
+
+
   heroHighlight: {
-    color: '#8b2fc9',
   },
+
   heroDesc: {
     fontSize: 13,
-    color: '#64748B',
     lineHeight: 20,
     marginBottom: 18,
     fontWeight: '400',
   },
+
   heroButtons: {
     flexDirection: 'row',
     gap: 10,
   },
   heroPrimaryBtn: {
-    backgroundColor: '#8b2fc9',
     paddingHorizontal: 18,
     paddingVertical: 11,
     borderRadius: 40,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    shadowColor: '#8b2fc9',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
     shadowRadius: 8,
     elevation: 3,
   },
+
   heroPrimaryBtnText: {
     color: '#FFFFFF',
     fontWeight: '600',
@@ -335,32 +365,30 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: '#FFFFFF',
     paddingHorizontal: 16,
     paddingVertical: 11,
     borderRadius: 40,
     borderWidth: 1.5,
-    borderColor: '#E2E8F0',
   },
+
   heroSecondaryBtnText: {
-    color: '#111827',
     fontWeight: '500',
     fontSize: 13,
   },
+
   chartCard: {
-    backgroundColor: '#FFFFFF',
     borderRadius: 24,
     padding: 22,
     alignItems: 'center',
     marginBottom: 24,
     borderWidth: 1,
-    borderColor: '#F1F5F9',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.06,
     shadowRadius: 12,
     elevation: 4,
   },
+
   donutWrap: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -374,16 +402,17 @@ const styles = StyleSheet.create({
   donutPercent: {
     fontSize: 30,
     fontWeight: '700',
-    color: '#111827',
     letterSpacing: -0.5,
   },
+
   donutLabel: {
     fontSize: 10,
-    color: '#64748B',
     fontWeight: '600',
     letterSpacing: 0.8,
     marginTop: 2,
   },
+
+
   chartStats: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -396,38 +425,37 @@ const styles = StyleSheet.create({
   chartStatValue: {
     fontSize: 22,
     fontWeight: '700',
-    color: '#111827',
     letterSpacing: -0.3,
   },
+
   chartStatLabel: {
     fontSize: 10,
-    color: '#64748B',
     fontWeight: '600',
     letterSpacing: 0.5,
     marginTop: 2,
     textTransform: 'uppercase',
   },
+
   chartDivider: {
     width: 1,
     height: 36,
-    backgroundColor: '#E2E8F0',
   },
+
   chartTrend: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: '#F1F5F9',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 20,
   },
+
   chartTrendText: {
     fontSize: 11,
-    color: '#64748B',
     fontWeight: '500',
   },
+
   trendHighlight: {
-    color: '#10B981',
     fontWeight: '700',
   },
   sectionHeader: {
@@ -439,14 +467,13 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#111827',
     letterSpacing: -0.2,
   },
+
   warningBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: '#FEF2F2',
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 16,
@@ -463,18 +490,17 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   subjectCard: {
-    backgroundColor: '#FFFFFF',
     borderRadius: 18,
     padding: 16,
     marginBottom: 10,
     borderWidth: 1,
-    borderColor: '#F1F5F9',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04,
     shadowRadius: 8,
     elevation: 2,
   },
+
   subjectHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -505,15 +531,15 @@ const styles = StyleSheet.create({
   subjectName: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#111827',
     marginBottom: 2,
     letterSpacing: -0.1,
   },
+
   subjectProfessor: {
     fontSize: 11,
-    color: '#64748B',
     fontWeight: '500',
   },
+
   subjectNumber: {
     fontSize: 24,
     fontWeight: '700',
@@ -528,20 +554,20 @@ const styles = StyleSheet.create({
   },
   progressLabel: {
     fontSize: 10,
-    color: '#64748B',
     fontWeight: '600',
     letterSpacing: 0.5,
   },
+
   progressValue: {
     fontSize: 12,
     fontWeight: '700',
   },
   progressBarBg: {
     height: 6,
-    backgroundColor: '#F1F5F9',
     borderRadius: 3,
     overflow: 'hidden',
   },
+
   progressBarFill: {
     height: '100%',
     borderRadius: 3,
@@ -560,14 +586,14 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     marginBottom: 24,
     marginTop: 8,
-    shadowColor: '#8b2fc9',
+    shadowColor: '#EA580C',
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.12,
     shadowRadius: 16,
     elevation: 6,
   },
   achievementContent: {
-    padding: 20,
+    padding: 24,
     flexDirection: 'row',
     alignItems: 'center',
   },
@@ -577,31 +603,29 @@ const styles = StyleSheet.create({
   },
   achievementBadge: {
     fontSize: 10,
-    color: '#000',
     fontWeight: '600',
     letterSpacing: 0.8,
     marginBottom: 8,
     textTransform: 'uppercase',
   },
   achievementTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 4,
+    fontSize: 18,
+    fontWeight: '800',
+    marginBottom: 6,
     letterSpacing: -0.2,
-    lineHeight: 22,
+    lineHeight: 24,
   },
+
   achievementDesc: {
     fontSize: 12,
-    color: '#4B5563',
     lineHeight: 18,
     fontWeight: '500',
   },
+
   achievementIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#FFFFFF',
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
@@ -619,23 +643,21 @@ const styles = StyleSheet.create({
   recentTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#111827',
     letterSpacing: -0.2,
   },
+
   viewAllText: {
     fontSize: 13,
-    color: '#8b2fc9',
     fontWeight: '600',
   },
+
   recordCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
     borderRadius: 16,
     padding: 14,
     marginBottom: 8,
     borderWidth: 1,
-    borderColor: '#F1F5F9',
     gap: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -643,6 +665,7 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 2,
   },
+
   recordDot: {
     width: 36,
     height: 36,
@@ -656,15 +679,15 @@ const styles = StyleSheet.create({
   recordSubject: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#111827',
     marginBottom: 2,
     letterSpacing: -0.1,
   },
+
   recordTime: {
     fontSize: 11,
-    color: '#64748B',
     fontWeight: '500',
   },
+
   recordStatusBadge: {
     paddingHorizontal: 10,
     paddingVertical: 5,
@@ -675,5 +698,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
+
 
 export default AcademicsScreen;

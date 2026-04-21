@@ -2,92 +2,84 @@ import React from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ImageBackground, Dimensions
 } from 'react-native';
-import { Ionicons, MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+
+import { useTheme } from '../../hooks/useTheme';
 
 const { width } = Dimensions.get('window');
 
+
 const SmartCampusScreen = () => {
   const insets = useSafeAreaInsets();
+  const { colors, isDark } = useTheme();
+
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
       
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
         <View style={styles.headerLeft}>
           <Image
             source={{ uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuC6mmtjUA28NY_AB8YFu2Ri2e3lSkRbJCYpAbrgwHHzzLntRM9rNTLFJIT-pf3fW5gQ-_hRX8LB8ZDdqw5ls_d4bA10oIXuBlKp8kv7onee50cVXADdy7BPVn6kAg4Co9Gbp6XiTx5yITLttWLtkQQag4sVTILELHpLT0_-WAXmJWUVCHpSfhFuYmROstnRxdO_T4ym_KOCd8CmJm60WORR2yoPF8RiqYCiJsTUrQcbumydveuPeijNqG_991IufFMlU7g1DbJ3nqtG' }}
-            style={styles.avatarTiny}
+            style={[styles.avatarTiny, { borderColor: colors.primary, borderWidth: 1 }]}
           />
-          <Text style={styles.headerLogo}>Invertis Smart Campus</Text>
+          <Text style={[styles.headerLogo, { color: colors.textPrimary }]}>Invertis Smart Campus</Text>
         </View>
-        <View style={styles.creditPill}>
-          <MaterialCommunityIcons name="wallet-outline" size={16} color="#EA580C" />
-          <Text style={styles.creditText}>1,250 Credits</Text>
-        </View>
+        <TouchableOpacity style={[styles.creditPill, { backgroundColor: isDark ? 'rgba(234, 88, 12, 0.15)' : '#FFF7ED' }]}>
+          <MaterialCommunityIcons name="wallet-outline" size={16} color={isDark ? '#FB923C' : "#EA580C"} />
+          <Text style={[styles.creditText, { color: isDark ? '#FB923C' : "#EA580C" }]}>1,250 Credits</Text>
+        </TouchableOpacity>
       </View>
+
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         
         {/* Live Now Card */}
         <View style={styles.sectionContainer}>
-          <View style={styles.liveCard}>
-            <View style={styles.liveIconBox}>
-              <MaterialCommunityIcons name="access-point" size={28} color="#9A3412" />
+          <View style={[styles.liveCard, { backgroundColor: isDark ? colors.card : '#FFF7ED' }]}>
+            <View style={[styles.liveIconBox, { backgroundColor: isDark ? colors.background : '#FFEDD5' }]}>
+              <MaterialCommunityIcons name="access-point" size={28} color={isDark ? colors.primary : "#9A3412"} />
             </View>
             <View style={styles.liveContent}>
-              <View style={styles.liveBadge}>
-                <Text style={styles.liveBadgeText}>LIVE NOW</Text>
+              <View style={[styles.liveBadge, { backgroundColor: isDark ? 'rgba(234, 88, 12, 0.2)' : '#FFEDD5' }]}>
+                <Text style={[styles.liveBadgeText, { color: isDark ? '#FB923C' : '#9A3412' }]}>LIVE NOW</Text>
               </View>
-              <Text style={styles.liveTitle}>Computer Networks</Text>
-              <Text style={styles.liveSub}>Room 202 • Dr. Malhotra</Text>
+              <Text style={[styles.liveTitle, { color: colors.textPrimary }]}>Computer Networks</Text>
+              <Text style={[styles.liveSub, { color: colors.textSecondary }]}>Room 202 • Dr. Malhotra</Text>
             </View>
-            <TouchableOpacity style={styles.checkInBtn}>
+            <TouchableOpacity style={[styles.checkInBtn, { backgroundColor: colors.primary }]}>
               <MaterialCommunityIcons name="wifi-marker" size={16} color="#FFFFFF" />
               <Text style={styles.checkInText}>Tap to Check-in</Text>
             </TouchableOpacity>
           </View>
         </View>
 
+
         {/* Quick Actions */}
         <View style={styles.sectionContainer}>
           <View style={styles.sectionGroup}>
-            <Text style={styles.sectionTitle}>Quick Actions</Text>
-            <View style={styles.divider} />
+            <Text style={[styles.sectionTitle, { color: colors.primary }]}>Quick Actions</Text>
+            <View style={[styles.divider, { backgroundColor: colors.border }]} />
           </View>
           
           <View style={styles.actionsGrid}>
-            <TouchableOpacity style={styles.actionBlock}>
-              <View style={styles.actionIconPill}>
-                <MaterialCommunityIcons name="camera-metering-center" size={24} color="#9A3412" />
-              </View>
-              <Text style={styles.actionLabel}>AR Navigator</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity style={styles.actionBlock}>
-              <View style={styles.actionIconPill}>
-                <MaterialCommunityIcons name="lock-smart" size={24} color="#9A3412" />
-              </View>
-              <Text style={styles.actionLabel}>Smart Key</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity style={styles.actionBlock}>
-              <View style={styles.actionIconPill}>
-                <MaterialCommunityIcons name="qrcode-scan" size={24} color="#9A3412" />
-              </View>
-              <Text style={styles.actionLabel}>Campus Pay</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity style={styles.actionBlock}>
-              <View style={styles.actionIconPill}>
-                <MaterialCommunityIcons name="calendar-multiselect" size={24} color="#9A3412" />
-              </View>
-              <Text style={styles.actionLabel}>Room Booking</Text>
-            </TouchableOpacity>
+            {[
+              { label: 'AR Navigator', icon: 'camera-metering-center' },
+              { label: 'Smart Key', icon: 'lock-smart' },
+              { label: 'Campus Pay', icon: 'qrcode-scan' },
+              { label: 'Room Booking', icon: 'calendar-multiselect' },
+            ].map((action, i) => (
+              <TouchableOpacity key={i} style={styles.actionBlock}>
+                <View style={[styles.actionIconPill, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
+                  <MaterialCommunityIcons name={action.icon} size={24} color={isDark ? colors.primary : '#9A3412'} />
+                </View>
+                <Text style={[styles.actionLabel, { color: colors.textPrimary }]}>{action.label}</Text>
+              </TouchableOpacity>
+            ))}
           </View>
         </View>
+
 
         {/* AR Campus Feed */}
         <View style={styles.sectionContainer}>
@@ -139,38 +131,39 @@ const SmartCampusScreen = () => {
         <View style={styles.sectionContainer}>
           <View style={styles.locationHeader}>
             <View>
-              <Text style={styles.locationSub}>CURRENT LOCATION</Text>
-              <Text style={styles.locationTitle}>Academic Block A</Text>
+              <Text style={[styles.locationSub, { color: colors.primary }]}>CURRENT LOCATION</Text>
+              <Text style={[styles.locationTitle, { color: colors.textPrimary }]}>Academic Block A</Text>
             </View>
-            <View style={styles.locationPinBox}>
-              <MaterialIcons name="my-location" size={24} color="#4338CA" />
-            </View>
-          </View>
-          
-          <Text style={styles.utilitiesTitle}>NEARBY UTILITIES</Text>
-          
-          <View style={styles.utilityCard}>
-            <MaterialCommunityIcons name="bookshelf" size={28} color="#065F46" />
-            <View style={styles.utilityContent}>
-              <Text style={styles.utilityName}>Library</Text>
-              <Text style={styles.utilityDistance}>30m away</Text>
-            </View>
-            <View style={styles.utilityBadgeTeal}>
-              <Text style={styles.utilityBadgeTextTeal}>5 SEATS FREE</Text>
+            <View style={[styles.locationPinBox, { backgroundColor: isDark ? 'rgba(67, 56, 202, 0.2)' : '#E0E7FF' }]}>
+              <MaterialIcons name="my-location" size={24} color={isDark ? '#818CF8' : "#4338CA"} />
             </View>
           </View>
           
-          <View style={styles.utilityCard}>
-            <MaterialIcons name="restaurant" size={28} color="#9A3412" />
+          <Text style={[styles.utilitiesTitle, { color: colors.textSecondary }]}>NEARBY UTILITIES</Text>
+          
+          <View style={[styles.utilityCard, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
+            <MaterialCommunityIcons name="bookshelf" size={28} color={isDark ? '#34D399' : "#065F46"} />
             <View style={styles.utilityContent}>
-              <Text style={styles.utilityName}>Canteen</Text>
-              <Text style={styles.utilityDistance}>100m away</Text>
+              <Text style={[styles.utilityName, { color: colors.textPrimary }]}>Library</Text>
+              <Text style={[styles.utilityDistance, { color: colors.textSecondary }]}>30m away</Text>
             </View>
-            <View style={styles.utilityBadgeOrange}>
-              <Text style={styles.utilityBadgeTextOrange}>SPECIAL: PAV BHAJI</Text>
+            <View style={[styles.utilityBadgeTeal, { backgroundColor: isDark ? 'rgba(52, 211, 153, 0.2)' : '#A7F3D0' }]}>
+              <Text style={[styles.utilityBadgeTextTeal, { color: isDark ? '#34D399' : '#064E3B' }]}>5 SEATS FREE</Text>
+            </View>
+          </View>
+          
+          <View style={[styles.utilityCard, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
+            <MaterialIcons name="restaurant" size={28} color={isDark ? colors.primary : "#9A3412"} />
+            <View style={styles.utilityContent}>
+              <Text style={[styles.utilityName, { color: colors.textPrimary }]}>Canteen</Text>
+              <Text style={[styles.utilityDistance, { color: colors.textSecondary }]}>100m away</Text>
+            </View>
+            <View style={[styles.utilityBadgeOrange, { backgroundColor: isDark ? 'rgba(234, 88, 12, 0.2)' : '#FFEDD5' }]}>
+              <Text style={[styles.utilityBadgeTextOrange, { color: isDark ? '#FB923C' : '#9A3412' }]}>SPECIAL: PAV BHAJI</Text>
             </View>
           </View>
         </View>
+
 
         <View style={{ height: 100 }} />
       </ScrollView>

@@ -1,4 +1,4 @@
-export const Colors = {
+export const lightColors = {
   primary: '#8B2FC9',
   primaryDark: '#6B1DA1',
   primaryLight: '#F5EEFC',
@@ -20,3 +20,29 @@ export const Colors = {
   shadow: 'rgba(0,0,0,0.08)',
   overlay: 'rgba(0,0,0,0.5)',
 };
+
+export const darkColors = {
+  primary: '#A78BFA',
+  primaryDark: '#8B5CF6',
+  primaryLight: '#2E1065',
+  background: '#0F172A',
+  white: '#FFFFFF',
+  card: '#1E293B',
+  textPrimary: '#F8FAFC',
+  textSecondary: '#94A3B8',
+  textMuted: '#64748B',
+  border: '#334155',
+  success: '#34D399',
+  successLight: '#064E3B',
+  danger: '#F87171',
+  dangerLight: '#7F1D1D',
+  warning: '#FBBF24',
+  warningLight: '#78350F',
+  orange: '#FB923C',
+  orangeLight: '#7C2D12',
+  shadow: 'rgba(0,0,0,0.3)',
+  overlay: 'rgba(0,0,0,0.7)',
+};
+
+export const Colors = lightColors;
+

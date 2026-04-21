@@ -5,30 +5,40 @@ import {
 import { Ionicons, MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useTheme } from '../../hooks/useTheme';
+
 
 const { width } = Dimensions.get('window');
 
-const VentureScreen = () => {
+const VentureScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
+  const { colors, isDark } = useTheme();
+
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
       {/* TopAppBar */}
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
         <View style={styles.headerLeft}>
-          <MaterialIcons name="school" size={26} color="#F97316" />
-          <Text style={styles.headerLogo}>Invertis University</Text>
+          <MaterialIcons name="school" size={26} color={colors.primary} />
+          <Text style={[styles.headerLogo, { color: colors.primary }]}>Invertis University</Text>
         </View>
+
         <View style={styles.headerRight}>
-          <TouchableOpacity style={styles.headerIconBtn}>
-            <MaterialIcons name="smart-toy" size={22} color="#F97316" />
+          <TouchableOpacity 
+            style={[styles.headerIconBtn, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : colors.card, borderColor: colors.border, borderWidth: 1 }]}
+            onPress={() => navigation.navigate('SuggestWithAI')}
+          >
+            <MaterialIcons name="auto-awesome" size={22} color={colors.primary} />
           </TouchableOpacity>
+
           <Image
             source={{ uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAHE5L8YlJMTs-XVOTgRgdskFym9IbSOOWmaoPDoXAVn44_p1piZ4DF1hbybIHboYED4wlgw5EjEf8xQVbYyd2ujbhVoBIHI34rqe-9joMu1KjOHC4gExjJ1EoR4Nq0FRsbmAyQmoMhL5z4fLdnRjvxDipaIV-TNoOKkRzF8AAjcBgx1CklNEikKZHQTYdba1-Xp0GoP-MEG3_P8uUSz546Q23VbY9WaghYVTNTFEOr6ShXvHSsOrKH7pS6YchureUbV49CKICrW-pl' }}
-            style={styles.avatarSmall}
+            style={[styles.avatarSmall, { borderColor: colors.primary }]}
           />
         </View>
       </View>
+
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         {/* Venture Launchpad Hero */}
@@ -38,116 +48,132 @@ const VentureScreen = () => {
             style={styles.heroImg}
           />
           <LinearGradient
-            colors={['rgba(139, 75, 0, 0.95)', 'rgba(122, 65, 0, 0.4)']}
+            colors={isDark ? ['rgba(0,0,0,0.85)', 'rgba(139, 75, 0, 0.4)'] : ['rgba(139, 75, 0, 0.95)', 'rgba(122, 65, 0, 0.4)']}
             style={styles.heroOverlay}
           >
-            <View style={styles.heroBadge}>
+            <View style={[styles.heroBadge, { backgroundColor: 'rgba(255,255,255,0.1)', borderColor: 'rgba(255,255,255,0.2)' }]}>
               <Text style={styles.heroBadgeText}>INVERTIS PULSE LAB</Text>
             </View>
             <Text style={styles.heroTitle}>Where Ideas {"\n"}<Text style={styles.heroTitleItalic}>Go Infinite.</Text></Text>
             <View style={styles.heroBtns}>
               <TouchableOpacity style={styles.pitchBtn}>
-                <Text style={styles.pitchBtnText}>Pitch Your Idea</Text>
+                <Text style={[styles.pitchBtnText, { color: colors.primary }]}>Pitch Your Idea</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.exploreBtn}>
+              <TouchableOpacity style={[styles.exploreBtn, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.15)', borderColor: 'rgba(255,255,255,0.2)' }]}>
                 <Text style={styles.exploreBtnText}>Explore Startups</Text>
               </TouchableOpacity>
             </View>
           </LinearGradient>
         </View>
 
+
         {/* Co-founder Match Card */}
-        <View style={styles.matchCard}>
+        <View style={[styles.matchCard, { backgroundColor: isDark ? '#1E1B4B' : '#4338CA', shadowColor: '#4338CA' }]}>
+
           <View style={styles.cardHeader}>
-            <View style={styles.cardIconBox}>
+            <View style={[styles.cardIconBox, { backgroundColor: 'rgba(255,255,255,0.1)' }]}>
               <MaterialIcons name="psychology-alt" size={28} color="#FFFFFF" />
             </View>
             <Text style={styles.cardHeaderTitle}>Find a Co-founder</Text>
           </View>
-          <Text style={styles.cardDesc}>Our AI matches your vision with students across Engineering, Design, and MBA departments.</Text>
+          <Text style={[styles.cardDesc, { color: '#E0E7FF' }]}>Our AI matches your vision with students across Engineering, Design, and MBA departments.</Text>
           <View style={styles.matchingFooter}>
             <View style={styles.miniAvatars}>
-              <View style={styles.mAvatar} />
-              <View style={[styles.mAvatar, { marginLeft: -8 }]} />
-              <View style={[styles.mAvatar, { marginLeft: -8, backgroundColor: '#FFFFFF30', justifyContent: 'center', alignItems: 'center' }]}>
+              <View style={[styles.mAvatar, { borderColor: isDark ? '#1E1B4B' : '#4338CA' }]} />
+              <View style={[styles.mAvatar, { marginLeft: -8, borderColor: isDark ? '#1E1B4B' : '#4338CA' }]} />
+              <View style={[styles.mAvatar, { marginLeft: -8, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center', borderColor: isDark ? '#1E1B4B' : '#4338CA' }]}>
                 <Text style={{ fontSize: 9, color: '#FFFFFF', fontWeight: '800' }}>+42</Text>
               </View>
+
             </View>
             <TouchableOpacity style={styles.startMatchBtn}>
-              <Text style={styles.startMatchBtnText}>Start Matching</Text>
+              <Text style={[styles.startMatchBtnText, { color: isDark ? '#1E1B4B' : '#4338CA' }]}>Start Matching</Text>
             </TouchableOpacity>
           </View>
         </View>
 
+
         {/* Top Startups */}
         <View style={styles.sectionHeader}>
           <View style={styles.sectionTitleRow}>
-            <Text style={styles.sectionTitle}>Top Startups</Text>
-            <MaterialIcons name="star" size={20} color="#F97316" />
+            <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Top Startups</Text>
+            <MaterialIcons name="star" size={20} color={colors.primary} />
           </View>
-          <TouchableOpacity><Text style={styles.viewAllText}>View All</Text></TouchableOpacity>
+          <TouchableOpacity><Text style={[styles.viewAllText, { color: colors.primary }]}>View All</Text></TouchableOpacity>
         </View>
+
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.startupScroll} contentContainerStyle={styles.startupContainer}>
           {/* Startup Card 1 */}
-          <View style={styles.startupCard}>
-            <View style={[styles.startupIcon, { backgroundColor: '#F0FDF4' }]}>
-              <MaterialIcons name="agriculture" size={28} color="#16A34A" />
+          <View style={[styles.startupCard, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
+            <View style={[styles.startupIcon, { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.1)' : '#F0FDF4' }]}>
+              <MaterialIcons name="agriculture" size={28} color={isDark ? '#34D399' : '#16A34A'} />
             </View>
-            <View style={styles.startupLabel}><Text style={styles.startupLabelText}>SERIES A SEED</Text></View>
-            <Text style={styles.startupName}>AgriTech Bareilly</Text>
-            <Text style={styles.startupDesc}>Smart IoT solutions for local sugarcane farmers to optimize irrigation.</Text>
+            <View style={[styles.startupLabel, { backgroundColor: isDark ? 'rgba(5, 150, 105, 0.2)' : '#DCFCE7' }]}><Text style={[styles.startupLabelText, { color: isDark ? '#A7F3D0' : '#166534' }]}>SERIES A SEED</Text></View>
+            <Text style={[styles.startupName, { color: colors.textPrimary }]}>AgriTech Bareilly</Text>
+            <Text style={[styles.startupDesc, { color: colors.textSecondary }]}>Smart IoT solutions for local sugarcane farmers to optimize irrigation.</Text>
+
             <View style={styles.progressRow}>
               <View style={styles.progressHeader}>
-                <Text style={styles.progressText}>Milestone</Text>
-                <Text style={styles.progressPct}>85%</Text>
+                <Text style={[styles.progressText, { color: colors.textSecondary }]}>Milestone</Text>
+                <Text style={[styles.progressPct, { color: colors.primary }]}>85%</Text>
               </View>
-              <View style={styles.progressBar}><View style={[styles.progressFill, { width: '85%' }]} /></View>
+              <View style={[styles.progressBar, { backgroundColor: colors.border }]}><View style={[styles.progressFill, { width: '85%', backgroundColor: colors.primary }]} /></View>
             </View>
           </View>
+
 
           {/* Startup Card 2 */}
-          <View style={styles.startupCard}>
-            <View style={[styles.startupIcon, { backgroundColor: '#EFF6FF' }]}>
-              <MaterialIcons name="auto-stories" size={28} color="#2563EB" />
+          <View style={[styles.startupCard, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
+            <View style={[styles.startupIcon, { backgroundColor: isDark ? 'rgba(59, 130, 246, 0.1)' : '#EFF6FF' }]}>
+              <MaterialIcons name="auto-stories" size={28} color={isDark ? '#60A5FA' : '#2563EB'} />
             </View>
-            <View style={[styles.startupLabel, { backgroundColor: '#DBEAFE' }]}><Text style={[styles.startupLabelText, { color: '#1D4ED8' }]}>PRE-REVENUE</Text></View>
-            <Text style={styles.startupName}>EduSolve</Text>
-            <Text style={styles.startupDesc}>AI-driven vernacular language learning specifically for Rural UP students.</Text>
+            <View style={[styles.startupLabel, { backgroundColor: isDark ? 'rgba(30, 64, 175, 0.2)' : '#DBEAFE' }]}><Text style={[styles.startupLabelText, { color: isDark ? '#DBEAFE' : '#1D4ED8' }]}>PRE-REVENUE</Text></View>
+            <Text style={[styles.startupName, { color: colors.textPrimary }]}>EduSolve</Text>
+            <Text style={[styles.startupDesc, { color: colors.textSecondary }]}>AI-driven vernacular language learning specifically for Rural UP students.</Text>
+
             <View style={styles.progressRow}>
               <View style={styles.progressHeader}>
-                <Text style={styles.progressText}>Beta Testing</Text>
-                <Text style={styles.progressPct}>40%</Text>
+                <Text style={[styles.progressText, { color: colors.textSecondary }]}>Beta Testing</Text>
+                <Text style={[styles.progressPct, { color: colors.primary }]}>40%</Text>
               </View>
-              <View style={styles.progressBar}><View style={[styles.progressFill, { width: '40%' }]} /></View>
+              <View style={[styles.progressBar, { backgroundColor: colors.border }]}><View style={[styles.progressFill, { width: '40%', backgroundColor: colors.primary }]} /></View>
             </View>
           </View>
+
         </ScrollView>
 
+
         {/* Pitch Form Card */}
-        <View style={styles.pitchCard}>
-          <Text style={styles.pitchTitle}>Pitch Your Idea</Text>
-          <Text style={styles.pitchSub}>Ready to disrupt the market? Submit your pitch deck.</Text>
+        <View style={[styles.pitchCard, { backgroundColor: isDark ? colors.card : '#F3F4F6', borderColor: colors.border, borderWidth: 1 }]}>
+          <Text style={[styles.pitchTitle, { color: colors.textPrimary }]}>Pitch Your Idea</Text>
+          <Text style={[styles.pitchSub, { color: colors.textSecondary }]}>Ready to disrupt the market? Submit your pitch deck.</Text>
+
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>VENTURE NAME</Text>
-            <TextInput style={styles.input} placeholder="e.g. Invertis AI" />
+            <Text style={[styles.label, { color: colors.textSecondary }]}>VENTURE NAME</Text>
+            <TextInput style={[styles.input, { backgroundColor: isDark ? colors.background : '#FFFFFF', color: colors.textPrimary, borderColor: colors.border, borderWidth: 1 }]} placeholder="e.g. Invertis AI" placeholderTextColor={isDark ? 'rgba(255,255,255,0.3)' : '#9CA3AF'} />
           </View>
+
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>ONE-SENTENCE PITCH</Text>
-            <TextInput style={[styles.input, { height: 80, textAlignVertical: 'top' }]} placeholder="What problem are you solving?" multiline />
+            <Text style={[styles.label, { color: colors.textSecondary }]}>ONE-SENTENCE PITCH</Text>
+            <TextInput style={[styles.input, { backgroundColor: isDark ? colors.background : '#FFFFFF', color: colors.textPrimary, borderColor: colors.border, borderWidth: 1, height: 80, textAlignVertical: 'top' }]} placeholder="What problem are you solving?" placeholderTextColor={isDark ? 'rgba(255,255,255,0.3)' : '#9CA3AF'} multiline />
           </View>
 
-          <TouchableOpacity style={styles.uploadArea}>
-            <MaterialIcons name="upload-file" size={24} color="#94A3B8" />
-            <Text style={styles.uploadText}>UPLOAD PITCH DECK (PDF)</Text>
+
+          <TouchableOpacity style={[styles.uploadArea, { borderColor: colors.border, backgroundColor: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)' }]}>
+            <MaterialIcons name="upload-file" size={24} color={colors.textSecondary} />
+            <Text style={[styles.uploadText, { color: colors.textSecondary }]}>UPLOAD PITCH DECK (PDF)</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.submitBtn}>
+
+          <TouchableOpacity style={[styles.submitBtn, { backgroundColor: colors.primary, shadowColor: colors.primary }]}>
             <Text style={styles.submitBtnText}>Submit Pitch</Text>
           </TouchableOpacity>
+
         </View>
+
 
         <View style={{ height: 100 }} />
       </ScrollView>
@@ -161,18 +187,17 @@ const VentureScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F6F7',
   },
+
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 15,
-    backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
   },
+
   headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -181,7 +206,6 @@ const styles = StyleSheet.create({
   headerLogo: {
     fontSize: 20,
     fontWeight: '900',
-    color: '#EA580C',
     fontStyle: 'italic',
   },
   headerRight: {
@@ -192,14 +216,13 @@ const styles = StyleSheet.create({
   headerIconBtn: {
     padding: 8,
     borderRadius: 20,
-    backgroundColor: '#F9FAFB',
   },
+
   avatarSmall: {
     width: 36,
     height: 36,
     borderRadius: 18,
     borderWidth: 2,
-    borderColor: '#fe9832',
   },
   scroll: {
     paddingBottom: 20,
@@ -228,12 +251,10 @@ const styles = StyleSheet.create({
   },
   heroBadge: {
     alignSelf: 'baseline',
-    backgroundColor: 'rgba(255,255,255,0.2)',
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.3)',
     marginBottom: 20,
   },
   heroBadgeText: {
@@ -270,17 +291,14 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   pitchBtnText: {
-    color: '#8b4b00',
     fontWeight: '800',
     fontSize: 14,
   },
   exploreBtn: {
-    backgroundColor: 'rgba(255,255,255,0.15)',
     paddingHorizontal: 20,
     paddingVertical: 14,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.3)',
   },
   exploreBtnText: {
     color: '#FFFFFF',
@@ -288,11 +306,9 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   matchCard: {
-    backgroundColor: '#4953ac',
     margin: 16,
     borderRadius: 24,
     padding: 24,
-    shadowColor: '#4953ac',
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.3,
     shadowRadius: 15,
@@ -307,7 +323,6 @@ const styles = StyleSheet.create({
   cardIconBox: {
     width: 48,
     height: 48,
-    backgroundColor: 'rgba(255,255,255,0.2)',
     borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
@@ -319,7 +334,6 @@ const styles = StyleSheet.create({
   },
   cardDesc: {
     fontSize: 14,
-    color: '#cbceff',
     lineHeight: 20,
     opacity: 0.9,
   },
@@ -338,7 +352,6 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     backgroundColor: '#cbceff',
     borderWidth: 2,
-    borderColor: '#4953ac',
   },
   startMatchBtn: {
     backgroundColor: '#FFFFFF',
@@ -347,7 +360,6 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   startMatchBtnText: {
-    color: '#4953ac',
     fontWeight: '800',
     fontSize: 12,
   },
@@ -367,13 +379,11 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 22,
     fontWeight: '900',
-    color: '#1F2937',
     letterSpacing: -0.5,
   },
   viewAllText: {
     fontSize: 12,
     fontWeight: '800',
-    color: '#8b4b00',
     textTransform: 'uppercase',
   },
   startupScroll: {
@@ -385,7 +395,6 @@ const styles = StyleSheet.create({
   },
   startupCard: {
     width: width * 0.7,
-    backgroundColor: '#FFFFFF',
     borderRadius: 24,
     padding: 20,
     shadowColor: '#000',
@@ -405,7 +414,6 @@ const styles = StyleSheet.create({
   },
   startupLabel: {
     alignSelf: 'baseline',
-    backgroundColor: '#DCFCE7',
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 20,
@@ -414,16 +422,13 @@ const styles = StyleSheet.create({
   startupLabelText: {
     fontSize: 9,
     fontWeight: '800',
-    color: '#166534',
   },
   startupName: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#1F2937',
   },
   startupDesc: {
     fontSize: 12,
-    color: '#64748B',
     marginTop: 8,
     lineHeight: 18,
   },
@@ -438,26 +443,21 @@ const styles = StyleSheet.create({
   progressText: {
     fontSize: 10,
     fontWeight: '700',
-    color: '#94A3B8',
   },
   progressPct: {
     fontSize: 10,
     fontWeight: '800',
-    color: '#8b4b00',
   },
   progressBar: {
     height: 6,
-    backgroundColor: '#F1F5F9',
     borderRadius: 3,
     overflow: 'hidden',
   },
   progressFill: {
     height: '100%',
-    backgroundColor: '#8b4b00',
     borderRadius: 3,
   },
   pitchCard: {
-    backgroundColor: '#e6e8ea',
     margin: 16,
     borderRadius: 24,
     padding: 24,
@@ -465,11 +465,9 @@ const styles = StyleSheet.create({
   pitchTitle: {
     fontSize: 22,
     fontWeight: '900',
-    color: '#1F2937',
   },
   pitchSub: {
     fontSize: 13,
-    color: '#64748B',
     marginTop: 4,
     marginBottom: 24,
   },
@@ -479,22 +477,18 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 10,
     fontWeight: '800',
-    color: '#94A3B8',
     letterSpacing: 1.2,
     marginBottom: 8,
   },
   input: {
-    backgroundColor: '#FFFFFF',
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,
     fontSize: 14,
-    color: '#1F2937',
   },
   uploadArea: {
     borderWidth: 2,
     borderStyle: 'dashed',
-    borderColor: '#CBD5E1',
     borderRadius: 16,
     padding: 24,
     alignItems: 'center',
@@ -503,16 +497,13 @@ const styles = StyleSheet.create({
   uploadText: {
     fontSize: 10,
     fontWeight: '800',
-    color: '#94A3B8',
     marginTop: 8,
   },
   submitBtn: {
-    backgroundColor: '#8b4b00',
     marginTop: 16,
     paddingVertical: 16,
     borderRadius: 16,
     alignItems: 'center',
-    shadowColor: '#8b4b00',
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.3,
     shadowRadius: 10,

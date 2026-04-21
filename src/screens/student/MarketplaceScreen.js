@@ -5,29 +5,63 @@ import {
 import { Ionicons, MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useTheme } from '../../hooks/useTheme';
+
 
 const { width } = Dimensions.get('window');
 
-const MarketplaceScreen = () => {
+const MarketplaceScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
+  const { colors, isDark } = useTheme();
+  const [cartCount, setCartCount] = React.useState(0);
+
+
+  const addToCart = () => {
+    setCartCount(prev => prev + 1);
+  };
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
+
+
 
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
+
         <View style={styles.headerLeft}>
           <Image
             source={{ uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuC6mmtjUA28NY_AB8YFu2Ri2e3lSkRbJCYpAbrgwHHzzLntRM9rNTLFJIT-pf3fW5gQ-_hRX8LB8ZDdqw5ls_d4bA10oIXuBlKp8kv7onee50cVXADdy7BPVn6kAg4Co9Gbp6XiTx5yITLttWLtkQQag4sVTILELHpLT0_-WAXmJWUVCHpSfhFuYmROstnRxdO_T4ym_KOCd8CmJm60WORR2yoPF8RiqYCiJsTUrQcbumydveuPeijNqG_991IufFMlU7g1DbJ3nqtG' }}
-            style={styles.avatarTiny}
+            style={[styles.avatarTiny, { borderColor: colors.border, borderWidth: 1 }]}
           />
-          <Text style={styles.headerLogo}>Invertis Hub</Text>
+          <Text style={[styles.headerLogo, { color: colors.textPrimary }]}>Invertis Hub</Text>
         </View>
-        <View style={styles.creditPill}>
-          <MaterialCommunityIcons name="wallet-outline" size={16} color="#9A3412" />
-          <Text style={styles.creditText}>₹1,250</Text>
+
+        <View style={styles.headerRight}>
+          <TouchableOpacity 
+            style={[styles.cartIconBtn, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1, borderRadius: 12, width: 40, height: 40, justifyContent: 'center', alignItems: 'center' }]}
+            onPress={() => navigation.navigate('Cart')}
+          >
+            <MaterialIcons name="shopping-cart" size={22} color={colors.textPrimary} />
+
+            {cartCount > 0 && (
+              <View style={[styles.cartBadge, { borderColor: colors.card }]}>
+                <Text style={styles.cartBadgeText}>{cartCount}</Text>
+              </View>
+
+            )}
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.creditPill, { borderColor: colors.border, backgroundColor: isDark ? 'rgba(234, 88, 12, 0.1)' : '#FFF7ED' }]}
+            onPress={() => navigation.navigate('MainWallet')}
+          >
+            <MaterialCommunityIcons name="wallet-outline" size={16} color={isDark ? colors.primary : '#9A3412'} />
+            <Text style={[styles.creditText, { color: isDark ? colors.primary : '#9A3412' }]}>₹1,250</Text>
+          </TouchableOpacity>
+
+
         </View>
       </View>
+
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
 
@@ -56,12 +90,13 @@ const MarketplaceScreen = () => {
         <View style={styles.sectionContainer}>
           <View style={styles.sectionHeader}>
             <View>
-              <Text style={styles.sectionTitle}>Quick Requests</Text>
-              <Text style={styles.sectionSubtitle}>Help others & earn rewards</Text>
+              <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Quick Requests</Text>
+              <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>Help others & earn rewards</Text>
             </View>
+
             <TouchableOpacity style={styles.viewAllBtn}>
-              <Text style={styles.viewAllText}>View All</Text>
-              <MaterialIcons name="arrow-forward" size={14} color="#EA580C" />
+              <Text style={[styles.viewAllText, { color: isDark ? colors.primary : '#9A3412' }]}>View All</Text>
+              <MaterialIcons name="arrow-forward" size={14} color={isDark ? colors.primary : "#EA580C"} />
             </TouchableOpacity>
           </View>
 
@@ -74,24 +109,28 @@ const MarketplaceScreen = () => {
               { id: 5, title: 'Lost USB drive near Block C', reward: '₹200', type: 'LOST', icon: 'magnify', color: '#8B5CF6' },
               { id: 6, title: 'Tech Fest setup volunteers', reward: 'Perk', type: 'VOLUNTEER', icon: 'calendar-star', color: '#EF4444' },
             ].map(item => (
-              <View key={item.id} style={styles.quickCard}>
+              <View key={item.id} style={[styles.quickCard, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
                 <View style={styles.quickCardHeader}>
-                  <View style={[styles.quickIconWrapper, { backgroundColor: item.color + '15' }]}>
-                    <MaterialCommunityIcons name={item.icon} size={20} color={item.color} />
+                  <View style={[styles.quickIconWrapper, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : item.color + '15' }]}>
+                    <MaterialCommunityIcons name={item.icon} size={20} color={isDark ? colors.primary : item.color} />
                   </View>
-                  <View style={[styles.quickBadge, { backgroundColor: item.color + '15' }]}>
-                    <Text style={[styles.quickBadgeText, { color: item.color }]}>{item.type}</Text>
+                  <View style={[styles.quickBadge, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : item.color + '15' }]}>
+                    <Text style={[styles.quickBadgeText, { color: isDark ? colors.primary : item.color }]}>{item.type}</Text>
                   </View>
                 </View>
-                <Text style={styles.quickTitle} numberOfLines={2}>{item.title}</Text>
-                <View style={styles.quickDivider} />
+                <Text style={[styles.quickTitle, { color: colors.textPrimary }]} numberOfLines={2}>{item.title}</Text>
+
+
+                <View style={[styles.quickDivider, { backgroundColor: colors.border }]} />
+
                 <View style={styles.quickFooter}>
                   <View>
-                    <Text style={styles.quickRewardLabel}>{item.reward === 'Perk' ? 'BENEFIT' : 'REWARD'}</Text>
-                    <Text style={[styles.quickReward, { color: '#111827' }]}>{item.reward === 'Perk' ? 'Certificate' : item.reward}</Text>
+                    <Text style={[styles.quickRewardLabel, { color: colors.textSecondary }]}>{item.reward === 'Perk' ? 'BENEFIT' : 'REWARD'}</Text>
+                    <Text style={[styles.quickReward, { color: colors.textPrimary }]}>{item.reward === 'Perk' ? 'Certificate' : item.reward}</Text>
                   </View>
+
                   <TouchableOpacity style={styles.quickBtn}>
-                    <LinearGradient colors={['#EA580C', '#C2410C']} style={styles.quickBtnGradient}>
+                    <LinearGradient colors={isDark ? ['#9A3412', '#78350F'] : ['#EA580C', '#C2410C']} style={styles.quickBtnGradient}>
                       <Text style={styles.quickBtnText}>Accept</Text>
                     </LinearGradient>
                   </TouchableOpacity>
@@ -101,207 +140,335 @@ const MarketplaceScreen = () => {
           </ScrollView>
         </View>
 
+
         {/* Featured Gigs */}
         <View style={styles.sectionContainer}>
-          <Text style={styles.sectionTitle}>Featured Gigs</Text>
-
+          <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Featured Gigs</Text>
           {/* Gig 1 */}
-          <View style={styles.gigCard}>
+          <View style={[styles.gigCard, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
+
             <Image source={{ uri: 'https://images.unsplash.com/photo-1542831371-29b0f74f9713?q=80&w=2070&auto=format&fit=crop' }} style={styles.gigImg} />
-            <View style={styles.gigPopularBadge}>
+            <View style={[styles.gigPopularBadge, { backgroundColor: isDark ? colors.primary : '#9A3412' }]}>
               <Text style={styles.gigPopularText}>Popular</Text>
             </View>
 
             <View style={styles.gigContent}>
-              <Text style={styles.gigTitle}>Python Debugging & Code Review</Text>
-              <Text style={styles.gigDesc}>Struggling with your semester projects? I provide professional code audits and logic debugging for Python applications.</Text>
+              <Text style={[styles.gigTitle, { color: colors.textPrimary }]}>Python Debugging & Code Review</Text>
+              <Text style={[styles.gigDesc, { color: colors.textSecondary }]}>Struggling with your semester projects? I provide professional code audits and logic debugging for Python applications.</Text>
 
-              <View style={styles.gigAuthorRow}>
+
+              <View style={[styles.gigAuthorRow, { borderBottomColor: colors.border }]}>
                 <Image source={{ uri: 'https://i.pravatar.cc/100?u=rahul' }} style={styles.gigAuthorImg} />
                 <View>
-                  <Text style={styles.gigAuthorName}>Rahul Verma</Text>
-                  <Text style={styles.gigAuthorSub}>B.Tech CS, 3rd Year</Text>
+                  <Text style={[styles.gigAuthorName, { color: colors.textPrimary }]}>Rahul Verma</Text>
+                  <Text style={[styles.gigAuthorSub, { color: colors.textSecondary }]}>B.Tech CS, 3rd Year</Text>
                 </View>
               </View>
 
-              <View style={styles.gigFooter}>
-                <Text style={styles.gigPrice}>₹499<Text style={styles.gigPriceSub}>/hr</Text></Text>
-                <TouchableOpacity style={styles.bookGigBtn}>
+
+              <View style={[styles.gigFooter, { borderTopColor: colors.border }]}>
+                <Text style={[styles.gigPrice, { color: isDark ? colors.primary : '#9A3412' }]}>₹499<Text style={[styles.gigPriceSub, { color: colors.textSecondary }]}>/hr</Text></Text>
+
+                <TouchableOpacity style={[styles.bookGigBtn, { backgroundColor: isDark ? colors.primary : '#78350F' }]}>
                   <Text style={styles.bookGigText}>Book Gig</Text>
                 </TouchableOpacity>
               </View>
             </View>
           </View>
 
+
           {/* Gig 2 */}
-          <View style={styles.gigCardSmall}>
+          <View style={[styles.gigCardSmall, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <Image source={{ uri: 'https://images.unsplash.com/photo-1561070791-2526d30994b5?q=80&w=2000&auto=format&fit=crop' }} style={styles.gigImgSmall} />
             <View style={styles.gigContentSmall}>
-              <Text style={styles.gigTitleSmall}>Logo Design for Startups</Text>
+              <Text style={[styles.gigTitleSmall, { color: colors.textPrimary }]}>Logo Design for Startups</Text>
+
               <View style={styles.gigFooterSmall}>
-                <Text style={styles.gigAuthorSmall}>by Sneha Kapoor</Text>
-                <Text style={styles.gigPriceSmall}>₹750</Text>
+                <Text style={[styles.gigAuthorSmall, { color: colors.textSecondary }]}>by Sneha Kapoor</Text>
+                <Text style={[styles.gigPriceSmall, { color: isDark ? colors.primary : '#9A3412' }]}>₹750</Text>
               </View>
             </View>
           </View>
 
           {/* Gig 3 */}
-          <View style={styles.gigCardSmall}>
+          <View style={[styles.gigCardSmall, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <Image source={{ uri: 'https://images.unsplash.com/photo-1516035069371-29a1b244cc32?q=80&w=2000&auto=format&fit=crop' }} style={styles.gigImgSmall} />
             <View style={styles.gigContentSmall}>
-              <Text style={styles.gigTitleSmall}>Photography for TechFest</Text>
+              <Text style={[styles.gigTitleSmall, { color: colors.textPrimary }]}>Photography for TechFest</Text>
+
               <View style={styles.gigFooterSmall}>
-                <Text style={styles.gigAuthorSmall}>by Aryan Singh</Text>
-                <Text style={styles.gigPriceSmall}>₹1,200</Text>
+                <Text style={[styles.gigAuthorSmall, { color: colors.textSecondary }]}>by Aryan Singh</Text>
+                <Text style={[styles.gigPriceSmall, { color: isDark ? colors.primary : '#9A3412' }]}>₹1,200</Text>
               </View>
             </View>
           </View>
+
 
         </View>
 
         {/* The Bazaar */}
         <View style={styles.sectionContainer}>
-          <Text style={styles.sectionTitle}>The Bazaar</Text>
+          <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>The Bazaar</Text>
+
 
           <View style={styles.bazaarGrid}>
 
-            <View style={styles.itemCard}>
+            <TouchableOpacity 
+              style={[styles.itemCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+
+              onPress={() => navigation.navigate('ProductDetail', {
+                item: {
+                  id: 1,
+                  title: 'B.Tech 3rd Sem Books',
+                  price: '₹650',
+                  image: 'https://images.unsplash.com/photo-1512820790803-83ca734da794?q=80&w=2098&auto=format&fit=crop',
+                  desc: 'Complete set of core subject books for B.Tech CS 3rd Semester. Perfect for exam prep.',
+                  badge: 'USED - GOOD',
+                  seller: { name: 'Rahul Verma', year: '4th Year, CS', avatar: 'https://i.pravatar.cc/150?u=rahul' }
+                }
+              })}
+            >
               <View style={styles.itemImgBox}>
                 <Image source={{ uri: 'https://images.unsplash.com/photo-1512820790803-83ca734da794?q=80&w=2098&auto=format&fit=crop' }} style={styles.itemImg} />
-                <View style={[styles.itemBadge, { backgroundColor: '#FFFFFF' }]}>
-                  <Text style={styles.itemBadgeText}>USED - GOOD</Text>
+                <View style={[styles.itemBadge, { backgroundColor: isDark ? colors.background : '#FFFFFF' }]}>
+                  <Text style={[styles.itemBadgeText, { color: colors.textPrimary }]}>USED - GOOD</Text>
                 </View>
               </View>
-              <View style={styles.itemContent}>
-                <Text style={styles.itemTitle}>B.Tech 3rd Sem Books</Text>
-                <Text style={styles.itemDesc} numberOfLines={2}>All core subjects included.</Text>
-                <View style={styles.itemFooter}>
-                  <Text style={styles.itemPrice}>₹650</Text>
-                  <MaterialIcons name="favorite-outline" size={18} color="#6B7280" />
-                </View>
-              </View>
-            </View>
 
-            <View style={styles.itemCard}>
+              <View style={styles.itemContent}>
+                <Text style={[styles.itemTitle, { color: colors.textPrimary }]}>B.Tech 3rd Sem Books</Text>
+                <Text style={[styles.itemDesc, { color: colors.textSecondary }]} numberOfLines={2}>All core subjects included.</Text>
+
+                <View style={styles.itemFooter}>
+                  <Text style={[styles.itemPrice, { color: isDark ? colors.primaryLight : colors.primary }]}>₹650</Text>
+
+                  <View style={styles.itemActionRow}>
+                    <TouchableOpacity onPress={addToCart}>
+                      <MaterialIcons name="add-shopping-cart" size={20} color={colors.primary} />
+                    </TouchableOpacity>
+                    <MaterialIcons name="favorite-border" size={18} color={colors.textMuted} />
+                  </View>
+                </View>
+
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={[styles.itemCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+
+              onPress={() => navigation.navigate('ProductDetail', {
+                item: {
+                  id: 2,
+                  title: 'Lab Coat (Size M)',
+                  price: '₹250',
+                  image: 'https://images.unsplash.com/photo-1584031908035-776eb8a40552?q=80&w=2000&auto=format&fit=crop',
+                  desc: 'Standard white lab coat, clean and ironed. Mandatory for chemistry and physics labs.',
+                  badge: 'NEAR NEW',
+                  seller: { name: 'Aryan Singh', year: '2nd Year, ME', avatar: 'https://i.pravatar.cc/150?u=aryan' }
+                }
+              })}
+            >
               <View style={styles.itemImgBox}>
                 <Image source={{ uri: 'https://images.unsplash.com/photo-1584031908035-776eb8a40552?q=80&w=2000&auto=format&fit=crop' }} style={styles.itemImg} />
-                <View style={[styles.itemBadge, { backgroundColor: '#E5E7EB' }]}>
-                  <Text style={[styles.itemBadgeText, { color: '#374151' }]}>NEAR NEW</Text>
+                <View style={[styles.itemBadge, { backgroundColor: isDark ? '#374151' : '#E5E7EB' }]}>
+                  <Text style={[styles.itemBadgeText, { color: isDark ? '#E5E7EB' : '#374151' }]}>NEAR NEW</Text>
                 </View>
               </View>
-              <View style={styles.itemContent}>
-                <Text style={styles.itemTitle}>Lab Coat (Size M)</Text>
-                <Text style={styles.itemDesc} numberOfLines={2}>Only used for one semester.</Text>
-                <View style={styles.itemFooter}>
-                  <Text style={styles.itemPrice}>₹250</Text>
-                  <MaterialIcons name="favorite-outline" size={18} color="#6B7280" />
-                </View>
-              </View>
-            </View>
 
-            <View style={styles.itemCard}>
+              <View style={styles.itemContent}>
+                <Text style={[styles.itemTitle, { color: colors.textPrimary }]}>Lab Coat (Size M)</Text>
+                <Text style={[styles.itemDesc, { color: colors.textSecondary }]} numberOfLines={2}>Only used for one semester.</Text>
+
+                <View style={styles.itemFooter}>
+                  <Text style={[styles.itemPrice, { color: colors.primary }]}>₹250</Text>
+                  <MaterialIcons name="favorite-border" size={18} color={colors.textMuted} />
+
+                </View>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={[styles.itemCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+              onPress={() => navigation.navigate('ProductDetail', {
+                item: {
+                  id: 3,
+                  title: 'MacBook Air M1',
+                  price: '₹45,000',
+                  image: 'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?q=80&w=2000&auto=format&fit=crop',
+                  desc: 'M1 Space Grey, 8GB/256GB. Battery health 92%. Best for CS students.',
+                  badge: 'BEST DEAL',
+                  seller: { name: 'Sneha Kapoor', year: '3rd Year, IT', avatar: 'https://i.pravatar.cc/150?u=sneha' }
+                }
+              })}
+            >
               <View style={styles.itemImgBox}>
                 <Image source={{ uri: 'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?q=80&w=2000&auto=format&fit=crop' }} style={styles.itemImg} />
-                <View style={[styles.itemBadge, { backgroundColor: '#FEE2E2' }]}>
-                  <Text style={[styles.itemBadgeText, { color: '#991B1B' }]}>BEST DEAL</Text>
+                <View style={[styles.itemBadge, { backgroundColor: isDark ? '#7F1D1D' : '#FEE2E2' }]}>
+                  <Text style={[styles.itemBadgeText, { color: isDark ? '#FECACA' : '#991B1B' }]}>BEST DEAL</Text>
                 </View>
               </View>
               <View style={styles.itemContent}>
-                <Text style={styles.itemTitle}>MacBook Air M1</Text>
-                <Text style={styles.itemDesc} numberOfLines={2}>Perfect for coding, 8GB/256GB.</Text>
+                <Text style={[styles.itemTitle, { color: colors.textPrimary }]}>MacBook Air M1</Text>
+                <Text style={[styles.itemDesc, { color: colors.textSecondary }]} numberOfLines={2}>Perfect for coding, 8GB/256GB.</Text>
                 <View style={styles.itemFooter}>
-                  <Text style={styles.itemPrice}>₹45,000</Text>
-                  <MaterialIcons name="favorite-outline" size={18} color="#6B7280" />
+                  <Text style={[styles.itemPrice, { color: isDark ? colors.primaryLight : colors.primary }]}>₹45,000</Text>
+                  <MaterialIcons name="favorite-border" size={18} color={colors.textMuted} />
                 </View>
               </View>
-            </View>
+            </TouchableOpacity>
 
-            <View style={styles.itemCard}>
+
+            <TouchableOpacity 
+              style={[styles.itemCard, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}
+              onPress={() => navigation.navigate('ProductDetail', {
+                item: {
+                  id: 4,
+                  title: 'Hercules Cycle',
+                  price: '₹5,500',
+                  image: 'https://images.unsplash.com/photo-1589118949245-7d48d24f8450?q=80&w=2000&auto=format&fit=crop',
+                  desc: '21 speed, disc brakes, 1yr old. Well maintained and perfect for campus commutes.',
+                  badge: 'BIKE',
+                  seller: { name: 'Karan Mehra', year: '2nd Year, BBA', avatar: 'https://i.pravatar.cc/150?u=karan' }
+                }
+              })}
+            >
               <View style={styles.itemImgBox}>
                 <Image source={{ uri: 'https://images.unsplash.com/photo-1589118949245-7d48d24f8450?q=80&w=2000&auto=format&fit=crop' }} style={styles.itemImg} />
-                <View style={[styles.itemBadge, { backgroundColor: '#F3F4F6' }]}>
-                  <Text style={[styles.itemBadgeText, { color: '#374151' }]}>BIKE</Text>
+                <View style={[styles.itemBadge, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F3F4F6' }]}>
+                  <Text style={[styles.itemBadgeText, { color: colors.textPrimary }]}>BIKE</Text>
                 </View>
               </View>
               <View style={styles.itemContent}>
-                <Text style={styles.itemTitle}>Hercules Cycle</Text>
-                <Text style={styles.itemDesc} numberOfLines={2}>21 speed, disc brakes, 1yr old.</Text>
+                <Text style={[styles.itemTitle, { color: colors.textPrimary }]}>Hercules Cycle</Text>
+                <Text style={[styles.itemDesc, { color: colors.textSecondary }]} numberOfLines={2}>21 speed, disc brakes, 1yr old.</Text>
                 <View style={styles.itemFooter}>
-                  <Text style={styles.itemPrice}>₹5,500</Text>
-                  <MaterialIcons name="favorite-outline" size={18} color="#6B7280" />
+                  <Text style={[styles.itemPrice, { color: colors.textPrimary }]}>₹5,500</Text>
+                  <MaterialIcons name="favorite-border" size={18} color={colors.textMuted} />
                 </View>
               </View>
-            </View>
+            </TouchableOpacity>
 
-            <View style={styles.itemCard}>
+            <TouchableOpacity 
+              style={[styles.itemCard, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}
+              onPress={() => navigation.navigate('ProductDetail', {
+                item: {
+                  id: 5,
+                  title: 'iPad Air 4th Gen',
+                  price: '₹28,000',
+                  image: 'https://images.unsplash.com/photo-1544244015-0cd4b3ffc6b0?q=80&w=2000&auto=format&fit=crop',
+                  desc: 'Sky Blue, 64GB. Perfect for digital note taking. Supports Apple Pencil 2.',
+                  badge: 'GADGET',
+                  seller: { name: 'Isha Goel', year: '3rd Year, B.Des', avatar: 'https://i.pravatar.cc/150?u=isha' }
+                }
+              })}
+            >
               <View style={styles.itemImgBox}>
                 <Image source={{ uri: 'https://images.unsplash.com/photo-1544244015-0cd4b3ffc6b0?q=80&w=2000&auto=format&fit=crop' }} style={styles.itemImg} />
-                <View style={[styles.itemBadge, { backgroundColor: '#FEF3C7' }]}>
-                  <Text style={[styles.itemBadgeText, { color: '#92400E' }]}>GADGET</Text>
+                <View style={[styles.itemBadge, { backgroundColor: isDark ? 'rgba(245, 158, 11, 0.2)' : '#FEF3C7' }]}>
+                  <Text style={[styles.itemBadgeText, { color: isDark ? colors.primary : '#92400E' }]}>GADGET</Text>
                 </View>
               </View>
               <View style={styles.itemContent}>
-                <Text style={styles.itemTitle}>iPad Air 4th Gen</Text>
-                <Text style={styles.itemDesc} numberOfLines={2}>With Apple Pencil 2 support.</Text>
+                <Text style={[styles.itemTitle, { color: colors.textPrimary }]}>iPad Air 4th Gen</Text>
+                <Text style={[styles.itemDesc, { color: colors.textSecondary }]} numberOfLines={2}>With Apple Pencil 2 support.</Text>
                 <View style={styles.itemFooter}>
-                  <Text style={styles.itemPrice}>₹28,000</Text>
-                  <MaterialIcons name="favorite-outline" size={18} color="#6B7280" />
+                  <Text style={[styles.itemPrice, { color: colors.textPrimary }]}>₹28,000</Text>
+                  <MaterialIcons name="favorite-border" size={18} color={colors.textMuted} />
                 </View>
               </View>
-            </View>
+            </TouchableOpacity>
 
-            <View style={styles.itemCard}>
+            <TouchableOpacity 
+              style={[styles.itemCard, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}
+              onPress={() => navigation.navigate('ProductDetail', {
+                item: {
+                  id: 6,
+                  title: 'Nike Air Jordan 1',
+                  price: '₹8,900',
+                  image: 'https://images.unsplash.com/photo-1543163521-1bf539c55dd2?q=80&w=2000&auto=format&fit=crop',
+                  desc: 'Classic Chicago colorway. Size 9, rarely used. Original box and bill available.',
+                  badge: 'FOOTWEAR',
+                  seller: { name: 'Aryan Singh', year: '2nd Year, ME', avatar: 'https://i.pravatar.cc/150?u=aryan' }
+                }
+              })}
+            >
               <View style={styles.itemImgBox}>
                 <Image source={{ uri: 'https://images.unsplash.com/photo-1543163521-1bf539c55dd2?q=80&w=2000&auto=format&fit=crop' }} style={styles.itemImg} />
-                <View style={[styles.itemBadge, { backgroundColor: '#ECFDF5' }]}>
-                  <Text style={[styles.itemBadgeText, { color: '#065F46' }]}>FOOTWEAR</Text>
+                <View style={[styles.itemBadge, { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.2)' : '#ECFDF5' }]}>
+                  <Text style={[styles.itemBadgeText, { color: isDark ? '#10B981' : '#065F46' }]}>FOOTWEAR</Text>
                 </View>
               </View>
               <View style={styles.itemContent}>
-                <Text style={styles.itemTitle}>Nike Air Jordan 1</Text>
-                <Text style={styles.itemDesc} numberOfLines={2}>Size 9, rarely used, original box.</Text>
+                <Text style={[styles.itemTitle, { color: colors.textPrimary }]}>Nike Air Jordan 1</Text>
+                <Text style={[styles.itemDesc, { color: colors.textSecondary }]} numberOfLines={2}>Size 9, rarely used, original box.</Text>
                 <View style={styles.itemFooter}>
-                  <Text style={styles.itemPrice}>₹8,900</Text>
-                  <MaterialIcons name="favorite-outline" size={18} color="#6B7280" />
+                  <Text style={[styles.itemPrice, { color: colors.textPrimary }]}>₹8,900</Text>
+                  <MaterialIcons name="favorite-border" size={18} color={colors.textMuted} />
                 </View>
               </View>
-            </View>
+            </TouchableOpacity>
 
-            <View style={styles.itemCard}>
+            <TouchableOpacity 
+              style={[styles.itemCard, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}
+              onPress={() => navigation.navigate('ProductDetail', {
+                item: {
+                  id: 7,
+                  title: 'Sony WH-1000XM4',
+                  price: '₹14,500',
+                  image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=2000&auto=format&fit=crop',
+                  desc: 'Industry leading noise cancelling headphones. 30 hours battery. Mint condition.',
+                  badge: 'ELECTRONICS',
+                  seller: { name: 'Rahul Verma', year: '4th Year, CS', avatar: 'https://i.pravatar.cc/150?u=rahul' }
+                }
+              })}
+            >
               <View style={styles.itemImgBox}>
                 <Image source={{ uri: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=2000&auto=format&fit=crop' }} style={styles.itemImg} />
-                <View style={[styles.itemBadge, { backgroundColor: '#FFFFFF' }]}>
-                  <Text style={styles.itemBadgeText}>ELECTRONICS</Text>
+                <View style={[styles.itemBadge, { backgroundColor: isDark ? 'rgba(59, 130, 246, 0.2)' : '#DBEAFE' }]}>
+                  <Text style={[styles.itemBadgeText, { color: isDark ? '#60A5FA' : '#1E40AF' }]}>ELECTRONICS</Text>
                 </View>
               </View>
               <View style={styles.itemContent}>
-                <Text style={styles.itemTitle}>Sony WH-1000XM4</Text>
-                <Text style={styles.itemDesc} numberOfLines={2}>Noise cancelling headphones.</Text>
+                <Text style={[styles.itemTitle, { color: colors.textPrimary }]}>Sony WH-1000XM4</Text>
+                <Text style={[styles.itemDesc, { color: colors.textSecondary }]} numberOfLines={2}>Noise cancelling headphones.</Text>
                 <View style={styles.itemFooter}>
-                  <Text style={styles.itemPrice}>₹14,500</Text>
-                  <MaterialIcons name="favorite-outline" size={18} color="#6B7280" />
+                  <Text style={[styles.itemPrice, { color: colors.textPrimary }]}>₹14,500</Text>
+                  <MaterialIcons name="favorite-border" size={18} color={colors.textMuted} />
                 </View>
               </View>
-            </View>
+            </TouchableOpacity>
 
-            <View style={styles.itemCard}>
+            <View style={[styles.itemCard, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
               <View style={styles.itemImgBox}>
                 <Image source={{ uri: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?q=80&w=2000&auto=format&fit=crop' }} style={styles.itemImg} />
-                <View style={[styles.itemBadge, { backgroundColor: '#DBEAFE' }]}>
-                  <Text style={[styles.itemBadgeText, { color: '#1E40AF' }]}>FASHION</Text>
+                <View style={[styles.itemBadge, { backgroundColor: isDark ? 'rgba(59, 130, 246, 0.2)' : '#DBEAFE' }]}>
+                  <Text style={[styles.itemBadgeText, { color: isDark ? '#60A5FA' : '#1E40AF' }]}>FASHION</Text>
                 </View>
               </View>
               <View style={styles.itemContent}>
-                <Text style={styles.itemTitle}>Fossil Gen 6 Smartwatch</Text>
-                <Text style={styles.itemDesc} numberOfLines={2}>Black leather strap, mint cond.</Text>
+                <Text style={[styles.itemTitle, { color: colors.textPrimary }]}>Fossil Gen 6 Smartwatch</Text>
+                <Text style={[styles.itemDesc, { color: colors.textSecondary }]} numberOfLines={2}>Black leather strap, mint cond.</Text>
                 <View style={styles.itemFooter}>
-                  <Text style={styles.itemPrice}>₹7,200</Text>
-                  <MaterialIcons name="favorite-outline" size={18} color="#6B7280" />
+                  <Text style={[styles.itemPrice, { color: colors.textPrimary }]}>₹7,200</Text>
+                  <MaterialIcons name="favorite-border" size={18} color={colors.textMuted} />
                 </View>
               </View>
             </View>
 
-            <View style={styles.itemCard}>
+            <TouchableOpacity 
+              style={[styles.itemCard, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}
+              onPress={() => navigation.navigate('ProductDetail', {
+                item: {
+                  id: 8,
+                  title: 'Marshall Major IV',
+                  price: '₹11,999',
+                  image: 'https://images.unsplash.com/photo-1546435770-a3e426bf472b?q=80&w=2000&auto=format&fit=crop',
+                  desc: 'Iconic headphones with 80+ hours of wireless playtime. Bluetooth 5.0.',
+                  badge: 'HOT',
+                  seller: { name: ' Aryan Singh', year: '2nd Year, ME', avatar: 'https://i.pravatar.cc/150?u=aryan' }
+                }
+              })}
+            >
               <View style={styles.itemImgBox}>
                 <Image source={{ uri: 'https://images.unsplash.com/photo-1546435770-a3e426bf472b?q=80&w=2000&auto=format&fit=crop' }} style={styles.itemImg} />
                 <View style={[styles.itemBadge, { backgroundColor: '#EF4444' }]}>
@@ -309,184 +476,198 @@ const MarketplaceScreen = () => {
                 </View>
               </View>
               <View style={styles.itemContent}>
-                <Text style={styles.itemTitle}>Marshall Major IV</Text>
-                <Text style={styles.itemDesc} numberOfLines={2}>Iconic headphones with 80+ hours.</Text>
+                <Text style={[styles.itemTitle, { color: colors.textPrimary }]}>Marshall Major IV</Text>
+                <Text style={[styles.itemDesc, { color: colors.textSecondary }]} numberOfLines={2}>Iconic headphones with 80+ hours.</Text>
                 <View style={styles.itemFooter}>
-                  <Text style={styles.itemPrice}>₹11,999</Text>
-                  <MaterialIcons name="favorite-outline" size={18} color="#6B7280" />
+                  <Text style={[styles.itemPrice, { color: colors.textPrimary }]}>₹11,999</Text>
+                  <MaterialIcons name="favorite-border" size={18} color={colors.textMuted} />
                 </View>
               </View>
-            </View>
+            </TouchableOpacity>
 
-            <View style={styles.itemCard}>
+            <View style={[styles.itemCard, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
               <View style={styles.itemImgBox}>
                 <Image source={{ uri: 'https://images.unsplash.com/photo-1525547719571-a2d4ac8945e2?q=80&w=2000&auto=format&fit=crop' }} style={styles.itemImg} />
-                <View style={[styles.itemBadge, { backgroundColor: '#F3F4F6' }]}>
-                  <Text style={[styles.itemBadgeText, { color: '#374151' }]}>GAMING</Text>
+                <View style={[styles.itemBadge, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F3F4F6' }]}>
+                  <Text style={[styles.itemBadgeText, { color: colors.textPrimary }]}>GAMING</Text>
                 </View>
               </View>
               <View style={styles.itemContent}>
-                <Text style={styles.itemTitle}>Razer DeathAdder V2</Text>
-                <Text style={styles.itemDesc} numberOfLines={2}>Ergonomic wired gaming mouse.</Text>
+                <Text style={[styles.itemTitle, { color: colors.textPrimary }]}>Razer DeathAdder V2</Text>
+                <Text style={[styles.itemDesc, { color: colors.textSecondary }]} numberOfLines={2}>Ergonomic wired gaming mouse.</Text>
                 <View style={styles.itemFooter}>
-                  <Text style={styles.itemPrice}>₹3,250</Text>
-                  <MaterialIcons name="favorite-outline" size={18} color="#6B7280" />
+                  <Text style={[styles.itemPrice, { color: colors.textPrimary }]}>₹3,250</Text>
+                  <MaterialIcons name="favorite-border" size={18} color={colors.textMuted} />
                 </View>
               </View>
             </View>
 
-            <View style={styles.itemCard}>
+            <View style={[styles.itemCard, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
               <View style={styles.itemImgBox}>
                 <Image source={{ uri: 'https://images.unsplash.com/photo-1496181133206-80ce9b88a853?q=80&w=2000&auto=format&fit=crop' }} style={styles.itemImg} />
-                <View style={[styles.itemBadge, { backgroundColor: '#FFFFFF' }]}>
-                  <Text style={styles.itemBadgeText}>OPEN BOX</Text>
+                <View style={[styles.itemBadge, { backgroundColor: isDark ? colors.border : '#FFFFFF' }]}>
+                  <Text style={[styles.itemBadgeText, { color: colors.textPrimary }]}>OPEN BOX</Text>
                 </View>
               </View>
               <View style={styles.itemContent}>
-                <Text style={styles.itemTitle}>Dell XPS 13</Text>
-                <Text style={styles.itemDesc} numberOfLines={2}>Touch screen, i7, 16GB RAM.</Text>
+                <Text style={[styles.itemTitle, { color: colors.textPrimary }]}>Dell XPS 13</Text>
+                <Text style={[styles.itemDesc, { color: colors.textSecondary }]} numberOfLines={2}>Touch screen, i7, 16GB RAM.</Text>
                 <View style={styles.itemFooter}>
-                  <Text style={styles.itemPrice}>₹72,000</Text>
-                  <MaterialIcons name="favorite-outline" size={18} color="#6B7280" />
+                  <Text style={[styles.itemPrice, { color: colors.textPrimary }]}>₹72,000</Text>
+                  <MaterialIcons name="favorite-border" size={18} color={colors.textMuted} />
                 </View>
               </View>
             </View>
 
-            <View style={styles.itemCard}>
+            <TouchableOpacity 
+              style={[styles.itemCard, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}
+              onPress={() => navigation.navigate('ProductDetail', {
+                item: {
+                  id: 9,
+                  title: 'PlayStation 5 Console',
+                  price: '₹38,500',
+                  image: 'https://images.unsplash.com/photo-1593305841991-05c297ba4575?q=80&w=2000&auto=format&fit=crop',
+                  desc: 'Disc edition with 2 DualSense controllers. Includes Marvel’s Spider-Man 2.',
+                  badge: 'TV',
+                  seller: { name: 'Karan Mehra', year: '2nd Year, BBA', avatar: 'https://i.pravatar.cc/150?u=karan' }
+                }
+              })}
+            >
               <View style={styles.itemImgBox}>
                 <Image source={{ uri: 'https://images.unsplash.com/photo-1593305841991-05c297ba4575?q=80&w=2000&auto=format&fit=crop' }} style={styles.itemImg} />
-                <View style={[styles.itemBadge, { backgroundColor: '#E0F2FE' }]}>
-                  <Text style={[styles.itemBadgeText, { color: '#0369A1' }]}>TV</Text>
+                <View style={[styles.itemBadge, { backgroundColor: isDark ? 'rgba(3, 105, 161, 0.2)' : '#E0F2FE' }]}>
+                  <Text style={[styles.itemBadgeText, { color: isDark ? '#0ea5e9' : '#0369A1' }]}>TV</Text>
                 </View>
               </View>
               <View style={styles.itemContent}>
-                <Text style={styles.itemTitle}>PlayStation 5 Console</Text>
-                <Text style={styles.itemDesc} numberOfLines={2}>Disc edition with 2 dualsense.</Text>
+                <Text style={[styles.itemTitle, { color: colors.textPrimary }]}>PlayStation 5 Console</Text>
+                <Text style={[styles.itemDesc, { color: colors.textSecondary }]} numberOfLines={2}>Disc edition with 2 dualsense.</Text>
                 <View style={styles.itemFooter}>
-                  <Text style={styles.itemPrice}>₹38,500</Text>
-                  <MaterialIcons name="favorite-outline" size={18} color="#6B7280" />
+                  <Text style={[styles.itemPrice, { color: colors.textPrimary }]}>₹38,500</Text>
+                  <MaterialIcons name="favorite-border" size={18} color={colors.textMuted} />
                 </View>
               </View>
-            </View>
+            </TouchableOpacity>
 
-            <View style={styles.itemCard}>
+            <View style={[styles.itemCard, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
               <View style={styles.itemImgBox}>
                 <Image source={{ uri: 'https://images.unsplash.com/photo-1523381210434-271e8be1f52b?q=80&w=2000&auto=format&fit=crop' }} style={styles.itemImg} />
-                <View style={[styles.itemBadge, { backgroundColor: '#FEE2E2' }]}>
-                  <Text style={[styles.itemBadgeText, { color: '#991B1B' }]}>APPAREL</Text>
+                <View style={[styles.itemBadge, { backgroundColor: isDark ? 'rgba(153, 27, 27, 0.2)' : '#FEE2E2' }]}>
+                  <Text style={[styles.itemBadgeText, { color: isDark ? '#f87171' : '#991B1B' }]}>APPAREL</Text>
                 </View>
               </View>
               <View style={styles.itemContent}>
-                <Text style={styles.itemTitle}>Invertis Hoodie</Text>
-                <Text style={styles.itemDesc} numberOfLines={2}>Limited edition, size L.</Text>
+                <Text style={[styles.itemTitle, { color: colors.textPrimary }]}>Invertis Hoodie</Text>
+                <Text style={[styles.itemDesc, { color: colors.textSecondary }]} numberOfLines={2}>Limited edition, size L.</Text>
                 <View style={styles.itemFooter}>
-                  <Text style={styles.itemPrice}>₹899</Text>
-                  <MaterialIcons name="favorite-outline" size={18} color="#6B7280" />
+                  <Text style={[styles.itemPrice, { color: colors.textPrimary }]}>₹899</Text>
+                  <MaterialIcons name="favorite-border" size={18} color={colors.textMuted} />
                 </View>
               </View>
             </View>
 
-            <View style={styles.itemCard}>
+            <View style={[styles.itemCard, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
               <View style={styles.itemImgBox}>
                 <Image source={{ uri: 'https://images.unsplash.com/photo-1491553895911-0055eca6402d?q=80&w=2000&auto=format&fit=crop' }} style={styles.itemImg} />
-                <View style={[styles.itemBadge, { backgroundColor: '#F5F3FF' }]}>
-                  <Text style={[styles.itemBadgeText, { color: '#5B21B6' }]}>SNEAKERS</Text>
+                <View style={[styles.itemBadge, { backgroundColor: isDark ? 'rgba(91, 33, 182, 0.2)' : '#F5F3FF' }]}>
+                  <Text style={[styles.itemBadgeText, { color: isDark ? '#a78bfa' : '#5B21B6' }]}>SNEAKERS</Text>
                 </View>
               </View>
               <View style={styles.itemContent}>
-                <Text style={styles.itemTitle}>Adidas Ultraboost</Text>
-                <Text style={styles.itemDesc} numberOfLines={2}>Cloud white, size 10, unworn.</Text>
+                <Text style={[styles.itemTitle, { color: colors.textPrimary }]}>Adidas Ultraboost</Text>
+                <Text style={[styles.itemDesc, { color: colors.textSecondary }]} numberOfLines={2}>Cloud white, size 10, unworn.</Text>
                 <View style={styles.itemFooter}>
-                  <Text style={styles.itemPrice}>₹6,200</Text>
-                  <MaterialIcons name="favorite-outline" size={18} color="#6B7280" />
+                  <Text style={[styles.itemPrice, { color: colors.textPrimary }]}>₹6,200</Text>
+                  <MaterialIcons name="favorite-border" size={18} color={colors.textMuted} />
                 </View>
               </View>
             </View>
 
-            <View style={styles.itemCard}>
+            <View style={[styles.itemCard, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
               <View style={styles.itemImgBox}>
                 <Image source={{ uri: 'https://images.unsplash.com/photo-1611186871348-b1ec696e52c9?q=80&w=2000&auto=format&fit=crop' }} style={styles.itemImg} />
-                <View style={[styles.itemBadge, { backgroundColor: '#F3F4F6' }]}>
-                  <Text style={[styles.itemBadgeText, { color: '#374151' }]}>GADGET</Text>
+                <View style={[styles.itemBadge, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F3F4F6' }]}>
+                  <Text style={[styles.itemBadgeText, { color: colors.textPrimary }]}>GADGET</Text>
                 </View>
               </View>
               <View style={styles.itemContent}>
-                <Text style={styles.itemTitle}>Kindle Paperwhite</Text>
-                <Text style={styles.itemDesc} numberOfLines={2}>Waterproof, 32GB, with case.</Text>
+                <Text style={[styles.itemTitle, { color: colors.textPrimary }]}>Kindle Paperwhite</Text>
+                <Text style={[styles.itemDesc, { color: colors.textSecondary }]} numberOfLines={2}>Waterproof, 32GB, with case.</Text>
                 <View style={styles.itemFooter}>
-                  <Text style={styles.itemPrice}>₹7,500</Text>
-                  <MaterialIcons name="favorite-outline" size={18} color="#6B7280" />
+                  <Text style={[styles.itemPrice, { color: colors.textPrimary }]}>₹7,500</Text>
+                  <MaterialIcons name="favorite-border" size={18} color={colors.textMuted} />
                 </View>
               </View>
             </View>
 
-            <View style={styles.itemCard}>
+            <View style={[styles.itemCard, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
               <View style={styles.itemImgBox}>
                 <Image source={{ uri: 'https://images.unsplash.com/photo-1541807084-5c52b6b3adef?q=80&w=2000&auto=format&fit=crop' }} style={styles.itemImg} />
-                <View style={[styles.itemBadge, { backgroundColor: '#FFFFFF' }]}>
-                  <Text style={styles.itemBadgeText}>FURNITURE</Text>
+                <View style={[styles.itemBadge, { backgroundColor: isDark ? colors.border : '#FFFFFF' }]}>
+                  <Text style={[styles.itemBadgeText, { color: colors.textPrimary }]}>FURNITURE</Text>
                 </View>
               </View>
               <View style={styles.itemContent}>
-                <Text style={styles.itemTitle}>Ergonomic Chair</Text>
-                <Text style={styles.itemDesc} numberOfLines={2}>Mesh back, perfect for hostellers.</Text>
+                <Text style={[styles.itemTitle, { color: colors.textPrimary }]}>Ergonomic Chair</Text>
+                <Text style={[styles.itemDesc, { color: colors.textSecondary }]} numberOfLines={2}>Mesh back, perfect for hostellers.</Text>
                 <View style={styles.itemFooter}>
-                  <Text style={styles.itemPrice}>₹3,800</Text>
-                  <MaterialIcons name="favorite-outline" size={18} color="#6B7280" />
+                  <Text style={[styles.itemPrice, { color: colors.textPrimary }]}>₹3,800</Text>
+                  <MaterialIcons name="favorite-border" size={18} color={colors.textMuted} />
                 </View>
               </View>
             </View>
 
-            <View style={styles.itemCard}>
+            <View style={[styles.itemCard, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
               <View style={styles.itemImgBox}>
                 <Image source={{ uri: 'https://images.unsplash.com/photo-1572635196237-14b3f281503f?q=80&w=2000&auto=format&fit=crop' }} style={styles.itemImg} />
-                <View style={[styles.itemBadge, { backgroundColor: '#FEF3C7' }]}>
-                  <Text style={[styles.itemBadgeText, { color: '#B45309' }]}>ACCESSORY</Text>
+                <View style={[styles.itemBadge, { backgroundColor: isDark ? 'rgba(180, 83, 9, 0.2)' : '#FEF3C7' }]}>
+                  <Text style={[styles.itemBadgeText, { color: isDark ? '#D97706' : '#B45309' }]}>ACCESSORY</Text>
                 </View>
               </View>
               <View style={styles.itemContent}>
-                <Text style={styles.itemTitle}>Ray-Ban Aviators</Text>
-                <Text style={styles.itemDesc} numberOfLines={2}>Classic gold G-15, original case.</Text>
+                <Text style={[styles.itemTitle, { color: colors.textPrimary }]}>Ray-Ban Aviators</Text>
+                <Text style={[styles.itemDesc, { color: colors.textSecondary }]} numberOfLines={2}>Classic gold G-15, original case.</Text>
                 <View style={styles.itemFooter}>
-                  <Text style={styles.itemPrice}>₹5,200</Text>
-                  <MaterialIcons name="favorite-outline" size={18} color="#6B7280" />
+                  <Text style={[styles.itemPrice, { color: colors.textPrimary }]}>₹5,200</Text>
+                  <MaterialIcons name="favorite-border" size={18} color={colors.textMuted} />
                 </View>
               </View>
             </View>
 
-            <View style={styles.itemCard}>
+            <View style={[styles.itemCard, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
               <View style={styles.itemImgBox}>
                 <Image source={{ uri: 'https://images.unsplash.com/photo-1503602642458-232111445657?q=80&w=2000&auto=format&fit=crop' }} style={styles.itemImg} />
-                <View style={[styles.itemBadge, { backgroundColor: '#F3F4F6' }]}>
-                  <Text style={[styles.itemBadgeText, { color: '#374151' }]}>UTIL</Text>
+                <View style={[styles.itemBadge, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F3F4F6' }]}>
+                  <Text style={[styles.itemBadgeText, { color: colors.textPrimary }]}>UTIL</Text>
                 </View>
               </View>
               <View style={styles.itemContent}>
-                <Text style={styles.itemTitle}>Steel Water Bottle</Text>
-                <Text style={styles.itemDesc} numberOfLines={2}>Insulated, 1L, keeps cold 24h.</Text>
+                <Text style={[styles.itemTitle, { color: colors.textPrimary }]}>Steel Water Bottle</Text>
+                <Text style={[styles.itemDesc, { color: colors.textSecondary }]} numberOfLines={2}>Insulated, 1L, keeps cold 24h.</Text>
                 <View style={styles.itemFooter}>
-                  <Text style={styles.itemPrice}>₹450</Text>
-                  <MaterialIcons name="favorite-outline" size={18} color="#6B7280" />
+                  <Text style={[styles.itemPrice, { color: colors.textPrimary }]}>₹450</Text>
+                  <MaterialIcons name="favorite-border" size={18} color={colors.textMuted} />
                 </View>
               </View>
             </View>
 
-            <View style={styles.itemCard}>
+            <View style={[styles.itemCard, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
               <View style={styles.itemImgBox}>
                 <Image source={{ uri: 'https://images.unsplash.com/photo-1611078489935-0cb964de46d6?q=80&w=2000&auto=format&fit=crop' }} style={styles.itemImg} />
-                <View style={[styles.itemBadge, { backgroundColor: '#F9FAFB' }]}>
-                  <Text style={[styles.itemBadgeText, { color: '#111827' }]}>LAPTOP</Text>
+                <View style={[styles.itemBadge, { backgroundColor: isDark ? colors.border : '#F9FAFB' }]}>
+                  <Text style={[styles.itemBadgeText, { color: colors.textPrimary }]}>LAPTOP</Text>
                 </View>
               </View>
               <View style={styles.itemContent}>
-                <Text style={styles.itemTitle}>HP Pavilion Gaming</Text>
-                <Text style={styles.itemDesc} numberOfLines={2}>Ryzen 5, GTX 1650, 512GB SSD.</Text>
+                <Text style={[styles.itemTitle, { color: colors.textPrimary }]}>HP Pavilion Gaming</Text>
+                <Text style={[styles.itemDesc, { color: colors.textSecondary }]} numberOfLines={2}>Ryzen 5, GTX 1650, 512GB SSD.</Text>
                 <View style={styles.itemFooter}>
-                  <Text style={styles.itemPrice}>₹42,000</Text>
-                  <MaterialIcons name="favorite-outline" size={18} color="#6B7280" />
+                  <Text style={[styles.itemPrice, { color: colors.textPrimary }]}>₹42,000</Text>
+                  <MaterialIcons name="favorite-border" size={18} color={colors.textMuted} />
                 </View>
               </View>
             </View>
+
 
             {/* Repeat items to match image grid */}
           </View>
@@ -494,6 +675,16 @@ const MarketplaceScreen = () => {
 
         <View style={{ height: 100 }} />
       </ScrollView>
+
+      {/* Sell FAB */}
+      <TouchableOpacity
+        style={[styles.fab, { backgroundColor: colors.primary, shadowColor: colors.primary }]}
+        activeOpacity={0.9}
+        onPress={() => {}}
+      >
+        <MaterialIcons name="add" size={24} color="#FFFFFF" />
+        <Text style={styles.fabText}>Sell Item</Text>
+      </TouchableOpacity>
     </View>
   );
 };
@@ -501,17 +692,15 @@ const MarketplaceScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F3F4F6',
   },
+
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 12,
-    backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
   },
   headerLeft: {
     flexDirection: 'row',
@@ -521,8 +710,8 @@ const styles = StyleSheet.create({
   headerLogo: {
     fontSize: 18,
     fontWeight: '900',
-    color: '#111827',
   },
+
   avatarTiny: {
     width: 36,
     height: 36,
@@ -531,18 +720,48 @@ const styles = StyleSheet.create({
   creditPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFF7ED',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 20,
     gap: 6,
     borderWidth: 1,
-    borderColor: '#FFEDD5',
   },
   creditText: {
-    color: '#9A3412',
     fontWeight: '800',
     fontSize: 12,
+  },
+
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  cartIconBtn: {
+    padding: 4,
+    position: 'relative',
+  },
+  cartBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    backgroundColor: '#EA580C',
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: '#FFFFFF',
+  },
+  cartBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 8,
+    fontWeight: '900',
+  },
+  itemActionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
   },
   scroll: {
     paddingBottom: 20,
@@ -604,24 +823,22 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 20,
     fontWeight: '900',
-    color: '#111827',
   },
+
   viewAllText: {
     fontSize: 12,
     fontWeight: '800',
-    color: '#9A3412',
   },
+
   hScroll: {
     gap: 16,
     paddingRight: 16,
   },
   quickCard: {
     width: 280,
-    backgroundColor: '#FFFFFF',
     borderRadius: 24,
     padding: 20,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.05,
@@ -654,16 +871,16 @@ const styles = StyleSheet.create({
   quickTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#111827',
     marginBottom: 16,
     lineHeight: 22,
     height: 44,
   },
+
   quickDivider: {
     height: 1,
-    backgroundColor: '#F3F4F6',
     marginBottom: 16,
   },
+
   quickFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -672,9 +889,9 @@ const styles = StyleSheet.create({
   quickRewardLabel: {
     fontSize: 9,
     fontWeight: '800',
-    color: '#9CA3AF',
     letterSpacing: 1,
   },
+
   quickReward: {
     fontSize: 18,
     fontWeight: '900',
@@ -693,7 +910,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   gigCard: {
-    backgroundColor: '#FFFFFF',
     borderRadius: 32,
     overflow: 'hidden',
     marginTop: 16,
@@ -703,6 +919,7 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     elevation: 3,
   },
+
   gigImg: {
     width: '100%',
     height: 180,
@@ -711,11 +928,11 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 16,
     left: 16,
-    backgroundColor: '#9A3412',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 12,
   },
+
   gigPopularText: {
     color: '#FFFFFF',
     fontSize: 10,
@@ -727,14 +944,14 @@ const styles = StyleSheet.create({
   gigTitle: {
     fontSize: 20,
     fontWeight: '900',
-    color: '#111827',
   },
+
   gigDesc: {
     fontSize: 14,
-    color: '#4B5563',
     lineHeight: 20,
     marginTop: 8,
   },
+
   gigAuthorRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -742,8 +959,8 @@ const styles = StyleSheet.create({
     marginTop: 20,
     paddingBottom: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
   },
+
   gigAuthorImg: {
     width: 40,
     height: 40,
@@ -756,9 +973,9 @@ const styles = StyleSheet.create({
   },
   gigAuthorSub: {
     fontSize: 11,
-    color: '#6B7280',
     marginTop: 2,
   },
+
   gigFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -787,7 +1004,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   gigCardSmall: {
-    backgroundColor: '#FFFFFF',
     borderRadius: 24,
     overflow: 'hidden',
     marginTop: 16,
@@ -797,6 +1013,7 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     elevation: 2,
   },
+
   gigImgSmall: {
     width: '100%',
     height: 120,
@@ -807,8 +1024,8 @@ const styles = StyleSheet.create({
   gigTitleSmall: {
     fontSize: 16,
     fontWeight: '800',
-    color: '#111827',
   },
+
   gigFooterSmall: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -817,8 +1034,8 @@ const styles = StyleSheet.create({
   },
   gigAuthorSmall: {
     fontSize: 12,
-    color: '#6B7280',
   },
+
   gigPriceSmall: {
     fontSize: 16,
     fontWeight: '900',
@@ -832,7 +1049,6 @@ const styles = StyleSheet.create({
   },
   itemCard: {
     width: '48%',
-    backgroundColor: '#FFFFFF',
     borderRadius: 24,
     overflow: 'hidden',
     marginBottom: 16,
@@ -842,6 +1058,7 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     elevation: 2,
   },
+
   itemImgBox: {
     width: '100%',
     height: 140,
@@ -874,9 +1091,9 @@ const styles = StyleSheet.create({
   },
   itemDesc: {
     fontSize: 11,
-    color: '#6B7280',
     marginTop: 4,
   },
+
   itemFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -886,24 +1103,30 @@ const styles = StyleSheet.create({
   itemPrice: {
     fontSize: 15,
     fontWeight: '900',
-    color: '#4338CA',
   },
+
   fab: {
     position: 'absolute',
     bottom: 30,
     right: 20,
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: '#78350F',
-    justifyContent: 'center',
+    width: 130,
+    height: 52,
+    borderRadius: 26,
+    flexDirection: 'row',
     alignItems: 'center',
-    shadowColor: '#78350F',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 5,
+    justifyContent: 'center',
+    gap: 8,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    elevation: 8,
   },
+  fabText: {
+    color: '#FFFFFF',
+    fontWeight: '800',
+    fontSize: 15,
+  },
+
 });
 
 export default MarketplaceScreen;

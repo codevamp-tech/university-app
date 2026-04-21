@@ -1,14 +1,17 @@
 import React from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Dimensions
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Dimensions,
 } from 'react-native';
-import { Ionicons, MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTheme } from '../../hooks/useTheme';
 
 const { width } = Dimensions.get('window');
 
 const TheHustleScreen = () => {
   const insets = useSafeAreaInsets();
+  const { colors, isDark } = useTheme();
+
 
   const leaderboardData = [
     { id: '1', name: 'Kabir Das', score: '9.1k', rank: 1, avatar: 'https://i.pravatar.cc/150?u=kabir', trend: 'up' },
@@ -19,119 +22,125 @@ const TheHustleScreen = () => {
   ];
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
+
       
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
         <TouchableOpacity style={styles.headerIconBtn}>
-          <MaterialIcons name="menu" size={26} color="#EA580C" />
+          <MaterialIcons name="menu" size={26} color={colors.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>The Hustle</Text>
+        <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>The Hustle</Text>
         <View style={styles.headerRight}>
           <TouchableOpacity style={styles.headerIconBtn}>
-            <MaterialIcons name="notifications-none" size={26} color="#4B5563" />
+            <MaterialIcons name="notifications-none" size={26} color={colors.textSecondary} />
             <View style={styles.notifDot} />
           </TouchableOpacity>
           <Image
             source={{ uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuC6mmtjUA28NY_AB8YFu2Ri2e3lSkRbJCYpAbrgwHHzzLntRM9rNTLFJIT-pf3fW5gQ-_hRX8LB8ZDdqw5ls_d4bA10oIXuBlKp8kv7onee50cVXADdy7BPVn6kAg4Co9Gbp6XiTx5yITLttWLtkQQag4sVTILELHpLT0_-WAXmJWUVCHpSfhFuYmROstnRxdO_T4ym_KOCd8CmJm60WORR2yoPF8RiqYCiJsTUrQcbumydveuPeijNqG_991IufFMlU7g1DbJ3nqtG' }}
-            style={styles.avatarTiny}
+            style={[styles.avatarTiny, { borderColor: colors.primary }]}
           />
         </View>
       </View>
+
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         
         {/* Main Pulse Points Card */}
         <View style={styles.sectionContainer}>
-          <View style={styles.pulseCard}>
-            <Text style={styles.pulseTitle}>PULSE POINTS</Text>
+          <View style={[styles.pulseCard, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
+            <Text style={[styles.pulseTitle, { color: colors.textMuted }]}>PULSE POINTS</Text>
             
             <View style={styles.scoreRow}>
-              <Text style={styles.largeScore}>8,450</Text>
-              <View style={styles.rankBox}>
-                <Text style={styles.rankText}>#12</Text>
+              <Text style={[styles.largeScore, { color: colors.textPrimary }]}>8,450</Text>
+              <View style={[styles.rankBox, { backgroundColor: isDark ? 'rgba(234, 88, 12, 0.15)' : '#FFF7ED', borderColor: colors.border }]}>
+                <Text style={[styles.rankText, { color: colors.primary }]}>#12</Text>
               </View>
             </View>
             
             <View style={styles.progressContainer}>
-              <View style={styles.progressBarBg}>
-                <View style={[styles.progressBarFill, { width: '85%' }]} />
+              <View style={[styles.progressBarBg, { backgroundColor: colors.border }]}>
+                <View style={[styles.progressBarFill, { width: '85%', backgroundColor: colors.primary }]} />
               </View>
-              <Text style={styles.progressText}>550 pts to Top 10</Text>
+              <Text style={[styles.progressText, { color: colors.textSecondary }]}>550 pts to Top 10</Text>
             </View>
             
-            <Text style={styles.pulseDesc}>
+            <Text style={[styles.pulseDesc, { backgroundColor: isDark ? colors.background : '#F9FAFB', color: colors.textSecondary }]}>
               You are ranked #12 in Computer Science. Top 10 gets early access to premium internships.
             </Text>
           </View>
         </View>
 
+
         {/* The Hustle Grid */}
         <View style={styles.sectionContainer}>
-          <Text style={styles.sectionTitle}>The Hustle Grid</Text>
+          <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>The Hustle Grid</Text>
           
           <View style={styles.gridContainer}>
             {/* Hackathons Card */}
-            <View style={styles.gridCard}>
-              <View style={styles.gridIconBox}>
-                <MaterialCommunityIcons name="trophy-outline" size={28} color="#EA580C" />
+            <View style={[styles.gridCard, { backgroundColor: isDark ? colors.card : '#FFF7ED', borderColor: colors.border }]}>
+              <View style={[styles.gridIconBox, { backgroundColor: isDark ? colors.background : '#FFEDD5' }]}>
+                <MaterialCommunityIcons name="trophy-outline" size={28} color={colors.primary} />
               </View>
-              <Text style={styles.gridTitle}>Hackathons</Text>
-              <Text style={styles.gridSub}>2 Wins • 4 Participations</Text>
-              <Text style={styles.gridPoints}>+1,200 pts</Text>
+              <Text style={[styles.gridTitle, { color: colors.textPrimary }]}>Hackathons</Text>
+              <Text style={[styles.gridSub, { color: colors.textSecondary }]}>2 Wins • 4 Participations</Text>
+              <Text style={[styles.gridPoints, { color: colors.primary }]}>+1,200 pts</Text>
             </View>
             
             {/* Social Clubs Card */}
-            <View style={[styles.gridCard, { backgroundColor: '#F0F9FF', borderColor: '#E0F2FE' }]}>
-              <View style={[styles.gridIconBox, { backgroundColor: '#E0F2FE' }]}>
+            <View style={[styles.gridCard, { backgroundColor: isDark ? '#0C0A09' : '#F0F9FF', borderColor: isDark ? '#292524' : '#E0F2FE' }]}>
+              <View style={[styles.gridIconBox, { backgroundColor: isDark ? 'rgba(2, 132, 199, 0.15)' : '#E0F2FE' }]}>
                 <MaterialCommunityIcons name="account-group-outline" size={28} color="#0284C7" />
               </View>
-              <Text style={styles.gridTitle}>Social Clubs</Text>
-              <Text style={styles.gridSub}>Event Lead (Coding Club)</Text>
+              <Text style={[styles.gridTitle, { color: colors.textPrimary }]}>Social Clubs</Text>
+              <Text style={[styles.gridSub, { color: colors.textSecondary }]}>Event Lead (Coding Club)</Text>
               <Text style={[styles.gridPoints, { color: '#0284C7' }]}>+850 pts</Text>
             </View>
           </View>
         </View>
 
+
         {/* Monthly Leaderboard */}
         <View style={styles.sectionContainer}>
           <View style={styles.leaderboardHeader}>
-            <Text style={styles.sectionTitle}>Monthly Leaderboard</Text>
-            <TouchableOpacity style={styles.filterBtn}>
-              <Text style={styles.filterText}>B.Tech CS</Text>
-              <MaterialIcons name="keyboard-arrow-down" size={16} color="#4B5563" />
+            <Text style={[styles.sectionTitle, { color: colors.textPrimary, marginBottom: 0 }]}>Monthly Leaderboard</Text>
+            <TouchableOpacity style={[styles.filterBtn, { backgroundColor: colors.border }]}>
+              <Text style={[styles.filterText, { color: colors.textSecondary }]}>B.Tech CS</Text>
+              <MaterialIcons name="keyboard-arrow-down" size={16} color={colors.textSecondary} />
             </TouchableOpacity>
           </View>
           
-          <View style={styles.leaderboardCard}>
+          <View style={[styles.leaderboardCard, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
             {leaderboardData.map((item, index) => (
               <View key={item.id} style={[
                 styles.boardItem, 
-                item.isMe && styles.boardItemActive,
-                index === leaderboardData.length - 1 && { borderBottomWidth: 0 }
+                item.isMe && [styles.boardItemActive, { backgroundColor: isDark ? 'rgba(234, 88, 12, 0.2)' : '#FFF7ED' }],
+                index === leaderboardData.length - 1 && { borderBottomWidth: 0 },
+                { borderBottomColor: colors.border }
               ]}>
                 <View style={styles.boardItemLeft}>
-                  <Text style={[styles.boardRank, item.rank <= 3 && styles.topRank]}>{item.rank}</Text>
+                  <Text style={[styles.boardRank, { color: colors.textMuted }, item.rank <= 3 && { color: colors.primary }]}>{item.rank}</Text>
                   <Image source={{ uri: item.avatar }} style={styles.boardAvatar} />
                   <View>
-                    <Text style={[styles.boardName, item.isMe && { color: '#EA580C' }]}>
+                    <Text style={[styles.boardName, { color: colors.textPrimary }, item.isMe && { color: colors.primary }]}>
                       {item.name} {item.isMe && '(You)'}
                     </Text>
                     {item.trend === 'up' && <Text style={styles.trendUp}>Up 2 spots ↗</Text>}
                     {item.trend === 'down' && <Text style={styles.trendDown}>Down 1 spot ↘</Text>}
                   </View>
                 </View>
-                <View style={[styles.scorePill, item.isMe && { backgroundColor: '#EA580C' }]}>
-                  <Text style={[styles.scorePillText, item.isMe && { color: '#FFFFFF' }]}>{item.score}</Text>
+                <View style={[styles.scorePill, { backgroundColor: colors.border }, item.isMe && { backgroundColor: colors.primary }]}>
+                  <Text style={[styles.scorePillText, { color: colors.textSecondary }, item.isMe && { color: '#FFFFFF' }]}>{item.score}</Text>
                 </View>
               </View>
             ))}
           </View>
           
-          <TouchableOpacity style={styles.viewFullBtn}>
-            <Text style={styles.viewFullText}>View Full Rankings</Text>
+          <TouchableOpacity style={[styles.viewFullBtn, { backgroundColor: colors.border }]}>
+            <Text style={[styles.viewFullText, { color: colors.textSecondary }]}>View Full Rankings</Text>
           </TouchableOpacity>
         </View>
+
 
         <View style={{ height: 100 }} />
       </ScrollView>

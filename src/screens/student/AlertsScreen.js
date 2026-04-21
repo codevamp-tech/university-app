@@ -6,6 +6,8 @@ import { Ionicons, MaterialIcons, MaterialCommunityIcons } from '@expo/vector-ic
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { NOTIFICATIONS } from '../../constants/data';
+import { useTheme } from '../../hooks/useTheme';
+
 
 const { width } = Dimensions.get('window');
 const TABS = ['All Updates', 'Grades', 'Deadlines'];
@@ -13,6 +15,8 @@ const TABS = ['All Updates', 'Grades', 'Deadlines'];
 const AlertsScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState('All Updates');
+  const { colors, isDark } = useTheme();
+
 
   const filteredNotifs = activeTab === 'All Updates'
     ? NOTIFICATIONS
@@ -21,22 +25,24 @@ const AlertsScreen = ({ navigation }) => {
       : NOTIFICATIONS.filter(n => n.type === 'deadline');
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
       {/* Header with Dashboard Style */}
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: colors.background }]}>
         <View style={styles.headerLeft}>
           <LinearGradient
-            colors={['#EA580C', '#9A3412']}
+            colors={[colors.primary, colors.primaryDark]}
             style={styles.logoIconBg}
           >
             <MaterialIcons name="notifications" size={20} color="#FFFFFF" />
           </LinearGradient>
-          <Text style={styles.headerLogo}>Invertis University</Text>
+          <Text style={[styles.headerLogo, { color: colors.textPrimary }]}>Invertis University</Text>
         </View>
-        <TouchableOpacity style={styles.markAllButton}>
-          <Text style={styles.markAllText}>Mark all as read</Text>
+        <TouchableOpacity style={[styles.markAllButton, { backgroundColor: isDark ? colors.card : '#FFFFFF', borderColor: colors.border, borderWidth: 1 }]}>
+          <Text style={[styles.markAllText, { color: colors.primary }]}>Mark all as read</Text>
         </TouchableOpacity>
       </View>
+
+
 
       <ScrollView
         contentContainerStyle={styles.scroll}
@@ -45,37 +51,41 @@ const AlertsScreen = ({ navigation }) => {
         {/* Urgent Alert Card - Redesigned with Gradient */}
         <View style={styles.urgentCardWrap}>
           <LinearGradient
-            colors={['#FFFFFF', '#FFF7ED']}
-            style={styles.urgentCard}
+            colors={isDark ? ['#1E1B4B', '#111827'] : ['#FFFFFF', '#FFF7ED']}
+            style={[styles.urgentCard, { borderColor: colors.border }]}
             start={{ x: 0, y: 0 }}
-            end={{ x: 0, y: 1 }}
+            end={{ x: 1, y: 1 }}
           >
+
             <View style={styles.urgentHeader}>
               <View style={styles.urgentIconWrapper}>
-                <LinearGradient colors={['#F97316', '#EA580C']} style={styles.urgentIconBg}>
+                <LinearGradient colors={[colors.primary, colors.primaryDark]} style={styles.urgentIconBg}>
                   <Ionicons name="alert-circle" size={28} color="#FFFFFF" />
                 </LinearGradient>
               </View>
-              <LinearGradient colors={['#FFEDD5', '#FED7AA']} style={styles.dueBadge}>
-                <Text style={styles.dueBadgeText}>DUE IN 2H</Text>
+              <LinearGradient colors={isDark ? ['#7C2D12', '#431407'] : ['#FFEDD5', '#FED7AA']} style={styles.dueBadge}>
+                <Text style={[styles.dueBadgeText, { color: isDark ? '#FFEDD5' : '#9A3412' }]}>DUE IN 2H</Text>
               </LinearGradient>
+
             </View>
 
-            <Text style={styles.urgentTitle}>Physics II: Lab Report</Text>
-            <Text style={styles.urgentDesc}>Submission window closing soon. Ensure all variables are correctly documented.</Text>
+            <Text style={[styles.urgentTitle, { color: colors.textPrimary }]}>Physics II: Lab Report</Text>
+            <Text style={[styles.urgentDesc, { color: colors.textSecondary }]}>Submission window closing soon. Ensure all variables are correctly documented.</Text>
+
 
             <View style={styles.urgentFooter}>
               <View style={styles.avatarStack}>
-                <LinearGradient colors={['#8B5CF6', '#6D28D9']} style={styles.avatar}>
+                <LinearGradient colors={['#8B5CF6', '#6D28D9']} style={[styles.avatar, { borderColor: isDark ? colors.border : '#FFFFFF' }]}>
                   <Text style={styles.avatarText}>JD</Text>
                 </LinearGradient>
-                <LinearGradient colors={['#EA580C', '#9A3412']} style={[styles.avatar, styles.avatarOverlap]}>
+                <LinearGradient colors={[colors.primary, colors.primaryDark]} style={[styles.avatar, styles.avatarOverlap, { borderColor: isDark ? colors.border : '#FFFFFF' }]}>
                   <Text style={styles.avatarText}>MK</Text>
                 </LinearGradient>
-                <Text style={styles.avatarCount}>+2</Text>
+                <Text style={[styles.avatarCount, { color: colors.textSecondary }]}>+2</Text>
               </View>
+
               <TouchableOpacity style={styles.reviewBtn}>
-                <LinearGradient colors={['#1F2937', '#111827']} style={styles.reviewBtnGradient}>
+                <LinearGradient colors={isDark ? ['#312E81', '#1E1B4B'] : ['#1F2937', '#111827']} style={styles.reviewBtnGradient}>
                   <Text style={styles.reviewBtnText}>Review Now →</Text>
                 </LinearGradient>
               </TouchableOpacity>
@@ -83,24 +93,27 @@ const AlertsScreen = ({ navigation }) => {
           </LinearGradient>
         </View>
 
+
         {/* Filter Tabs - Dashboard Style */}
         <View style={styles.tabsContainer}>
           {TABS.map((tab) => (
             <TouchableOpacity
               key={tab}
-              style={styles.tabWrapper}
+              style={[styles.tabWrapper, { backgroundColor: activeTab === tab ? 'transparent' : colors.card, borderColor: colors.border, borderWidth: activeTab === tab ? 0 : 1 }]}
               onPress={() => setActiveTab(tab)}
             >
               <LinearGradient
-                colors={activeTab === tab ? ['#F97316', '#EA580C'] : ['#F9FAFB', '#F3F4F6']}
-                style={[styles.tab, activeTab === tab && styles.tabActive]}
+                colors={activeTab === tab ? [colors.primary, colors.primaryDark] : ['transparent', 'transparent']}
+                style={styles.tab}
               >
-                <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>
+                <Text style={[styles.tabText, { color: activeTab === tab ? '#FFFFFF' : colors.textSecondary }]}>
                   {tab}
                 </Text>
               </LinearGradient>
             </TouchableOpacity>
           ))}
+
+
         </View>
 
         {/* Notification Items */}
@@ -112,27 +125,31 @@ const AlertsScreen = ({ navigation }) => {
           {filteredNotifs.map((notif, index) => (
             <LinearGradient
               key={notif.id}
-              colors={['#FFFFFF', '#F9FAFB']}
-              style={[styles.notifCard, index === filteredNotifs.length - 1 && styles.lastNotifCard]}
+              colors={[colors.card, colors.card]}
+              style={[styles.notifCard, { borderColor: colors.border }, index === filteredNotifs.length - 1 && styles.lastNotifCard]}
               start={{ x: 0, y: 0 }}
               end={{ x: 0, y: 1 }}
             >
+
               <View style={[styles.notifIcon, { backgroundColor: notif.color + '15' }]}>
                 <Ionicons name={notif.icon} size={22} color={notif.color} />
-                {notif.isNew && <View style={styles.newDot} />}
+                {notif.isNew && <View style={[styles.newDot, { borderColor: colors.card }]} />}
               </View>
+
 
               <View style={styles.notifContent}>
                 <View style={styles.notifHeader}>
-                  <Text style={styles.notifTitle}>{notif.title}</Text>
-                  <Text style={styles.notifTime}>{notif.time}</Text>
+                  <Text style={[styles.notifTitle, { color: colors.textPrimary }]}>{notif.title}</Text>
+                  <Text style={[styles.notifTime, { color: colors.textSecondary }]}>{notif.time}</Text>
                 </View>
-                <Text style={styles.notifDesc}>{notif.description}</Text>
+
+                <Text style={[styles.notifDesc, { color: colors.textSecondary }]}>{notif.description}</Text>
                 {notif.link && (
                   <TouchableOpacity>
-                    <Text style={styles.notifLink}>{notif.link} →</Text>
+                    <Text style={[styles.notifLink, { color: colors.primary }]}>{notif.link} →</Text>
                   </TouchableOpacity>
                 )}
+
               </View>
             </LinearGradient>
           ))}
@@ -147,16 +164,16 @@ const AlertsScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F3F4F6',
   },
+
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: '#F3F4F6',
   },
+
   headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -177,23 +194,16 @@ const styles = StyleSheet.create({
   headerLogo: {
     fontSize: 22,
     fontWeight: '900',
-    color: '#111827',
     letterSpacing: -0.5,
   },
+
   markAllButton: {
     paddingHorizontal: 12,
     paddingVertical: 8,
-    backgroundColor: '#FFFFFF',
     borderRadius: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
   },
   markAllText: {
     fontSize: 13,
-    color: '#EA580C',
     fontWeight: '700',
   },
   scroll: {
@@ -213,8 +223,8 @@ const styles = StyleSheet.create({
     borderRadius: 32,
     padding: 24,
     borderWidth: 1,
-    borderColor: '#FFFFFF',
   },
+
   urgentHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -246,21 +256,19 @@ const styles = StyleSheet.create({
   dueBadgeText: {
     fontSize: 11,
     fontWeight: '800',
-    color: '#9A3412',
     letterSpacing: 0.5,
   },
   urgentTitle: {
     fontSize: 20,
     fontWeight: '900',
-    color: '#111827',
     marginBottom: 8,
   },
   urgentDesc: {
     fontSize: 14,
-    color: '#6B7280',
     lineHeight: 20,
     marginBottom: 20,
   },
+
   urgentFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -277,8 +285,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
-    borderColor: '#FFFFFF',
   },
+
   avatarOverlap: {
     marginLeft: -8,
   },
@@ -290,7 +298,6 @@ const styles = StyleSheet.create({
   avatarCount: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#6B7280',
     marginLeft: 12,
   },
   reviewBtn: {
@@ -320,34 +327,22 @@ const styles = StyleSheet.create({
     flex: 1,
     borderRadius: 40,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
   },
   tab: {
     paddingVertical: 12,
     alignItems: 'center',
     borderRadius: 40,
   },
-  tabActive: {
-    borderWidth: 0,
-  },
   tabText: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#6B7280',
   },
-  tabTextActive: {
-    color: '#FFFFFF',
-  },
+
   notifsContainer: {
     flex: 1,
   },
   sectionSubtitle: {
     fontSize: 12,
-    color: '#9CA3AF',
     fontWeight: '600',
     marginBottom: 16,
     letterSpacing: 0.8,
@@ -365,8 +360,8 @@ const styles = StyleSheet.create({
     elevation: 2,
     gap: 16,
     borderWidth: 1,
-    borderColor: '#FFFFFF',
   },
+
   lastNotifCard: {
     marginBottom: 0,
   },
@@ -387,7 +382,6 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     backgroundColor: '#EA580C',
     borderWidth: 2,
-    borderColor: '#FFFFFF',
   },
   notifContent: {
     flex: 1,
@@ -401,26 +395,25 @@ const styles = StyleSheet.create({
   notifTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#111827',
     flex: 1,
     marginRight: 8,
   },
+
   notifTime: {
     fontSize: 11,
-    color: '#9CA3AF',
     fontWeight: '500',
   },
   notifDesc: {
     fontSize: 13,
-    color: '#6B7280',
     lineHeight: 19,
     marginBottom: 6,
   },
+
   notifLink: {
     fontSize: 13,
-    color: '#EA580C',
     fontWeight: '700',
   },
 });
+
 
 export default AlertsScreen;

@@ -6,39 +6,51 @@ import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 
+import { useTheme } from '../../hooks/useTheme';
+
 const { width } = Dimensions.get('window');
 
 const DashboardScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
+  const { colors, isDark, toggleTheme } = useTheme();
   const [activeMood, setActiveMood] = React.useState(2);
   const [showProfileMenu, setShowProfileMenu] = React.useState(false);
-  const [isDarkMode, setIsDarkMode] = React.useState(false);
+
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
+
       {/* TopAppBar */}
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: colors.background }]}>
         <View style={styles.headerLeft}>
           <LinearGradient
-            colors={['#EA580C', '#9A3412']}
+            colors={isDark ? ['#9A3412', '#7C2D12'] : ['#EA580C', '#9A3412']}
             style={styles.logoIconBg}
           >
             <MaterialIcons name="school" size={20} color="#FFFFFF" />
           </LinearGradient>
-          <Text style={styles.headerLogo}>Invertis University</Text>
+          <Text style={[styles.headerLogo, { color: colors.textPrimary }]}>Invertis University</Text>
         </View>
         <View style={styles.headerRight}>
-          <TouchableOpacity style={styles.headerIconBtn}>
-            <MaterialIcons name="qr-code-scanner" size={22} color="#4B5563" />
+          <TouchableOpacity
+            style={[styles.headerIconBtn, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}
+            onPress={() => navigation.navigate('CampusJournal')}
+          >
+            <Image
+              source={require('../../../assets/journal-logo.webp')}
+              style={styles.journalIcon}
+            />
           </TouchableOpacity>
           <TouchableOpacity onPress={() => setShowProfileMenu(true)}>
             <Image
               source={{ uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuC6mmtjUA28NY_AB8YFu2Ri2e3lSkRbJCYpAbrgwHHzzLntRM9rNTLFJIT-pf3fW5gQ-_hRX8LB8ZDdqw5ls_d4bA10oIXuBlKp8kv7onee50cVXADdy7BPVn6kAg4Co9Gbp6XiTx5yITLttWLtkQQag4sVTILELHpLT0_-WAXmJWUVCHpSfhFuYmROstnRxdO_T4ym_KOCd8CmJm60WORR2yoPF8RiqYCiJsTUrQcbumydveuPeijNqG_991IufFMlU7g1DbJ3nqtG' }}
-              style={styles.avatarSmall}
+              style={[styles.avatarSmall, { borderColor: colors.primary }]}
             />
           </TouchableOpacity>
         </View>
       </View>
+
+
 
       {/* Profile Dropdown Modal */}
       <Modal
@@ -47,53 +59,60 @@ const DashboardScreen = ({ navigation }) => {
         animationType="fade"
         onRequestClose={() => setShowProfileMenu(false)}
       >
-        <TouchableOpacity 
-          style={styles.modalOverlay} 
-          activeOpacity={1} 
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
           onPress={() => setShowProfileMenu(false)}
         >
-          <View style={[styles.profileMenu, { top: insets.top + 50 }]}>
+          <View style={[styles.profileMenu, { top: insets.top + 50, backgroundColor: colors.card, borderColor: colors.border }]}>
+
             <View style={styles.menuHeader}>
               <Image
                 source={{ uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuC6mmtjUA28NY_AB8YFu2Ri2e3lSkRbJCYpAbrgwHHzzLntRM9rNTLFJIT-pf3fW5gQ-_hRX8LB8ZDdqw5ls_d4bA10oIXuBlKp8kv7onee50cVXADdy7BPVn6kAg4Co9Gbp6XiTx5yITLttWLtkQQag4sVTILELHpLT0_-WAXmJWUVCHpSfhFuYmROstnRxdO_T4ym_KOCd8CmJm60WORR2yoPF8RiqYCiJsTUrQcbumydveuPeijNqG_991IufFMlU7g1DbJ3nqtG' }}
                 style={styles.menuAvatar}
               />
               <View>
-                <Text style={styles.menuName}>Aryan Kumar</Text>
-                <Text style={styles.menuSub}>Student Account</Text>
+                <Text style={[styles.menuName, { color: colors.textPrimary }]}>Aryan Kumar</Text>
+                <Text style={[styles.menuSub, { color: colors.textSecondary }]}>Student Account</Text>
+
               </View>
             </View>
-            
-            <View style={styles.menuDivider} />
-            
-            <TouchableOpacity 
+
+            <View style={[styles.menuDivider, { backgroundColor: colors.border }]} />
+
+
+            <TouchableOpacity
               style={styles.menuItem}
               onPress={() => {
                 setShowProfileMenu(false);
                 navigation.navigate('Settings');
               }}
             >
-              <MaterialCommunityIcons name="cog-outline" size={20} color="#4B5563" />
-              <Text style={styles.menuItemText}>Setting</Text>
+              <MaterialCommunityIcons name="cog-outline" size={20} color={colors.textSecondary} />
+              <Text style={[styles.menuItemText, { color: colors.textPrimary }]}>Setting</Text>
+
             </TouchableOpacity>
 
             <View style={styles.menuItem}>
               <View style={styles.menuItemLeft}>
-                <MaterialCommunityIcons name="moon-waning-crescent" size={20} color="#4B5563" />
-                <Text style={styles.menuItemText}>Dark Mode</Text>
+                <MaterialCommunityIcons name="moon-waning-crescent" size={20} color={colors.textSecondary} />
+                <Text style={[styles.menuItemText, { color: colors.textPrimary }]}>Dark Mode</Text>
+
               </View>
-              <Switch 
-                value={isDarkMode}
-                onValueChange={setIsDarkMode}
-                trackColor={{ false: '#E5E7EB', true: '#EA580C' }}
+              <Switch
+                value={isDark}
+                onValueChange={toggleTheme}
+                trackColor={{ false: colors.border, true: colors.primary }}
                 thumbColor="#FFFFFF"
               />
+
             </View>
 
-            <View style={styles.menuDivider} />
+            <View style={[styles.menuDivider, { backgroundColor: colors.border }]} />
 
-            <TouchableOpacity 
-              style={[styles.menuItem, styles.logoutItem]}
+
+            <TouchableOpacity
+              style={[styles.menuItem, styles.logoutItem, { backgroundColor: isDark ? 'rgba(239, 68, 68, 0.1)' : '#FEF2F2' }]}
               onPress={() => {
                 setShowProfileMenu(false);
                 navigation.replace('Login');
@@ -111,46 +130,60 @@ const DashboardScreen = ({ navigation }) => {
         {/* Main User Card with Gradient */}
         <View style={styles.sectionContainer}>
           <LinearGradient
-            colors={['#FFFFFF', '#F9FAFB']}
-            style={styles.userCard}
+            colors={isDark ? [colors.card, colors.background] : ['#FFFFFF', '#F9FAFB']}
+            style={[styles.userCard, { borderColor: colors.border }]}
+
             start={{ x: 0, y: 0 }}
             end={{ x: 0, y: 1 }}
           >
             <View style={styles.userCardTop}>
               <View>
-                <Text style={styles.welcomeTitle}>Hello, Aryan</Text>
-                <Text style={styles.welcomeSub}>Senior B.Tech CSE • Class of '24</Text>
+                <Text style={[styles.welcomeTitle, { color: colors.textPrimary }]}>Hello, Aryan</Text>
+                <Text style={[styles.welcomeSub, { color: colors.textSecondary }]}>Senior B.Tech CSE • Class of '24</Text>
+
               </View>
-              <MaterialCommunityIcons name="star-shooting-outline" size={32} color="#EA580C" style={{ opacity: 0.2 }} />
+              <MaterialCommunityIcons name="star-shooting-outline" size={32} color={colors.primary} style={{ opacity: 0.2 }} />
             </View>
+
 
             {/* Stats Row */}
             <View style={styles.statsRow}>
-              <LinearGradient colors={['#FFF7ED', '#FFEDD5']} style={styles.statPillOrange}>
-                <Text style={styles.statValueOrange}>8.9</Text>
-                <Text style={styles.statLabelOrange}>ACADEMIC CGPA</Text>
+              <LinearGradient 
+                colors={isDark ? ['rgba(234, 88, 12, 0.2)', 'rgba(234, 88, 12, 0.1)'] : ['#FFF7ED', '#FFEDD5']} 
+                style={[styles.statPillOrange, { borderColor: isDark ? 'rgba(234, 88, 12, 0.3)' : '#FFEDD5' }]}
+              >
+                <Text style={[styles.statValueOrange, { color: isDark ? '#FB923C' : '#9A3412' }]}>8.9</Text>
+                <Text style={[styles.statLabelOrange, { color: isDark ? '#FB923C' : '#9A3412' }]}>ACADEMIC CGPA</Text>
               </LinearGradient>
-              <LinearGradient colors={['#EEF2FF', '#E0E7FF']} style={styles.statPillPurple}>
-                <Text style={styles.statValuePurple}>850</Text>
-                <Text style={styles.statLabelPurple}>SOCIAL CREDITS</Text>
+              <LinearGradient 
+                colors={isDark ? ['rgba(67, 56, 202, 0.2)', 'rgba(67, 56, 202, 0.1)'] : ['#EEF2FF', '#E0E7FF']} 
+                style={[styles.statPillPurple, { borderColor: isDark ? 'rgba(67, 56, 202, 0.3)' : '#E0E7FF' }]}
+              >
+                <Text style={[styles.statValuePurple, { color: isDark ? '#818CF8' : '#3730A3' }]}>850</Text>
+                <Text style={[styles.statLabelPurple, { color: isDark ? '#818CF8' : '#3730A3' }]}>SOCIAL CREDITS</Text>
               </LinearGradient>
             </View>
 
             {/* AI Suggestion */}
-            <LinearGradient colors={['#ECFDF5', '#D1FAE5']} style={styles.aiSuggestionBox}>
-              <View style={styles.aiIconCircle}>
-                <MaterialCommunityIcons name="auto-fix" size={20} color="#065F46" />
+            <LinearGradient 
+              colors={isDark ? ['rgba(16, 185, 129, 0.15)', 'rgba(16, 185, 129, 0.05)'] : ['#ECFDF5', '#D1FAE5']} 
+              style={[styles.aiSuggestionBox, { borderColor: isDark ? 'rgba(16, 185, 129, 0.3)' : '#A7F3D0' }]}
+            >
+              <View style={[styles.aiIconCircle, { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.2)' : 'rgba(6,95,70,0.1)' }]}>
+                <MaterialCommunityIcons name="auto-fix" size={20} color={isDark ? '#34D399' : '#065F46'} />
               </View>
-              <Text style={styles.aiSuggestionText}>
+              <Text style={[styles.aiSuggestionText, { color: isDark ? '#A7F3D0' : '#064E3B' }]}>
                 <Text style={{ fontWeight: '800' }}>AI Insight:</Text> Based on your Python scores, you're a 92% match for Senior Dev roles.
               </Text>
             </LinearGradient>
+
           </LinearGradient>
         </View>
 
         {/* Quick Launchpad (Links to the new massive modules) */}
         <View style={styles.sectionContainer}>
-          <Text style={styles.moduleTitle}>Campus Launchpad</Text>
+          <Text style={[styles.moduleTitle, { color: colors.textSecondary }]}>Campus Launchpad</Text>
+
           <View style={styles.launchpadGrid}>
             <TouchableOpacity
               style={styles.launchBtn}
@@ -159,7 +192,8 @@ const DashboardScreen = ({ navigation }) => {
               <LinearGradient colors={['#4338CA', '#312E81']} style={styles.launchIconBg}>
                 <MaterialCommunityIcons name="augmented-reality" size={24} color="#FFFFFF" />
               </LinearGradient>
-              <Text style={styles.launchText}>Smart Campus</Text>
+              <Text style={[styles.launchText, { color: colors.textPrimary }]}>Smart Campus</Text>
+
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -169,7 +203,8 @@ const DashboardScreen = ({ navigation }) => {
               <LinearGradient colors={['#FFD700', '#B8860B']} style={styles.launchIconBg}>
                 <MaterialCommunityIcons name="alert-circle-outline" size={24} color="#111827" />
               </LinearGradient>
-              <Text style={styles.launchText}>Raise Issue</Text>
+              <Text style={[styles.launchText, { color: colors.textPrimary }]}>Raise Issue</Text>
+
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -179,7 +214,8 @@ const DashboardScreen = ({ navigation }) => {
               <LinearGradient colors={['#059669', '#064E3B']} style={styles.launchIconBg}>
                 <MaterialCommunityIcons name="trending-up" size={24} color="#FFFFFF" />
               </LinearGradient>
-              <Text style={styles.launchText}>The Hustle</Text>
+              <Text style={[styles.launchText, { color: colors.textPrimary }]}>The Hustle</Text>
+
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -189,18 +225,21 @@ const DashboardScreen = ({ navigation }) => {
               <LinearGradient colors={['#D97706', '#92400E']} style={styles.launchIconBg}>
                 <MaterialCommunityIcons name="office-building" size={24} color="#FFFFFF" />
               </LinearGradient>
-              <Text style={styles.launchText}>ERP</Text>
+              <Text style={[styles.launchText, { color: colors.textPrimary }]}>ERP</Text>
+
             </TouchableOpacity>
           </View>
         </View>
 
         {/* Pulse Check */}
         <View style={styles.sectionContainer}>
-          <View style={styles.pulseCard}>
+          <View style={[styles.pulseCard, { backgroundColor: colors.card }]}>
+
             <View style={styles.pulseHeaderRow}>
               <View>
-                <Text style={styles.sectionTitle}>Pulse Check</Text>
-                <Text style={styles.sectionSub}>How are you feeling today?</Text>
+                <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Pulse Check</Text>
+                <Text style={[styles.sectionSub, { color: colors.textSecondary }]}>How are you feeling today?</Text>
+
               </View>
               <MaterialCommunityIcons name="heart-pulse" size={28} color="#EA580C" opacity={0.5} />
             </View>
@@ -217,122 +256,142 @@ const DashboardScreen = ({ navigation }) => {
                   onPress={() => setActiveMood(mood.id)}
                 >
                   <LinearGradient
-                    colors={activeMood === mood.id ? ['#F97316', '#EA580C'] : ['#F3F4F6', '#E5E7EB']}
-                    style={[styles.moodIcon, activeMood === mood.id && styles.moodIconActive]}
+                    colors={activeMood === mood.id ? ['#F97316', '#EA580C'] : [colors.card, colors.background]}
+                    style={[styles.moodIcon, activeMood === mood.id && styles.moodIconActive, { borderColor: colors.border, borderWidth: 1 }]}
+
                   >
                     <MaterialCommunityIcons
                       name={mood.icon}
                       size={28}
-                      color={activeMood === mood.id ? '#FFFFFF' : '#4B5563'}
+                      color={activeMood === mood.id ? '#FFFFFF' : colors.textSecondary}
                     />
                   </LinearGradient>
                 </TouchableOpacity>
               ))}
             </View>
 
-            <View style={styles.mentallyBox}>
-              <View style={styles.mentallyIconCircle}>
+
+            <View style={[styles.mentallyBox, { backgroundColor: isDark ? '#1E293B' : '#EEF2FF' }]}>
+              <View style={[styles.mentallyIconCircle, { backgroundColor: isDark ? '#334155' : '#E0E7FF' }]}>
+
                 <MaterialCommunityIcons name="brain" size={16} color="#4338CA" />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.mentallyText}>
+                <Text style={[styles.mentallyText, { color: isDark ? '#A5B4FC' : '#3730A3' }]}>
                   "Stress levels look slightly high before the Python finals. Need a 5-min mindfulness break?"
                 </Text>
-                <TouchableOpacity><Text style={styles.mentallyAction}>TALK TO MENTALLY</Text></TouchableOpacity>
+
+                <TouchableOpacity onPress={() => navigation.navigate('MentallyMain')}>
+                    <Text style={[styles.mentallyAction, { color: isDark ? '#818CF8' : '#4338CA' }]}>TALK TO MENTALLY</Text>
+
+                </TouchableOpacity>
               </View>
             </View>
           </View>
         </View>
 
-        {/* Innovation Hub Header */}
         <View style={styles.innovationHeader}>
-          <Text style={styles.innovationBadge}>INNOVATION HUB</Text>
-          <Text style={styles.innovationTitle}>Career AI Catalyst</Text>
+          <Text style={[styles.innovationBadge, { color: colors.primary }]}>INNOVATION HUB</Text>
+          <Text style={[styles.innovationTitle, { color: colors.textPrimary }]}>Career AI Catalyst</Text>
         </View>
+
 
         {/* Career Hub Grid */}
         <View style={styles.careerGrid}>
           {/* Resume Builder */}
-          <LinearGradient colors={['#ffffff', '#fffaf0']} style={styles.resumeCard}>
-            <View style={styles.resumeIcon}>
-              <MaterialCommunityIcons name="file-document-edit-outline" size={28} color="#EA580C" />
+          <LinearGradient 
+            colors={isDark ? [colors.card, colors.background] : ['#ffffff', '#fffaf0']} 
+            style={[styles.resumeCard, { borderColor: colors.border }]}
+          >
+            <View style={[styles.resumeIcon, { backgroundColor: isDark ? colors.background : '#FFF7ED' }]}>
+              <MaterialCommunityIcons name="file-document-edit-outline" size={28} color={colors.primary} />
             </View>
-            <Text style={styles.cardTitle}>AI Resume Builder</Text>
-            <Text style={styles.cardDesc}>Smart tailoring based on your 8.9 CGPA and technical skills in Invertis labs.</Text>
-            <TouchableOpacity style={styles.resumeBtn}>
+            <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>AI Resume Builder</Text>
+            <Text style={[styles.cardDesc, { color: colors.textSecondary }]}>Smart tailoring based on your 8.9 CGPA and technical skills in Invertis labs.</Text>
+
+            <TouchableOpacity style={[styles.resumeBtn, { backgroundColor: isDark ? colors.primary : '#111827' }]}>
               <Text style={styles.resumeBtnText}>Update Resume</Text>
               <MaterialIcons name="arrow-forward" size={16} color="#FFFFFF" style={{ marginLeft: 4 }} />
             </TouchableOpacity>
             <View style={styles.resumeBgIcon}>
-              <MaterialCommunityIcons name="file-document" size={120} color="#EA580C" style={{ opacity: 0.05 }} />
+              <MaterialCommunityIcons name="file-document" size={120} color={colors.primary} style={{ opacity: 0.05 }} />
             </View>
           </LinearGradient>
 
+
           {/* Mock Interview */}
-          <LinearGradient colors={['#4338CA', '#312E81']} style={styles.interviewCard}>
+          <LinearGradient colors={isDark ? ['#312E81', '#1E1B4B'] : ['#4338CA', '#312E81']} style={styles.interviewCard}>
             <View style={styles.interviewTop}>
-              <View style={styles.interviewIconBg}>
-                <MaterialCommunityIcons name="microphone" size={24} color="#4338CA" />
+              <View style={[styles.interviewIconBg, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
+                <MaterialCommunityIcons name="microphone" size={24} color={isDark ? colors.primary : "#4338CA"} />
               </View>
-              <MaterialIcons name="auto-awesome" size={24} color="#A5B4FC" />
+              <MaterialIcons name="auto-awesome" size={24} color={isDark ? colors.primaryLight : "#A5B4FC"} />
             </View>
             <View>
               <Text style={styles.interviewTitle}>Mock Interview</Text>
-              <Text style={styles.interviewDesc}>Practice with specialized AI for 'Cloud Architect' roles.</Text>
+              <Text style={[styles.interviewDesc, { color: isDark ? '#C7D2FE' : '#C7D2FE' }]}>Practice with specialized AI for 'Cloud Architect' roles.</Text>
+
             </View>
-            <View style={styles.practicingRow}>
+            <View style={[styles.practicingRow, { backgroundColor: 'rgba(255,255,255,0.1)' }]}>
               <View style={styles.practicingAvatars}>
-                <Image source={{ uri: 'https://i.pravatar.cc/100?u=1' }} style={styles.miniAvatar} />
-                <Image source={{ uri: 'https://i.pravatar.cc/100?u=2' }} style={[styles.miniAvatar, { marginLeft: -10 }]} />
-                <View style={styles.countBadge}><Text style={styles.countText}>+12</Text></View>
+                <Image source={{ uri: 'https://i.pravatar.cc/100?u=1' }} style={[styles.miniAvatar, { borderColor: isDark ? colors.primary : '#4338CA' }]} />
+                <Image source={{ uri: 'https://i.pravatar.cc/100?u=2' }} style={[styles.miniAvatar, { marginLeft: -10, borderColor: isDark ? colors.primary : '#4338CA' }]} />
+                <View style={[styles.countBadge, { backgroundColor: isDark ? colors.card : '#E0E7FF', borderColor: isDark ? colors.primary : '#4338CA' }]}><Text style={[styles.countText, { color: isDark ? colors.textPrimary : '#312E81' }]}>+12</Text></View>
               </View>
               <Text style={styles.practicingText}>Practicing now</Text>
             </View>
           </LinearGradient>
+
         </View>
 
         {/* ========== SKILL GAP ANALYSIS ========== */}
         <View style={styles.sectionContainer}>
-          <TouchableOpacity style={styles.skillGapCard}>
+          <TouchableOpacity style={[styles.skillGapCard, { backgroundColor: colors.card }]}>
             <View style={styles.skillGapHeader}>
-              <View style={styles.skillGapIconWrapper}>
-                <MaterialCommunityIcons name="chart-areaspline" size={24} color="#EA580C" />
+              <View style={[styles.skillGapIconWrapper, { backgroundColor: isDark ? colors.background : '#FFF7ED' }]}>
+                <MaterialCommunityIcons name="chart-areaspline" size={24} color={colors.primary} />
               </View>
-              <MaterialIcons name="chevron-right" size={24} color="#9CA3AF" />
+              <MaterialIcons name="chevron-right" size={24} color={colors.textMuted} />
             </View>
-            <Text style={styles.skillGapTitle}>Skill Gap Analysis</Text>
-            <Text style={styles.skillGapDesc}>What's missing for FAANG?</Text>
+            <Text style={[styles.skillGapTitle, { color: colors.textPrimary }]}>Skill Gap Analysis</Text>
+            <Text style={[styles.skillGapDesc, { color: colors.textSecondary }]}>What's missing for FAANG?</Text>
+
+
             <View style={styles.skillGapProgressSection}>
               <View style={styles.skillProgressItem}>
                 <View style={styles.skillProgressHeader}>
-                  <Text style={styles.skillName}>DSA</Text>
-                  <Text style={styles.skillPercent}>65%</Text>
+                  <Text style={[styles.skillName, { color: colors.textPrimary }]}>DSA</Text>
+                  <Text style={[styles.skillPercent, { color: colors.textPrimary }]}>65%</Text>
                 </View>
-                <View style={styles.progressBarBg}>
+                <View style={[styles.progressBarBg, { backgroundColor: isDark ? colors.background : '#F3F4F6' }]}>
                   <View style={[styles.progressBarFill, { width: '65%', backgroundColor: '#F59E0B' }]} />
                 </View>
               </View>
+
               <View style={styles.skillProgressItem}>
                 <View style={styles.skillProgressHeader}>
-                  <Text style={styles.skillName}>System Design</Text>
-                  <Text style={styles.skillPercent}>40%</Text>
+                  <Text style={[styles.skillName, { color: colors.textPrimary }]}>System Design</Text>
+                  <Text style={[styles.skillPercent, { color: colors.textPrimary }]}>40%</Text>
                 </View>
-                <View style={styles.progressBarBg}>
+                <View style={[styles.progressBarBg, { backgroundColor: isDark ? colors.background : '#F3F4F6' }]}>
                   <View style={[styles.progressBarFill, { width: '40%', backgroundColor: '#EF4444' }]} />
                 </View>
               </View>
+
               <View style={styles.skillProgressItem}>
                 <View style={styles.skillProgressHeader}>
-                  <Text style={styles.skillName}>Cloud Computing</Text>
-                  <Text style={styles.skillPercent}>78%</Text>
+                  <Text style={[styles.skillName, { color: colors.textPrimary }]}>Cloud Computing</Text>
+                  <Text style={[styles.skillPercent, { color: colors.textPrimary }]}>78%</Text>
                 </View>
-                <View style={styles.progressBarBg}>
+                <View style={[styles.progressBarBg, { backgroundColor: isDark ? colors.background : '#F3F4F6' }]}>
                   <View style={[styles.progressBarFill, { width: '78%', backgroundColor: '#10B981' }]} />
                 </View>
               </View>
+
             </View>
             <TouchableOpacity style={styles.analyzeBtn}>
-              <Text style={styles.analyzeBtnText}>Deep Dive Analysis →</Text>
+              <Text style={[styles.analyzeBtnText, { color: colors.primary }]}>Deep Dive Analysis →</Text>
+
             </TouchableOpacity>
           </TouchableOpacity>
         </View>
@@ -340,8 +399,9 @@ const DashboardScreen = ({ navigation }) => {
         {/* ========== CAREER ROADMAP ========== */}
         <View style={styles.sectionContainer}>
           <View style={styles.roadmapHeader}>
-            <Text style={styles.roadmapTitle}>Career Roadmap</Text>
-            <Text style={styles.roadmapSubtitle}>Your projected path from Student to Senior Dev</Text>
+            <Text style={[styles.roadmapTitle, { color: colors.textPrimary }]}>Career Roadmap</Text>
+            <Text style={[styles.roadmapSubtitle, { color: colors.textSecondary }]}>Your projected path from Student to Senior Dev</Text>
+
           </View>
 
           <View style={styles.timelineContainer}>
@@ -351,9 +411,10 @@ const DashboardScreen = ({ navigation }) => {
                 <LinearGradient colors={['#10B981', '#059669']} style={styles.timelineDot} />
                 <View style={styles.timelineLine} />
               </View>
-              <LinearGradient colors={['#F0FDF4', '#DCFCE7']} style={styles.timelineCard}>
-                <Text style={styles.timelineYear}>YEAR 1: FOUNDATION</Text>
-                <Text style={styles.timelineCardTitle}>Build Core CS Fundamentals</Text>
+              <LinearGradient colors={isDark ? ['#064E3B', '#10B981'] : ['#F0FDF4', '#DCFCE7']} style={styles.timelineCard}>
+                <Text style={[styles.timelineYear, { color: colors.textSecondary }]}>YEAR 1: FOUNDATION</Text>
+                <Text style={[styles.timelineCardTitle, { color: colors.textPrimary }]}>Build Core CS Fundamentals</Text>
+
                 <View style={styles.timelineTags}>
                   <View style={styles.tag}><Text style={styles.tagText}>Python</Text></View>
                   <View style={styles.tag}><Text style={styles.tagText}>DSA Basics</Text></View>
@@ -366,32 +427,33 @@ const DashboardScreen = ({ navigation }) => {
             <View style={styles.timelineItem}>
               <View style={styles.timelineDotWrapper}>
                 <LinearGradient colors={['#F59E0B', '#D97706']} style={styles.timelineDot} />
-                <View style={styles.timelineLine} />
+                <View style={[styles.timelineLine, { backgroundColor: colors.border }]} />
               </View>
-              <LinearGradient colors={['#FFFBEB', '#FEF3C7']} style={styles.timelineCard}>
-                <Text style={styles.timelineYear}>YEAR 2: INTERMEDIATE</Text>
-                <Text style={styles.timelineCardTitle}>Specialize & Build Projects</Text>
+              <LinearGradient colors={isDark ? ['#78350F', '#451A03'] : ['#FFFBEB', '#FEF3C7']} style={[styles.timelineCard, { borderColor: colors.border, borderWidth: 1 }]}>
+                <Text style={[styles.timelineYear, { color: isDark ? '#FCD34D' : colors.textSecondary }]}>YEAR 2: INTERMEDIATE</Text>
+                <Text style={[styles.timelineCardTitle, { color: colors.textPrimary }]}>Specialize & Build Projects</Text>
                 <View style={styles.timelineTags}>
-                  <View style={styles.tag}><Text style={styles.tagText}>Web Dev</Text></View>
-                  <View style={styles.tag}><Text style={styles.tagText}>DBMS</Text></View>
-                  <View style={styles.tag}><Text style={styles.tagText}>OS</Text></View>
+                  <View style={[styles.tag, { backgroundColor: isDark ? colors.background : '#FFFFFF', borderColor: colors.border }]}><Text style={[styles.tagText, { color: colors.textSecondary }]}>Web Dev</Text></View>
+                  <View style={[styles.tag, { backgroundColor: isDark ? colors.background : '#FFFFFF', borderColor: colors.border }]}><Text style={[styles.tagText, { color: colors.textSecondary }]}>DBMS</Text></View>
+                  <View style={[styles.tag, { backgroundColor: isDark ? colors.background : '#FFFFFF', borderColor: colors.border }]}><Text style={[styles.tagText, { color: colors.textSecondary }]}>OS</Text></View>
                 </View>
               </LinearGradient>
             </View>
+
 
             {/* Year 3 */}
             <View style={styles.timelineItem}>
               <View style={styles.timelineDotWrapper}>
                 <LinearGradient colors={['#3B82F6', '#2563EB']} style={styles.timelineDot} />
-                <View style={styles.timelineLine} />
+                <View style={[styles.timelineLine, { backgroundColor: colors.border }]} />
               </View>
-              <LinearGradient colors={['#EFF6FF', '#DBEAFE']} style={styles.timelineCard}>
-                <Text style={styles.timelineYear}>YEAR 3: ADVANCED</Text>
-                <Text style={styles.timelineCardTitle}>Internship & Open Source</Text>
+              <LinearGradient colors={isDark ? ['#1E3A8A', '#3B82F6'] : ['#EFF6FF', '#DBEAFE']} style={styles.timelineCard}>
+                <Text style={[styles.timelineYear, { color: isDark ? '#BFDBFE' : colors.textSecondary }]}>YEAR 3: ADVANCED</Text>
+                <Text style={[styles.timelineCardTitle, { color: isDark ? '#FFFFFF' : colors.textPrimary }]}>Internship & Open Source</Text>
                 <View style={styles.timelineTags}>
-                  <View style={styles.tag}><Text style={styles.tagText}>React/Node</Text></View>
-                  <View style={styles.tag}><Text style={styles.tagText}>Cloud</Text></View>
-                  <View style={styles.tag}><Text style={styles.tagText}>DevOps</Text></View>
+                  <View style={[styles.tag, { backgroundColor: isDark ? colors.background : '#FFFFFF', borderColor: colors.border }]}><Text style={[styles.tagText, { color: colors.textSecondary }]}>React/Node</Text></View>
+                  <View style={[styles.tag, { backgroundColor: isDark ? colors.background : '#FFFFFF', borderColor: colors.border }]}><Text style={[styles.tagText, { color: colors.textSecondary }]}>Cloud</Text></View>
+                  <View style={[styles.tag, { backgroundColor: isDark ? colors.background : '#FFFFFF', borderColor: colors.border }]}><Text style={[styles.tagText, { color: colors.textSecondary }]}>DevOps</Text></View>
                 </View>
               </LinearGradient>
             </View>
@@ -399,21 +461,25 @@ const DashboardScreen = ({ navigation }) => {
             {/* Year 4: SPECIALIZATION (Active) */}
             <View style={styles.timelineItem}>
               <View style={styles.timelineDotWrapper}>
-                <LinearGradient colors={['#EA580C', '#9A3412']} style={[styles.timelineDot, styles.timelineDotActive]} />
+                <LinearGradient colors={['#EA580C', '#9A3412']} style={[styles.timelineDot, styles.timelineDotActive, { borderColor: isDark ? colors.primaryLight : '#FED7AA' }]} />
               </View>
-              <LinearGradient colors={['#FFF7ED', '#FFEDD5']} style={[styles.timelineCard, styles.timelineCardActive]}>
+              <LinearGradient 
+                colors={isDark ? ['#7C2D12', '#EA580C'] : ['#FFF7ED', '#FFEDD5']} 
+                style={[styles.timelineCard, styles.timelineCardActive, { borderColor: isDark ? colors.primary : '#EA580C' }]}
+              >
                 <View style={styles.activeBadge}>
                   <Text style={styles.activeBadgeText}>CURRENT</Text>
                 </View>
-                <Text style={styles.timelineYear}>YEAR 4: SPECIALIZATION</Text>
-                <Text style={styles.timelineCardTitle}>Mastery & Placement Prep</Text>
+                <Text style={[styles.timelineYear, { color: isDark ? '#FED7AA' : colors.textSecondary }]}>YEAR 4: SPECIALIZATION</Text>
+                <Text style={[styles.timelineCardTitle, { color: isDark ? '#FFFFFF' : colors.textPrimary }]}>Mastery & Placement Prep</Text>
                 <View style={styles.timelineTags}>
-                  <View style={[styles.tag, styles.tagActive]}><Text style={[styles.tagText, styles.tagTextActive]}>System Design</Text></View>
-                  <View style={[styles.tag, styles.tagActive]}><Text style={[styles.tagText, styles.tagTextActive]}>Advanced DSA</Text></View>
-                  <View style={[styles.tag, styles.tagActive]}><Text style={[styles.tagText, styles.tagTextActive]}>Leadership</Text></View>
+                  <View style={[styles.tag, styles.tagActive, { backgroundColor: colors.primary, borderColor: colors.primary }]}><Text style={[styles.tagText, styles.tagTextActive]}>System Design</Text></View>
+                  <View style={[styles.tag, styles.tagActive, { backgroundColor: colors.primary, borderColor: colors.primary }]}><Text style={[styles.tagText, styles.tagTextActive]}>Advanced DSA</Text></View>
+                  <View style={[styles.tag, styles.tagActive, { backgroundColor: colors.primary, borderColor: colors.primary }]}><Text style={[styles.tagText, styles.tagTextActive]}>Leadership</Text></View>
                 </View>
               </LinearGradient>
             </View>
+
           </View>
         </View>
 
@@ -428,15 +494,14 @@ const DashboardScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F3F4F6', // Premium light grey
   },
+
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: '#F3F4F6',
   },
   headerLeft: {
     flexDirection: 'row',
@@ -457,9 +522,9 @@ const styles = StyleSheet.create({
   headerLogo: {
     fontSize: 22,
     fontWeight: '900',
-    color: '#111827',
     letterSpacing: -0.5,
   },
+
   headerRight: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -475,13 +540,18 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
   },
+  journalIcon: {
+    width: 24,
+    height: 24,
+    borderRadius: 6,
+  },
   avatarSmall: {
     width: 42,
     height: 42,
     borderRadius: 21,
     borderWidth: 2,
-    borderColor: '#EA580C',
   },
+
   // Profile Dropdown Menu Styles
   modalOverlay: {
     flex: 1,
@@ -520,14 +590,13 @@ const styles = StyleSheet.create({
   menuName: {
     fontSize: 16,
     fontWeight: '800',
-    color: '#111827',
   },
   menuSub: {
     fontSize: 12,
-    color: '#6B7280',
     fontWeight: '500',
     marginTop: 1,
   },
+
   menuDivider: {
     height: 1,
     backgroundColor: '#F3F4F6',
@@ -549,9 +618,9 @@ const styles = StyleSheet.create({
   menuItemText: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#374151',
     marginLeft: 12,
   },
+
   logoutItem: {
     backgroundColor: '#FEF2F2',
     marginTop: 2,
@@ -559,6 +628,7 @@ const styles = StyleSheet.create({
   logoutText: {
     color: '#EF4444',
   },
+
   scroll: {
     paddingBottom: 20,
   },
@@ -586,15 +656,14 @@ const styles = StyleSheet.create({
   welcomeTitle: {
     fontSize: 32,
     fontWeight: '900',
-    color: '#111827',
     letterSpacing: -1,
   },
   welcomeSub: {
     fontSize: 14,
-    color: '#6B7280',
     marginTop: 4,
     fontWeight: '500',
   },
+
   statsRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -606,44 +675,42 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     paddingHorizontal: 20,
     borderWidth: 1,
-    borderColor: '#FFEDD5',
     alignItems: 'flex-start',
   },
+
   statValueOrange: {
     fontSize: 28,
     fontWeight: '900',
-    color: '#9A3412',
     letterSpacing: -0.5,
   },
   statLabelOrange: {
     fontSize: 9,
     fontWeight: '800',
-    color: '#9A3412',
     letterSpacing: 0.5,
     marginTop: 4,
   },
+
   statPillPurple: {
     flex: 1,
     borderRadius: 24,
     paddingVertical: 16,
     paddingHorizontal: 20,
     borderWidth: 1,
-    borderColor: '#E0E7FF',
     alignItems: 'flex-start',
   },
+
   statValuePurple: {
     fontSize: 28,
     fontWeight: '900',
-    color: '#3730A3',
     letterSpacing: -0.5,
   },
   statLabelPurple: {
     fontSize: 9,
     fontWeight: '800',
-    color: '#3730A3',
     letterSpacing: 0.5,
     marginTop: 4,
   },
+
   aiSuggestionBox: {
     marginTop: 24,
     borderRadius: 24,
@@ -652,8 +719,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 16,
     borderWidth: 1,
-    borderColor: '#A7F3D0',
   },
+
   aiIconCircle: {
     width: 44,
     height: 44,
@@ -665,19 +732,19 @@ const styles = StyleSheet.create({
   aiSuggestionText: {
     flex: 1,
     fontSize: 13,
-    color: '#064E3B',
     lineHeight: 20,
     paddingRight: 10,
   },
+
   moduleTitle: {
     fontSize: 15,
     fontWeight: '800',
-    color: '#4B5563',
     letterSpacing: 1,
     textTransform: 'uppercase',
     marginBottom: 16,
     paddingHorizontal: 8,
   },
+
   launchpadGrid: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -703,9 +770,9 @@ const styles = StyleSheet.create({
   launchText: {
     fontSize: 11,
     fontWeight: '800',
-    color: '#111827',
     textAlign: 'center',
   },
+
   pulseCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 32,
@@ -724,13 +791,12 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 22,
     fontWeight: '900',
-    color: '#111827',
   },
   sectionSub: {
     fontSize: 14,
-    color: '#6B7280',
     marginTop: 4,
   },
+
   moodRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -744,12 +810,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   moodIconActive: {
-    shadowColor: '#EA580C',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.3,
     shadowRadius: 12,
     elevation: 5,
   },
+
   mentallyBox: {
     backgroundColor: '#EEF2FF',
     borderRadius: 20,
@@ -769,9 +835,9 @@ const styles = StyleSheet.create({
   mentallyText: {
     flex: 1,
     fontSize: 13,
-    color: '#3730A3',
     lineHeight: 20,
   },
+
   mentallyAction: {
     fontSize: 12,
     fontWeight: '800',
@@ -786,16 +852,16 @@ const styles = StyleSheet.create({
   innovationBadge: {
     fontSize: 10,
     fontWeight: '900',
-    color: '#EA580C',
     letterSpacing: 2,
   },
+
   innovationTitle: {
     fontSize: 32,
     fontWeight: '900',
-    color: '#111827',
     marginTop: 4,
     letterSpacing: -1,
   },
+
   careerGrid: {
     padding: 16,
     gap: 16,
@@ -806,15 +872,13 @@ const styles = StyleSheet.create({
     position: 'relative',
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: '#FFF7ED',
-    shadowColor: '#EA580C',
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.05,
     shadowRadius: 20,
     elevation: 3,
   },
+
   resumeIcon: {
-    backgroundColor: '#FFF7ED',
     width: 56,
     height: 56,
     borderRadius: 20,
@@ -822,18 +886,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 20,
   },
+
   cardTitle: {
     fontSize: 22,
     fontWeight: '900',
-    color: '#111827',
   },
+
   cardDesc: {
     fontSize: 14,
-    color: '#4B5563',
     marginTop: 8,
     lineHeight: 22,
     maxWidth: '80%',
   },
+
   resumeBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -961,12 +1026,10 @@ const styles = StyleSheet.create({
   skillGapTitle: {
     fontSize: 22,
     fontWeight: '900',
-    color: '#111827',
     marginBottom: 4,
   },
   skillGapDesc: {
     fontSize: 14,
-    color: '#6B7280',
     marginBottom: 20,
   },
   skillGapProgressSection: {
@@ -984,19 +1047,17 @@ const styles = StyleSheet.create({
   skillName: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#374151',
   },
   skillPercent: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#111827',
   },
   progressBarBg: {
     height: 8,
-    backgroundColor: '#F3F4F6',
     borderRadius: 4,
     overflow: 'hidden',
   },
+
   progressBarFill: {
     height: '100%',
     borderRadius: 4,
@@ -1019,13 +1080,12 @@ const styles = StyleSheet.create({
   roadmapTitle: {
     fontSize: 22,
     fontWeight: '900',
-    color: '#111827',
   },
   roadmapSubtitle: {
     fontSize: 14,
-    color: '#6B7280',
     marginTop: 4,
   },
+
   timelineContainer: {
     marginTop: 8,
   },
@@ -1082,9 +1142,9 @@ const styles = StyleSheet.create({
   timelineCardTitle: {
     fontSize: 16,
     fontWeight: '800',
-    color: '#111827',
     marginBottom: 12,
   },
+
   timelineTags: {
     flexDirection: 'row',
     flexWrap: 'wrap',

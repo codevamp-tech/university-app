@@ -2,8 +2,9 @@ import React from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import { CURRICULUM } from '../../constants/data';
 
 const STUDENTS_ROSTER = [
@@ -18,16 +19,29 @@ const CourseManagementScreen = ({ navigation }) => {
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       {/* Header */}
-      <View style={styles.header}>
+      <LinearGradient
+        colors={['#FFFFFF', '#F9FAFB']}
+        style={styles.header}
+      >
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={22} color="#111827" />
+          <LinearGradient
+            colors={['#FFF7ED', '#FFEDD5']}
+            style={styles.backButtonBg}
+          >
+            <Ionicons name="arrow-back" size={20} color="#EA580C" />
+          </LinearGradient>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Course Management</Text>
         <TouchableOpacity style={styles.bellBtn}>
-          <Ionicons name="notifications-outline" size={20} color="#111827" />
-          <View style={styles.bellBadge} />
+          <LinearGradient
+            colors={['#FFFFFF', '#F9FAFB']}
+            style={styles.bellGradient}
+          >
+            <Ionicons name="notifications-outline" size={20} color="#EA580C" />
+            <View style={styles.bellBadge} />
+          </LinearGradient>
         </TouchableOpacity>
-      </View>
+      </LinearGradient>
 
       <ScrollView
         contentContainerStyle={styles.scroll}
@@ -35,23 +49,38 @@ const CourseManagementScreen = ({ navigation }) => {
       >
         {/* Course Header */}
         <View style={styles.courseHeader}>
-          <Text style={styles.courseBadge}>B.TECH CSE</Text>
+          <View style={styles.courseBadgeWrapper}>
+            <LinearGradient
+              colors={['#FFF7ED', '#FFEDD5']}
+              style={styles.courseBadge}
+            >
+              <Text style={styles.courseBadgeText}>B.TECH CSE</Text>
+            </LinearGradient>
+          </View>
           <Text style={styles.courseTitle}>3rd Year • Section A</Text>
           <Text style={styles.courseSubtitle}>Academic Session 2023-24</Text>
           <View style={styles.headerActions}>
             <TouchableOpacity style={styles.secondaryBtn} activeOpacity={0.85}>
-              <Ionicons name="document-text-outline" size={16} color="#8b2fc9" />
+              <Ionicons name="document-text-outline" size={16} color="#EA580C" />
               <Text style={styles.secondaryBtnText}>Report</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.primaryBtn} activeOpacity={0.85}>
-              <Ionicons name="people-outline" size={16} color="#FFFFFF" />
-              <Text style={styles.primaryBtnText}>Manage Batch</Text>
+              <LinearGradient
+                colors={['#EA580C', '#9A3412']}
+                style={styles.primaryBtnGradient}
+              >
+                <Ionicons name="people-outline" size={16} color="#FFFFFF" />
+                <Text style={styles.primaryBtnText}>Manage Batch</Text>
+              </LinearGradient>
             </TouchableOpacity>
           </View>
         </View>
 
         {/* Section Attendance */}
-        <View style={styles.attendanceCard}>
+        <LinearGradient
+          colors={['#FFFFFF', '#F9FAFB']}
+          style={styles.attendanceCard}
+        >
           <View style={styles.attHeader}>
             <Text style={styles.attTitle}>Section Attendance</Text>
             <View style={styles.liveBadge}>
@@ -62,9 +91,12 @@ const CourseManagementScreen = ({ navigation }) => {
           <Text style={styles.attPercent}>87.4%</Text>
           <Text style={styles.attDesc}>Average daily presence this semester</Text>
           <View style={styles.progressBarBg}>
-            <View style={[styles.progressBarFill, { width: '87.4%' }]} />
+            <LinearGradient
+              colors={['#EA580C', '#F97316']}
+              style={[styles.progressBarFill, { width: '87.4%' }]}
+            />
           </View>
-        </View>
+        </LinearGradient>
 
         {/* Student Roster */}
         <View style={styles.rosterHeader}>
@@ -72,7 +104,10 @@ const CourseManagementScreen = ({ navigation }) => {
           <Text style={styles.enrolledCount}>64 enrolled</Text>
         </View>
 
-        <View style={styles.rosterCard}>
+        <LinearGradient
+          colors={['#FFFFFF', '#F9FAFB']}
+          style={styles.rosterCard}
+        >
           {STUDENTS_ROSTER.map((s, i) => (
             <TouchableOpacity
               key={s.id}
@@ -82,11 +117,14 @@ const CourseManagementScreen = ({ navigation }) => {
               ]}
               activeOpacity={0.7}
             >
-              <View style={styles.rosterAvatar}>
+              <LinearGradient
+                colors={['#FFF7ED', '#FFEDD5']}
+                style={styles.rosterAvatar}
+              >
                 <Text style={styles.rosterAvatarText}>
                   {s.name.charAt(0)}{s.name.split(' ')[1]?.charAt(0) || ''}
                 </Text>
-              </View>
+              </LinearGradient>
               <View style={styles.rosterInfo}>
                 <Text style={styles.rosterName}>{s.name}</Text>
                 <Text style={styles.rosterRoll}>{s.roll}</Text>
@@ -97,14 +135,14 @@ const CourseManagementScreen = ({ navigation }) => {
           <TouchableOpacity style={styles.viewAllBtn} activeOpacity={0.7}>
             <Text style={styles.viewAllText}>View Full Directory →</Text>
           </TouchableOpacity>
-        </View>
+        </LinearGradient>
 
         {/* Curriculum Oversight */}
         <View style={styles.curriculumHeader}>
           <Text style={styles.sectionTitle}>Curriculum Oversight</Text>
           <View style={styles.viewToggle}>
             <TouchableOpacity style={[styles.toggleBtn, styles.toggleBtnActive]} activeOpacity={0.8}>
-              <Ionicons name="grid-outline" size={18} color="#8b2fc9" />
+              <Ionicons name="grid-outline" size={18} color="#EA580C" />
             </TouchableOpacity>
             <TouchableOpacity style={styles.toggleBtn} activeOpacity={0.8}>
               <Ionicons name="list-outline" size={18} color="#9CA3AF" />
@@ -113,14 +151,24 @@ const CourseManagementScreen = ({ navigation }) => {
         </View>
 
         {CURRICULUM.map((course) => (
-          <View key={course.id} style={styles.currCard}>
+          <LinearGradient
+            key={course.id}
+            colors={['#FFFFFF', '#F9FAFB']}
+            style={styles.currCard}
+          >
             <View style={styles.currHeader}>
-              <View style={[styles.currIcon, { backgroundColor: course.color + '12' }]}>
+              <LinearGradient
+                colors={[course.color + '12', course.color + '08']}
+                style={styles.currIcon}
+              >
                 <Ionicons name="book-outline" size={20} color={course.color} />
-              </View>
-              <View style={[styles.currTypeBadge, { backgroundColor: course.color + '12' }]}>
+              </LinearGradient>
+              <LinearGradient
+                colors={[course.color + '12', course.color + '08']}
+                style={styles.currTypeBadge}
+              >
                 <Text style={[styles.currTypeText, { color: course.color }]}>{course.type}</Text>
-              </View>
+              </LinearGradient>
             </View>
 
             <Text style={styles.currName}>{course.name}</Text>
@@ -129,11 +177,14 @@ const CourseManagementScreen = ({ navigation }) => {
             <View style={styles.facultySection}>
               <Text style={styles.facultyLabel}>FACULTY ASSIGNED</Text>
               <View style={styles.facultyInfo}>
-                <View style={styles.facultyAvatar}>
+                <LinearGradient
+                  colors={['#EA580C', '#9A3412']}
+                  style={styles.facultyAvatar}
+                >
                   <Text style={styles.facultyAvatarText}>
                     {course.faculty.charAt(0)}
                   </Text>
-                </View>
+                </LinearGradient>
                 <View>
                   <Text style={styles.facultyName}>{course.faculty}</Text>
                   <Text style={styles.facultyRole}>{course.role}</Text>
@@ -147,17 +198,23 @@ const CourseManagementScreen = ({ navigation }) => {
                 <Text style={[styles.progressPercent, { color: course.color }]}>{course.progress}%</Text>
               </View>
               <View style={styles.progressBarBg}>
-                <View style={[styles.progressBarFill, { width: `${course.progress}%`, backgroundColor: course.color }]} />
+                <LinearGradient
+                  colors={[course.color, course.color + 'CC']}
+                  style={[styles.progressBarFill, { width: `${course.progress}%` }]}
+                />
               </View>
             </View>
-          </View>
+          </LinearGradient>
         ))}
 
         {/* Add Subject Button */}
         <TouchableOpacity style={styles.addSubjectBtn} activeOpacity={0.7}>
-          <View style={styles.addIcon}>
-            <Ionicons name="add" size={24} color="#8b2fc9" />
-          </View>
+          <LinearGradient
+            colors={['#FFF7ED', '#FFEDD5']}
+            style={styles.addIcon}
+          >
+            <Ionicons name="add" size={24} color="#EA580C" />
+          </LinearGradient>
           <Text style={styles.addSubjectTitle}>Assign New Subject</Text>
           <Text style={styles.addSubjectDesc}>Configure elective or minor courses</Text>
         </TouchableOpacity>
@@ -171,37 +228,48 @@ const CourseManagementScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#F3F4F6',
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingVertical: 12,
-    backgroundColor: '#FFFFFF',
+    paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
+    borderBottomColor: '#F3F4F6',
   },
   backButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
+    overflow: 'hidden',
+  },
+  backButtonBg: {
+    width: '100%',
+    height: '100%',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#F8FAFC',
   },
   headerTitle: {
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: '900',
     color: '#111827',
-    letterSpacing: -0.2,
+    letterSpacing: -0.5,
   },
   bellBtn: {
+    borderRadius: 20,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  bellGradient: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#F8FAFC',
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
@@ -219,55 +287,64 @@ const styles = StyleSheet.create({
   },
   scroll: {
     paddingHorizontal: 20,
-    paddingTop: 18,
+    paddingTop: 20,
   },
   courseHeader: {
-    marginBottom: 20,
+    marginBottom: 24,
+  },
+  courseBadgeWrapper: {
+    alignSelf: 'flex-start',
+    marginBottom: 8,
   },
   courseBadge: {
-    fontSize: 11,
-    color: '#8b2fc9',
-    fontWeight: '600',
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 20,
+  },
+  courseBadgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#EA580C',
     letterSpacing: 0.8,
-    marginBottom: 4,
-    textTransform: 'uppercase',
   },
   courseTitle: {
-    fontSize: 22,
-    fontWeight: '700',
+    fontSize: 24,
+    fontWeight: '900',
     color: '#111827',
-    marginBottom: 2,
-    letterSpacing: -0.3,
-    lineHeight: 28,
+    marginBottom: 4,
+    letterSpacing: -0.5,
+    lineHeight: 32,
   },
   courseSubtitle: {
     fontSize: 13,
-    color: '#64748B',
-    marginBottom: 16,
+    color: '#6B7280',
+    marginBottom: 20,
     fontWeight: '500',
   },
   headerActions: {
     flexDirection: 'row',
-    gap: 10,
+    gap: 12,
   },
   primaryBtn: {
     flex: 1,
+    borderRadius: 40,
+    overflow: 'hidden',
+    shadowColor: '#EA580C',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  primaryBtnGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    backgroundColor: '#8b2fc9',
-    borderRadius: 40,
-    paddingVertical: 11,
-    shadowColor: '#8b2fc9',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
-    elevation: 3,
+    paddingVertical: 12,
   },
   primaryBtnText: {
     color: '#FFFFFF',
-    fontWeight: '600',
+    fontWeight: '800',
     fontSize: 13,
   },
   secondaryBtn: {
@@ -278,84 +355,87 @@ const styles = StyleSheet.create({
     gap: 6,
     backgroundColor: '#FFFFFF',
     borderRadius: 40,
-    paddingVertical: 11,
+    paddingVertical: 12,
     borderWidth: 1.5,
-    borderColor: '#8b2fc920',
-  },
-  secondaryBtnText: {
-    color: '#8b2fc9',
-    fontWeight: '600',
-    fontSize: 13,
-  },
-  attendanceCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    padding: 18,
-    marginBottom: 24,
-    borderWidth: 1,
-    borderColor: '#F1F5F9',
+    borderColor: '#FFEDD5',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04,
-    shadowRadius: 8,
+    shadowRadius: 4,
     elevation: 2,
+  },
+  secondaryBtnText: {
+    color: '#EA580C',
+    fontWeight: '800',
+    fontSize: 13,
+  },
+  attendanceCard: {
+    borderRadius: 24,
+    padding: 20,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.04,
+    shadowRadius: 12,
+    elevation: 4,
   },
   attHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: 12,
   },
   attTitle: {
     fontSize: 13,
-    color: '#64748B',
+    color: '#6B7280',
     fontWeight: '600',
-    letterSpacing: 0.2,
+    letterSpacing: 0.3,
   },
   liveBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
     backgroundColor: '#FEF2F2',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 16,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
   },
   liveDot: {
-    width: 5,
-    height: 5,
-    borderRadius: 2.5,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
     backgroundColor: '#EF4444',
   },
   liveText: {
     fontSize: 9,
-    fontWeight: '700',
+    fontWeight: '800',
     color: '#EF4444',
     letterSpacing: 0.5,
   },
   attPercent: {
-    fontSize: 36,
-    fontWeight: '700',
-    color: '#8b2fc9',
-    marginBottom: 2,
-    letterSpacing: -0.5,
-    lineHeight: 44,
+    fontSize: 40,
+    fontWeight: '900',
+    color: '#EA580C',
+    marginBottom: 4,
+    letterSpacing: -1,
+    lineHeight: 48,
   },
   attDesc: {
     fontSize: 12,
-    color: '#64748B',
-    marginBottom: 14,
+    color: '#6B7280',
+    marginBottom: 16,
     fontWeight: '500',
   },
   progressBarBg: {
     height: 8,
-    backgroundColor: '#F1F5F9',
+    backgroundColor: '#F3F4F6',
     borderRadius: 4,
     overflow: 'hidden',
   },
   progressBarFill: {
     height: '100%',
-    backgroundColor: '#8b2fc9',
     borderRadius: 4,
   },
   rosterHeader: {
@@ -365,28 +445,27 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 18,
+    fontWeight: '900',
     color: '#111827',
-    letterSpacing: -0.2,
+    letterSpacing: -0.3,
   },
   enrolledCount: {
     fontSize: 12,
-    color: '#64748B',
-    fontWeight: '500',
+    color: '#6B7280',
+    fontWeight: '600',
   },
   rosterCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
+    borderRadius: 24,
     borderWidth: 1,
-    borderColor: '#F1F5F9',
+    borderColor: '#FFFFFF',
     overflow: 'hidden',
     marginBottom: 24,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.03,
-    shadowRadius: 8,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.04,
+    shadowRadius: 12,
+    elevation: 4,
   },
   rosterRow: {
     flexDirection: 'row',
@@ -396,46 +475,45 @@ const styles = StyleSheet.create({
   },
   rosterBorder: {
     borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
+    borderBottomColor: '#F3F4F6',
   },
   rosterAvatar: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#8b2fc910',
     alignItems: 'center',
     justifyContent: 'center',
   },
   rosterAvatarText: {
     fontSize: 15,
-    fontWeight: '600',
-    color: '#8b2fc9',
+    fontWeight: '700',
+    color: '#EA580C',
   },
   rosterInfo: {
     flex: 1,
   },
   rosterName: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '700',
     color: '#111827',
     marginBottom: 2,
-    letterSpacing: -0.1,
+    letterSpacing: -0.2,
   },
   rosterRoll: {
     fontSize: 11,
-    color: '#64748B',
+    color: '#6B7280',
     fontWeight: '500',
   },
   viewAllBtn: {
     alignItems: 'center',
-    paddingVertical: 13,
+    paddingVertical: 14,
     borderTopWidth: 1,
-    borderTopColor: '#F1F5F9',
+    borderTopColor: '#F3F4F6',
   },
   viewAllText: {
     fontSize: 13,
-    fontWeight: '600',
-    color: '#8b2fc9',
+    fontWeight: '800',
+    color: '#EA580C',
   },
   curriculumHeader: {
     flexDirection: 'row',
@@ -445,108 +523,111 @@ const styles = StyleSheet.create({
   },
   viewToggle: {
     flexDirection: 'row',
-    gap: 6,
+    gap: 8,
   },
   toggleBtn: {
     width: 36,
     height: 36,
     borderRadius: 10,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 2,
+    elevation: 1,
   },
   toggleBtnActive: {
-    backgroundColor: '#8b2fc912',
+    backgroundColor: '#FFF7ED',
   },
   currCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    padding: 18,
+    borderRadius: 24,
+    padding: 20,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#F1F5F9',
+    borderColor: '#FFFFFF',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.03,
-    shadowRadius: 8,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.04,
+    shadowRadius: 12,
+    elevation: 3,
   },
   currHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 14,
   },
   currIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
+    width: 48,
+    height: 48,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
   },
   currTypeBadge: {
-    paddingHorizontal: 9,
-    paddingVertical: 4,
-    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
   },
   currTypeText: {
     fontSize: 10,
-    fontWeight: '600',
-    letterSpacing: 0.4,
+    fontWeight: '800',
+    letterSpacing: 0.5,
     textTransform: 'uppercase',
   },
   currName: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 17,
+    fontWeight: '800',
     color: '#111827',
-    marginBottom: 4,
-    letterSpacing: -0.2,
-    lineHeight: 22,
+    marginBottom: 6,
+    letterSpacing: -0.3,
+    lineHeight: 24,
   },
   currDesc: {
     fontSize: 12,
-    color: '#64748B',
+    color: '#6B7280',
     lineHeight: 18,
-    marginBottom: 16,
-    fontWeight: '400',
+    marginBottom: 18,
+    fontWeight: '500',
   },
   facultySection: {
-    marginBottom: 16,
+    marginBottom: 18,
   },
   facultyLabel: {
     fontSize: 10,
-    color: '#94A3B8',
-    fontWeight: '600',
-    letterSpacing: 0.8,
+    color: '#9CA3AF',
+    fontWeight: '800',
+    letterSpacing: 1,
     marginBottom: 8,
   },
   facultyInfo: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 12,
   },
   facultyAvatar: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: '#8b2fc9',
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     alignItems: 'center',
     justifyContent: 'center',
   },
   facultyAvatarText: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '800',
     color: '#FFFFFF',
   },
   facultyName: {
-    fontSize: 13,
-    fontWeight: '600',
+    fontSize: 14,
+    fontWeight: '700',
     color: '#111827',
-    marginBottom: 1,
+    marginBottom: 2,
   },
   facultyRole: {
     fontSize: 11,
-    color: '#64748B',
+    color: '#6B7280',
     fontWeight: '500',
   },
   progressSection: {
@@ -559,43 +640,42 @@ const styles = StyleSheet.create({
   },
   progressLabel: {
     fontSize: 12,
-    color: '#64748B',
-    fontWeight: '500',
+    color: '#6B7280',
+    fontWeight: '600',
   },
   progressPercent: {
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: '800',
   },
   addSubjectBtn: {
     borderWidth: 1.5,
-    borderColor: '#E2E8F0',
+    borderColor: '#FFEDD5',
     borderStyle: 'dashed',
-    borderRadius: 18,
+    borderRadius: 24,
     paddingVertical: 24,
     alignItems: 'center',
     gap: 8,
     marginTop: 8,
     marginBottom: 8,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#FFFFFF',
   },
   addIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#8b2fc910',
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 4,
   },
   addSubjectTitle: {
     fontSize: 15,
-    fontWeight: '600',
+    fontWeight: '800',
     color: '#111827',
-    letterSpacing: -0.2,
+    letterSpacing: -0.3,
   },
   addSubjectDesc: {
     fontSize: 12,
-    color: '#94A3B8',
+    color: '#9CA3AF',
     fontWeight: '500',
   },
 });

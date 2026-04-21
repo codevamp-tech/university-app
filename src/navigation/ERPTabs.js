@@ -8,14 +8,17 @@ import ERPHubScreen from '../screens/student/ERPHubScreen';
 import ERPResultsScreen from '../screens/student/ERPResultsScreen';
 import ERPFeesScreen from '../screens/student/ERPFeesScreen';
 import ERPDocumentsScreen from '../screens/student/ERPDocumentsScreen';
+import { useTheme } from '../hooks/useTheme';
 
 const Tab = createBottomTabNavigator();
 
 // Custom Tab Bar Component
 const CustomTabBar = ({ state, descriptors, navigation }) => {
+  const { colors, isDark } = useTheme();
+
   return (
     <View style={styles.tabBarWrapper}>
-      <View style={styles.tabBarContainer}>
+      <View style={[styles.tabBarContainer, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
         {state.routes.map((route, index) => {
           const { options } = descriptors[route.key];
           const isFocused = state.index === index;
@@ -37,7 +40,7 @@ const CustomTabBar = ({ state, descriptors, navigation }) => {
             label = 'Documents';
           }
 
-          const color = isFocused ? '#EA580C' : '#64748B';
+          const color = isFocused ? colors.primary : colors.textMuted;
 
           const onPress = () => {
             const event = navigation.emit({
@@ -62,10 +65,10 @@ const CustomTabBar = ({ state, descriptors, navigation }) => {
               activeOpacity={0.7}
             >
               <View style={styles.tabContent}>
-                {isFocused && <View style={styles.activeIndicator} />}
+                {isFocused && <View style={[styles.activeIndicator, { backgroundColor: colors.primary }]} />}
                 <View style={[
                   styles.iconWrapper,
-                  isFocused && styles.iconWrapperActive
+                  isFocused && { backgroundColor: isDark ? 'rgba(234, 88, 12, 0.15)' : '#FFF7ED' }
                 ]}>
                   <MaterialIcons name={iconName} size={22} color={color} />
                 </View>
@@ -140,7 +143,6 @@ const styles = StyleSheet.create({
     top: 0,
     width: 32,
     height: 3,
-    backgroundColor: '#EA580C',
     borderBottomLeftRadius: 2,
     borderBottomRightRadius: 2,
   },

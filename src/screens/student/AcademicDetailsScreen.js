@@ -1,4 +1,6 @@
 import React from 'react';
+import { useTheme } from '../../hooks/useTheme';
+
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
 } from 'react-native';
@@ -9,22 +11,26 @@ import { STUDENT_USER } from '../../constants/data';
 
 const AcademicDetailsScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
+  const { colors, isDark } = useTheme();
+
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
       {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color="#111827" />
+      <View style={[styles.header, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={[styles.backButton, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
+          <Ionicons name="arrow-back" size={22} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Academic Details</Text>
+        <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Academic Details</Text>
         <View style={{ width: 40 }} />
       </View>
+
+
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         {/* GPA Summary Card */}
         <LinearGradient
-          colors={['#8B2FC9', '#B861FF']}
+          colors={isDark ? ['#6B21A8', '#7E22CE'] : ['#8B2FC9', '#B861FF']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.gpaCard}
@@ -38,98 +44,113 @@ const AcademicDetailsScreen = ({ navigation }) => {
           </View>
         </LinearGradient>
 
+
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>CURRENT PROGRAM</Text>
-          <View style={styles.card}>
+          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>CURRENT PROGRAM</Text>
+
+          <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+
             <View style={styles.infoRow}>
-              <Text style={styles.label}>Major</Text>
-              <Text style={styles.value}>{STUDENT_USER.program || 'B.Sc. Computer Science'}</Text>
+              <Text style={[styles.label, { color: colors.textSecondary }]}>Major</Text>
+              <Text style={[styles.value, { color: colors.textPrimary }]}>{STUDENT_USER.program || 'B.Sc. Computer Science'}</Text>
+
             </View>
-            <View style={styles.divider} />
+            <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
             <View style={styles.infoRow}>
-              <Text style={styles.label}>School</Text>
-              <Text style={styles.value}>School of Engineering & Tech</Text>
+              <Text style={[styles.label, { color: colors.textSecondary }]}>School</Text>
+              <Text style={[styles.value, { color: colors.textPrimary }]}>School of Engineering & Tech</Text>
+
             </View>
-            <View style={styles.divider} />
+            <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
             <View style={styles.infoRow}>
-              <Text style={styles.label}>Semester</Text>
-              <Text style={styles.value}>6th Semester</Text>
+              <Text style={[styles.label, { color: colors.textSecondary }]}>Semester</Text>
+              <Text style={[styles.value, { color: colors.textPrimary }]}>6th Semester</Text>
+
             </View>
-            <View style={styles.divider} />
+            <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
             <View style={styles.infoRow}>
-              <Text style={styles.label}>Batch</Text>
-              <Text style={styles.value}>2021-2025</Text>
+              <Text style={[styles.label, { color: colors.textSecondary }]}>Batch</Text>
+              <Text style={[styles.value, { color: colors.textPrimary }]}>2021-2025</Text>
+
             </View>
           </View>
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>FACULTY ADVISOR</Text>
-          <View style={styles.card}>
+          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>FACULTY ADVISOR</Text>
+          <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+
             <View style={styles.advisorRow}>
-              <View style={styles.advisorAvatar}>
-                <Ionicons name="person" size={24} color="#8B2FC9" />
+              <View style={[styles.advisorAvatar, { backgroundColor: isDark ? 'rgba(139, 47, 201, 0.2)' : '#F5EEFC' }]}>
+                <Ionicons name="person" size={24} color={isDark ? '#A855F7' : '#8B2FC9'} />
               </View>
+
               <View style={styles.advisorInfo}>
-                <Text style={styles.advisorName}>Dr. Sarah Johnson</Text>
-                <Text style={styles.advisorDept}>Associate Professor, CS Dept.</Text>
+                <Text style={[styles.advisorName, { color: colors.textPrimary }]}>Dr. Sarah Johnson</Text>
+                <Text style={[styles.advisorDept, { color: colors.textSecondary }]}>Associate Professor, CS Dept.</Text>
               </View>
-              <TouchableOpacity style={styles.contactIcon}>
-                <Ionicons name="chatbubble-ellipses-outline" size={20} color="#8B2FC9" />
+
+              <TouchableOpacity style={[styles.contactIcon, { backgroundColor: isDark ? 'rgba(139, 47, 201, 0.2)' : '#F5EEFC' }]}>
+                <Ionicons name="chatbubble-ellipses-outline" size={20} color={isDark ? '#A855F7' : '#8B2FC9'} />
               </TouchableOpacity>
+
             </View>
           </View>
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>SEMESTER PROGRESS</Text>
-          <View style={styles.progressCard}>
+          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>SEMESTER PROGRESS</Text>
+          <View style={[styles.progressCard, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
+
             <View style={styles.progressHeader}>
-              <Text style={styles.progressTitle}>Credits Earned</Text>
-              <Text style={styles.progressValue}>98 / 120</Text>
+              <Text style={[styles.progressTitle, { color: colors.textPrimary }]}>Credits Earned</Text>
+              <Text style={[styles.progressValue, { color: isDark ? '#A855F7' : '#8B2FC9' }]}>98 / 120</Text>
             </View>
-            <View style={styles.progressBarBg}>
-              <View style={[styles.progressBarFill, { width: '81%' }]} />
+
+            <View style={[styles.progressBarBg, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : colors.border }]}>
+              <View style={[styles.progressBarFill, { width: '81%', backgroundColor: isDark ? '#A855F7' : '#8B2FC9' }]} />
             </View>
-            <Text style={styles.progressFooter}>22 credits remaining for graduation</Text>
+            <Text style={[styles.progressFooter, { color: colors.textSecondary }]}>22 credits remaining for graduation</Text>
+
           </View>
         </View>
+
 
         <View style={{ height: 40 }} />
       </ScrollView>
     </View>
   );
 };
-
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-  },
+  container: { flex: 1 },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   headerTitle: {
     fontSize: 20,
-    fontWeight: '700',
-    color: '#111827',
+    fontWeight: '900',
+    letterSpacing: -0.5,
+  },
+  backButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   scroll: {
     padding: 20,
   },
+
+
   gpaCard: {
     borderRadius: 24,
     padding: 24,
@@ -166,18 +187,17 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 11,
-    color: '#6B7280',
     fontWeight: '600',
     letterSpacing: 0.8,
     marginBottom: 12,
   },
+
   card: {
-    backgroundColor: '#FFFFFF',
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#F3F4F6',
     padding: 16,
   },
+
   infoRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -185,59 +205,36 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 14,
-    color: '#6B7280',
   },
+
   value: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#111827',
   },
+
   divider: {
     height: 1,
-    backgroundColor: '#F3F4F6',
     marginVertical: 4,
   },
+
   advisorRow: {
     flexDirection: 'row',
     alignItems: 'center',
-  },
-  advisorAvatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#F5EEFC',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 14,
-  },
-  advisorInfo: {
-    flex: 1,
-  },
-  advisorName: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#111827',
-  },
-  advisorDept: {
-    fontSize: 12,
-    color: '#6B7280',
-    marginTop: 2,
   },
   contactIcon: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#F5EEFC',
     alignItems: 'center',
     justifyContent: 'center',
   },
+
   progressCard: {
-    backgroundColor: '#F9FAFB',
     borderRadius: 20,
     padding: 20,
     borderWidth: 1,
-    borderColor: '#F3F4F6',
   },
+
   progressHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -247,19 +244,18 @@ const styles = StyleSheet.create({
   progressTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#111827',
   },
   progressValue: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#8B2FC9',
   },
+
   progressBarBg: {
     height: 8,
-    backgroundColor: '#E5E7EB',
     borderRadius: 4,
     marginBottom: 12,
   },
+
   progressBarFill: {
     height: '100%',
     backgroundColor: '#8B2FC9',
@@ -267,9 +263,9 @@ const styles = StyleSheet.create({
   },
   progressFooter: {
     fontSize: 12,
-    color: '#6B7280',
     textAlign: 'center',
   },
+
 });
 
 export default AcademicDetailsScreen;

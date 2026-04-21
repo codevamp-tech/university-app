@@ -10,7 +10,11 @@ import LoginScreen from '../screens/LoginScreen';
 import StudentTabs from './StudentTabs';
 import TeacherTabs from './TeacherTabs';
 import GuestTabs from './GuestTabs';
+import JournalTabs from './JournalTabs';
 import GuestOnboardingScreen from '../screens/guest/GuestOnboardingScreen';
+import MainWalletScreen from '../screens/student/MainWalletScreen';
+import CartScreen from '../screens/student/CartScreen';
+import ProductDetailScreen from '../screens/student/ProductDetailScreen';
 
 // Student standalone screens
 import PersonalInfoScreen from '../screens/student/PersonalInfoScreen';
@@ -26,6 +30,26 @@ import ChatScreen from '../screens/student/ChatScreen';
 import StudentSearchScreen from '../screens/student/StudentSearchScreen';
 import OtherStudentProfileScreen from '../screens/student/OtherStudentProfileScreen';
 import RaiseIssueScreen from '../screens/student/RaiseIssueScreen';
+
+// Mentally Module Screens
+import MentallyMainScreen from '../screens/student/mentally/MentallyMainScreen';
+import DigitalDetoxScreen from '../screens/student/mentally/DigitalDetoxScreen';
+import GuidedMeditationScreen from '../screens/student/mentally/GuidedMeditationScreen';
+import MoodJournalScreen from '../screens/student/mentally/MoodJournalScreen';
+import ZenMusicScreen from '../screens/student/mentally/ZenMusicScreen';
+
+// Invertis AI Assistant Screens
+import InvertisWelcomeScreen from '../screens/student/ai/InvertisWelcomeScreen';
+import InvertisChatScreen from '../screens/student/ai/InvertisChatScreen';
+import InvertisThinkingScreen from '../screens/student/ai/InvertisThinkingScreen';
+import InvertisHelpScreen from '../screens/student/ai/InvertisHelpScreen';
+
+// Campus Journal Screens
+import CampusJournalFeedScreen from '../screens/student/journal/CampusJournalFeedScreen';
+import CampusJournalReflectScreen from '../screens/student/journal/CampusJournalReflectScreen';
+import CampusJournalExplorerScreen from '../screens/student/journal/CampusJournalExplorerScreen';
+import CampusJournalInsightsScreen from '../screens/student/journal/CampusJournalInsightsScreen';
+import SuggestWithAIScreen from '../screens/student/SuggestWithAIScreen';
 
 // Guest Detail Screens
 import FeeStructureScreen from '../screens/guest/FeeStructureScreen';
@@ -73,12 +97,32 @@ const AppNavigator = () => {
       {/* New Student Module Screens */}
       <Stack.Screen name="SmartCampus" component={SmartCampusScreen} options={{ animation: 'fade' }} />
       <Stack.Screen name="Marketplace" component={MarketplaceScreen} options={{ animation: 'fade' }} />
+      <Stack.Screen name="SuggestWithAI" component={SuggestWithAIScreen} options={{ animation: 'slide_from_bottom' }} />
+      <Stack.Screen name="MainWallet" component={MainWalletScreen} options={{ animation: 'slide_from_bottom' }} />
+      <Stack.Screen name="Cart" component={CartScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="ProductDetail" component={ProductDetailScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="TheHustle" component={TheHustleScreen} options={{ animation: 'fade' }} />
       <Stack.Screen name="ERPHub" component={ERPTabs} options={{ animation: 'fade' }} />
       <Stack.Screen name="Chat" component={ChatScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="StudentSearch" component={StudentSearchScreen} options={{ animation: 'fade', presentation: 'transparentModal' }} />
       <Stack.Screen name="OtherStudentProfile" component={OtherStudentProfileScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="RaiseIssue" component={RaiseIssueScreen} options={{ animation: 'slide_from_bottom' }} />
+
+      {/* Mentally Module */}
+      <Stack.Screen name="MentallyMain" component={MentallyMainScreen} options={{ animation: 'slide_from_bottom' }} />
+      <Stack.Screen name="DigitalDetox" component={DigitalDetoxScreen} options={{ animation: 'fade' }} />
+      <Stack.Screen name="GuidedMeditation" component={GuidedMeditationScreen} options={{ animation: 'fade' }} />
+      <Stack.Screen name="MoodJournal" component={MoodJournalScreen} options={{ animation: 'fade' }} />
+      <Stack.Screen name="ZenMusic" component={ZenMusicScreen} options={{ animation: 'fade' }} />
+
+      {/* Invertis AI Assistant Module */}
+      <Stack.Screen name="InvertisWelcome" component={InvertisWelcomeScreen} options={{ animation: 'slide_from_bottom' }} />
+      <Stack.Screen name="InvertisChat" component={InvertisChatScreen} options={{ animation: 'fade' }} />
+      <Stack.Screen name="InvertisThinking" component={InvertisThinkingScreen} options={{ animation: 'fade' }} />
+      <Stack.Screen name="InvertisHelp" component={InvertisHelpScreen} options={{ animation: 'fade' }} />
+
+      {/* Campus Journal Module */}
+      <Stack.Screen name="CampusJournal" component={JournalTabs} options={{ animation: 'slide_from_bottom' }} />
 
       {/* Guest Info Screens */}
       <Stack.Screen name="FeeStructure" component={FeeStructureScreen} options={{ animation: 'slide_from_right' }} />

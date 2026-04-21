@@ -5,51 +5,60 @@ import {
 import { Ionicons, MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useTheme } from '../../hooks/useTheme';
+
 
 const { width } = Dimensions.get('window');
 
 const CommunityScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
+  const { colors, isDark } = useTheme();
+
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
       {/* TopAppBar */}
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
         <View style={styles.headerLeft}>
-          <MaterialIcons name="school" size={26} color="#F97316" />
-          <Text style={styles.headerLogo}>Invertis University</Text>
+          <MaterialIcons name="school" size={26} color={colors.primary} />
+          <Text style={[styles.headerLogo, { color: colors.primary }]}>Invertis University</Text>
         </View>
+
         <View style={styles.headerRight}>
           <TouchableOpacity style={styles.headerIconBtn}>
-            <Ionicons name="add-circle-outline" size={26} color="#1F2937" />
+            <Ionicons name="add-circle-outline" size={26} color={colors.textPrimary} />
           </TouchableOpacity>
           <TouchableOpacity style={styles.headerIconBtn} onPress={() => navigation.navigate('StudentSearch')}>
-            <Ionicons name="search" size={24} color="#1F2937" />
+            <Ionicons name="search" size={24} color={colors.textPrimary} />
           </TouchableOpacity>
           <TouchableOpacity style={styles.headerIconBtn} onPress={() => navigation.navigate('Chat')}>
-            <Ionicons name="chatbubble-ellipses-outline" size={24} color="#1F2937" />
+            <Ionicons name="chatbubble-ellipses-outline" size={24} color={colors.textPrimary} />
           </TouchableOpacity>
+
         </View>
       </View>
 
+
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         {/* Pulse Stories Section */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.storiesScroll} contentContainerStyle={styles.storiesContainer}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={[styles.storiesScroll, { backgroundColor: isDark ? 'rgba(255,255,255,0.02)' : colors.card }]} contentContainerStyle={styles.storiesContainer}>
+
           <TouchableOpacity style={styles.storyWrap}>
-            <View style={styles.myStory}>
+            <View style={[styles.myStory, { borderColor: colors.primary }]}>
               <Image
                 source={{ uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAan4ADBMApbfQhx3DdGKlC1Qbz7FLG7-9Wj-9bdCTWRyQ_aknpIvqI9bH00gEra1CdGikCY1LOOFpxPfp-9qJ1WxlrTlyQoQeH0G9SUsVGVGa6i3deqAZRszu_G44tcFS8X6FDT9rUY0kkZqbCxf5_YJYcSG-yrnnz2uLp41aizPLeZvW7TkT8HRDr7qtaKAeTR7FPViqISWNwr0ywTBGWMVqLqDV8R7pDA31XnTLhK_DwefP-USTgV2dNycsppsYvfAenyGXpZ8Bj' }}
                 style={styles.storyImg}
               />
-              <View style={styles.addStoryBtn}>
+              <View style={[styles.addStoryBtn, { backgroundColor: colors.primary, borderColor: colors.card }]}>
                 <Ionicons name="add" size={14} color="#FFFFFF" />
               </View>
+
             </View>
           </TouchableOpacity>
 
           {[1, 2, 3, 4].map((i) => (
             <TouchableOpacity key={i} style={styles.storyWrap}>
-              <View style={[styles.otherStory, { borderColor: i % 2 === 0 ? '#4953ac' : '#fe9832' }]}>
+              <View style={[styles.otherStory, { borderColor: i % 2 === 0 ? colors.primary : '#818CF8' }]}>
                 <Image
                   source={{ uri: `https://i.pravatar.cc/150?u=${i}` }}
                   style={styles.storyImg}
@@ -59,86 +68,97 @@ const CommunityScreen = ({ navigation }) => {
           ))}
         </ScrollView>
 
+
         {/* Feed Feed */}
         <View style={styles.feedContainer}>
           {/* Feed Card 1: Club Activity */}
-          <View style={styles.postCard}>
+          <View style={[styles.postCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+
             <View style={styles.postHeader}>
               <View style={styles.postAuthor}>
-                <View style={[styles.authorIconBox, { backgroundColor: '#8b4b00' }]}>
+                <View style={[styles.authorIconBox, { backgroundColor: colors.primary }]}>
                   <MaterialIcons name="code" size={20} color="#FFFFFF" />
                 </View>
                 <View>
-                  <Text style={styles.authorName}>Invertis Coding Club</Text>
-                  <Text style={styles.postMeta}>2 hours ago • <Text style={styles.metaTag}>Hackathon</Text></Text>
+                  <Text style={[styles.authorName, { color: colors.textPrimary }]}>Invertis Coding Club</Text>
+                  <Text style={[styles.postMeta, { color: colors.textSecondary }]}>2 hours ago • <Text style={[styles.metaTag, { color: colors.primary }]}>Hackathon</Text></Text>
                 </View>
+
               </View>
-              <TouchableOpacity><MaterialIcons name="more-horiz" size={22} color="#6B7280" /></TouchableOpacity>
+              <TouchableOpacity><MaterialIcons name="more-horiz" size={22} color={colors.textSecondary} /></TouchableOpacity>
             </View>
-            <Text style={styles.postTitle}>Invertis Coding Club Hackathon 2024: Registration Open! 🎉</Text>
-            <Text style={styles.postText}>Join the biggest coding event on campus. 24 hours of pure innovation. Free food, stickers, and internship opportunities for the winners. Let's build the future of Bareilly together.</Text>
+            <Text style={[styles.postTitle, { color: colors.textPrimary }]}>Invertis Coding Club Hackathon 2024: Registration Open! 🎉</Text>
+            <Text style={[styles.postText, { color: colors.textSecondary }]}>Join the biggest coding event on campus. 24 hours of pure innovation. Free food, stickers, and internship opportunities for the winners. Let's build the future of Bareilly together.</Text>
+
             <Image
               source={{ uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCo-D3MJmX9df86ZCo_00jYGYLjFqoInOWyh4iDJH1ujiNw4BC5azHbETDK3BqY7GuJxzjXUUlVv8juthPbexXcW_6JSUjt85AyRfWNvbBC8jEp4Ee_cGlvh2AeBOx_ClsmdGBQaCtCjTUkL1LSJp2O7JUgqvYMUt14Ns15QG_wEmyplQX9_p5HX-Ln5EspNzRZlKCcHgIyCkIF-3eSNC-xyHpQXiw3FeLTY2LIbmwRqWVXGZ8bWDw5v_1pXDYFsU7rI22_Ui1HV2W5' }}
               style={styles.postImg}
             />
-            <View style={styles.postFooter}>
+            <View style={[styles.postFooter, { borderTopColor: colors.border }]}>
               <View style={styles.footerActions}>
                 <TouchableOpacity style={styles.actionBtn}>
-                  <Ionicons name="heart-outline" size={20} color="#6B7280" />
-                  <Text style={styles.actionCount}>124</Text>
+                  <Ionicons name="heart-outline" size={20} color={colors.textSecondary} />
+                  <Text style={[styles.actionCount, { color: colors.textSecondary }]}>124</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.actionBtn}>
-                  <Ionicons name="chatbubble-outline" size={18} color="#6B7280" />
-                  <Text style={styles.actionCount}>42</Text>
+                  <Ionicons name="chatbubble-outline" size={18} color={colors.textSecondary} />
+                  <Text style={[styles.actionCount, { color: colors.textSecondary }]}>42</Text>
                 </TouchableOpacity>
               </View>
-              <TouchableOpacity style={styles.joinSquadBtn}>
+
+              <TouchableOpacity style={[styles.joinSquadBtn, { backgroundColor: colors.primary }]}>
                 <Text style={styles.joinSquadText}>Join Squad</Text>
               </TouchableOpacity>
             </View>
           </View>
 
           {/* Feed Card 2: Department Announcement */}
-          <View style={styles.postCard}>
+          <View style={[styles.postCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+
             <View style={styles.postHeader}>
               <View style={styles.postAuthor}>
-                <View style={[styles.authorIconBox, { backgroundColor: '#4953ac' }]}>
-                  <MaterialIcons name="precision-manufacturing" size={20} color="#FFFFFF" />
+                <View style={[styles.authorIconBox, { backgroundColor: '#4338CA' }]}>
+                  <MaterialIcons name="event-note" size={20} color="#FFFFFF" />
                 </View>
                 <View>
-                  <Text style={styles.authorName}>Mechanical Dept.</Text>
-                  <Text style={styles.postMeta}>5 hours ago • <Text style={[styles.metaTag, { color: '#4953ac' }]}>Workshop</Text></Text>
+                  <Text style={[styles.authorName, { color: colors.textPrimary }]}>CSE Department</Text>
+                  <Text style={[styles.postMeta, { color: colors.textSecondary }]}>5 hours ago • <Text style={[styles.metaTag, { color: '#4338CA' }]}>Workshop</Text></Text>
                 </View>
               </View>
-              <TouchableOpacity><MaterialIcons name="more-horiz" size={22} color="#6B7280" /></TouchableOpacity>
+              <TouchableOpacity><MaterialIcons name="more-horiz" size={22} color={colors.textSecondary} /></TouchableOpacity>
             </View>
-            <View style={styles.workshopBox}>
-              <Text style={styles.workshopTitle}>Hands-on Robotics & Automation</Text>
-              <Text style={styles.workshopDesc}>A specialized workshop focusing on modern industrial robotic arms. Limited to 30 students only from 3rd and 4th year B.Tech.</Text>
+
+            <View style={[styles.workshopBox, { backgroundColor: isDark ? 'rgba(67, 56, 202, 0.1)' : '#F5F3FF', borderLeftColor: '#4338CA' }]}>
+              <Text style={[styles.workshopTitle, { color: colors.textPrimary }]}>Hands-on Robotics & Automation</Text>
+              <Text style={[styles.workshopDesc, { color: colors.textSecondary }]}>A specialized workshop focusing on modern industrial robotic arms. Limited to 30 students only from 3rd and 4th year B.Tech.</Text>
               <View style={styles.workshopMeta}>
-                <View style={styles.wMetaItem}><MaterialIcons name="event" size={14} color="#4953ac" /><Text style={styles.wMetaText}>Oct 12</Text></View>
-                <View style={styles.wMetaItem}><MaterialIcons name="location-on" size={14} color="#4953ac" /><Text style={styles.wMetaText}>Lab 4, Block B</Text></View>
+                <View style={styles.wMetaItem}><MaterialIcons name="event" size={14} color={isDark ? '#A5B4FC' : '#4338CA'} /><Text style={[styles.wMetaText, { color: isDark ? '#A5B4FC' : '#4338CA' }]}>Oct 12</Text></View>
+                <View style={styles.wMetaItem}><MaterialIcons name="location-on" size={14} color={isDark ? '#A5B4FC' : '#4338CA'} /><Text style={[styles.wMetaText, { color: isDark ? '#A5B4FC' : '#4338CA' }]}>Lab 4, Block B</Text></View>
               </View>
             </View>
-            <View style={styles.postFooter}>
+
+            <View style={[styles.postFooter, { borderTopColor: colors.border }]}>
               <View style={styles.footerActions}>
                 <TouchableOpacity style={styles.actionBtn}>
-                  <Ionicons name="heart-outline" size={20} color="#6B7280" />
-                  <Text style={styles.actionCount}>88</Text>
+                  <Ionicons name="heart-outline" size={20} color={colors.textSecondary} />
+                  <Text style={[styles.actionCount, { color: colors.textSecondary }]}>88</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.actionBtn}>
-                  <Ionicons name="share-outline" size={18} color="#6B7280" />
-                  <Text style={styles.actionCount}>12</Text>
+                  <Ionicons name="share-outline" size={18} color={colors.textSecondary} />
+                  <Text style={[styles.actionCount, { color: colors.textSecondary }]}>12</Text>
                 </TouchableOpacity>
               </View>
-              <TouchableOpacity style={[styles.joinSquadBtn, { backgroundColor: '#4953ac' }]}>
+
+              <TouchableOpacity style={[styles.joinSquadBtn, { backgroundColor: '#4338CA' }]}>
                 <Text style={styles.joinSquadText}>Reserve Spot</Text>
               </TouchableOpacity>
             </View>
           </View>
 
+
           {/* Feed Card 3: Project Update - Arjun Sharma */}
-          <View style={styles.postCard}>
+          <View style={[styles.postCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+
             <View style={styles.postHeader}>
               <View style={styles.postAuthor}>
                 <Image
@@ -146,44 +166,49 @@ const CommunityScreen = ({ navigation }) => {
                   style={styles.authorAvatar}
                 />
                 <View>
-                  <Text style={styles.authorName}>Arjun Sharma</Text>
-                  <Text style={styles.postMeta}>Yesterday • <Text style={[styles.metaTag, { color: '#059669' }]}>Project Update</Text></Text>
+                  <Text style={[styles.authorName, { color: colors.textPrimary }]}>Arjun Sharma</Text>
+                  <Text style={[styles.postMeta, { color: colors.textSecondary }]}>Yesterday • <Text style={[styles.metaTag, { color: '#059669' }]}>Project Update</Text></Text>
                 </View>
+
               </View>
-              <TouchableOpacity><MaterialIcons name="more-horiz" size={22} color="#6B7280" /></TouchableOpacity>
+              <TouchableOpacity><MaterialIcons name="more-horiz" size={22} color={colors.textSecondary} /></TouchableOpacity>
             </View>
-            <Text style={styles.postTitle}>SMART CAMPUS APP</Text>
-            <Text style={styles.postText}>
+            <Text style={[styles.postTitle, { color: colors.textPrimary }]}>SMART CAMPUS APP</Text>
+            <Text style={[styles.postText, { color: colors.textSecondary }]}>
               Just finished the UI for our campus navigation module! Using AR to find classrooms is going to be a game changer for freshers. What do you think?
             </Text>
-            <View style={styles.projectPreview}>
+
+            <View style={[styles.projectPreview, { backgroundColor: isDark ? 'rgba(5, 150, 105, 0.1)' : '#ECFDF5', borderColor: isDark ? 'rgba(5, 150, 105, 0.3)' : '#D1FAE5' }]}>
               <LinearGradient
-                colors={['#059669', '#047857']}
+                colors={['#10B981', '#059669']}
                 style={styles.projectPreviewBadge}
               >
                 <MaterialCommunityIcons name="augmented-reality" size={20} color="#FFFFFF" />
               </LinearGradient>
               <View style={styles.projectPreviewContent}>
-                <Text style={styles.projectPreviewTitle}>Campus AR Navigation</Text>
-                <Text style={styles.projectPreviewSub}>In development • Beta release soon</Text>
+                <Text style={[styles.projectPreviewTitle, { color: isDark ? '#A7F3D0' : '#047857' }]}>Campus AR Navigation</Text>
+                <Text style={[styles.projectPreviewSub, { color: colors.textSecondary }]}>In development • Beta release soon</Text>
               </View>
             </View>
-            <View style={styles.postFooter}>
+
+            <View style={[styles.postFooter, { borderTopColor: colors.border }]}>
               <View style={styles.footerActions}>
                 <TouchableOpacity style={styles.actionBtn}>
-                  <Ionicons name="heart-outline" size={20} color="#6B7280" />
-                  <Text style={styles.actionCount}>210</Text>
+                  <Ionicons name="heart-outline" size={20} color={colors.textSecondary} />
+                  <Text style={[styles.actionCount, { color: colors.textSecondary }]}>210</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.actionBtn}>
-                  <Ionicons name="chatbubble-outline" size={18} color="#6B7280" />
-                  <Text style={styles.actionCount}>18</Text>
+                  <Ionicons name="chatbubble-outline" size={18} color={colors.textSecondary} />
+                  <Text style={[styles.actionCount, { color: colors.textSecondary }]}>18</Text>
                 </TouchableOpacity>
               </View>
+
               <TouchableOpacity style={[styles.joinSquadBtn, { backgroundColor: '#059669' }]}>
                 <Text style={styles.joinSquadText}>Support Project</Text>
               </TouchableOpacity>
             </View>
           </View>
+
         </View>
 
         <View style={{ height: 100 }} />
@@ -197,18 +222,17 @@ const CommunityScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F6F7',
   },
+
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 15,
-    backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
   },
+
   headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -217,7 +241,6 @@ const styles = StyleSheet.create({
   headerLogo: {
     fontSize: 20,
     fontWeight: '900',
-    color: '#EA580C',
     fontStyle: 'italic',
   },
   headerRight: {
@@ -233,8 +256,8 @@ const styles = StyleSheet.create({
   },
   storiesScroll: {
     paddingVertical: 16,
-    backgroundColor: '#FFFFFF',
   },
+
   storiesContainer: {
     paddingHorizontal: 16,
     gap: 12,
@@ -248,22 +271,20 @@ const styles = StyleSheet.create({
     borderRadius: 40,
     padding: 3,
     borderWidth: 2,
-    borderColor: '#fe9832',
     position: 'relative',
   },
   addStoryBtn: {
     position: 'absolute',
     bottom: -2,
     right: -2,
-    backgroundColor: '#8b4b00',
     width: 22,
     height: 22,
     borderRadius: 11,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: '#FFFFFF',
   },
+
   otherStory: {
     width: 80,
     height: 80,
@@ -281,17 +302,16 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   postCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    padding: 16,
+    borderRadius: 24,
+    padding: 20,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.05,
     shadowRadius: 10,
     elevation: 3,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.4)',
   },
+
   postHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -318,27 +338,22 @@ const styles = StyleSheet.create({
   authorName: {
     fontSize: 15,
     fontWeight: '800',
-    color: '#1F2937',
   },
   postMeta: {
     fontSize: 11,
-    color: '#6B7280',
     marginTop: 2,
   },
   metaTag: {
     fontWeight: '700',
-    color: '#8b4b00',
   },
   postTitle: {
     fontSize: 20,
     fontWeight: '900',
-    color: '#1F2937',
     lineHeight: 26,
     letterSpacing: -0.3,
   },
   postText: {
     fontSize: 14,
-    color: '#4B5563',
     lineHeight: 22,
     marginTop: 8,
   },
@@ -355,8 +370,8 @@ const styles = StyleSheet.create({
     marginTop: 16,
     paddingTop: 16,
     borderTopWidth: 1,
-    borderTopColor: '#F3F4F6',
   },
+
   footerActions: {
     flexDirection: 'row',
     gap: 16,
@@ -369,10 +384,8 @@ const styles = StyleSheet.create({
   actionCount: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#6B7280',
   },
   joinSquadBtn: {
-    backgroundColor: '#8b4b00',
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 20,
@@ -383,21 +396,18 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   workshopBox: {
-    backgroundColor: '#F9FAFB',
     borderRadius: 12,
     padding: 16,
     borderLeftWidth: 4,
-    borderLeftColor: '#4953ac',
   },
+
   workshopTitle: {
     fontSize: 16,
     fontWeight: '800',
-    color: '#1F2937',
     fontStyle: 'italic',
   },
   workshopDesc: {
     fontSize: 12,
-    color: '#6B7280',
     marginTop: 6,
     lineHeight: 18,
   },
@@ -414,19 +424,17 @@ const styles = StyleSheet.create({
   wMetaText: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#4953ac',
   },
   projectPreview: {
     marginTop: 16,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F0FDF4',
     borderRadius: 16,
     padding: 12,
     gap: 12,
     borderWidth: 1,
-    borderColor: '#D1FAE5',
   },
+
   projectPreviewBadge: {
     width: 44,
     height: 44,
@@ -440,30 +448,12 @@ const styles = StyleSheet.create({
   projectPreviewTitle: {
     fontSize: 14,
     fontWeight: '800',
-    color: '#065F46',
   },
   projectPreviewSub: {
     fontSize: 11,
-    color: '#6B7280',
     marginTop: 2,
   },
-  pulseIndicator: {
-    position: 'absolute',
-    top: 100,
-    right: 0,
-    zIndex: 10,
-  },
-  pulseInner: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderTopLeftRadius: 10,
-    borderBottomLeftRadius: 10,
-  },
-  pulseNote: {
-    color: '#FFFFFF',
-    fontSize: 10,
-    fontWeight: '900',
-  },
 });
+
 
 export default CommunityScreen;

@@ -15,7 +15,10 @@ import { Ionicons, MaterialCommunityIcons, MaterialIcons } from '@expo/vector-ic
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 
+import { useTheme } from '../../hooks/useTheme';
+
 const { width } = Dimensions.get('window');
+
 
 const CATEGORIES = [
   { id: 'academic', label: 'Academic', icon: 'school-outline', subs: ['Curriculum', 'Exams', 'Attendance', 'Faculty', 'Resource Access'] },
@@ -29,6 +32,8 @@ const CATEGORIES = [
 
 const RaiseIssueScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
+  const { colors, isDark } = useTheme();
+
 
   // Form State
   const [selectedCategory, setSelectedCategory] = useState(null);
@@ -60,16 +65,15 @@ const RaiseIssueScreen = ({ navigation }) => {
 
   if (showSuccess) {
     return (
-      <View style={styles.successContainer}>
-        <LinearGradient colors={['#F9FAFB', '#FFFFFF']} style={StyleSheet.absoluteFill} />
+      <View style={[styles.successContainer, { backgroundColor: colors.background }]}>
         <View style={styles.successContent}>
           <LinearGradient colors={['#EA580C', '#9A3412']} style={styles.successIconOuter}>
             <LinearGradient colors={['#F97316', '#EA580C']} style={styles.successIconInner}>
               <Ionicons name="checkmark-done" size={60} color="#FFFFFF" />
             </LinearGradient>
           </LinearGradient>
-          <Text style={styles.successTitle}>Issue Raised Successfully!</Text>
-          <Text style={styles.successSub}>Your support ticket has been created. Our team will reach out to you shortly.</Text>
+          <Text style={[styles.successTitle, { color: colors.textPrimary }]}>Issue Raised Successfully!</Text>
+          <Text style={[styles.successSub, { color: colors.textSecondary }]}>Your support ticket has been created. Our team will reach out to you shortly.</Text>
           <TouchableOpacity style={styles.doneBtn} onPress={() => navigation.goBack()}>
             <LinearGradient colors={['#EA580C', '#9A3412']} style={styles.doneBtnGradient}>
               <Text style={styles.doneBtnText}>Back to Dashboard</Text>
@@ -80,18 +84,20 @@ const RaiseIssueScreen = ({ navigation }) => {
     );
   }
 
-  return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      <LinearGradient colors={['#F9FAFB', '#FFFFFF']} style={StyleSheet.absoluteFill} />
 
+  return (
+    <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-          <LinearGradient colors={['#FFF7ED', '#FFEDD5']} style={styles.backBtnBg}>
-            <Ionicons name="chevron-back" size={24} color="#EA580C" />
+          <LinearGradient 
+            colors={isDark ? ['#2D1F17', '#1F140E'] : ['#FFF7ED', '#FFEDD5']} 
+            style={[styles.backBtnBg, { borderColor: colors.border, borderWidth: 1 }]}
+          >
+            <Ionicons name="chevron-back" size={24} color={isDark ? '#FB923C' : '#EA580C'} />
           </LinearGradient>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Raise an Issue</Text>
+        <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Raise an Issue</Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -101,54 +107,57 @@ const RaiseIssueScreen = ({ navigation }) => {
       >
         <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
           <LinearGradient
-            colors={['#FFFFFF', '#F9FAFB']}
-            style={styles.formCard}
+            colors={isDark ? [colors.card, colors.background] : ['#FFFFFF', '#F9FAFB']}
+            style={[styles.formCard, { borderColor: colors.border }]}
             start={{ x: 0, y: 0 }}
             end={{ x: 0, y: 1 }}
           >
+
             {/* Category Dropdown */}
-            <Text style={styles.label}>Issue Category <Text style={styles.required}>*</Text></Text>
+            <Text style={[styles.label, { color: colors.textSecondary }]}>Issue Category <Text style={styles.required}>*</Text></Text>
             <TouchableOpacity
-              style={[styles.dropdownTrigger, showCatMenu && styles.activeDropdown]}
+              style={[styles.dropdownTrigger, { backgroundColor: isDark ? colors.background : '#FFFFFF', borderColor: colors.border }, showCatMenu && styles.activeDropdown]}
               onPress={() => setShowCatMenu(!showCatMenu)}
             >
               <View style={styles.dropdownLeft}>
                 <Ionicons
                   name={selectedCategory ? selectedCategory.icon : 'grid-outline'}
                   size={20}
-                  color={selectedCategory ? '#EA580C' : '#9CA3AF'}
+                  color={selectedCategory ? colors.primary : colors.textMuted}
                 />
-                <Text style={[styles.dropdownText, !selectedCategory && styles.placeholderText]}>
+                <Text style={[styles.dropdownText, { color: colors.textPrimary }, !selectedCategory && styles.placeholderText]}>
                   {selectedCategory ? selectedCategory.label : 'Select Category'}
                 </Text>
               </View>
-              <Ionicons name={showCatMenu ? 'chevron-up' : 'chevron-down'} size={20} color="#9CA3AF" />
+              <Ionicons name={showCatMenu ? 'chevron-up' : 'chevron-down'} size={20} color={colors.textMuted} />
             </TouchableOpacity>
 
+
             {showCatMenu && (
-              <View style={styles.menuBox}>
+              <View style={[styles.menuBox, { backgroundColor: colors.card, borderColor: colors.border }]}>
                 {CATEGORIES.map((cat) => (
                   <TouchableOpacity
                     key={cat.id}
-                    style={styles.menuItem}
+                    style={[styles.menuItem, { borderBottomColor: colors.border }]}
                     onPress={() => {
                       setSelectedCategory(cat);
                       setSelectedSubCategory('');
                       setShowCatMenu(false);
                     }}
                   >
-                    <Ionicons name={cat.icon} size={18} color="#EA580C" style={{ marginRight: 12 }} />
-                    <Text style={styles.menuItemText}>{cat.label}</Text>
+                    <Ionicons name={cat.icon} size={18} color={colors.primary} style={{ marginRight: 12 }} />
+                    <Text style={[styles.menuItemText, { color: colors.textPrimary }]}>{cat.label}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
             )}
 
+
             {/* Sub-category Dropdown */}
-            <Text style={styles.label}>Sub-category <Text style={styles.required}>*</Text></Text>
+            <Text style={[styles.label, { color: colors.textSecondary }]}>Sub-category <Text style={styles.required}>*</Text></Text>
             <TouchableOpacity
               style={[
-                styles.dropdownTrigger,
+                styles.dropdownTrigger, { backgroundColor: isDark ? colors.background : '#FFFFFF', borderColor: colors.border },
                 showSubMenu && styles.activeDropdown,
                 !selectedCategory && styles.disabledDropdown
               ]}
@@ -156,50 +165,53 @@ const RaiseIssueScreen = ({ navigation }) => {
               onPress={() => setShowSubMenu(!showSubMenu)}
             >
               <View style={styles.dropdownLeft}>
-                <Ionicons name="list-outline" size={20} color={selectedSubCategory ? '#EA580C' : '#9CA3AF'} />
-                <Text style={[styles.dropdownText, !selectedSubCategory && styles.placeholderText]}>
+                <Ionicons name="list-outline" size={20} color={selectedSubCategory ? colors.primary : colors.textMuted} />
+                <Text style={[styles.dropdownText, { color: colors.textPrimary }, !selectedSubCategory && styles.placeholderText]}>
                   {selectedSubCategory || 'Select Sub-category'}
                 </Text>
               </View>
-              <Ionicons name={showSubMenu ? 'chevron-up' : 'chevron-down'} size={20} color="#9CA3AF" />
+              <Ionicons name={showSubMenu ? 'chevron-up' : 'chevron-down'} size={20} color={colors.textMuted} />
             </TouchableOpacity>
 
+
             {showSubMenu && selectedCategory && (
-              <View style={styles.menuBox}>
+              <View style={[styles.menuBox, { backgroundColor: colors.card, borderColor: colors.border }]}>
                 {selectedCategory.subs.map((sub) => (
                   <TouchableOpacity
                     key={sub}
-                    style={styles.menuItem}
+                    style={[styles.menuItem, { borderBottomColor: colors.border }]}
                     onPress={() => {
                       setSelectedSubCategory(sub);
                       setShowSubMenu(false);
                     }}
                   >
-                    <Text style={styles.menuItemText}>{sub}</Text>
+                    <Text style={[styles.menuItemText, { color: colors.textPrimary }]}>{sub}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
             )}
 
+
             {/* Issue Title */}
-            <Text style={styles.label}>Issue Title <Text style={styles.required}>*</Text></Text>
-            <View style={styles.inputWrapper}>
+            <Text style={[styles.label, { color: colors.textSecondary }]}>Issue Title <Text style={styles.required}>*</Text></Text>
+            <View style={[styles.inputWrapper, { backgroundColor: isDark ? colors.background : '#FFFFFF', borderColor: colors.border }]}>
               <TextInput
-                style={styles.input}
+                style={[styles.input, { color: colors.textPrimary }]}
                 placeholder="Brief summary of the issue"
-                placeholderTextColor="#9CA3AF"
+                placeholderTextColor={colors.textMuted}
                 value={issueTitle}
                 onChangeText={setIssueTitle}
               />
             </View>
 
+
             {/* Description */}
-            <Text style={styles.label}>Description <Text style={styles.required}>*</Text></Text>
-            <View style={[styles.inputWrapper, styles.multiLineWrapper]}>
+            <Text style={[styles.label, { color: colors.textSecondary }]}>Description <Text style={styles.required}>*</Text></Text>
+            <View style={[styles.inputWrapper, styles.multiLineWrapper, { backgroundColor: isDark ? colors.background : '#FFFFFF', borderColor: colors.border }]}>
               <TextInput
-                style={[styles.input, styles.multiLineInput]}
+                style={[styles.input, styles.multiLineInput, { color: colors.textPrimary }]}
                 placeholder="Explain the issue in detail..."
-                placeholderTextColor="#9CA3AF"
+                placeholderTextColor={colors.textMuted}
                 multiline
                 numberOfLines={5}
                 textAlignVertical="top"
@@ -208,44 +220,52 @@ const RaiseIssueScreen = ({ navigation }) => {
               />
             </View>
 
+
             {/* Attachment */}
-            <Text style={styles.label}>Upload Attachment</Text>
-            <TouchableOpacity style={styles.uploadBox}>
-              <LinearGradient colors={['#FFF7ED', '#FFEDD5']} style={styles.uploadIconBg}>
-                <MaterialCommunityIcons name="cloud-upload-outline" size={28} color="#EA580C" />
+            <Text style={[styles.label, { color: colors.textSecondary }]}>Upload Attachment</Text>
+            <TouchableOpacity style={[styles.uploadBox, { backgroundColor: isDark ? 'rgba(234, 88, 12, 0.05)' : '#FFF7ED', borderColor: isDark ? 'rgba(234, 88, 12, 0.2)' : '#FFEDD5' }]}>
+              <LinearGradient colors={isDark ? ['#9A3412', '#7C2D12'] : ['#FFF7ED', '#FFEDD5']} style={styles.uploadIconBg}>
+                <MaterialCommunityIcons name="cloud-upload-outline" size={28} color={isDark ? '#FFFFFF' : "#EA580C"} />
               </LinearGradient>
-              <Text style={styles.uploadTitle}>Choose file or PDF</Text>
-              <Text style={styles.uploadSub}>Maximum file size 5MB</Text>
+              <Text style={[styles.uploadTitle, { color: colors.textPrimary }]}>Choose file or PDF</Text>
+              <Text style={[styles.uploadSub, { color: colors.textSecondary }]}>Maximum file size 5MB</Text>
             </TouchableOpacity>
 
+
             {/* Priority */}
-            <Text style={styles.label}>Priority Selection</Text>
+            <Text style={[styles.label, { color: colors.textSecondary }]}>Priority Selection</Text>
             <View style={styles.priorityRow}>
               {['Low', 'Medium', 'High'].map((p) => (
                 <TouchableOpacity
                   key={p}
-                  style={[styles.priorityPill, priority === p && styles.priorityPillActive]}
+                  style={[
+                    styles.priorityPill,
+                    { backgroundColor: isDark ? colors.card : '#FFFFFF', borderColor: colors.border },
+                    priority === p && { backgroundColor: isDark ? 'rgba(234, 88, 12, 0.2)' : '#FFF7ED', borderColor: colors.primary, borderWidth: 2 }
+                  ]}
                   onPress={() => setPriority(p)}
                 >
-                  <Text style={[styles.priorityText, priority === p && styles.priorityTextActive]}>
+                  <Text style={[styles.priorityText, { color: colors.textSecondary }, priority === p && { color: colors.primary }]}>
                     {p}
                   </Text>
                 </TouchableOpacity>
               ))}
             </View>
 
+
             {/* Location */}
-            <Text style={styles.label}>Location (Optional)</Text>
-            <View style={styles.inputWrapper}>
-              <Ionicons name="location-outline" size={18} color="#9CA3AF" style={{ marginRight: 10 }} />
+            <Text style={[styles.label, { color: colors.textSecondary }]}>Location (Optional)</Text>
+            <View style={[styles.inputWrapper, { backgroundColor: isDark ? colors.background : '#FFFFFF', borderColor: colors.border }]}>
+              <Ionicons name="location-outline" size={18} color={colors.textMuted} style={{ marginRight: 10 }} />
               <TextInput
-                style={styles.input}
+                style={[styles.input, { color: colors.textPrimary }]}
                 placeholder="Block, Room No, or Area"
-                placeholderTextColor="#9CA3AF"
+                placeholderTextColor={colors.textMuted}
                 value={location}
                 onChangeText={setLocation}
               />
             </View>
+
 
             {/* Submit Button */}
             <TouchableOpacity

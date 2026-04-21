@@ -4,110 +4,126 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTheme } from '../../hooks/useTheme';
 
-const SettingItem = ({ icon, label, type, value, onToggle, onPress }) => (
+
+
+const SettingItem = ({ icon, label, type, value, onToggle, onPress, colors }) => (
   <TouchableOpacity 
     style={styles.settingRow} 
     onPress={onPress} 
     disabled={type === 'switch'}
     activeOpacity={0.7}
   >
-    <View style={[styles.iconContainer, { backgroundColor: type === 'danger' ? '#FEF2F2' : '#F5EEFC' }]}>
-      <Ionicons name={icon} size={20} color={type === 'danger' ? '#EF4444' : '#8B2FC9'} />
+    <View style={[styles.iconContainer, { backgroundColor: type === 'danger' ? colors.dangerLight : colors.primaryLight }]}>
+      <Ionicons name={icon} size={20} color={type === 'danger' ? colors.danger : colors.primary} />
     </View>
-    <Text style={[styles.settingLabel, type === 'danger' && { color: '#EF4444' }]}>{label}</Text>
+    <Text style={[styles.settingLabel, { color: type === 'danger' ? colors.danger : colors.textPrimary }]}>{label}</Text>
     {type === 'switch' ? (
       <Switch
         value={value}
         onValueChange={onToggle}
-        trackColor={{ false: '#E5E7EB', true: '#C4B5FD' }}
-        thumbColor={value ? '#8B2FC9' : '#F4F4F5'}
+        trackColor={{ false: colors.border, true: colors.primary }}
+        thumbColor={value ? colors.white : colors.white}
       />
     ) : (
-      <Ionicons name="chevron-forward" size={18} color="#D1D5DB" />
+      <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
     )}
   </TouchableOpacity>
 );
 
+
 const SettingsScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
+  const { colors, isDark, toggleTheme } = useTheme();
   const [notifications, setNotifications] = useState(true);
   const [examAlerts, setExamAlerts] = useState(true);
-  const [darkMode, setDarkMode] = useState(false);
+
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
       {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color="#111827" />
+      <View style={[styles.header, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={[styles.backButton, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
+          <Ionicons name="arrow-back" size={22} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Settings</Text>
+        <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Settings</Text>
         <View style={{ width: 40 }} />
       </View>
 
+
+
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>NOTIFICATIONS</Text>
-          <View style={styles.card}>
+          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>NOTIFICATIONS</Text>
+          <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <SettingItem 
               icon="notifications-outline" 
               label="Push Notifications" 
               type="switch" 
               value={notifications} 
               onToggle={setNotifications} 
+              colors={colors}
             />
-            <View style={styles.divider} />
+            <View style={[styles.divider, { backgroundColor: colors.border }]} />
             <SettingItem 
               icon="alarm-outline" 
               label="Exam & Deadlines Alerts" 
               type="switch" 
               value={examAlerts} 
               onToggle={setExamAlerts} 
+              colors={colors}
             />
           </View>
         </View>
 
+
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>APPEARANCE</Text>
-          <View style={styles.card}>
+          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>APPEARANCE</Text>
+          <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <SettingItem 
               icon="moon-outline" 
               label="Dark Mode" 
               type="switch" 
-              value={darkMode} 
-              onToggle={setDarkMode} 
+              value={isDark} 
+              onToggle={toggleTheme} 
+              colors={colors}
             />
-            <View style={styles.divider} />
+            <View style={[styles.divider, { backgroundColor: colors.border }]} />
             <SettingItem 
               icon="text-outline" 
               label="Text Size" 
               type="link" 
+              colors={colors}
             />
           </View>
         </View>
 
+
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>ACCOUNT & SECURITY</Text>
-          <View style={styles.card}>
+          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>ACCOUNT & SECURITY</Text>
+          <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <SettingItem 
               icon="lock-closed-outline" 
               label="Change Password" 
               type="link" 
+              colors={colors}
             />
-            <View style={styles.divider} />
+            <View style={[styles.divider, { backgroundColor: colors.border }]} />
             <SettingItem 
               icon="finger-print-outline" 
               label="Biometric Login" 
               type="switch" 
               value={false} 
+              colors={colors}
             />
           </View>
         </View>
 
+
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>SESSION</Text>
-          <View style={styles.card}>
+          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>SESSION</Text>
+          <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <SettingItem 
               icon="log-out-outline" 
               label="Log Out" 
@@ -115,20 +131,24 @@ const SettingsScreen = ({ navigation }) => {
               onPress={() => {
                 navigation.replace('Login');
               }}
+              colors={colors}
             />
           </View>
         </View>
 
+
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>DANGER ZONE</Text>
-          <View style={styles.card}>
+          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>DANGER ZONE</Text>
+          <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <SettingItem 
               icon="trash-outline" 
               label="Delete Account" 
               type="danger" 
+              colors={colors}
             />
           </View>
         </View>
+
 
         <View style={{ height: 40 }} />
       </ScrollView>
@@ -139,8 +159,8 @@ const SettingsScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
   },
+
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -148,8 +168,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
   },
+
   backButton: {
     width: 40,
     height: 40,
@@ -160,8 +180,8 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#111827',
   },
+
   scroll: {
     padding: 20,
   },
@@ -170,18 +190,17 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 11,
-    color: '#6B7280',
     fontWeight: '600',
     letterSpacing: 0.8,
     marginBottom: 12,
   },
+
   card: {
-    backgroundColor: '#FFFFFF',
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#F3F4F6',
     overflow: 'hidden',
   },
+
   settingRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -199,13 +218,13 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 15,
     fontWeight: '500',
-    color: '#111827',
   },
+
   divider: {
     height: 1,
-    backgroundColor: '#F3F4F6',
     marginLeft: 66,
   },
+
 });
 
 export default SettingsScreen;

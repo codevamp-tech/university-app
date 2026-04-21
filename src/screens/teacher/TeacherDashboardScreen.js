@@ -2,7 +2,7 @@ import React from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { TEACHER_USER, TEACHER_SCHEDULE } from '../../constants/data';
@@ -10,9 +10,9 @@ import { TEACHER_USER, TEACHER_SCHEDULE } from '../../constants/data';
 const { width } = Dimensions.get('window');
 
 const QUICK_ACTIONS = [
-  { icon: 'document-text-outline', label: 'Post Assignment', color: '#8B2FC9', bgColor: '#8B2FC912' },
-  { icon: 'star-outline', label: 'Internal Marks', color: '#F59E0B', bgColor: '#F59E0B12' },
-  { icon: 'mail-outline', label: 'Broadcast', color: '#10B981', bgColor: '#10B98112' },
+  { icon: 'document-text-outline', label: 'Post Assignment', color: '#EA580C', bgColor: '#FFF7ED' },
+  { icon: 'star-outline', label: 'Internal Marks', color: '#F59E0B', bgColor: '#FFFBEB' },
+  { icon: 'mail-outline', label: 'Broadcast', color: '#10B981', bgColor: '#F0FDF4' },
 ];
 
 const TeacherDashboardScreen = ({ navigation }) => {
@@ -20,29 +20,34 @@ const TeacherDashboardScreen = ({ navigation }) => {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      {/* Header with Gradient Effect */}
+      {/* Header with Gradient */}
       <LinearGradient
-        colors={['#c4ccff', '#b6c0ff', '#eef1ff', '#e0e5ff', '#d2d9ff']}
-        locations={[0, 0.3, 0.55, 0.8, 1]}
+        colors={['#1E1B4B', '#312E81']}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.headerGradient}
-
-
       >
         <View style={styles.header}>
           <View style={styles.headerLeft}>
-            <View style={styles.avatar}>
+            <LinearGradient
+              colors={['#EA580C', '#9A3412']}
+              style={styles.avatar}
+            >
               <Text style={styles.avatarText}>VK</Text>
-            </View>
+            </LinearGradient>
             <View style={styles.headerTextGroup}>
               <Text style={styles.headerGreeting}>Welcome back,</Text>
               <Text style={styles.headerName}>Prof. Vikram</Text>
             </View>
           </View>
           <TouchableOpacity style={styles.bellBtn}>
-            <Ionicons name="notifications-outline" size={20} color="#FFFFFF" />
-            <View style={styles.bellBadge} />
+            <LinearGradient
+              colors={['#FFFFFF', '#F9FAFB']}
+              style={styles.bellGradient}
+            >
+              <Ionicons name="notifications-outline" size={20} color="#EA580C" />
+              <View style={styles.bellBadge} />
+            </LinearGradient>
           </TouchableOpacity>
         </View>
       </LinearGradient>
@@ -52,7 +57,10 @@ const TeacherDashboardScreen = ({ navigation }) => {
         showsVerticalScrollIndicator={false}
       >
         {/* Current Lecture Card */}
-        <View style={styles.currentCard}>
+        <LinearGradient
+          colors={['#FFFFFF', '#F9FAFB']}
+          style={styles.currentCard}
+        >
           <View style={styles.currentHeader}>
             <View style={styles.liveIndicator}>
               <View style={styles.liveDot} />
@@ -81,15 +89,20 @@ const TeacherDashboardScreen = ({ navigation }) => {
               onPress={() => navigation.navigate('MarkAttendance')}
               activeOpacity={0.85}
             >
-              <Ionicons name="checkbox-outline" size={18} color="#FFFFFF" />
-              <Text style={styles.primaryBtnText}>Mark Attendance</Text>
+              <LinearGradient
+                colors={['#EA580C', '#9A3412']}
+                style={styles.primaryBtnGradient}
+              >
+                <Ionicons name="checkbox-outline" size={18} color="#FFFFFF" />
+                <Text style={styles.primaryBtnText}>Mark Attendance</Text>
+              </LinearGradient>
             </TouchableOpacity>
             <TouchableOpacity style={styles.secondaryBtn} activeOpacity={0.85}>
-              <Ionicons name="easel-outline" size={18} color="#8B2FC9" />
+              <Ionicons name="easel-outline" size={18} color="#EA580C" />
               <Text style={styles.secondaryBtnText}>Present</Text>
             </TouchableOpacity>
           </View>
-        </View>
+        </LinearGradient>
 
         {/* Quick Actions */}
         <View style={styles.quickSection}>
@@ -101,9 +114,12 @@ const TeacherDashboardScreen = ({ navigation }) => {
                 style={styles.actionCard}
                 activeOpacity={0.8}
               >
-                <View style={[styles.actionIcon, { backgroundColor: action.bgColor }]}>
+                <LinearGradient
+                  colors={[action.bgColor, action.bgColor]}
+                  style={styles.actionIcon}
+                >
                   <Ionicons name={action.icon} size={22} color={action.color} />
-                </View>
+                </LinearGradient>
                 <Text style={styles.actionLabel}>{action.label}</Text>
               </TouchableOpacity>
             ))}
@@ -121,7 +137,10 @@ const TeacherDashboardScreen = ({ navigation }) => {
           </TouchableOpacity>
         </View>
 
-        <View style={styles.statsCard}>
+        <LinearGradient
+          colors={['#FFFFFF', '#F9FAFB']}
+          style={styles.statsCard}
+        >
           <View style={styles.statRow}>
             <View style={styles.statItem}>
               <Text style={styles.statValue}>1,240</Text>
@@ -145,10 +164,13 @@ const TeacherDashboardScreen = ({ navigation }) => {
               <Text style={styles.progressPercent}>84%</Text>
             </View>
             <View style={styles.progressBarBg}>
-              <View style={[styles.progressBarFill, { width: '84%' }]} />
+              <LinearGradient
+                colors={['#EA580C', '#F97316']}
+                style={[styles.progressBarFill, { width: '84%' }]}
+              />
             </View>
           </View>
-        </View>
+        </LinearGradient>
 
         {/* Today's Schedule */}
         <View style={styles.scheduleHeader}>
@@ -160,13 +182,20 @@ const TeacherDashboardScreen = ({ navigation }) => {
 
         <View style={styles.scheduleContainer}>
           {TEACHER_SCHEDULE.map((item, index) => (
-            <View key={item.id} style={styles.scheduleCard}>
+            <LinearGradient
+              key={item.id}
+              colors={['#FFFFFF', '#F9FAFB']}
+              style={styles.scheduleCard}
+            >
               <View style={styles.scheduleTime}>
                 <Text style={styles.scheduleTimeHour}>{item.time.split(' ')[0]}</Text>
                 <Text style={styles.scheduleTimePeriod}>{item.time.split(' ')[1]}</Text>
               </View>
               <View style={styles.scheduleLine}>
-                <View style={styles.scheduleDot} />
+                <LinearGradient
+                  colors={['#EA580C', '#F97316']}
+                  style={styles.scheduleDot}
+                />
                 {index < TEACHER_SCHEDULE.length - 1 && <View style={styles.scheduleLineConnector} />}
               </View>
               <View style={styles.scheduleInfo}>
@@ -177,7 +206,7 @@ const TeacherDashboardScreen = ({ navigation }) => {
                   <Text style={styles.scheduleLocation}>Room {item.room || '101'}</Text>
                 </View>
               </View>
-            </View>
+            </LinearGradient>
           ))}
         </View>
 
@@ -190,16 +219,16 @@ const TeacherDashboardScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#F3F4F6',
   },
   headerGradient: {
-    borderBottomLeftRadius: 28,
-    borderBottomRightRadius: 28,
-    paddingBottom: 20,
-    shadowColor: '#8B2FC9',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 12,
+    borderBottomLeftRadius: 32,
+    borderBottomRightRadius: 32,
+    paddingBottom: 24,
+    shadowColor: '#312E81',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
     elevation: 8,
   },
   header: {
@@ -215,22 +244,21 @@ const styles = StyleSheet.create({
     gap: 14,
   },
   avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#FFFFFF',
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.1,
+    shadowColor: '#EA580C',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 5,
   },
   avatarText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#8B2FC9',
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#FFFFFF',
     letterSpacing: -0.3,
   },
   headerTextGroup: {
@@ -238,29 +266,36 @@ const styles = StyleSheet.create({
   },
   headerGreeting: {
     fontSize: 12,
-    color: '#000',
+    color: 'rgba(255,255,255,0.8)',
     fontWeight: '500',
-    opacity: 0.9,
   },
   headerName: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#000',
-    letterSpacing: -0.2,
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: -0.3,
   },
   bellBtn: {
+    borderRadius: 22,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  bellGradient: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: 'rgba(255, 255, 255, 0.25)',
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
   },
   bellBadge: {
     position: 'absolute',
-    top: 11,
-    right: 11,
+    top: 10,
+    right: 10,
     width: 8,
     height: 8,
     borderRadius: 4,
@@ -273,15 +308,16 @@ const styles = StyleSheet.create({
     paddingTop: 20,
   },
   currentCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 24,
+    borderRadius: 28,
     padding: 20,
     marginBottom: 24,
+    borderWidth: 1,
+    borderColor: '#FFFFFF',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.06,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.04,
     shadowRadius: 16,
-    elevation: 5,
+    elevation: 4,
   },
   currentHeader: {
     flexDirection: 'row',
@@ -306,22 +342,22 @@ const styles = StyleSheet.create({
   },
   liveText: {
     fontSize: 10,
-    fontWeight: '700',
+    fontWeight: '800',
     color: '#EF4444',
     letterSpacing: 0.5,
   },
   currentTime: {
     fontSize: 13,
     color: '#6B7280',
-    fontWeight: '500',
+    fontWeight: '600',
   },
   currentSubject: {
-    fontSize: 20,
-    fontWeight: '700',
+    fontSize: 22,
+    fontWeight: '900',
     color: '#111827',
     marginBottom: 4,
-    letterSpacing: -0.3,
-    lineHeight: 26,
+    letterSpacing: -0.5,
+    lineHeight: 28,
   },
   currentClass: {
     fontSize: 13,
@@ -351,22 +387,24 @@ const styles = StyleSheet.create({
   },
   primaryBtn: {
     flex: 1,
+    borderRadius: 40,
+    overflow: 'hidden',
+    shadowColor: '#EA580C',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  primaryBtnGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: '#8B2FC9',
-    borderRadius: 40,
     paddingVertical: 12,
-    shadowColor: '#8B2FC9',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
-    elevation: 3,
   },
   primaryBtnText: {
     color: '#FFFFFF',
-    fontWeight: '600',
+    fontWeight: '800',
     fontSize: 13,
   },
   secondaryBtn: {
@@ -379,23 +417,27 @@ const styles = StyleSheet.create({
     borderRadius: 40,
     paddingVertical: 12,
     borderWidth: 1.5,
-    borderColor: '#8B2FC915',
+    borderColor: '#FFEDD5',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 2,
   },
   secondaryBtnText: {
-    color: '#8B2FC9',
-    fontWeight: '600',
+    color: '#EA580C',
+    fontWeight: '800',
     fontSize: 13,
   },
   quickSection: {
     marginBottom: 24,
   },
   sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 18,
+    fontWeight: '900',
     color: '#111827',
     marginBottom: 14,
-    letterSpacing: -0.2,
-    lineHeight: 22,
+    letterSpacing: -0.3,
   },
   quickActionsGrid: {
     flexDirection: 'row',
@@ -404,26 +446,28 @@ const styles = StyleSheet.create({
   actionCard: {
     flex: 1,
     backgroundColor: '#FFFFFF',
-    borderRadius: 20,
+    borderRadius: 24,
     padding: 16,
     alignItems: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.04,
-    shadowRadius: 10,
+    shadowRadius: 12,
     elevation: 3,
+    borderWidth: 1,
+    borderColor: '#FFFFFF',
   },
   actionIcon: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 10,
   },
   actionLabel: {
     fontSize: 12,
-    fontWeight: '500',
+    fontWeight: '700',
     color: '#111827',
     textAlign: 'center',
     lineHeight: 16,
@@ -436,19 +480,20 @@ const styles = StyleSheet.create({
   },
   viewAllText: {
     fontSize: 13,
-    color: '#8B2FC9',
-    fontWeight: '600',
+    color: '#EA580C',
+    fontWeight: '800',
   },
   statsCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 24,
+    borderRadius: 28,
     padding: 20,
     marginBottom: 24,
+    borderWidth: 1,
+    borderColor: '#FFFFFF',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
+    shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.04,
-    shadowRadius: 12,
-    elevation: 3,
+    shadowRadius: 16,
+    elevation: 4,
   },
   statRow: {
     flexDirection: 'row',
@@ -460,23 +505,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   statValue: {
-    fontSize: 22,
-    fontWeight: '700',
+    fontSize: 24,
+    fontWeight: '900',
     color: '#111827',
     marginBottom: 4,
-    letterSpacing: -0.3,
-    lineHeight: 28,
+    letterSpacing: -0.5,
   },
   statLabel: {
     fontSize: 11,
     color: '#6B7280',
-    fontWeight: '600',
+    fontWeight: '700',
     textTransform: 'uppercase',
-    letterSpacing: 0.3,
+    letterSpacing: 0.5,
   },
   statDivider: {
     width: 1,
-    backgroundColor: '#E5E7EB',
+    backgroundColor: '#F3F4F6',
   },
   progressSection: {
     marginTop: 6,
@@ -489,22 +533,21 @@ const styles = StyleSheet.create({
   progressLabel: {
     fontSize: 12,
     color: '#6B7280',
-    fontWeight: '500',
+    fontWeight: '600',
   },
   progressPercent: {
     fontSize: 13,
-    fontWeight: '600',
-    color: '#8B2FC9',
+    fontWeight: '800',
+    color: '#EA580C',
   },
   progressBarBg: {
     height: 8,
-    backgroundColor: '#E5E7EB',
+    backgroundColor: '#F3F4F6',
     borderRadius: 4,
     overflow: 'hidden',
   },
   progressBarFill: {
     height: '100%',
-    backgroundColor: '#8B2FC9',
     borderRadius: 4,
   },
   scheduleHeader: {
@@ -520,14 +563,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 12,
     padding: 16,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: '#FFFFFF',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.04,
-    shadowRadius: 10,
-    elevation: 2,
-    marginBottom: 2,
+    shadowRadius: 12,
+    elevation: 3,
   },
   scheduleTime: {
     width: 55,
@@ -535,17 +578,16 @@ const styles = StyleSheet.create({
   },
   scheduleTimeHour: {
     fontSize: 16,
-    fontWeight: '700',
-    color: '#8B2FC9',
-    letterSpacing: -0.2,
-    lineHeight: 22,
+    fontWeight: '800',
+    color: '#EA580C',
+    letterSpacing: -0.3,
   },
   scheduleTimePeriod: {
     fontSize: 10,
     color: '#6B7280',
-    fontWeight: '600',
+    fontWeight: '700',
     textTransform: 'uppercase',
-    letterSpacing: 0.3,
+    letterSpacing: 0.5,
   },
   scheduleLine: {
     alignItems: 'center',
@@ -556,7 +598,6 @@ const styles = StyleSheet.create({
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: '#8B2FC9',
     marginTop: 4,
     borderWidth: 2,
     borderColor: '#FFFFFF',
@@ -566,18 +607,17 @@ const styles = StyleSheet.create({
     top: 20,
     width: 2,
     height: 72,
-    backgroundColor: '#E5E7EB',
+    backgroundColor: '#F3F4F6',
   },
   scheduleInfo: {
     flex: 1,
   },
   scheduleSubject: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '800',
     color: '#111827',
     marginBottom: 2,
     letterSpacing: -0.2,
-    lineHeight: 20,
   },
   scheduleDetails: {
     fontSize: 12,

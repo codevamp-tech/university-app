@@ -1,4 +1,6 @@
 import React, { useState, useRef } from 'react';
+import { useTheme } from '../../hooks/useTheme';
+
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, Image,
   Dimensions, Animated, Modal, StatusBar,
@@ -11,6 +13,8 @@ const { width } = Dimensions.get('window');
 
 const ERPHubScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
+  const { colors, isDark } = useTheme();
+
   const [drawerVisible, setDrawerVisible] = useState(false);
   const slideAnim = useRef(new Animated.Value(width)).current;
 
@@ -41,37 +45,40 @@ const ERPHubScreen = ({ navigation }) => {
   ];
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      <StatusBar barStyle="dark-content" backgroundColor="#F9FAFB" />
+    <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={colors.background} />
+
 
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
         <View style={styles.headerLeft}>
           <LinearGradient colors={['#EA580C', '#9A3412']} style={styles.logoIconBg}>
             <MaterialCommunityIcons name="account-balance-wallet" size={18} color="#FFFFFF" />
           </LinearGradient>
           <View>
-            <Text style={styles.headerTitle}>ERP Hub</Text>
-            <Text style={styles.headerSub}>Invertis University</Text>
+            <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>ERP Hub</Text>
+            <Text style={[styles.headerSub, { color: colors.textSecondary }]}>Invertis University</Text>
           </View>
         </View>
         <View style={styles.headerRight}>
-          <TouchableOpacity style={styles.headerIconBtn}>
-            <MaterialIcons name="notifications-none" size={22} color="#EA580C" />
-            <View style={styles.notifDot} />
+          <TouchableOpacity style={[styles.headerIconBtn, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
+            <MaterialIcons name="notifications-none" size={22} color={colors.primary} />
+            <View style={[styles.notifDot, { borderColor: colors.card }]} />
           </TouchableOpacity>
-          <TouchableOpacity onPress={openDrawer} style={styles.headerIconBtn}>
-            <Feather name="menu" size={20} color="#4B5563" />
+          <TouchableOpacity onPress={openDrawer} style={[styles.headerIconBtn, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
+            <Feather name="menu" size={20} color={colors.textPrimary} />
           </TouchableOpacity>
         </View>
       </View>
+
+
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
 
         {/* Hero Banner */}
         <View style={styles.sectionContainer}>
           <LinearGradient
-            colors={['#1E1B4B', '#312E81']}
+            colors={isDark ? ['#1A1A2E', '#2D1B5E', '#1A1A2E'] : ['#1E1B4B', '#312E81']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.heroBanner}
@@ -79,26 +86,26 @@ const ERPHubScreen = ({ navigation }) => {
             <View style={styles.heroBg1} />
             <View style={styles.heroBg2} />
             <View style={styles.heroContent}>
-              <View style={styles.heroBadge}>
+              <View style={[styles.heroBadge, { backgroundColor: isDark ? 'rgba(234, 88, 12, 0.25)' : 'rgba(255,255,255,0.95)' }]}>
                 <MaterialCommunityIcons name="lightning-bolt" size={10} color="#EA580C" />
-                <Text style={styles.heroBadgeText}>SMART ERP</Text>
+                <Text style={[styles.heroBadgeText, { color: '#EA580C' }]}>SMART ERP</Text>
               </View>
               <Text style={styles.heroTitle}>Digital Campus{'\n'}Management</Text>
-              <Text style={styles.heroDesc}>
+              <Text style={[styles.heroDesc, { color: isDark ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.7)' }]}>
                 Transit · Library · Fees · Documents — all in one place.
               </Text>
             </View>
-            <View style={styles.heroStats}>
+            <View style={[styles.heroStats, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.12)' }]}>
               <View style={styles.heroStatItem}>
                 <Text style={styles.heroStatValue}>VII</Text>
                 <Text style={styles.heroStatLabel}>SEMESTER</Text>
               </View>
-              <View style={styles.heroStatDivider} />
+              <View style={[styles.heroStatDivider, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.2)' }]} />
               <View style={styles.heroStatItem}>
                 <Text style={styles.heroStatValue}>8.42</Text>
                 <Text style={styles.heroStatLabel}>CGPA</Text>
               </View>
-              <View style={styles.heroStatDivider} />
+              <View style={[styles.heroStatDivider, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.2)' }]} />
               <View style={styles.heroStatItem}>
                 <Text style={styles.heroStatValue}>CSE</Text>
                 <Text style={styles.heroStatLabel}>BRANCH</Text>
@@ -107,173 +114,195 @@ const ERPHubScreen = ({ navigation }) => {
           </LinearGradient>
         </View>
 
+
+
         {/* Smart Bus Pass */}
         <View style={styles.sectionContainer}>
-          <Text style={styles.sectionHeading}>Transit & Access</Text>
+          <Text style={[styles.sectionHeading, { color: colors.textPrimary }]}>Transit & Access</Text>
           <LinearGradient
-            colors={['#EEF2FF', '#E0E7FF']}
-            style={styles.busPassCard}
+            colors={isDark ? ['#1E1B4B', '#111827'] : ['#EEF2FF', '#E0E7FF']}
+            style={[styles.busPassCard, { borderColor: colors.border, borderWidth: isDark ? 1 : 0 }]}
           >
+
             <View style={styles.busPassTop}>
-              <View style={styles.busPassBadge}>
+              <View style={[styles.busPassBadge, { backgroundColor: isDark ? 'rgba(129, 140, 248, 0.2)' : 'rgba(67,56,202,0.1)' }]}>
                 <View style={styles.liveDot} />
-                <Text style={styles.busPassBadgeText}>LIVE TRANSIT</Text>
+                <Text style={[styles.busPassBadgeText, { color: isDark ? '#818CF8' : '#4338CA' }]}>LIVE TRANSIT</Text>
               </View>
-              <MaterialCommunityIcons name="bus-side" size={28} color="rgba(67,56,202,0.3)" />
+
+              <MaterialCommunityIcons name="bus-side" size={28} color={isDark ? 'rgba(129, 140, 248, 0.2)' : 'rgba(67,56,202,0.3)'} />
             </View>
-            <Text style={styles.busPassTitle}>Smart Bus Pass</Text>
-            <Text style={styles.busPassDesc}>
+            <Text style={[styles.busPassTitle, { color: isDark ? '#818CF8' : '#4338CA' }]}>Smart Bus Pass</Text>
+            <Text style={[styles.busPassDesc, { color: colors.textSecondary }]}>
               Route 14: Bareilly Junction → University Campus
             </Text>
+
             <View style={styles.busInfoRow}>
-              <View style={styles.busInfoChip}>
-                <MaterialIcons name="access-time" size={12} color="#4338CA" />
-                <Text style={styles.busInfoChipText}>Next bus in 12 mins</Text>
+              <View style={[styles.busInfoChip, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
+                <MaterialIcons name="access-time" size={12} color={isDark ? '#818CF8' : '#4338CA'} />
+                <Text style={[styles.busInfoChipText, { color: isDark ? '#818CF8' : '#4338CA' }]}>Next bus in 12 mins</Text>
               </View>
+
               <View style={[styles.busInfoChip, { backgroundColor: '#4338CA' }]}>
                 <Text style={[styles.busInfoChipText, { color: '#FFFFFF' }]}>Seat 14B</Text>
               </View>
             </View>
-            <TouchableOpacity style={styles.showPassBtn}>
-              <MaterialIcons name="qr-code-2" size={18} color="#4338CA" />
-              <Text style={styles.showPassText}>Show Pass</Text>
+            <TouchableOpacity style={[styles.showPassBtn, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
+              <MaterialIcons name="qr-code-2" size={18} color={isDark ? '#818CF8' : '#4338CA'} />
+              <Text style={[styles.showPassText, { color: isDark ? '#818CF8' : '#4338CA' }]}>Show Pass</Text>
             </TouchableOpacity>
           </LinearGradient>
         </View>
 
+
+
         {/* Digital Outpass */}
         <View style={styles.sectionContainer}>
           <LinearGradient
-            colors={['#F0FDF4', '#DCFCE7']}
-            style={styles.outpassCard}
+            colors={isDark ? ['#064E3B', '#065F46'] : ['#F0FDF4', '#DCFCE7']}
+            style={[styles.outpassCard, { borderColor: colors.border, borderWidth: isDark ? 1 : 0 }]}
           >
+
             <View style={styles.outpassLeft}>
-              <View style={styles.outpassIconBox}>
-                <MaterialIcons name="confirmation-number" size={26} color="#059669" />
+              <View style={[styles.outpassIconBox, { backgroundColor: isDark ? 'rgba(5,150,105,0.2)' : '#FFFFFF' }]}>
+                <MaterialIcons name="confirmation-number" size={26} color={isDark ? '#34D399' : '#059669'} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.outpassTitle}>Digital Outpass</Text>
-                <Text style={styles.outpassDesc}>Request a temporary exit permit for campus gates.</Text>
+                <Text style={[styles.outpassTitle, { color: isDark ? '#34D399' : '#059669' }]}>Digital Outpass</Text>
+                <Text style={[styles.outpassDesc, { color: isDark ? 'rgba(255,255,255,0.7)' : '#374151' }]}>Request a temporary exit permit for campus gates.</Text>
               </View>
+
             </View>
-            <TouchableOpacity style={styles.outpassBtn}>
+            <TouchableOpacity style={[styles.outpassBtn, { backgroundColor: isDark ? '#059669' : '#059669' }]}>
               <Text style={styles.outpassBtnText}>Request New</Text>
               <MaterialIcons name="arrow-forward" size={14} color="#FFFFFF" />
             </TouchableOpacity>
           </LinearGradient>
         </View>
 
+
         {/* Academic Essentials */}
         <View style={styles.sectionContainer}>
           <View style={styles.sectionHeaderRow}>
-            <Text style={styles.sectionHeading}>Academic Essentials</Text>
+            <Text style={[styles.sectionHeading, { color: colors.textPrimary }]}>Academic Essentials</Text>
             <TouchableOpacity>
-              <Text style={styles.viewAllText}>VIEW ALL</Text>
+              <Text style={[styles.viewAllText, { color: colors.primary }]}>VIEW ALL</Text>
             </TouchableOpacity>
           </View>
 
+
           {/* Fees */}
           <TouchableOpacity
-            style={styles.essentialCard}
+            style={[styles.essentialCard, { backgroundColor: colors.card, borderColor: colors.border }]}
             onPress={() => navigation.navigate('ERPFeesTab')}
             activeOpacity={0.85}
           >
-            <LinearGradient colors={['#FFF7ED', '#FFEDD5']} style={styles.essentialIconBg}>
-              <MaterialIcons name="payments" size={22} color="#EA580C" />
+
+            <LinearGradient colors={isDark ? ['#7C2D12', '#9A3412'] : ['#FFF7ED', '#FFEDD5']} style={styles.essentialIconBg}>
+              <MaterialIcons name="payments" size={22} color={isDark ? '#FB923C' : '#EA580C'} />
             </LinearGradient>
             <View style={styles.essentialContent}>
-              <Text style={styles.essentialCardTitle}>Fees & Payments</Text>
-              <Text style={styles.essentialCardDesc}>Semester VII Tuition Fee installment pending.</Text>
+              <Text style={[styles.essentialCardTitle, { color: colors.textPrimary }]}>Fees & Payments</Text>
+              <Text style={[styles.essentialCardDesc, { color: colors.textSecondary }]}>Semester VII Tuition Fee installment pending.</Text>
+
               <View style={styles.essentialFooter}>
-                <View style={styles.dueBadge}>
-                  <Text style={styles.dueText}>DUE: 15 OCT</Text>
+                <View style={[styles.dueBadge, { backgroundColor: isDark ? 'rgba(239, 68, 68, 0.2)' : '#FEE2E2' }]}>
+                  <Text style={[styles.dueText, { color: '#EF4444' }]}>DUE: 15 OCT</Text>
                 </View>
-                <MaterialIcons name="chevron-right" size={20} color="#9CA3AF" />
+                <MaterialIcons name="chevron-right" size={20} color={colors.textMuted} />
               </View>
+
             </View>
           </TouchableOpacity>
 
           {/* Results */}
           <TouchableOpacity
-            style={styles.essentialCard}
+            style={[styles.essentialCard, { backgroundColor: colors.card, borderColor: colors.border }]}
             onPress={() => navigation.navigate('ERPResultsTab')}
             activeOpacity={0.85}
           >
-            <LinearGradient colors={['#EEF2FF', '#E0E7FF']} style={styles.essentialIconBg}>
-              <MaterialIcons name="grade" size={22} color="#4338CA" />
+            <LinearGradient colors={isDark ? ['#1E1B4B', '#312E81'] : ['#EEF2FF', '#E0E7FF']} style={styles.essentialIconBg}>
+              <MaterialIcons name="grade" size={22} color={isDark ? '#818CF8' : '#4338CA'} />
             </LinearGradient>
             <View style={styles.essentialContent}>
-              <Text style={styles.essentialCardTitle}>Results</Text>
-              <Text style={styles.essentialCardDesc}>Semester VI Marksheet is now available for download.</Text>
+              <Text style={[styles.essentialCardTitle, { color: colors.textPrimary }]}>Results</Text>
+              <Text style={[styles.essentialCardDesc, { color: colors.textSecondary }]}>Semester VI Marksheet is now available for download.</Text>
+
               <View style={styles.essentialFooter}>
-                <View style={[styles.dueBadge, { backgroundColor: '#EEF2FF' }]}>
-                  <Text style={[styles.dueText, { color: '#4338CA' }]}>CGPA: 8.42</Text>
+                <View style={[styles.dueBadge, { backgroundColor: isDark ? 'rgba(129, 140, 248, 0.2)' : '#EEF2FF' }]}>
+                  <Text style={[styles.dueText, { color: isDark ? '#818CF8' : '#4338CA' }]}>CGPA: 8.42</Text>
                 </View>
-                <MaterialIcons name="chevron-right" size={20} color="#9CA3AF" />
+                <MaterialIcons name="chevron-right" size={20} color={colors.textMuted} />
               </View>
+
             </View>
           </TouchableOpacity>
 
           {/* Documents */}
           <TouchableOpacity
-            style={styles.essentialCard}
+            style={[styles.essentialCard, { backgroundColor: colors.card, borderColor: colors.border }]}
             onPress={() => navigation.navigate('ERPDocumentsTab')}
             activeOpacity={0.85}
           >
-            <LinearGradient colors={['#ECFDF5', '#DCFCE7']} style={styles.essentialIconBg}>
-              <MaterialIcons name="folder-shared" size={22} color="#059669" />
+            <LinearGradient colors={isDark ? ['#064E3B', '#047857'] : ['#ECFDF5', '#DCFCE7']} style={styles.essentialIconBg}>
+              <MaterialIcons name="folder-shared" size={22} color={isDark ? '#34D399' : '#059669'} />
             </LinearGradient>
             <View style={styles.essentialContent}>
-              <Text style={styles.essentialCardTitle}>Documents</Text>
-              <Text style={styles.essentialCardDesc}>Bona fide certificate & Library NOC records.</Text>
+              <Text style={[styles.essentialCardTitle, { color: colors.textPrimary }]}>Documents</Text>
+              <Text style={[styles.essentialCardDesc, { color: colors.textSecondary }]}>Bona fide certificate & Library NOC records.</Text>
+
               <View style={styles.essentialFooter}>
-                <View style={[styles.dueBadge, { backgroundColor: '#ECFDF5' }]}>
-                  <Text style={[styles.dueText, { color: '#059669' }]}>3 NEW FILES</Text>
+                <View style={[styles.dueBadge, { backgroundColor: isDark ? 'rgba(52, 211, 153, 0.2)' : '#ECFDF5' }]}>
+                  <Text style={[styles.dueText, { color: isDark ? '#34D399' : '#059669' }]}>3 NEW FILES</Text>
                 </View>
-                <MaterialIcons name="chevron-right" size={20} color="#9CA3AF" />
+                <MaterialIcons name="chevron-right" size={20} color={colors.textMuted} />
               </View>
+
             </View>
           </TouchableOpacity>
 
           {/* Maintenance */}
-          <TouchableOpacity style={styles.essentialCard} activeOpacity={0.85}>
-            <LinearGradient colors={['#F3F4F6', '#E5E7EB']} style={styles.essentialIconBg}>
-              <MaterialIcons name="build" size={22} color="#6B7280" />
+          <TouchableOpacity style={[styles.essentialCard, { backgroundColor: colors.card, borderColor: colors.border }]} activeOpacity={0.85}>
+            <LinearGradient colors={isDark ? ['#1F2937', '#374151'] : ['#F3F4F6', '#E5E7EB']} style={styles.essentialIconBg}>
+              <MaterialIcons name="build" size={22} color={isDark ? colors.textSecondary : '#6B7280'} />
             </LinearGradient>
             <View style={styles.essentialContent}>
-              <Text style={styles.essentialCardTitle}>Maintenance</Text>
-              <Text style={styles.essentialCardDesc}>Report issues with room facilities or water supply.</Text>
+              <Text style={[styles.essentialCardTitle, { color: colors.textPrimary }]}>Maintenance</Text>
+              <Text style={[styles.essentialCardDesc, { color: colors.textSecondary }]}>Report issues with room facilities or water supply.</Text>
               <View style={styles.essentialFooter}>
-                <View style={[styles.dueBadge, { backgroundColor: '#F3F4F6' }]}>
-                  <Text style={[styles.dueText, { color: '#6B7280' }]}>H1-BLOCK 204</Text>
+                <View style={[styles.dueBadge, { backgroundColor: isDark ? colors.background : '#F3F4F6' }]}>
+                  <Text style={[styles.dueText, { color: colors.textSecondary }]}>H1-BLOCK 204</Text>
                 </View>
-                <MaterialIcons name="chevron-right" size={20} color="#9CA3AF" />
+                <MaterialIcons name="chevron-right" size={20} color={colors.textMuted} />
               </View>
             </View>
           </TouchableOpacity>
         </View>
 
+
+
         {/* Smart Library */}
         <View style={styles.sectionContainer}>
-          <Text style={styles.sectionHeading}>Smart Library</Text>
-          <View style={styles.libraryCard}>
+          <Text style={[styles.sectionHeading, { color: colors.textPrimary }]}>Smart Library</Text>
+          <View style={[styles.libraryCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <View style={styles.libraryHeader}>
               <View>
-                <Text style={styles.libraryTitle}>Borrowed Books</Text>
-                <Text style={styles.librarySubtitle}>3 books currently checked out</Text>
+                <Text style={[styles.libraryTitle, { color: colors.textPrimary }]}>Borrowed Books</Text>
+                <Text style={[styles.librarySubtitle, { color: colors.textSecondary }]}>3 books currently checked out</Text>
               </View>
               <LinearGradient colors={['#EA580C', '#9A3412']} style={styles.libraryIconBg}>
                 <MaterialIcons name="local-library" size={20} color="#FFFFFF" />
               </LinearGradient>
             </View>
 
-            <View style={styles.bookItem}>
-              <LinearGradient colors={['#FFF7ED', '#FFEDD5']} style={styles.bookCover}>
-                <MaterialCommunityIcons name="book-open-variant" size={22} color="#EA580C" />
+
+            <View style={[styles.bookItem, { backgroundColor: isDark ? colors.background : '#F9FAFB', borderColor: colors.border }]}>
+              <LinearGradient colors={isDark ? ['#7C2D12', '#9A3412'] : ['#FFF7ED', '#FFEDD5']} style={styles.bookCover}>
+                <MaterialCommunityIcons name="book-open-variant" size={22} color={isDark ? '#FB923C' : '#EA580C'} />
               </LinearGradient>
               <View style={styles.bookInfo}>
-                <Text style={styles.bookTitle}>Data Structures & Algorithms</Text>
-                <Text style={styles.bookAuthor}>Cormen, Leiserson</Text>
+                <Text style={[styles.bookTitle, { color: colors.textPrimary }]}>Data Structures & Algorithms</Text>
+                <Text style={[styles.bookAuthor, { color: colors.textSecondary }]}>Cormen, Leiserson</Text>
                 <View style={styles.bookDueBadge}>
                   <View style={[styles.urgentDot, { backgroundColor: '#EF4444' }]} />
                   <Text style={[styles.bookDueText, { color: '#EF4444' }]}>Due in 2 days</Text>
@@ -284,45 +313,49 @@ const ERPHubScreen = ({ navigation }) => {
               </TouchableOpacity>
             </View>
 
-            <View style={styles.bookItem}>
-              <LinearGradient colors={['#EEF2FF', '#E0E7FF']} style={styles.bookCover}>
-                <MaterialCommunityIcons name="book-open-variant" size={22} color="#4338CA" />
+
+            <View style={[styles.bookItem, { backgroundColor: isDark ? colors.background : '#F9FAFB', borderColor: colors.border }]}>
+              <LinearGradient colors={isDark ? ['#1E1B4B', '#312E81'] : ['#EEF2FF', '#E0E7FF']} style={styles.bookCover}>
+                <MaterialCommunityIcons name="book-open-variant" size={22} color={isDark ? '#818CF8' : '#4338CA'} />
               </LinearGradient>
               <View style={styles.bookInfo}>
-                <Text style={styles.bookTitle}>Network Security Fundamentals</Text>
-                <Text style={styles.bookAuthor}>Stallings, William</Text>
+                <Text style={[styles.bookTitle, { color: colors.textPrimary }]}>Network Security Fundamentals</Text>
+                <Text style={[styles.bookAuthor, { color: colors.textSecondary }]}>Stallings, William</Text>
                 <View style={styles.bookDueBadge}>
                   <View style={[styles.urgentDot, { backgroundColor: '#22C55E' }]} />
                   <Text style={[styles.bookDueText, { color: '#22C55E' }]}>Due in 14 days</Text>
                 </View>
               </View>
-              <View style={styles.onTimeBadge}>
-                <Text style={styles.onTimeText}>On Time</Text>
+              <View style={[styles.onTimeBadge, { backgroundColor: isDark ? 'rgba(34, 197, 94, 0.2)' : '#DCFCE7' }]}>
+                <Text style={[styles.onTimeText, { color: isDark ? '#4ADE80' : '#15803D' }]}>On Time</Text>
               </View>
             </View>
 
-            <View style={styles.bookItem}>
-              <LinearGradient colors={['#F0FDF4', '#DCFCE7']} style={styles.bookCover}>
-                <MaterialCommunityIcons name="book-open-variant" size={22} color="#059669" />
+            <View style={[styles.bookItem, { backgroundColor: isDark ? colors.background : '#F9FAFB', borderColor: colors.border }]}>
+              <LinearGradient colors={isDark ? ['#064E3B', '#047857'] : ['#F0FDF4', '#DCFCE7']} style={styles.bookCover}>
+                <MaterialCommunityIcons name="book-open-variant" size={22} color={isDark ? '#34D399' : '#059669'} />
               </LinearGradient>
               <View style={styles.bookInfo}>
-                <Text style={styles.bookTitle}>Operating System Concepts</Text>
-                <Text style={styles.bookAuthor}>Silberschatz, Galvin</Text>
+                <Text style={[styles.bookTitle, { color: colors.textPrimary }]}>Operating System Concepts</Text>
+                <Text style={[styles.bookAuthor, { color: colors.textSecondary }]}>Silberschatz, Galvin</Text>
                 <View style={styles.bookDueBadge}>
                   <View style={[styles.urgentDot, { backgroundColor: '#22C55E' }]} />
                   <Text style={[styles.bookDueText, { color: '#22C55E' }]}>Due in 21 days</Text>
                 </View>
               </View>
-              <View style={styles.onTimeBadge}>
-                <Text style={styles.onTimeText}>On Time</Text>
+              <View style={[styles.onTimeBadge, { backgroundColor: isDark ? 'rgba(34, 197, 94, 0.2)' : '#DCFCE7' }]}>
+                <Text style={[styles.onTimeText, { color: isDark ? '#4ADE80' : '#15803D' }]}>On Time</Text>
               </View>
             </View>
           </View>
         </View>
 
+
+
+
         {/* Student Library Card */}
         <View style={styles.sectionContainer}>
-          <Text style={styles.sectionHeading}>Student Library Card</Text>
+          <Text style={[styles.sectionHeading, { color: colors.textPrimary }]}>Student Library Card</Text>
           <LinearGradient
             colors={['#1A1A2E', '#2D1B5E', '#EA580C']}
             start={{ x: 0, y: 0 }}
@@ -412,65 +445,74 @@ const ERPHubScreen = ({ navigation }) => {
           </LinearGradient>
         </View>
 
+
         {/* Recent Alerts */}
         <View style={styles.sectionContainer}>
-          <Text style={styles.sectionHeading}>Recent Alerts</Text>
-          <View style={styles.alertsCard}>
+          <Text style={[styles.sectionHeading, { color: colors.textPrimary }]}>Recent Alerts</Text>
+          <View style={[styles.alertsCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+
 
             <View style={styles.alertItem}>
-              <View style={[styles.alertIconBox, { backgroundColor: '#FEE2E2' }]}>
+              <View style={[styles.alertIconBox, { backgroundColor: isDark ? 'rgba(239, 68, 68, 0.2)' : '#FEE2E2' }]}>
                 <MaterialIcons name="error-outline" size={16} color="#EF4444" />
               </View>
               <View style={styles.alertContent}>
                 <View style={styles.alertTitleRow}>
-                  <Text style={styles.alertItemTitle}>Fee due soon</Text>
-                  <Text style={[styles.alertTag, { color: '#EF4444', backgroundColor: '#FEE2E2' }]}>URGENT</Text>
+                  <Text style={[styles.alertItemTitle, { color: colors.textPrimary }]}>Fee due soon</Text>
+                  <Text style={[styles.alertTag, { color: '#EF4444', backgroundColor: isDark ? 'rgba(239, 68, 68, 0.2)' : '#FEE2E2' }]}>URGENT</Text>
                 </View>
-                <Text style={styles.alertItemDesc}>
+
+                <Text style={[styles.alertItemDesc, { color: colors.textSecondary }]}>
                   Last date for Semester VII fee payment is approaching. Avoid late fine by paying before Oct 15.
                 </Text>
               </View>
             </View>
 
-            <View style={styles.alertDivider} />
+            <View style={[styles.alertDivider, { backgroundColor: colors.border }]} />
+
 
             <View style={styles.alertItem}>
-              <View style={[styles.alertIconBox, { backgroundColor: '#FEF3C7' }]}>
+              <View style={[styles.alertIconBox, { backgroundColor: isDark ? 'rgba(242, 185, 11, 0.2)' : '#FEF3C7' }]}>
                 <MaterialIcons name="account-balance-wallet" size={16} color="#F59E0B" />
               </View>
               <View style={styles.alertContent}>
                 <View style={styles.alertTitleRow}>
-                  <Text style={styles.alertItemTitle}>Library fine pending</Text>
-                  <Text style={[styles.alertTag, { color: '#92400E', backgroundColor: '#FEF3C7' }]}>FINANCE</Text>
+                  <Text style={[styles.alertItemTitle, { color: colors.textPrimary }]}>Library fine pending</Text>
+                  <Text style={[styles.alertTag, { color: isDark ? '#FCD34D' : '#92400E', backgroundColor: isDark ? 'rgba(146, 64, 14, 0.3)' : '#FEF3C7' }]}>FINANCE</Text>
                 </View>
-                <Text style={styles.alertItemDesc}>
+
+                <Text style={[styles.alertItemDesc, { color: colors.textSecondary }]}>
                   A fine of ₹45 is pending for 'Compiler Design' book. Please clear at the circulation desk.
                 </Text>
               </View>
             </View>
 
-            <View style={styles.alertDivider} />
+            <View style={[styles.alertDivider, { backgroundColor: colors.border }]} />
 
-            <View style={[styles.alertItem, { opacity: 0.6 }]}>
-              <View style={[styles.alertIconBox, { backgroundColor: '#F3F4F6' }]}>
-                <MaterialIcons name="check-circle-outline" size={16} color="#6B7280" />
+
+            <View style={[styles.alertItem, { opacity: isDark ? 0.8 : 0.6 }]}>
+              <View style={[styles.alertIconBox, { backgroundColor: isDark ? colors.background : '#F3F4F6' }]}>
+                <MaterialIcons name="check-circle-outline" size={16} color={colors.textMuted} />
               </View>
               <View style={styles.alertContent}>
                 <View style={styles.alertTitleRow}>
-                  <Text style={styles.alertItemTitle}>Bus Pass Renewed</Text>
-                  <Text style={[styles.alertTag, { color: '#6B7280', backgroundColor: '#F3F4F6' }]}>2 DAYS AGO</Text>
+                  <Text style={[styles.alertItemTitle, { color: colors.textPrimary }]}>Bus Pass Renewed</Text>
+                  <Text style={[styles.alertTag, { color: colors.textMuted, backgroundColor: isDark ? colors.background : '#F3F4F6' }]}>2 DAYS AGO</Text>
                 </View>
-                <Text style={styles.alertItemDesc}>
+                <Text style={[styles.alertItemDesc, { color: colors.textMuted }]}>
                   Your digital bus pass has been successfully extended for Oct–Dec session.
                 </Text>
               </View>
             </View>
 
-            <TouchableOpacity style={styles.clearAllBtn}>
-              <Text style={styles.clearAllText}>Clear All Notifications</Text>
+
+            <TouchableOpacity style={[styles.clearAllBtn, { backgroundColor: isDark ? colors.background : '#F9FAFB', borderTopColor: colors.border }]}>
+              <Text style={[styles.clearAllText, { color: colors.textMuted }]}>Clear All Notifications</Text>
             </TouchableOpacity>
+
           </View>
         </View>
+
 
         <View style={{ height: 100 }} />
       </ScrollView>
@@ -479,8 +521,9 @@ const ERPHubScreen = ({ navigation }) => {
       <Modal visible={drawerVisible} transparent animationType="none" onRequestClose={closeDrawer}>
         <TouchableOpacity style={styles.drawerOverlay} activeOpacity={1} onPress={closeDrawer}>
           <Animated.View
-            style={[styles.drawerContainer, { transform: [{ translateX: slideAnim }] }]}
+            style={[styles.drawerContainer, { backgroundColor: colors.card, transform: [{ translateX: slideAnim }] }]}
           >
+
             <TouchableOpacity activeOpacity={1}>
               <LinearGradient colors={['#EA580C', '#9A3412']} style={styles.drawerHeader}>
                 <Image
@@ -498,19 +541,20 @@ const ERPHubScreen = ({ navigation }) => {
                     key={index}
                     style={[
                       styles.drawerItem,
-                      item.label === 'Back to Home' && styles.drawerItemHighlight,
+                      item.label === 'Back to Home' && [styles.drawerItemHighlight, { backgroundColor: isDark ? 'rgba(234, 88, 12, 0.1)' : '#FFF7ED' }],
                     ]}
                     onPress={item.action}
                   >
                     <MaterialIcons
                       name={item.icon}
                       size={22}
-                      color={item.label === 'Back to Home' ? '#EA580C' : '#4B5563'}
+                      color={item.label === 'Back to Home' ? '#EA580C' : colors.textSecondary}
                     />
                     <Text
                       style={[
                         styles.drawerItemText,
-                        item.label === 'Back to Home' && styles.drawerItemTextHighlight,
+                        { color: colors.textPrimary },
+                        item.label === 'Back to Home' && [styles.drawerItemTextHighlight, { color: '#EA580C' }],
                       ]}
                     >
                       {item.label}
@@ -519,6 +563,7 @@ const ERPHubScreen = ({ navigation }) => {
                       <MaterialIcons name="arrow-forward" size={18} color="#EA580C" style={{ marginLeft: 'auto' }} />
                     )}
                   </TouchableOpacity>
+
                 ))}
               </View>
             </TouchableOpacity>
@@ -532,8 +577,8 @@ const ERPHubScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F3F4F6',
   },
+
 
   // Header
   header: {
@@ -542,10 +587,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 14,
-    backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
   },
+
   headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -566,14 +610,14 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '900',
-    color: '#1A1A2E',
     letterSpacing: -0.3,
   },
   headerSub: {
     fontSize: 11,
-    color: '#9CA3AF',
     fontWeight: '600',
   },
+
+
   headerRight: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -583,15 +627,10 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
   },
+
   notifDot: {
     position: 'absolute',
     top: 8,
@@ -601,8 +640,9 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     backgroundColor: '#EF4444',
     borderWidth: 1.5,
-    borderColor: '#FFFFFF',
   },
+
+
 
   scroll: { paddingBottom: 20 },
   sectionContainer: { paddingHorizontal: 16, paddingVertical: 10 },
@@ -610,10 +650,10 @@ const styles = StyleSheet.create({
   sectionHeading: {
     fontSize: 18,
     fontWeight: '900',
-    color: '#111827',
     marginBottom: 14,
     letterSpacing: -0.3,
   },
+
   sectionHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -623,9 +663,9 @@ const styles = StyleSheet.create({
   viewAllText: {
     fontSize: 11,
     fontWeight: '800',
-    color: '#EA580C',
     letterSpacing: 0.5,
   },
+
 
   // Hero Banner
   heroBanner: {
@@ -633,12 +673,13 @@ const styles = StyleSheet.create({
     padding: 24,
     overflow: 'hidden',
     minHeight: 200,
-    shadowColor: '#312E81',
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.3,
     shadowRadius: 20,
     elevation: 8,
   },
+
   heroBg1: {
     position: 'absolute',
     width: 200,
@@ -674,9 +715,9 @@ const styles = StyleSheet.create({
   heroBadgeText: {
     fontSize: 9,
     fontWeight: '900',
-    color: '#EA580C',
     letterSpacing: 1.5,
   },
+
   heroTitle: {
     fontSize: 30,
     fontWeight: '900',
@@ -687,17 +728,16 @@ const styles = StyleSheet.create({
   },
   heroDesc: {
     fontSize: 13,
-    color: 'rgba(255,255,255,0.7)',
     lineHeight: 20,
     fontWeight: '500',
   },
   heroStats: {
     flexDirection: 'row',
-    backgroundColor: 'rgba(255,255,255,0.12)',
     borderRadius: 16,
     paddingVertical: 14,
     paddingHorizontal: 8,
   },
+
   heroStatItem: {
     flex: 1,
     alignItems: 'center',
@@ -717,21 +757,22 @@ const styles = StyleSheet.create({
   },
   heroStatDivider: {
     width: 1,
-    backgroundColor: 'rgba(255,255,255,0.2)',
     marginVertical: 4,
   },
+
 
   // Bus Pass
   busPassCard: {
     borderRadius: 24,
     padding: 22,
     overflow: 'hidden',
-    shadowColor: '#4338CA',
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.1,
     shadowRadius: 12,
     elevation: 4,
   },
+
   busPassTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -742,11 +783,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: 'rgba(67,56,202,0.1)',
     paddingHorizontal: 12,
     paddingVertical: 5,
     borderRadius: 20,
   },
+
   liveDot: {
     width: 6,
     height: 6,
@@ -762,16 +803,16 @@ const styles = StyleSheet.create({
   busPassTitle: {
     fontSize: 26,
     fontWeight: '900',
-    color: '#4338CA',
     letterSpacing: -0.5,
     marginBottom: 6,
   },
+
   busPassDesc: {
     fontSize: 13,
-    color: '#6B7280',
     lineHeight: 20,
     marginBottom: 14,
   },
+
   busInfoRow: {
     flexDirection: 'row',
     gap: 10,
@@ -781,31 +822,31 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    backgroundColor: '#FFFFFF',
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 12,
   },
+
   busInfoChipText: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#4338CA',
   },
+
   showPassBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: '#FFFFFF',
     paddingHorizontal: 20,
     paddingVertical: 12,
     borderRadius: 14,
     alignSelf: 'flex-start',
   },
+
   showPassText: {
-    color: '#4338CA',
     fontWeight: '800',
     fontSize: 14,
   },
+
 
   // Outpass
   outpassCard: {
@@ -822,7 +863,6 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 16,
-    backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
@@ -831,27 +871,28 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 2,
   },
+
   outpassTitle: {
     fontSize: 16,
     fontWeight: '800',
-    color: '#1A1A2E',
   },
   outpassDesc: {
     fontSize: 12,
-    color: '#6B7280',
     marginTop: 3,
     lineHeight: 18,
   },
+
+
   outpassBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: '#059669',
     paddingVertical: 12,
     paddingHorizontal: 20,
     borderRadius: 14,
     alignSelf: 'flex-start',
   },
+
   outpassBtnText: {
     color: '#FFFFFF',
     fontWeight: '800',
@@ -860,7 +901,6 @@ const styles = StyleSheet.create({
 
   // Essential Cards
   essentialCard: {
-    backgroundColor: '#FFFFFF',
     borderRadius: 18,
     padding: 16,
     marginBottom: 10,
@@ -873,8 +913,8 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 2,
     borderWidth: 1,
-    borderColor: '#FFFFFF',
   },
+
   essentialIconBg: {
     width: 48,
     height: 48,
@@ -886,14 +926,14 @@ const styles = StyleSheet.create({
   essentialCardTitle: {
     fontSize: 15,
     fontWeight: '800',
-    color: '#1A1A2E',
   },
   essentialCardDesc: {
     fontSize: 12,
-    color: '#6B7280',
     marginTop: 3,
     lineHeight: 17,
   },
+
+
   essentialFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -901,21 +941,20 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   dueBadge: {
-    backgroundColor: '#FEE2E2',
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 8,
   },
+
   dueText: {
     fontSize: 9,
     fontWeight: '900',
-    color: '#EF4444',
     letterSpacing: 0.5,
   },
 
+
   // Library
   libraryCard: {
-    backgroundColor: '#FFFFFF',
     borderRadius: 24,
     padding: 20,
     shadowColor: '#000',
@@ -924,8 +963,9 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 3,
     borderWidth: 1,
-    borderColor: '#FFFFFF',
   },
+
+
   libraryHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -935,13 +975,13 @@ const styles = StyleSheet.create({
   libraryTitle: {
     fontSize: 17,
     fontWeight: '900',
-    color: '#111827',
   },
+
   librarySubtitle: {
     fontSize: 12,
-    color: '#9CA3AF',
     marginTop: 2,
   },
+
   libraryIconBg: {
     width: 44,
     height: 44,
@@ -952,14 +992,13 @@ const styles = StyleSheet.create({
   bookItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F9FAFB',
     borderRadius: 14,
     padding: 12,
     marginBottom: 8,
     gap: 12,
     borderWidth: 1,
-    borderColor: '#F3F4F6',
   },
+
   bookCover: {
     width: 46,
     height: 56,
@@ -968,17 +1007,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   bookInfo: { flex: 1 },
-  bookTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#1A1A2E',
-    lineHeight: 18,
-  },
   bookAuthor: {
     fontSize: 11,
-    color: '#9CA3AF',
     marginTop: 2,
   },
+
+
   bookDueBadge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1006,16 +1040,16 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   onTimeBadge: {
-    backgroundColor: '#DCFCE7',
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 10,
   },
+
   onTimeText: {
     fontSize: 10,
     fontWeight: '800',
-    color: '#15803D',
   },
+
 
   // Student Library Card
   libraryCardWrapper: {
@@ -1224,7 +1258,6 @@ const styles = StyleSheet.create({
 
   // Alerts
   alertsCard: {
-    backgroundColor: '#FFFFFF',
     borderRadius: 24,
     padding: 20,
     shadowColor: '#000',
@@ -1233,8 +1266,8 @@ const styles = StyleSheet.create({
     shadowRadius: 16,
     elevation: 3,
     borderWidth: 1,
-    borderColor: '#FFFFFF',
   },
+
   alertItem: {
     flexDirection: 'row',
     gap: 12,
@@ -1257,8 +1290,8 @@ const styles = StyleSheet.create({
   alertItemTitle: {
     fontSize: 13,
     fontWeight: '800',
-    color: '#1A1A2E',
   },
+
   alertTag: {
     fontSize: 8,
     fontWeight: '900',
@@ -1269,42 +1302,42 @@ const styles = StyleSheet.create({
   },
   alertItemDesc: {
     fontSize: 12,
-    color: '#6B7280',
     lineHeight: 17,
   },
   alertDivider: {
     height: 1,
-    backgroundColor: '#F3F4F6',
     marginVertical: 4,
   },
+
   clearAllBtn: {
     marginTop: 14,
     paddingVertical: 12,
     borderRadius: 14,
     alignItems: 'center',
-    backgroundColor: '#F9FAFB',
   },
   clearAllText: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#9CA3AF',
   },
+
 
   // Drawer
   drawerOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.45)',
+    backgroundColor: 'rgba(0,0,0,0.5)',
     flexDirection: 'row',
     justifyContent: 'flex-end',
   },
+
   drawerContainer: {
     width: width * 0.78,
     height: '100%',
-    backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 32,
     borderBottomLeftRadius: 32,
     overflow: 'hidden',
   },
+
+
   drawerHeader: {
     paddingTop: 60,
     paddingBottom: 28,
@@ -1351,19 +1384,19 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   drawerItemHighlight: {
-    backgroundColor: '#FFF7ED',
     borderWidth: 1,
     borderColor: '#FFEDD5',
   },
+
   drawerItemText: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#374151',
   },
   drawerItemTextHighlight: {
     color: '#EA580C',
     fontWeight: '800',
   },
+
 });
 
 export default ERPHubScreen;

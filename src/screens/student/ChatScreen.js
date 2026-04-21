@@ -91,7 +91,7 @@ const ChatScreen = ({ navigation }) => {
 
           {/* Active Channel Label */}
           <View style={styles.activeChannelBar}>
-            <MaterialCommunityIcons name="hashtag" size={20} color="#EA580C" />
+              <MaterialCommunityIcons name="pound" size={22} color="#1F2937" />
             <Text style={styles.activeChannelName}>{activeChannel}</Text>
           </View>
 
@@ -199,6 +199,23 @@ const ChatScreen = ({ navigation }) => {
           </View>
 
           <ScrollView style={styles.drawerList} showsVerticalScrollIndicator={false}>
+            <Text style={styles.drawerSectionTitle}>AI ASSISTANT</Text>
+            <TouchableOpacity 
+              style={[styles.channelItem, { backgroundColor: '#FFF7ED', borderColor: '#FB923C', borderWidth: 1 }]}
+              onPress={() => {
+                toggleDrawer();
+                navigation.navigate('InvertisWelcome');
+              }}
+            >
+              <MaterialIcons name="smart-toy" size={22} color="#EA580C" />
+              <Text style={[styles.channelItemText, { color: '#EA580C' }]}>Invertis AI Assistant</Text>
+              <View style={styles.newBadge}>
+                <Text style={styles.newBadgeText}>NEW</Text>
+              </View>
+            </TouchableOpacity>
+
+            <View style={styles.drawerDivider} />
+
             <Text style={styles.drawerSectionTitle}>CHANNELS</Text>
             {CHANNELS.map((channel) => (
               <TouchableOpacity 
@@ -582,6 +599,18 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     color: '#6B7280',
+  },
+  newBadge: {
+    backgroundColor: '#EA580C',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    marginLeft: 'auto',
+  },
+  newBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 8,
+    fontWeight: '900',
   },
 });
 
