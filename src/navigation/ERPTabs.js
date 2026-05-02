@@ -8,6 +8,7 @@ import ERPHubScreen from '../screens/student/ERPHubScreen';
 import ERPResultsScreen from '../screens/student/ERPResultsScreen';
 import ERPFeesScreen from '../screens/student/ERPFeesScreen';
 import ERPDocumentsScreen from '../screens/student/ERPDocumentsScreen';
+import ERPAttendanceScreen from '../screens/student/ERPAttendanceScreen';
 import { useTheme } from '../hooks/useTheme';
 
 const Tab = createBottomTabNavigator();
@@ -37,7 +38,9 @@ const CustomTabBar = ({ state, descriptors, navigation }) => {
             label = 'Fees';
           } else if (route.name === 'ERPDocumentsTab') {
             iconName = 'folder-shared';
-            label = 'Documents';
+          } else if (route.name === 'ERPAttendanceTab') {
+            iconName = 'fact-check';
+            label = 'Attendance';
           }
 
           const color = isFocused ? colors.primary : colors.textMuted;
@@ -101,6 +104,7 @@ const ERPTabs = () => {
     >
       <Tab.Screen name="ERPHome" component={ERPHubScreen} />
       <Tab.Screen name="ERPResultsTab" component={ERPResultsScreen} />
+      <Tab.Screen name="ERPAttendanceTab" component={ERPAttendanceScreen} />
       <Tab.Screen name="ERPFeesTab" component={ERPFeesScreen} />
       <Tab.Screen name="ERPDocumentsTab" component={ERPDocumentsScreen} />
     </Tab.Navigator>

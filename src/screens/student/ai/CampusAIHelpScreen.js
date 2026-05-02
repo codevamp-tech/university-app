@@ -11,8 +11,9 @@ import {
   TextInput,
 } from 'react-native';
 import { Ionicons, MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { APP_CONFIG } from '../../../config/appConfig';
 
-const InvertisHelpScreen = ({ navigation }) => {
+const CampusAIHelpScreen = ({ navigation }) => {
   const SUGGESTIONS = [
     { id: '1', title: 'Club Schedule', icon: 'sports-cricket', lib: 'MaterialIcons', color: '#343D96', bgColor: '#CBCEFF' },
     { id: '2', title: 'Campus News', icon: 'newspaper', lib: 'Ionicons', color: '#595C5D', bgColor: '#eff1f2' },
@@ -38,7 +39,7 @@ const InvertisHelpScreen = ({ navigation }) => {
           <View style={styles.mascotGlow}>
             <MaterialIcons name="smart-toy" size={20} color="#FFFFFF" />
           </View>
-          <Text style={styles.headerTitle}>Invertis AI Assistant</Text>
+          <Text style={styles.headerTitle}>{APP_CONFIG.AI_ASSISTANT_NAME}</Text>
         </View>
         <TouchableOpacity style={styles.moreBtn}>
           <Ionicons name="ellipsis-vertical" size={20} color="#6B7280" />
@@ -62,7 +63,7 @@ const InvertisHelpScreen = ({ navigation }) => {
               style={styles.aiAvatarImg}
             />
           </View>
-          <Text style={styles.aiName}>Invertis AI Assistant</Text>
+          <Text style={styles.aiName}>{APP_CONFIG.AI_ASSISTANT_NAME}</Text>
         </View>
 
         <View style={styles.fallbackCard}>
@@ -75,7 +76,7 @@ const InvertisHelpScreen = ({ navigation }) => {
             <View style={{ flex: 1, gap: 4 }}>
               <Text style={styles.cardTitle}>Beyond my scope, for now.</Text>
               <Text style={styles.cardDesc}>
-                I'm specialized in <Text style={styles.highlight}>Invertis University</Text> campus data, academics, and your career growth. I don't have real-time sports data yet.
+                I'm specialized in <Text style={styles.highlight}>{APP_CONFIG.UNIVERSITY_NAME}</Text> campus data, academics, and your career growth. I don't have real-time sports data yet.
               </Text>
               <Text style={[styles.cardDesc, { color: '#EA580C', fontWeight: '700', marginTop: 8 }]}>
                 Would you like to check your sports club schedule instead?
@@ -361,4 +362,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default InvertisHelpScreen;
+export default CampusAIHelpScreen;

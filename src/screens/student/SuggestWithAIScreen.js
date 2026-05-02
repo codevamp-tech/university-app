@@ -6,6 +6,7 @@ import { MaterialIcons, MaterialCommunityIcons, Ionicons } from '@expo/vector-ic
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../hooks/useTheme';
+import { APP_CONFIG } from '../../config/appConfig';
 
 const { width, height } = Dimensions.get('window');
 
@@ -44,7 +45,7 @@ const SuggestWithAIScreen = ({ navigation }) => {
       title: 'EduSync AI',
       category: 'EdTech',
       match: '98%',
-      desc: 'Hyper-personalized learning paths for Invertis engineering students using real-time course feedback.',
+      desc: `Hyper-personalized learning paths for ${APP_CONFIG.UNIVERSITY_SHORT_NAME} engineering students using real-time course feedback.`,
       icon: 'school',
       color: '#EA580C',
     },

@@ -4,6 +4,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { APP_CONFIG } from '../../config/appConfig';
 
 const PrivacyPolicySection = ({ title, content }) => (
   <View style={styles.policySection}>
@@ -31,7 +32,7 @@ const PrivacyScreen = ({ navigation }) => {
           <Ionicons name="shield-checkmark-outline" size={32} color="#8B2FC9" />
           <Text style={styles.infoCardTitle}>Your Privacy Matters</Text>
           <Text style={styles.infoCardDesc}>
-            At Invertis University, we prioritize the protection of your personal and academic data.
+            At {APP_CONFIG.UNIVERSITY_NAME}, we prioritize the protection of your personal and academic data.
             Learn how we handle your information.
           </Text>
         </View>

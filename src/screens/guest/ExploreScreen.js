@@ -12,6 +12,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Feather, MaterialCommunityIcons, FontAwesome5, Ionicons } from '@expo/vector-icons';
+import { APP_CONFIG } from '../../config/appConfig';
 
 const { width } = Dimensions.get('window');
 
@@ -20,7 +21,7 @@ const ExploreScreen = ({ navigation }) => {
 
   const campusEvents = [
     {
-      title: 'Invertis 2026',
+      title: `${APP_CONFIG.UNIVERSITY_SHORT_NAME} 2026`,
       date: '14 FEB',
       category: 'Annual Fest',
       image: 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&q=80&w=400',
@@ -116,7 +117,7 @@ const ExploreScreen = ({ navigation }) => {
           >
             <MaterialCommunityIcons name="school" size={20} color="white" />
           </LinearGradient>
-          <Text style={styles.headerTitle}>Invertis University</Text>
+          <Text style={styles.headerTitle}>{APP_CONFIG.UNIVERSITY_NAME}</Text>
         </View>
         <View style={styles.headerRight}>
           <TouchableOpacity style={styles.headerIconButton}>
@@ -173,52 +174,7 @@ const ExploreScreen = ({ navigation }) => {
           </LinearGradient>
         </LinearGradient>
 
-        {/* Experience Invertis AR Card */}
-        <TouchableOpacity style={styles.arCard} activeOpacity={0.95}>
-          <LinearGradient
-            colors={['#EA580C', '#9A3412']}
-            style={styles.arGradient}
-          >
-            <View style={styles.arContent}>
-              <View style={styles.arLeft}>
-                <View style={styles.arBadge}>
-                  <MaterialCommunityIcons name="augmented-reality" size={24} color="#FFFFFF" />
-                  <Text style={styles.arBadgeText}>AR EXPERIENCE</Text>
-                </View>
-                <Text style={styles.arTitle}>Experience Invertis in Augmented Reality</Text>
-                <Text style={styles.arDesc}>Take a virtual tour of our campus, labs, and facilities right from your phone.</Text>
-                <View style={styles.arStats}>
-                  <View style={styles.arStat}>
-                    <MaterialCommunityIcons name="camera" size={16} color="#FFFFFF" />
-                    <Text style={styles.arStatText}>360° View</Text>
-                  </View>
-                  <View style={styles.arStat}>
-                    <MaterialCommunityIcons name="map-marker" size={16} color="#FFFFFF" />
-                    <Text style={styles.arStatText}>15+ Locations</Text>
-                  </View>
-                  <View style={styles.arStat}>
-                    <MaterialCommunityIcons name="clock" size={16} color="#FFFFFF" />
-                    <Text style={styles.arStatText}>Live Tours</Text>
-                  </View>
-                </View>
-                <LinearGradient
-                  colors={['#FFFFFF', '#F9FAFB']}
-                  style={styles.arButton}
-                >
-                  <Text style={styles.arButtonText}>Start AR Tour →</Text>
-                </LinearGradient>
-              </View>
-              <View style={styles.arRight}>
-                <LinearGradient
-                  colors={['rgba(255,255,255,0.2)', 'rgba(255,255,255,0.05)']}
-                  style={styles.arIconCircle}
-                >
-                  <MaterialCommunityIcons name="virtual-reality" size={48} color="#FFFFFF" />
-                </LinearGradient>
-              </View>
-            </View>
-          </LinearGradient>
-        </TouchableOpacity>
+
 
         {/* Explore Courses Section */}
         <View style={styles.sectionHeader}>
@@ -308,7 +264,10 @@ const ExploreScreen = ({ navigation }) => {
             </View>
             <Text style={styles.scholarshipTitle}>Your Merit, Our Mission</Text>
             <Text style={styles.scholarshipDesc}>Apply for merit-based scholarships worth up to 100% of your tuition fee.</Text>
-            <TouchableOpacity style={styles.scholarshipBtn}>
+            <TouchableOpacity 
+              style={styles.scholarshipBtn}
+              onPress={() => navigation.navigate('CourseEligibility')}
+            >
               <Text style={styles.scholarshipBtnText}>Check Eligibility →</Text>
             </TouchableOpacity>
           </LinearGradient>

@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../../constants/colors';
 import { STUDENTS_LIST } from '../../constants/data';
+import { APP_CONFIG } from '../../config/appConfig';
 
 const MarkAttendanceScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
@@ -46,7 +47,7 @@ const MarkAttendanceScreen = ({ navigation }) => {
           <Ionicons name="arrow-back" size={22} color={Colors.textPrimary} />
         </TouchableOpacity>
         <View style={styles.headerCenter}>
-          <Text style={styles.headerName}>Scholar Stream</Text>
+          <Text style={styles.headerName}>{APP_CONFIG.UNIVERSITY_NAME}</Text>
         </View>
         <TouchableOpacity style={styles.bellBtn}>
           <Ionicons name="notifications-outline" size={20} color={Colors.primary} />

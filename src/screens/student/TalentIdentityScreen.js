@@ -6,6 +6,7 @@ import { Ionicons, MaterialIcons, MaterialCommunityIcons } from '@expo/vector-ic
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../hooks/useTheme';
+import { APP_CONFIG } from '../../config/appConfig';
 
 
 const { width } = Dimensions.get('window');
@@ -21,7 +22,7 @@ const TalentIdentityScreen = ({ navigation }) => {
       <View style={[styles.header, { backgroundColor: colors.background, borderBottomColor: colors.border, borderBottomWidth: 1 }]}>
         <View style={styles.headerLeft}>
           <MaterialIcons name="school" size={26} color={colors.primary} />
-          <Text style={[styles.headerLogo, { color: colors.textPrimary }]}>Invertis University</Text>
+          <Text style={[styles.headerLogo, { color: colors.textPrimary }]}>{APP_CONFIG.UNIVERSITY_NAME}</Text>
         </View>
 
 
@@ -52,6 +53,7 @@ const TalentIdentityScreen = ({ navigation }) => {
             <Image
               source={{ uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuC6mmtjUA28NY_AB8YFu2Ri2e3lSkRbJCYpAbrgwHHzzLntRM9rNTLFJIT-pf3fW5gQ-_hRX8LB8ZDdqw5ls_d4bA10oIXuBlKp8kv7onee50cVXADdy7BPVn6kAg4Co9Gbp6XiTx5yITLttWLtkQQag4sVTILELHpLT0_-WAXmJWUVCHpSfhFuYmROstnRxdO_T4ym_KOCd8CmJm60WORR2yoPF8RiqYCiJsTUrQcbumydveuPeijNqG_991IufFMlU7g1DbJ3nqtG' }}
               style={styles.heroImg}
+              resizeMode="cover"
             />
             <LinearGradient colors={['transparent', isDark ? 'rgba(0,0,0,0.95)' : 'rgba(0,0,0,0.85)']} style={styles.heroOverlay}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' }}>
@@ -74,7 +76,7 @@ const TalentIdentityScreen = ({ navigation }) => {
         {/* Major & Batch Info */}
         <View style={styles.basicInfo}>
           <Text style={[styles.majorText, { color: colors.primary }]}>B.Tech Computer Science Engineering</Text>
-          <Text style={[styles.batchSubText, { color: colors.textSecondary }]}>Batch of 2025 • Invertis University Bareilly</Text>
+          <Text style={[styles.batchSubText, { color: colors.textSecondary }]}>Batch of 2025 • {APP_CONFIG.CAMPUS_LOCATION}</Text>
 
 
           {/* LinkedIn-style Connections */}
@@ -94,7 +96,7 @@ const TalentIdentityScreen = ({ navigation }) => {
             </View>
             <View style={[styles.capsule, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
               <Text style={styles.capsuleLabel}>STUDENT ID</Text>
-              <Text style={[styles.capsuleValue, { color: colors.textPrimary }]}>INV-2022-094</Text>
+              <Text style={[styles.capsuleValue, { color: colors.textPrimary }]}>{APP_CONFIG.UNIVERSITY_ID_PREFIX}-2022-094</Text>
             </View>
             <View style={[styles.capsule, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
               <Text style={styles.capsuleLabel}>VIBE CHECK</Text>
@@ -115,7 +117,7 @@ const TalentIdentityScreen = ({ navigation }) => {
           <Text style={[styles.aboutText, { color: colors.textSecondary }]}>
 
             Passionate software engineering student deeply interested in Full Stack Development and AI.
-            Leading the SkyDrone project in the Venture Lab and actively organizing the Invertis Coding Club Hackathons.
+            Leading the SkyDrone project in the Venture Lab and actively organizing the {APP_CONFIG.UNIVERSITY_SHORT_NAME} Coding Club Hackathons.
             Always looking to connect with like-minded innovators!
           </Text>
         </View>
@@ -251,7 +253,7 @@ const TalentIdentityScreen = ({ navigation }) => {
                 style={styles.certImg}
               />
               <Text style={[styles.certName, { color: colors.textPrimary }]}>Full Stack Dev</Text>
-              <Text style={[styles.certIssuer, { color: colors.textSecondary }]}>Invertis Venture Lab • Mar 2024</Text>
+              <Text style={[styles.certIssuer, { color: colors.textSecondary }]}>{APP_CONFIG.UNIVERSITY_SHORT_NAME} Venture Lab • Mar 2024</Text>
             </View>
           </ScrollView>
 

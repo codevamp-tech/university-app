@@ -12,6 +12,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Feather, MaterialCommunityIcons, Ionicons, FontAwesome5 } from '@expo/vector-icons';
+import { APP_CONFIG } from '../../config/appConfig';
 
 const { width } = Dimensions.get('window');
 
@@ -54,8 +55,8 @@ const HubScreen = ({ navigation }) => {
   ];
 
   const queries = [
-    { id: 1, question: 'When is the last date to apply for 2024 admissions?' },
-    { id: 2, question: 'Does Invertis offer direct admission for meritorious students?' },
+    { id: 1, question: 'When is the last date to apply for 2026 admissions?' },
+    { id: 2, question: `Does ${APP_CONFIG.UNIVERSITY_SHORT_NAME} offer direct admission for meritorious students?` },
     { id: 3, question: 'What are the amenities available in the girl\'s hostel?' },
     { id: 4, question: 'Is there any lateral entry option for Diploma holders?' },
   ];
@@ -74,7 +75,7 @@ const HubScreen = ({ navigation }) => {
           >
             <MaterialCommunityIcons name="school" size={20} color="white" />
           </LinearGradient>
-          <Text style={styles.headerTitle}>Invertis University</Text>
+          <Text style={styles.headerTitle}>{APP_CONFIG.UNIVERSITY_NAME}</Text>
         </View>
         <View style={styles.headerRight}>
           <TouchableOpacity style={styles.headerIcon}>
@@ -93,12 +94,12 @@ const HubScreen = ({ navigation }) => {
             colors={['#EEF2FF', '#E0E7FF']}
             style={styles.admissionsPill}
           >
-            <Text style={styles.admissionsPillText}>🎓 ADMISSIONS 2024-25</Text>
+            <Text style={styles.admissionsPillText}>🎓 ADMISSIONS 2026-27</Text>
           </LinearGradient>
           <Text style={styles.heroText}>Your Future</Text>
-          <Text style={[styles.heroText, { color: '#EA580C' }]}>Starts in the Invertis.</Text>
+          <Text style={[styles.heroText, { color: '#EA580C' }]}>Starts in the {APP_CONFIG.UNIVERSITY_SHORT_NAME}.</Text>
           <Text style={styles.heroDescription}>
-            Join a legacy of excellence at Invertis. Explore our diverse programs and get real-time guidance from our intelligent ecosystem.
+            Join a legacy of excellence at {APP_CONFIG.UNIVERSITY_SHORT_NAME}. Explore our diverse programs and get real-time guidance from our intelligent ecosystem.
           </Text>
         </View>
 
@@ -127,7 +128,7 @@ const HubScreen = ({ navigation }) => {
           ))}
         </View>
 
-        {/* Invertis AI Section */}
+        {/* AI Section */}
         <LinearGradient
           colors={['#1E1B4B', '#312E81']}
           style={styles.aiSection}
@@ -141,7 +142,7 @@ const HubScreen = ({ navigation }) => {
                 <MaterialCommunityIcons name="robot" size={20} color="white" />
               </LinearGradient>
               <View>
-                <Text style={styles.aiTitle}>Invertis AI</Text>
+                <Text style={styles.aiTitle}>{APP_CONFIG.UNIVERSITY_SHORT_NAME} AI</Text>
                 <View style={styles.activeRow}>
                   <View style={styles.activeDot} />
                   <Text style={styles.activeText}>ACTIVE ASSISTANT</Text>
@@ -160,7 +161,7 @@ const HubScreen = ({ navigation }) => {
               </LinearGradient>
               <View style={styles.botBubble}>
                 <Text style={styles.chatText}>
-                  Namaste! I'm Invertis. How can I help you navigate your admission journey today?
+                  Namaste! I'm {APP_CONFIG.UNIVERSITY_SHORT_NAME}. How can I help you navigate your admission journey today?
                 </Text>
               </View>
             </View>
@@ -242,7 +243,7 @@ const HubScreen = ({ navigation }) => {
         <View style={styles.queriesSection}>
           <Text style={styles.queriesTitle}>Common Queries</Text>
           <Text style={styles.queriesDescription}>
-            Everything you need to know about joining Invertis University.
+            Everything you need to know about joining {APP_CONFIG.UNIVERSITY_NAME}.
           </Text>
 
           {queries.map((query) => (

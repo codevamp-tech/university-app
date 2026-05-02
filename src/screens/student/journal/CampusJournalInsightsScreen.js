@@ -41,8 +41,8 @@ const CampusJournalInsightsScreen = ({ navigation }) => {
     <View style={styles.container}>
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Ionicons name="chevron-back" size={28} color="#EA580C" />
+        <TouchableOpacity onPress={() => navigation.navigate('StudentMain')}>
+          <Ionicons name="arrow-back" size={28} color="#EA580C" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Campus Journal</Text>
         <TouchableOpacity>

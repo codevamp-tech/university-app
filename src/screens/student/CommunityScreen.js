@@ -5,6 +5,7 @@ import {
 import { Ionicons, MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import { APP_CONFIG } from '../../config/appConfig';
 import { useTheme } from '../../hooks/useTheme';
 
 
@@ -21,7 +22,7 @@ const CommunityScreen = ({ navigation }) => {
       <View style={[styles.header, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
         <View style={styles.headerLeft}>
           <MaterialIcons name="school" size={26} color={colors.primary} />
-          <Text style={[styles.headerLogo, { color: colors.primary }]}>Invertis University</Text>
+          <Text style={[styles.headerLogo, { color: colors.primary }]}>{APP_CONFIG.UNIVERSITY_NAME}</Text>
         </View>
 
         <View style={styles.headerRight}>
@@ -80,15 +81,15 @@ const CommunityScreen = ({ navigation }) => {
                   <MaterialIcons name="code" size={20} color="#FFFFFF" />
                 </View>
                 <View>
-                  <Text style={[styles.authorName, { color: colors.textPrimary }]}>Invertis Coding Club</Text>
+                  <Text style={[styles.authorName, { color: colors.textPrimary }]}>{APP_CONFIG.UNIVERSITY_SHORT_NAME} Coding Club</Text>
                   <Text style={[styles.postMeta, { color: colors.textSecondary }]}>2 hours ago • <Text style={[styles.metaTag, { color: colors.primary }]}>Hackathon</Text></Text>
                 </View>
 
               </View>
               <TouchableOpacity><MaterialIcons name="more-horiz" size={22} color={colors.textSecondary} /></TouchableOpacity>
             </View>
-            <Text style={[styles.postTitle, { color: colors.textPrimary }]}>Invertis Coding Club Hackathon 2024: Registration Open! 🎉</Text>
-            <Text style={[styles.postText, { color: colors.textSecondary }]}>Join the biggest coding event on campus. 24 hours of pure innovation. Free food, stickers, and internship opportunities for the winners. Let's build the future of Bareilly together.</Text>
+            <Text style={[styles.postTitle, { color: colors.textPrimary }]}>{APP_CONFIG.UNIVERSITY_SHORT_NAME} Coding Club Hackathon 2024: Registration Open! 🎉</Text>
+            <Text style={[styles.postText, { color: colors.textSecondary }]}>Join the biggest coding event on campus. 24 hours of pure innovation. Free food, stickers, and internship opportunities for the winners. Let's build the future of {APP_CONFIG.CAMPUS_LOCATION} together.</Text>
 
             <Image
               source={{ uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCo-D3MJmX9df86ZCo_00jYGYLjFqoInOWyh4iDJH1ujiNw4BC5azHbETDK3BqY7GuJxzjXUUlVv8juthPbexXcW_6JSUjt85AyRfWNvbBC8jEp4Ee_cGlvh2AeBOx_ClsmdGBQaCtCjTUkL1LSJp2O7JUgqvYMUt14Ns15QG_wEmyplQX9_p5HX-Ln5EspNzRZlKCcHgIyCkIF-3eSNC-xyHpQXiw3FeLTY2LIbmwRqWVXGZ8bWDw5v_1pXDYFsU7rI22_Ui1HV2W5' }}
@@ -121,7 +122,7 @@ const CommunityScreen = ({ navigation }) => {
                   <MaterialIcons name="event-note" size={20} color="#FFFFFF" />
                 </View>
                 <View>
-                  <Text style={[styles.authorName, { color: colors.textPrimary }]}>CSE Department</Text>
+                  <Text style={[styles.authorName, { color: colors.textPrimary }]}>{APP_CONFIG.UNIVERSITY_SHORT_NAME} Department</Text>
                   <Text style={[styles.postMeta, { color: colors.textSecondary }]}>5 hours ago • <Text style={[styles.metaTag, { color: '#4338CA' }]}>Workshop</Text></Text>
                 </View>
               </View>

@@ -6,6 +6,7 @@ import { Ionicons, MaterialIcons, MaterialCommunityIcons } from '@expo/vector-ic
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../hooks/useTheme';
+import { APP_CONFIG } from '../../config/appConfig';
 
 
 const { width } = Dimensions.get('window');
@@ -21,7 +22,7 @@ const VentureScreen = ({ navigation }) => {
       <View style={[styles.header, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
         <View style={styles.headerLeft}>
           <MaterialIcons name="school" size={26} color={colors.primary} />
-          <Text style={[styles.headerLogo, { color: colors.primary }]}>Invertis University</Text>
+          <Text style={[styles.headerLogo, { color: colors.primary }]}>{APP_CONFIG.UNIVERSITY_NAME}</Text>
         </View>
 
         <View style={styles.headerRight}>
@@ -52,7 +53,7 @@ const VentureScreen = ({ navigation }) => {
             style={styles.heroOverlay}
           >
             <View style={[styles.heroBadge, { backgroundColor: 'rgba(255,255,255,0.1)', borderColor: 'rgba(255,255,255,0.2)' }]}>
-              <Text style={styles.heroBadgeText}>INVERTIS PULSE LAB</Text>
+              <Text style={styles.heroBadgeText}>{APP_CONFIG.UNIVERSITY_SHORT_NAME} PULSE LAB</Text>
             </View>
             <Text style={styles.heroTitle}>Where Ideas {"\n"}<Text style={styles.heroTitleItalic}>Go Infinite.</Text></Text>
             <View style={styles.heroBtns}>
@@ -152,7 +153,7 @@ const VentureScreen = ({ navigation }) => {
 
           <View style={styles.inputGroup}>
             <Text style={[styles.label, { color: colors.textSecondary }]}>VENTURE NAME</Text>
-            <TextInput style={[styles.input, { backgroundColor: isDark ? colors.background : '#FFFFFF', color: colors.textPrimary, borderColor: colors.border, borderWidth: 1 }]} placeholder="e.g. Invertis AI" placeholderTextColor={isDark ? 'rgba(255,255,255,0.3)' : '#9CA3AF'} />
+            <TextInput style={[styles.input, { backgroundColor: isDark ? colors.background : '#FFFFFF', color: colors.textPrimary, borderColor: colors.border, borderWidth: 1 }]} placeholder={`e.g. ${APP_CONFIG.UNIVERSITY_SHORT_NAME} AI`} placeholderTextColor={isDark ? 'rgba(255,255,255,0.3)' : '#9CA3AF'} />
           </View>
 
 

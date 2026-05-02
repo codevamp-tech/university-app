@@ -1,12 +1,13 @@
 import React from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Dimensions, Platform, Modal, Switch,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Dimensions, Platform, Modal, Switch, TextInput,
 } from 'react-native';
 import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { useTheme } from '../../hooks/useTheme';
+import { APP_CONFIG } from '../../config/appConfig';
 
 const { width } = Dimensions.get('window');
 
@@ -15,6 +16,11 @@ const DashboardScreen = ({ navigation }) => {
   const { colors, isDark, toggleTheme } = useTheme();
   const [activeMood, setActiveMood] = React.useState(2);
   const [showProfileMenu, setShowProfileMenu] = React.useState(false);
+  const [isHostelMode, setIsHostelMode] = React.useState(false);
+  const [gatePassStatus, setGatePassStatus] = React.useState('idle'); // idle, pending, approved
+  const [showQRModal, setShowQRModal] = React.useState(false);
+  const [showRequestModal, setShowRequestModal] = React.useState(false);
+  const [outpassForm, setOutpassForm] = React.useState({ reason: '', duration: '2 Hours' });
 
 
   return (
@@ -29,7 +35,7 @@ const DashboardScreen = ({ navigation }) => {
           >
             <MaterialIcons name="school" size={20} color="#FFFFFF" />
           </LinearGradient>
-          <Text style={[styles.headerLogo, { color: colors.textPrimary }]}>Invertis University</Text>
+          <Text style={[styles.headerLogo, { color: colors.textPrimary }]}>{APP_CONFIG.UNIVERSITY_NAME}</Text>
         </View>
         <View style={styles.headerRight}>
           <TouchableOpacity
@@ -108,6 +114,19 @@ const DashboardScreen = ({ navigation }) => {
 
             </View>
 
+            <View style={styles.menuItem}>
+              <View style={styles.menuItemLeft}>
+                <MaterialCommunityIcons name="home-city-outline" size={20} color={colors.textSecondary} />
+                <Text style={[styles.menuItemText, { color: colors.textPrimary }]}>Hostel Mode</Text>
+              </View>
+              <Switch
+                value={isHostelMode}
+                onValueChange={setIsHostelMode}
+                trackColor={{ false: colors.border, true: '#10B981' }}
+                thumbColor="#FFFFFF"
+              />
+            </View>
+
             <View style={[styles.menuDivider, { backgroundColor: colors.border }]} />
 
 
@@ -123,6 +142,107 @@ const DashboardScreen = ({ navigation }) => {
             </TouchableOpacity>
           </View>
         </TouchableOpacity>
+      </Modal>
+
+      {/* Gate Pass QR Modal */}
+      <Modal
+        visible={showQRModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowQRModal(false)}
+      >
+        <View style={styles.qrModalOverlay}>
+          <View style={[styles.qrContainer, { backgroundColor: colors.card }]}>
+            <View style={styles.qrHeader}>
+               <Text style={[styles.qrTitle, { color: colors.textPrimary }]}>Exit Gate Pass</Text>
+               <TouchableOpacity onPress={() => setShowQRModal(false)}>
+                 <MaterialIcons name="close" size={24} color={colors.textPrimary} />
+               </TouchableOpacity>
+            </View>
+            
+            <View style={styles.qrWrapper}>
+               <MaterialCommunityIcons name="qrcode" size={200} color={isDark ? '#FFF' : '#111827'} />
+               <View style={styles.qrStatusBadge}>
+                 <Text style={styles.qrStatusText}>VALID UNTIL 10:30 PM</Text>
+               </View>
+            </View>
+
+            <View style={styles.qrInfo}>
+               <Text style={[styles.qrInfoName, { color: colors.textPrimary }]}>Aryan Kumar</Text>
+               <Text style={[styles.qrInfoSub, { color: colors.textSecondary }]}>Room 402 • Main Hostel</Text>
+            </View>
+
+            <TouchableOpacity 
+              style={[styles.qrDownloadBtn, { backgroundColor: colors.primary }]}
+              onPress={() => setShowQRModal(false)}
+            >
+               <Text style={styles.qrDownloadText}>DONE</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Outpass Request Form Modal */}
+      <Modal
+        visible={showRequestModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowRequestModal(false)}
+      >
+        <View style={styles.requestModalOverlay}>
+          <View style={[styles.requestContainer, { backgroundColor: colors.card }]}>
+            <View style={styles.qrHeader}>
+               <Text style={[styles.qrTitle, { color: colors.textPrimary }]}>Apply for Outpass</Text>
+               <TouchableOpacity onPress={() => setShowRequestModal(false)}>
+                 <MaterialIcons name="close" size={24} color={colors.textPrimary} />
+               </TouchableOpacity>
+            </View>
+
+            <View style={styles.formGroup}>
+               <Text style={[styles.formLabel, { color: colors.textSecondary }]}>REASON FOR EXIT</Text>
+               <TextInput 
+                 style={[styles.formInput, { backgroundColor: isDark ? '#1F2937' : '#F9FAFB', color: colors.textPrimary, borderColor: colors.border }]}
+                 placeholder="e.g., Grocery shopping, Visiting family..."
+                 placeholderTextColor={colors.textMuted}
+                 value={outpassForm.reason}
+                 onChangeText={(text) => setOutpassForm({...outpassForm, reason: text})}
+               />
+            </View>
+
+            <View style={styles.formGroup}>
+               <Text style={[styles.formLabel, { color: colors.textSecondary }]}>DURATION</Text>
+               <View style={styles.durationRow}>
+                 {['2 Hours', '4 Hours', 'Full Day', 'Overnight'].map((d) => (
+                   <TouchableOpacity 
+                     key={d} 
+                     style={[
+                       styles.durationBtn, 
+                       { backgroundColor: outpassForm.duration === d ? colors.primary : isDark ? '#1F2937' : '#F1F5F9' }
+                     ]}
+                     onPress={() => setOutpassForm({...outpassForm, duration: d})}
+                   >
+                     <Text style={[styles.durationBtnText, { color: outpassForm.duration === d ? '#FFF' : colors.textPrimary }]}>{d}</Text>
+                   </TouchableOpacity>
+                 ))}
+               </View>
+            </View>
+
+            <TouchableOpacity 
+              style={[styles.submitBtn, { backgroundColor: colors.primary }]}
+              onPress={() => {
+                if (!outpassForm.reason) return;
+                setShowRequestModal(false);
+                setGatePassStatus('pending');
+                // Simulate warden approval
+                setTimeout(() => {
+                  setGatePassStatus('approved');
+                }, 3000);
+              }}
+            >
+               <Text style={styles.submitBtnText}>SEND TO WARDEN</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
       </Modal>
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
@@ -164,7 +284,6 @@ const DashboardScreen = ({ navigation }) => {
               </LinearGradient>
             </View>
 
-            {/* AI Suggestion */}
             <LinearGradient 
               colors={isDark ? ['rgba(16, 185, 129, 0.15)', 'rgba(16, 185, 129, 0.05)'] : ['#ECFDF5', '#D1FAE5']} 
               style={[styles.aiSuggestionBox, { borderColor: isDark ? 'rgba(16, 185, 129, 0.3)' : '#A7F3D0' }]}
@@ -177,8 +296,127 @@ const DashboardScreen = ({ navigation }) => {
               </Text>
             </LinearGradient>
 
+            {/* Premium Fitness Bar */}
+            <TouchableOpacity 
+              style={[styles.fitnessCard, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}
+              onPress={() => navigation.navigate('FitnessDetail')}
+              activeOpacity={0.8}
+            >
+              <View style={styles.fitnessHeader}>
+                <View style={[styles.fitnessIconBg, { backgroundColor: '#FEE2E2' }]}>
+                  <MaterialCommunityIcons name="heart-pulse" size={20} color="#EF4444" />
+                </View>
+                <View style={styles.fitnessHeaderText}>
+                  <Text style={[styles.fitnessTitle, { color: colors.textPrimary }]}>Campus Fitness</Text>
+                  <Text style={[styles.fitnessSub, { color: colors.textSecondary }]}>Active for 42m today</Text>
+                </View>
+                <MaterialIcons name="chevron-right" size={24} color={colors.textMuted} />
+              </View>
+
+              <View style={styles.fitnessBody}>
+                <View style={styles.fitnessRingContainer}>
+                  <View style={styles.ringStack}>
+                    <View style={[styles.ringBase, { borderColor: '#EF444420' }]} />
+                    <View style={[styles.ringFill, { borderColor: '#EF4444', borderRightColor: 'transparent', transform: [{ rotate: '45deg' }] }]} />
+                    <View style={[styles.ringBase, { width: 34, height: 34, borderColor: '#10B98120' }]} />
+                    <View style={[styles.ringFill, { width: 34, height: 34, borderColor: '#10B981', borderBottomColor: 'transparent', transform: [{ rotate: '-15deg' }] }]} />
+                    <View style={[styles.ringBase, { width: 22, height: 22, borderColor: '#3B82F620' }]} />
+                    <View style={[styles.ringFill, { width: 22, height: 22, borderColor: '#3B82F6', borderLeftColor: 'transparent', transform: [{ rotate: '120deg' }] }]} />
+                  </View>
+                </View>
+
+                <View style={styles.fitnessVDivider} />
+
+                <View style={styles.fitnessGridStats}>
+                  <View style={styles.fitnessRow}>
+                    <View style={styles.fitnessItem}>
+                      <Text style={[styles.fitnessVal, { color: colors.textPrimary }]}>8,420</Text>
+                      <Text style={styles.fitnessLabel}>STEPS</Text>
+                    </View>
+                    <View style={styles.fitnessItem}>
+                      <Text style={[styles.fitnessVal, { color: colors.textPrimary }]}>420</Text>
+                      <Text style={styles.fitnessLabel}>KCAL</Text>
+                    </View>
+                  </View>
+                  <View style={[styles.fitnessHDivider, { backgroundColor: colors.border }]} />
+                  <View style={styles.fitnessRow}>
+                    <View style={styles.fitnessItem}>
+                      <Text style={[styles.fitnessVal, { color: colors.textPrimary }]}>45</Text>
+                      <Text style={styles.fitnessLabel}>FOCUS</Text>
+                    </View>
+                    <View style={styles.fitnessItem}>
+                      <Text style={[styles.fitnessVal, { color: colors.textPrimary }]}>7.2</Text>
+                      <Text style={styles.fitnessLabel}>SLEEP</Text>
+                    </View>
+                  </View>
+                </View>
+              </View>
+            </TouchableOpacity>
+
           </LinearGradient>
         </View>
+        {isHostelMode && (
+          <View style={styles.sectionContainer}>
+            <View style={styles.hostelHeaderRow}>
+               <View>
+                 <Text style={[styles.moduleTitle, { color: colors.textSecondary }]}>Hostel Connect</Text>
+                 <Text style={[styles.sectionSub, { color: colors.textSecondary }]}>Home away from home • Room 402</Text>
+               </View>
+               <TouchableOpacity 
+                 style={[
+                   styles.gatePassBtn, 
+                   { backgroundColor: gatePassStatus === 'pending' ? '#FEF3C7' : gatePassStatus === 'approved' ? '#ECFDF5' : isDark ? 'rgba(16, 185, 129, 0.1)' : '#ECFDF5' }
+                 ]}
+                 onPress={() => {
+                   if (gatePassStatus === 'idle') {
+                     setShowRequestModal(true);
+                   } else if (gatePassStatus === 'approved') {
+                     setShowQRModal(true);
+                   }
+                 }}
+               >
+                 <MaterialCommunityIcons 
+                   name={gatePassStatus === 'pending' ? 'clock-outline' : gatePassStatus === 'approved' ? 'check-circle-outline' : 'qrcode-scan'} 
+                   size={20} 
+                   color={gatePassStatus === 'pending' ? '#D97706' : '#10B981'} 
+                 />
+                 <Text style={[styles.gatePassText, { color: gatePassStatus === 'pending' ? '#D97706' : '#10B981' }]}>
+                   {gatePassStatus === 'pending' ? 'WAITING...' : gatePassStatus === 'approved' ? 'VIEW PASS' : 'REQUEST PASS'}
+                 </Text>
+               </TouchableOpacity>
+            </View>
+
+            <View style={styles.hostelGrid}>
+              {/* Mess Menu */}
+              <TouchableOpacity 
+                style={[styles.hostelCard, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}
+                onPress={() => navigation.navigate('HostelMess')}
+              >
+                <View style={[styles.hostelIconCircle, { backgroundColor: '#FEE2E2' }]}>
+                  <MaterialCommunityIcons name="food-variant" size={20} color="#EF4444" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.hostelCardTitle, { color: colors.textPrimary }]}>Tonight's Dinner</Text>
+                  <Text style={[styles.hostelCardSub, { color: colors.textSecondary }]} numberOfLines={1}>Paneer, Dal, Roti, Kheer</Text>
+                </View>
+                <Text style={styles.messTime}>8:00 PM</Text>
+              </TouchableOpacity>
+
+              {/* Laundry Status */}
+              <View style={[styles.hostelCard, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
+                <View style={[styles.hostelIconCircle, { backgroundColor: '#E0E7FF' }]}>
+                  <MaterialCommunityIcons name="washing-machine" size={20} color="#4338CA" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.hostelCardTitle, { color: colors.textPrimary }]}>Laundry Status</Text>
+                  <Text style={[styles.hostelCardSub, { color: colors.textSecondary }]}>3/5 Washers Available</Text>
+                </View>
+                <View style={styles.statusDot} />
+              </View>
+
+            </View>
+          </View>
+        )}
 
         {/* Quick Launchpad (Links to the new massive modules) */}
         <View style={styles.sectionContainer}>
@@ -187,12 +425,12 @@ const DashboardScreen = ({ navigation }) => {
           <View style={styles.launchpadGrid}>
             <TouchableOpacity
               style={styles.launchBtn}
-              onPress={() => navigation.navigate('SmartCampus')}
+              onPress={() => navigation.navigate('CampusBitesMenu')}
             >
-              <LinearGradient colors={['#4338CA', '#312E81']} style={styles.launchIconBg}>
-                <MaterialCommunityIcons name="augmented-reality" size={24} color="#FFFFFF" />
+              <LinearGradient colors={['#EA580C', '#9A3412']} style={styles.launchIconBg}>
+                <MaterialCommunityIcons name="food" size={24} color="#FFFFFF" />
               </LinearGradient>
-              <Text style={[styles.launchText, { color: colors.textPrimary }]}>Smart Campus</Text>
+              <Text style={[styles.launchText, { color: colors.textPrimary }]}>Order Food</Text>
 
             </TouchableOpacity>
 
@@ -234,12 +472,10 @@ const DashboardScreen = ({ navigation }) => {
         {/* Pulse Check */}
         <View style={styles.sectionContainer}>
           <View style={[styles.pulseCard, { backgroundColor: colors.card }]}>
-
             <View style={styles.pulseHeaderRow}>
               <View>
                 <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Pulse Check</Text>
                 <Text style={[styles.sectionSub, { color: colors.textSecondary }]}>How are you feeling today?</Text>
-
               </View>
               <MaterialCommunityIcons name="heart-pulse" size={28} color="#EA580C" opacity={0.5} />
             </View>
@@ -254,39 +490,69 @@ const DashboardScreen = ({ navigation }) => {
                 <TouchableOpacity
                   key={mood.id}
                   onPress={() => setActiveMood(mood.id)}
+                  style={[
+                    styles.moodBtn,
+                    { backgroundColor: activeMood === mood.id ? '#EA580C' : isDark ? '#1F2937' : '#F1F5F9' }
+                  ]}
                 >
-                  <LinearGradient
-                    colors={activeMood === mood.id ? ['#F97316', '#EA580C'] : [colors.card, colors.background]}
-                    style={[styles.moodIcon, activeMood === mood.id && styles.moodIconActive, { borderColor: colors.border, borderWidth: 1 }]}
-
-                  >
-                    <MaterialCommunityIcons
-                      name={mood.icon}
-                      size={28}
-                      color={activeMood === mood.id ? '#FFFFFF' : colors.textSecondary}
-                    />
-                  </LinearGradient>
+                  <MaterialCommunityIcons 
+                    name={mood.icon} 
+                    size={28} 
+                    color={activeMood === mood.id ? '#FFFFFF' : isDark ? '#94A3B8' : '#64748B'} 
+                  />
                 </TouchableOpacity>
               ))}
             </View>
+          </View>
+        </View>
 
 
-            <View style={[styles.mentallyBox, { backgroundColor: isDark ? '#1E293B' : '#EEF2FF' }]}>
-              <View style={[styles.mentallyIconCircle, { backgroundColor: isDark ? '#334155' : '#E0E7FF' }]}>
-
-                <MaterialCommunityIcons name="brain" size={16} color="#4338CA" />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.mentallyText, { color: isDark ? '#A5B4FC' : '#3730A3' }]}>
-                  "Stress levels look slightly high before the Python finals. Need a 5-min mindfulness break?"
-                </Text>
-
-                <TouchableOpacity onPress={() => navigation.navigate('MentallyMain')}>
-                    <Text style={[styles.mentallyAction, { color: isDark ? '#818CF8' : '#4338CA' }]}>TALK TO MENTALLY</Text>
-
-                </TouchableOpacity>
-              </View>
+        <View style={styles.sectionContainer}>
+          <View style={[styles.mentallyBox, { backgroundColor: isDark ? '#1E293B' : '#EEF2FF' }]}>
+            <View style={[styles.mentallyIconCircle, { backgroundColor: isDark ? '#334155' : '#E0E7FF' }]}>
+              <MaterialCommunityIcons name="brain" size={16} color="#4338CA" />
             </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.mentallyText, { color: isDark ? '#A5B4FC' : '#3730A3' }]}>
+                "Stress levels look slightly high before the Python finals. Need a 5-min mindfulness break?"
+              </Text>
+
+              <TouchableOpacity onPress={() => navigation.navigate('MentallyMain')}>
+                  <Text style={[styles.mentallyAction, { color: isDark ? '#818CF8' : '#4338CA' }]}>TALK TO MENTALLY</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+
+        {/* E-Library Module */}
+        <View style={styles.sectionContainer}>
+          <View style={styles.sectionHeaderRow}>
+            <View>
+              <Text style={[styles.moduleTitle, { color: colors.textSecondary }]}>E-Library</Text>
+              <Text style={[styles.sectionSub, { color: colors.textSecondary }]}>Expand your knowledge</Text>
+            </View>
+            <TouchableOpacity onPress={() => navigation.navigate('LibraryMain')}>
+              <Text style={[styles.viewAllText, { color: '#EA580C' }]}>View All</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.libraryGrid}>
+            {[
+              { id: '1', title: 'Clean Code', author: 'Robert Martin', img: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?q=80&w=1000&auto=format&fit=crop' },
+              { id: '2', title: 'Pragmatic Dev', author: 'Andrew Hunt', img: 'https://images.unsplash.com/photo-1516979187457-637abb4f9353?q=80&w=1000&auto=format&fit=crop' },
+              { id: '3', title: 'AI Theory', author: 'Stuart Russell', img: 'https://images.unsplash.com/photo-1614741118887-7a4ee193a5fa?q=80&w=1000&auto=format&fit=crop' },
+              { id: '4', title: 'Design Patterns', author: 'Erich Gamma', img: 'https://images.unsplash.com/photo-1541963463532-d68292c34b19?q=80&w=1000&auto=format&fit=crop' },
+            ].map((book) => (
+              <TouchableOpacity 
+                key={book.id} 
+                style={styles.libraryBookCard}
+                onPress={() => navigation.navigate('LibraryMain')}
+              >
+                <Image source={{ uri: book.img }} style={styles.libraryBookImg} />
+                <Text style={[styles.libraryBookTitle, { color: colors.textPrimary }]} numberOfLines={1}>{book.title}</Text>
+                <Text style={[styles.libraryBookAuthor, { color: colors.textMuted }]} numberOfLines={1}>{book.author}</Text>
+              </TouchableOpacity>
+            ))}
           </View>
         </View>
 
@@ -307,7 +573,7 @@ const DashboardScreen = ({ navigation }) => {
               <MaterialCommunityIcons name="file-document-edit-outline" size={28} color={colors.primary} />
             </View>
             <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>AI Resume Builder</Text>
-            <Text style={[styles.cardDesc, { color: colors.textSecondary }]}>Smart tailoring based on your 8.9 CGPA and technical skills in Invertis labs.</Text>
+            <Text style={[styles.cardDesc, { color: colors.textSecondary }]}>Smart tailoring based on your 8.9 CGPA and technical skills in {APP_CONFIG.UNIVERSITY_SHORT_NAME} labs.</Text>
 
             <TouchableOpacity style={[styles.resumeBtn, { backgroundColor: isDark ? colors.primary : '#111827' }]}>
               <Text style={styles.resumeBtnText}>Update Resume</Text>
@@ -346,12 +612,11 @@ const DashboardScreen = ({ navigation }) => {
 
         {/* ========== SKILL GAP ANALYSIS ========== */}
         <View style={styles.sectionContainer}>
-          <TouchableOpacity style={[styles.skillGapCard, { backgroundColor: colors.card }]}>
+          <View style={[styles.skillGapCard, { backgroundColor: colors.card, paddingBottom: 24 }]}>
             <View style={styles.skillGapHeader}>
               <View style={[styles.skillGapIconWrapper, { backgroundColor: isDark ? colors.background : '#FFF7ED' }]}>
                 <MaterialCommunityIcons name="chart-areaspline" size={24} color={colors.primary} />
               </View>
-              <MaterialIcons name="chevron-right" size={24} color={colors.textMuted} />
             </View>
             <Text style={[styles.skillGapTitle, { color: colors.textPrimary }]}>Skill Gap Analysis</Text>
             <Text style={[styles.skillGapDesc, { color: colors.textSecondary }]}>What's missing for FAANG?</Text>
@@ -389,11 +654,25 @@ const DashboardScreen = ({ navigation }) => {
               </View>
 
             </View>
-            <TouchableOpacity style={styles.analyzeBtn}>
-              <Text style={[styles.analyzeBtnText, { color: colors.primary }]}>Deep Dive Analysis →</Text>
+            <View style={styles.skillGapActions}>
+              <TouchableOpacity 
+                style={styles.giveTestBtn}
+                onPress={() => navigation.navigate('SkillGapTest')}
+              >
+                <LinearGradient colors={['#EA580C', '#9A3412']} style={styles.giveTestBtnGradient}>
+                  <MaterialCommunityIcons name="pencil-outline" size={16} color="#FFFFFF" />
+                  <Text style={styles.giveTestBtnText}>Give Test</Text>
+                </LinearGradient>
+              </TouchableOpacity>
 
-            </TouchableOpacity>
-          </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.analyzeBtn, { borderColor: colors.border }]}
+                onPress={() => navigation.navigate('DeepDiveAnalysis')}
+              >
+                <Text style={[styles.analyzeBtnText, { color: colors.primary }]}>Deep Dive Analysis →</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         </View>
 
         {/* ========== CAREER ROADMAP ========== */}
@@ -481,6 +760,113 @@ const DashboardScreen = ({ navigation }) => {
             </View>
 
           </View>
+        </View>
+
+        {/* ═══════════════════════════════════════════════ */}
+        {/* TODAY'S MENU — Campus Food Ordering             */}
+        {/* ═══════════════════════════════════════════════ */}
+        <View style={styles.sectionContainer}>
+          <View style={styles.menuSectionHeader}>
+            <View>
+              <Text style={[styles.menuLabel, { color: colors.textSecondary }]}>CAMPUS DINING</Text>
+              <Text style={[styles.menuTitle, { color: colors.textPrimary }]}>Today's Menu</Text>
+            </View>
+            <TouchableOpacity
+              style={[styles.viewAllBtn, { backgroundColor: isDark ? 'rgba(234,88,12,0.15)' : '#FFF7ED' }]}
+              onPress={() => navigation.navigate('CampusBitesMenu')}
+            >
+              <Text style={[styles.viewAllText, { color: colors.primary }]}>View All</Text>
+              <MaterialIcons name="arrow-forward" size={14} color={colors.primary} />
+            </TouchableOpacity>
+          </View>
+
+          {/* Horizontal scroll of food cards */}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.menuScroll}
+          >
+            {[
+              {
+                id: 1,
+                name: 'Special Veg Thali',
+                price: '₹249',
+                tag: 'Bestseller',
+                rating: '4.9',
+                image: 'https://images.unsplash.com/photo-1585937421612-70a008356fbe?w=400&auto=format&fit=crop',
+              },
+              {
+                id: 2,
+                name: 'Paneer Tikka',
+                price: '₹120',
+                tag: 'Campus Fav',
+                rating: '4.8',
+                image: 'https://images.unsplash.com/photo-1567188040759-fb8a883dc6d8?w=400&auto=format&fit=crop',
+              },
+              {
+                id: 3,
+                name: 'Masala Chai',
+                price: '₹25',
+                tag: 'Quick Pick',
+                rating: '4.8',
+                image: 'https://images.unsplash.com/photo-1556679343-c7306c1976bc?w=400&auto=format&fit=crop',
+              },
+              {
+                id: 4,
+                name: 'Chole Bhature',
+                price: '₹85',
+                tag: 'Today Special',
+                rating: '4.9',
+                image: 'https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?w=400&auto=format&fit=crop',
+              },
+            ].map((food) => (
+              <TouchableOpacity
+                key={food.id}
+                style={[styles.menuCard, { backgroundColor: colors.card }]}
+                onPress={() => navigation.navigate('CampusBitesMenu')}
+                activeOpacity={0.85}
+              >
+                <Image source={{ uri: food.image }} style={styles.menuCardImage} />
+                <LinearGradient
+                  colors={['transparent', 'rgba(0,0,0,0.55)']}
+                  style={styles.menuCardOverlay}
+                >
+                  <View style={styles.menuCardBadge}>
+                    <Text style={styles.menuCardBadgeText}>{food.tag}</Text>
+                  </View>
+                </LinearGradient>
+                <View style={styles.menuCardBody}>
+                  <Text style={[styles.menuCardName, { color: colors.textPrimary }]} numberOfLines={1}>
+                    {food.name}
+                  </Text>
+                  <View style={styles.menuCardFooter}>
+                    <Text style={[styles.menuCardPrice, { color: isDark ? '#FB923C' : '#9A3412' }]}>
+                      {food.price}
+                    </Text>
+                    <View style={styles.menuCardRating}>
+                      <MaterialIcons name="star" size={11} color="#F97316" />
+                      <Text style={styles.menuCardRatingText}>{food.rating}</Text>
+                    </View>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            ))}
+
+            {/* View All Card */}
+            <TouchableOpacity
+              style={[styles.menuViewAllCard, { backgroundColor: isDark ? '#1E293B' : '#FFF7ED' }]}
+              onPress={() => navigation.navigate('CampusBitesMenu')}
+              activeOpacity={0.8}
+            >
+              <LinearGradient colors={['#EA580C', '#9A3412']} style={styles.menuViewAllIcon}>
+                <MaterialCommunityIcons name="food" size={24} color="#FFFFFF" />
+              </LinearGradient>
+              <Text style={[styles.menuViewAllLabel, { color: isDark ? '#FB923C' : '#9A3412' }]}>
+                View Full{'\n'}Menu
+              </Text>
+              <MaterialIcons name="arrow-forward" size={18} color={isDark ? '#FB923C' : '#9A3412'} />
+            </TouchableOpacity>
+          </ScrollView>
         </View>
 
         <View style={{ height: 100 }} />
@@ -1063,14 +1449,15 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   analyzeBtn: {
-    alignSelf: 'flex-start',
+    marginTop: 12,
     paddingVertical: 12,
-    paddingHorizontal: 0,
+    alignItems: 'center',
+    borderRadius: 16,
+    borderWidth: 1,
   },
   analyzeBtnText: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#EA580C',
+    fontSize: 14,
+    fontWeight: '800',
   },
   // Career Roadmap Styles
   roadmapHeader: {
@@ -1200,6 +1587,482 @@ const styles = StyleSheet.create({
     borderRadius: 32,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+
+  // ── Today's Menu Styles ──
+  menuSectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
+    marginBottom: 16,
+  },
+  menuLabel: {
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 1,
+    marginBottom: 4,
+  },
+  menuTitle: {
+    fontSize: 22,
+    fontWeight: '900',
+  },
+  viewAllBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
+  },
+  viewAllText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  menuScroll: {
+    paddingRight: 16,
+    gap: 12,
+  },
+  menuCard: {
+    width: width * 0.42,
+    height: 180,
+    borderRadius: 20,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'transparent', // Can map to colors.border if you prefer
+  },
+  menuCardImage: {
+    width: '100%',
+    height: '100%',
+    position: 'absolute',
+  },
+  menuCardOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'flex-start',
+    padding: 12,
+  },
+  menuCardBadge: {
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    alignSelf: 'flex-start',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  menuCardBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+  },
+  menuCardBody: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    padding: 12,
+  },
+  menuCardName: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#FFF',
+    marginBottom: 6,
+  },
+  menuCardFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  menuCardPrice: {
+    fontSize: 16,
+    fontWeight: '900',
+  },
+  menuCardRating: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    backgroundColor: '#FFF7ED',
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  menuCardRatingText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#9A3412',
+  },
+  menuViewAllCard: {
+    width: width * 0.35,
+    height: 180,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderStyle: 'dashed',
+    borderColor: '#FED7AA',
+    gap: 12,
+  },
+  menuViewAllIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  skillGapActions: {
+    marginTop: 20,
+    gap: 12,
+  },
+  giveTestBtn: {
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  giveTestBtnGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    gap: 8,
+  },
+  giveTestBtnText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '900',
+  },
+  fitnessCard: {
+    padding: 20,
+    borderRadius: 28,
+    marginTop: 16,
+  },
+  fitnessHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+    gap: 12,
+  },
+  fitnessIconBg: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  fitnessHeaderText: {
+    flex: 1,
+  },
+  fitnessTitle: {
+    fontSize: 18,
+    fontWeight: '900',
+  },
+  fitnessSub: {
+    fontSize: 12,
+    fontWeight: '700',
+    opacity: 0.6,
+  },
+  fitnessBody: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 24,
+  },
+  fitnessRingContainer: {
+    width: 64,
+    height: 64,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  ringStack: {
+    width: 64,
+    height: 64,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  ringBase: {
+    position: 'absolute',
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    borderWidth: 8,
+  },
+  ringFill: {
+    position: 'absolute',
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    borderWidth: 8,
+  },
+  fitnessVDivider: {
+    width: 1,
+    height: 50,
+    backgroundColor: 'rgba(0,0,0,0.08)',
+  },
+  fitnessGridStats: {
+    flex: 1,
+    gap: 10,
+  },
+  fitnessRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  fitnessItem: {
+    flex: 1,
+  },
+  fitnessVal: {
+    fontSize: 18,
+    fontWeight: '900',
+  },
+  fitnessLabel: {
+    fontSize: 9,
+    fontWeight: '800',
+    opacity: 0.5,
+    letterSpacing: 1,
+  },
+  fitnessHDivider: {
+    height: 1,
+    width: '100%',
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
+    marginBottom: 16,
+  },
+  viewAllText: {
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  libraryGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  libraryBookCard: {
+    width: (width - 48) / 2,
+    marginBottom: 20,
+  },
+  libraryBookImg: {
+    width: '100%',
+    aspectRatio: 2 / 3,
+    borderRadius: 16,
+    marginBottom: 8,
+    backgroundColor: '#F1F5F9',
+  },
+  libraryBookTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  libraryBookAuthor: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  // Hostel Mode Styles
+  hostelHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  gatePassBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+    gap: 6,
+  },
+  gatePassText: {
+    fontSize: 12,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+  hostelGrid: {
+    gap: 12,
+  },
+  hostelCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 24,
+    gap: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.03,
+    shadowRadius: 10,
+    elevation: 2,
+  },
+  hostelIconCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  hostelCardTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    marginBottom: 2,
+  },
+  hostelCardSub: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  messTime: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#EF4444',
+    backgroundColor: '#FEE2E2',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#10B981',
+  },
+  hostelActionRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 4,
+  },
+  miniHostelBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderRadius: 16,
+    gap: 8,
+  },
+  miniHostelBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  // QR Modal Styles
+  qrModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  qrContainer: {
+    width: '100%',
+    borderRadius: 32,
+    padding: 24,
+    alignItems: 'center',
+  },
+  qrHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    width: '100%',
+    marginBottom: 24,
+  },
+  qrTitle: {
+    fontSize: 20,
+    fontWeight: '900',
+  },
+  qrWrapper: {
+    padding: 20,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  qrStatusBadge: {
+    backgroundColor: '#10B981',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 99,
+    marginTop: 16,
+  },
+  qrStatusText: {
+    color: '#FFF',
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 1,
+  },
+  qrInfo: {
+    alignItems: 'center',
+    marginBottom: 32,
+  },
+  qrInfoName: {
+    fontSize: 18,
+    fontWeight: '900',
+    marginBottom: 4,
+  },
+  qrInfoSub: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  qrDownloadBtn: {
+    width: '100%',
+    paddingVertical: 16,
+    borderRadius: 16,
+    alignItems: 'center',
+  },
+  qrDownloadText: {
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  // Request Modal Styles
+  requestModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'flex-end',
+  },
+  requestContainer: {
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    padding: 24,
+    paddingBottom: Platform.OS === 'ios' ? 40 : 24,
+  },
+  formGroup: {
+    marginBottom: 20,
+  },
+  formLabel: {
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 1,
+    marginBottom: 8,
+  },
+  formInput: {
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    fontSize: 15,
+    fontWeight: '500',
+    borderWidth: 1,
+  },
+  durationRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  durationBtn: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 12,
+  },
+  durationBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  submitBtn: {
+    width: '100%',
+    paddingVertical: 16,
+    borderRadius: 16,
+    alignItems: 'center',
+    marginTop: 12,
+  },
+  submitBtnText: {
+    color: '#FFF',
+    fontSize: 15,
+    fontWeight: '900',
+    letterSpacing: 0.5,
   },
 });
 

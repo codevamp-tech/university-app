@@ -7,6 +7,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { STUDENT_USER } from '../../constants/data';
+import { APP_CONFIG } from '../../config/appConfig';
 
 const InfoItem = ({ label, value, icon }) => {
   const { colors, isDark } = useTheme();
@@ -60,12 +61,12 @@ const PersonalInfoScreen = ({ navigation }) => {
           <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>CONTACT DETAILS</Text>
 
           <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <InfoItem label="Email Address" value="alex.morgan@invertis.edu" icon="mail-outline" />
+            <InfoItem label="Email Address" value={`alex.morgan@${APP_CONFIG.STUDENT_EMAIL_DOMAIN}`} icon="mail-outline" />
             <View style={[styles.divider, { backgroundColor: colors.border }]} />
             <InfoItem label="Phone Number" value="+91 98765 43210" icon="call-outline" />
             <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
-            <InfoItem label="Address" value="Hostel Block A, Room 302, Invertis University" icon="location-outline" />
+            <InfoItem label="Address" value={`Hostel Block A, Room 302, ${APP_CONFIG.UNIVERSITY_NAME}`} icon="location-outline" />
           </View>
         </View>
 

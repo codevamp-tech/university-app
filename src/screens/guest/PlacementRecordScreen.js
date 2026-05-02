@@ -5,20 +5,21 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons, MaterialCommunityIcons, Feather } from '@expo/vector-icons';
+import { APP_CONFIG } from '../../config/appConfig';
 
 const { width } = Dimensions.get('window');
 
 const PlacementRecordScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
-  const [activeYear, setActiveYear] = useState('2024');
+  const [activeYear, setActiveYear] = useState('2025');
 
-  const years = ['2024', '2023', '2022', '2021'];
+  const years = ['2025', '2024', '2023', '2022'];
 
   const stats = {
+    '2025': { placed: '850+', avg: '7.2 LPA', highest: '45 LPA', companies: '160+' },
     '2024': { placed: '820+', avg: '6.8 LPA', highest: '41 LPA', companies: '150+' },
     '2023': { placed: '760+', avg: '6.2 LPA', highest: '36 LPA', companies: '130+' },
     '2022': { placed: '680+', avg: '5.5 LPA', highest: '28 LPA', companies: '110+' },
-    '2021': { placed: '590+', avg: '4.9 LPA', highest: '22 LPA', companies: '95+' },
   };
 
   const topRecruiters = [
@@ -56,23 +57,29 @@ const PlacementRecordScreen = ({ navigation }) => {
         </TouchableOpacity>
         <View style={styles.headerCenter}>
           <Text style={styles.headerTitle}>Placement Record</Text>
-          <Text style={styles.headerSub}>Invertis University Placements</Text>
+          <Text style={styles.headerSub}>{APP_CONFIG.UNIVERSITY_NAME} Placements</Text>
         </View>
         <MaterialCommunityIcons name="trending-up" size={22} color="rgba(255,255,255,0.7)" />
       </LinearGradient>
 
       {/* Year Tabs */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.yearScroll} contentContainerStyle={styles.yearScrollContent}>
-        {years.map(y => (
-          <TouchableOpacity
-            key={y}
-            style={[styles.yearBtn, activeYear === y && styles.yearBtnActive]}
-            onPress={() => setActiveYear(y)}
-          >
-            <Text style={[styles.yearText, activeYear === y && styles.yearTextActive]}>Batch {y}</Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
+      <View style={styles.yearTabsContainer}>
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false} 
+          contentContainerStyle={styles.yearScrollContent}
+        >
+          {years.map(y => (
+            <TouchableOpacity
+              key={y}
+              style={[styles.yearBtn, activeYear === y && styles.yearBtnActive]}
+              onPress={() => setActiveYear(y)}
+            >
+              <Text style={[styles.yearText, activeYear === y && styles.yearTextActive]}>Batch {y}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         {/* Stats Grid */}
@@ -111,14 +118,27 @@ const PlacementRecordScreen = ({ navigation }) => {
 
         {/* Top Recruiters */}
         <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>Top Recruiting Companies</Text>
+          <View style={styles.sectionHeaderRow}>
+            <Text style={styles.sectionTitle}>Top Recruiting Companies</Text>
+            <TouchableOpacity>
+              <Text style={styles.viewAllText}>View All</Text>
+            </TouchableOpacity>
+          </View>
           <View style={styles.recruitersGrid}>
             {topRecruiters.map((r, i) => (
               <View key={i} style={styles.recruiterCard}>
-                <Image source={{ uri: r.logo }} style={styles.recruiterLogo} defaultSource={{ uri: 'https://via.placeholder.com/48' }} />
-                <Text style={styles.recruiterName}>{r.name}</Text>
-                <Text style={styles.recruiterPkg}>{r.package}</Text>
-                <Text style={styles.recruiterSector}>{r.sector}</Text>
+                <View style={styles.logoContainer}>
+                  <Image 
+                    source={{ uri: r.logo }} 
+                    style={styles.recruiterLogo} 
+                    resizeMode="contain"
+                  />
+                </View>
+                <Text style={styles.recruiterName} numberOfLines={1}>{r.name}</Text>
+                <View style={styles.pkgBadge}>
+                  <Text style={styles.recruiterPkg}>{r.package}</Text>
+                </View>
+                <Text style={styles.recruiterSector} numberOfLines={1}>{r.sector}</Text>
               </View>
             ))}
           </View>
@@ -165,13 +185,31 @@ const styles = StyleSheet.create({
   headerCenter: { flex: 1 },
   headerTitle: { fontSize: 20, fontWeight: '900', color: '#FFFFFF' },
   headerSub: { fontSize: 12, color: 'rgba(255,255,255,0.7)', marginTop: 2 },
-  yearScroll: { backgroundColor: '#FFFFFF', maxHeight: 60 },
-  yearScrollContent: { paddingHorizontal: 16, paddingVertical: 12, gap: 8 },
-  yearBtn: {
-    paddingHorizontal: 18, paddingVertical: 8,
-    borderRadius: 20, backgroundColor: '#F3F4F6',
+  yearTabsContainer: { 
+    backgroundColor: '#FFFFFF', 
+    height: 75,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
   },
-  yearBtnActive: { backgroundColor: '#4338CA' },
+  yearScrollContent: { 
+    paddingHorizontal: 16, 
+    alignItems: 'center',
+    gap: 12,
+  },
+  yearBtn: {
+    paddingHorizontal: 20, paddingVertical: 9,
+    borderRadius: 22, backgroundColor: '#F3F4F6',
+    borderWidth: 1, borderColor: '#E5E7EB',
+  },
+  yearBtnActive: { 
+    backgroundColor: '#4338CA', 
+    borderColor: '#4338CA',
+    shadowColor: '#4338CA',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
+  },
   yearText: { fontSize: 13, fontWeight: '700', color: '#6B7280' },
   yearTextActive: { color: '#FFFFFF', fontWeight: '900' },
   scroll: { padding: 16 },
@@ -210,7 +248,14 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 2,
   },
-  sectionTitle: { fontSize: 18, fontWeight: '900', color: '#111827', marginBottom: 16 },
+  sectionTitle: { fontSize: 18, fontWeight: '900', color: '#111827' },
+  sectionHeaderRow: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  viewAllText: { fontSize: 13, fontWeight: '700', color: '#4338CA' },
   sectorRow: { marginBottom: 14 },
   sectorLabelRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
   sectorName: { fontSize: 13, fontWeight: '600', color: '#374151' },
@@ -220,25 +265,46 @@ const styles = StyleSheet.create({
   recruitersGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
+    justifyContent: 'space-between',
   },
   recruiterCard: {
-    width: (width - 80) / 3,
+    width: (width - 84) / 3,
     backgroundColor: '#F9FAFB',
-    borderRadius: 14,
+    borderRadius: 16,
     padding: 12,
     alignItems: 'center',
+    marginBottom: 12,
     borderWidth: 1,
     borderColor: '#F3F4F6',
   },
-  recruiterLogo: {
-    width: 44, height: 44, borderRadius: 10,
-    marginBottom: 8,
-    backgroundColor: '#F3F4F6',
+  logoContainer: {
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  recruiterName: { fontSize: 12, fontWeight: '800', color: '#111827', textAlign: 'center' },
-  recruiterPkg: { fontSize: 11, color: '#4338CA', fontWeight: '700', marginTop: 3 },
-  recruiterSector: { fontSize: 9, color: '#9CA3AF', marginTop: 2, textAlign: 'center' },
+  recruiterLogo: {
+    width: 34,
+    height: 34,
+  },
+  recruiterName: { fontSize: 13, fontWeight: '800', color: '#111827', textAlign: 'center' },
+  pkgBadge: {
+    backgroundColor: '#EEF2FF',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 8,
+    marginTop: 6,
+  },
+  recruiterPkg: { fontSize: 11, color: '#4338CA', fontWeight: '800' },
+  recruiterSector: { fontSize: 9, color: '#9CA3AF', marginTop: 4, textAlign: 'center' },
   placementRow: {
     flexDirection: 'row',
     alignItems: 'center',

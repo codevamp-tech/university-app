@@ -12,6 +12,7 @@ import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../../hooks/useTheme';
+import { APP_CONFIG } from '../../../config/appConfig';
 
 
 const { width } = Dimensions.get('window');
@@ -94,7 +95,7 @@ const ZenMusicScreen = ({ navigation }) => {
                   <Text style={styles.heroBadgeText}>AMBIENT FOCUS</Text>
                 </View>
                 <Text style={styles.heroTitle}>Library Rain</Text>
-                <Text style={styles.heroSub}>Invertis Campus Soundscapes</Text>
+                <Text style={styles.heroSub}>{APP_CONFIG.UNIVERSITY_NAME} Campus Soundscapes</Text>
               </View>
             </View>
 

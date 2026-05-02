@@ -5,6 +5,7 @@ import {
 import { Ionicons, MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import { APP_CONFIG } from '../../config/appConfig';
 import { NOTIFICATIONS } from '../../constants/data';
 import { useTheme } from '../../hooks/useTheme';
 
@@ -35,7 +36,7 @@ const AlertsScreen = ({ navigation }) => {
           >
             <MaterialIcons name="notifications" size={20} color="#FFFFFF" />
           </LinearGradient>
-          <Text style={[styles.headerLogo, { color: colors.textPrimary }]}>Invertis University</Text>
+          <Text style={[styles.headerLogo, { color: colors.textPrimary }]}>{APP_CONFIG.UNIVERSITY_NAME}</Text>
         </View>
         <TouchableOpacity style={[styles.markAllButton, { backgroundColor: isDark ? colors.card : '#FFFFFF', borderColor: colors.border, borderWidth: 1 }]}>
           <Text style={[styles.markAllText, { color: colors.primary }]}>Mark all as read</Text>

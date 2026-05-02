@@ -5,6 +5,7 @@ import {
 import { Ionicons, MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import { APP_CONFIG } from '../../config/appConfig';
 
 const { width } = Dimensions.get('window');
 
@@ -20,7 +21,7 @@ const ProductDetailScreen = ({ route, navigation }) => {
       seller: {
         name: 'Rahul Verma',
         year: '4th Year, CS',
-        avatar: 'https://i.pravatar.cc/150?u=rahul'
+        avatar: 'https://randomuser.me/api/portraits/men/32.jpg'
       }
     }
   };
@@ -78,12 +79,12 @@ const ProductDetailScreen = ({ route, navigation }) => {
           <Text style={styles.sectionTitle}>Student Seller</Text>
           <View style={styles.sellerCard}>
             <Image 
-              source={{ uri: item.seller?.avatar || 'https://i.pravatar.cc/150?u=student' }} 
+              source={{ uri: item.seller?.avatar || 'https://randomuser.me/api/portraits/men/32.jpg' }} 
               style={styles.sellerAvatar} 
             />
             <View style={styles.sellerInfo}>
-              <Text style={styles.sellerName}>{item.seller?.name || 'Invertis Student'}</Text>
-              <Text style={styles.sellerYear}>{item.seller?.year || 'Invertis University'}</Text>
+              <Text style={styles.sellerName}>{item.seller?.name || `${APP_CONFIG.UNIVERSITY_SHORT_NAME} Student`}</Text>
+              <Text style={styles.sellerYear}>{item.seller?.year || APP_CONFIG.UNIVERSITY_NAME}</Text>
             </View>
             <TouchableOpacity style={styles.chatBtn}>
               <Ionicons name="chatbubble-ellipses-outline" size={22} color="#FFFFFF" />

@@ -6,6 +6,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons, MaterialCommunityIcons, Feather } from '@expo/vector-icons';
+import { APP_CONFIG } from '../../config/appConfig';
 
 const { width } = Dimensions.get('window');
 
@@ -44,7 +45,7 @@ const AdmissionFormScreen = ({ navigation }) => {
   const handleSubmit = () => {
     Alert.alert(
       '🎉 Application Submitted!',
-      `Thank you ${form.firstName}! Your admission application has been received successfully.\n\nYou will receive a confirmation on ${form.email} within 24 hours.\n\nApplication ID: INV-${Math.floor(10000 + Math.random() * 90000)}`,
+      `Thank you ${form.firstName}! Your admission application has been received successfully.\n\nYou will receive a confirmation on ${form.email} within 24 hours.\n\nApplication ID: ${APP_CONFIG.UNIVERSITY_ID_PREFIX}-${Math.floor(10000 + Math.random() * 90000)}`,
       [{ text: 'Go Back', onPress: () => navigation.goBack(), style: 'default' }]
     );
   };

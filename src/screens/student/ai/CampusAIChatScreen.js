@@ -16,10 +16,11 @@ import {
 } from 'react-native';
 import { Ionicons, MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { APP_CONFIG } from '../../../config/appConfig';
 
 const { width } = Dimensions.get('window');
 
-const InvertisChatScreen = ({ navigation, route }) => {
+const CampusAIChatScreen = ({ navigation, route }) => {
   const initialQuery = route.params?.initialQuery || '';
   const [messages, setMessages] = useState([]);
   const [inputText, setInputText] = useState('');
@@ -34,7 +35,7 @@ const InvertisChatScreen = ({ navigation, route }) => {
         {
           id: '1',
           type: 'ai',
-          text: "Hello! I'm your Invertis AI Assistant. How can I help you with your campus life today?",
+          text: `Hello! I'm your ${APP_CONFIG.AI_ASSISTANT_NAME}. How can I help you with your campus life today?`,
           time: '10:00 AM',
         }
       ]);
@@ -58,13 +59,13 @@ const InvertisChatScreen = ({ navigation, route }) => {
 
     // Simulate thinking
     setTimeout(() => {
-      navigation.navigate('InvertisThinking', { query });
+      navigation.navigate('CampusAIThinking', { query });
       
       // Return and show message
       setTimeout(() => {
         const responseMsg = getResponse(query);
         setMessages(prev => [...prev, responseMsg]);
-        navigation.navigate('InvertisChat'); 
+        navigation.navigate('CampusAIChat'); 
       }, 3200); // Slightly longer than Thinking screen's stay
     }, 500);
   };
@@ -114,7 +115,7 @@ const InvertisChatScreen = ({ navigation, route }) => {
       };
     } else if (q.includes('cricket') || q.includes('match') || q.includes('sports')) {
       // Trigger help/out-of-scope screen
-      setTimeout(() => navigation.navigate('InvertisHelp'), 100);
+      setTimeout(() => navigation.navigate('CampusAIHelp'), 100);
       return { id: 'dummy', type: 'ai', text: 'Searching...', time };
     } else {
       return {
@@ -243,7 +244,7 @@ const InvertisChatScreen = ({ navigation, route }) => {
             />
           </View>
           <View>
-            <Text style={styles.headerTitle}>Invertis AI Assistant</Text>
+            <Text style={styles.headerTitle}>{APP_CONFIG.AI_ASSISTANT_NAME}</Text>
             <Text style={styles.headerSubtitle}>Always Active</Text>
           </View>
         </View>
@@ -280,7 +281,7 @@ const InvertisChatScreen = ({ navigation, route }) => {
           </TouchableOpacity>
           <TextInput
             style={styles.input}
-            placeholder="Ask Invertis anything..."
+            placeholder={`Ask ${APP_CONFIG.UNIVERSITY_SHORT_NAME} anything...`}
             placeholderTextColor="#9CA3AF"
             value={inputText}
             onChangeText={setInputText}
@@ -604,4 +605,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default InvertisChatScreen;
+export default CampusAIChatScreen;

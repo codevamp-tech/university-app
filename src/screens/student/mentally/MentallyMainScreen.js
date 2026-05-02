@@ -13,6 +13,7 @@ import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../../hooks/useTheme';
+import { APP_CONFIG } from '../../../config/appConfig';
 
 
 const { width } = Dimensions.get('window');
@@ -49,12 +50,12 @@ const MentallyMainScreen = ({ navigation }) => {
       color: '#CBCEFF', // secondary-fixed
     },
     {
-      id: 'detox',
-      title: 'Digital Detox',
-      tag: 'SCREEN OFF',
-      image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDwnEi9Dpq99ZLI_JCQejzUJZB--1--RpDLHsdWrK57VHwpyeFl_SECf3xFVhMAVEms7qsbqxBEk1hsu7-cCkpW8Il6a8oIWD8udH691y6PKVun5BePIszAnANyGe-Wd0Z1RtHsHQzRUZlvXyP6_jGfyH4BaFuRROCBNFB2QgZcObNJh0A9JfmSaz3xx7Pg6Zl2zLpHYyP-FAff96qpkw9jw23m8PCE8BYx3_IZt1a30RwpfbuY5dgfvpSnDF5FmhiZ3rgM9j37_5pG',
-      screen: 'DigitalDetox',
-      color: '#FE9832', // primary-fixed
+      id: 'counsellor',
+      title: 'Book a Therapist',
+      tag: 'PROFESSIONAL',
+      image: 'https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?q=80&w=1000&auto=format&fit=crop',
+      screen: 'CounsellorBooking',
+      color: '#F97316', // Orange
     },
   ];
 
@@ -67,7 +68,7 @@ const MentallyMainScreen = ({ navigation }) => {
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
             <MaterialIcons name="arrow-back" size={24} color={colors.textPrimary} />
           </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: colors.primary }]}>Invertis Mentally</Text>
+          <Text style={[styles.headerTitle, { color: colors.primary }]}>{APP_CONFIG.UNIVERSITY_SHORT_NAME} Mentally</Text>
         </View>
         <TouchableOpacity style={styles.settingsBtn}>
           <MaterialIcons name="settings" size={24} color={colors.textSecondary} />

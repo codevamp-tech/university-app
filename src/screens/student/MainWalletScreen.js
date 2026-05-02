@@ -5,6 +5,7 @@ import {
 import { Ionicons, MaterialIcons, MaterialCommunityIcons, Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import { APP_CONFIG } from '../../config/appConfig';
 
 import { useTheme } from '../../hooks/useTheme';
 
@@ -18,7 +19,7 @@ const MainWalletScreen = ({ navigation }) => {
   const transactions = [
     { id: 1, title: 'Bazaar Sale: Sem 3 Books', amount: '+₹650', type: 'credit', time: 'Today, 2:30 PM', icon: 'book-outline', color: '#10B981' },
     { id: 2, title: 'Central Canteen: Coffee', amount: '-₹40', type: 'debit', time: 'Today, 11:15 AM', icon: 'coffee-outline', color: '#EF4444' },
-    { id: 3, title: 'Airtel Recharge', amount: '-₹199', type: 'debit', time: 'Yesterday', icon: 'smartphone', color: '#3B82F6' },
+    { id: 3, title: `${APP_CONFIG.CAMPUS_BITES_NAME}: Paneer Tikka`, amount: '-₹120', type: 'debit', time: 'Yesterday', icon: 'fast-food-outline', color: '#EA580C' },
     { id: 4, title: 'Reward: Lab Assistant', amount: '+₹500', type: 'credit', time: 'Oct 15', icon: 'star-outline', color: '#F59E0B' },
     { id: 5, title: 'Library Fine', amount: '-₹25', type: 'debit', time: 'Oct 14', icon: 'library-outline', color: '#6B7280' },
   ];
@@ -60,7 +61,7 @@ const MainWalletScreen = ({ navigation }) => {
           <View style={styles.cardBottom}>
             <View>
               <Text style={styles.cardHolderLabel}>STUDENT ID</Text>
-              <Text style={styles.cardHolderValue}>INV-2022-094</Text>
+              <Text style={styles.cardHolderValue}>{APP_CONFIG.UNIVERSITY_ID_PREFIX}-2022-094</Text>
             </View>
             <TouchableOpacity style={styles.rechargeBtn}>
               <Text style={styles.rechargeText}>ADD MONEY</Text>
@@ -71,28 +72,6 @@ const MainWalletScreen = ({ navigation }) => {
           <View style={styles.circleDecor} />
         </LinearGradient>
 
-        {/* Quick Actions Row */}
-        <View style={styles.actionsRow}>
-          {[
-            { label: 'Send', icon: 'send', color: '#3B82F6' },
-            { label: 'Receive', icon: 'qr-code', color: '#10B981' },
-            { label: 'Services', icon: 'grid-outline', color: '#8B5CF6' },
-            { label: 'Help', icon: 'help-circle-outline', color: '#F43F5E' },
-          ].map((action, i) => (
-            <TouchableOpacity key={i} style={styles.actionItem}>
-              <View style={[styles.actionIcon, { backgroundColor: action.color + (isDark ? '20' : '15') }]}>
-                {action.icon === 'qr-code' ? (
-                  <Ionicons name={action.icon} size={24} color={action.color} />
-                ) : action.icon === 'send' ? (
-                  <Feather name={action.icon} size={22} color={action.color} />
-                ) : (
-                  <Ionicons name={action.icon} size={24} color={action.color} />
-                )}
-              </View>
-              <Text style={[styles.actionLabel, { color: colors.textSecondary }]}>{action.label}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
 
 
         {/* Transactions Section */}

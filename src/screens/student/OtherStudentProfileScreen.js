@@ -5,6 +5,7 @@ import {
 import { Ionicons, MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import { APP_CONFIG } from '../../config/appConfig';
 
 const OtherStudentProfileScreen = ({ route, navigation }) => {
   const insets = useSafeAreaInsets();
@@ -98,7 +99,7 @@ const OtherStudentProfileScreen = ({ route, navigation }) => {
           <Text style={styles.cardTitle}>About</Text>
           <Text style={styles.bioText}>
             Passionate software engineering student deeply interested in Full Stack Development and AI. 
-            Actively participating in hackathons and leading the Invertis Coding Club. Let's connect and build something awesome together!
+            Actively participating in hackathons and leading the {APP_CONFIG.UNIVERSITY_SHORT_NAME} Coding Club. Let's connect and build something awesome together!
           </Text>
         </View>
 

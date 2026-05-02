@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Animated, Easing } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../constants/colors';
+import { APP_CONFIG } from '../config/appConfig';
 
 const SplashScreen = ({ navigation }) => {
   const logoAnim = useRef(new Animated.Value(0)).current;
@@ -68,7 +69,7 @@ const SplashScreen = ({ navigation }) => {
 
       <Animated.View style={{ opacity: textAnim }}>
         <Text style={styles.appName}>
-          <Text style={styles.appNameDark}>INVERTIS </Text>
+          <Text style={styles.appNameDark}>{APP_CONFIG.UNIVERSITY_SHORT_NAME} </Text>
           <Text style={styles.appNameAccent}>UNIVERSITY</Text>
         </Text>
 

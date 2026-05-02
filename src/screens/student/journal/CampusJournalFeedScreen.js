@@ -5,6 +5,7 @@ import {
 import { MaterialIcons, MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { APP_CONFIG } from '../../../config/appConfig';
 
 const { width } = Dimensions.get('window');
 
@@ -16,6 +17,9 @@ const CampusJournalFeedScreen = ({ navigation }) => {
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
         <View style={styles.headerLeft}>
+          <TouchableOpacity onPress={() => navigation.navigate('StudentMain')} style={{ marginRight: 8 }}>
+            <Ionicons name="arrow-back" size={24} color="#111827" />
+          </TouchableOpacity>
           <Image
             source={{ uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDJuOAM0oovCadUOqe7o0MWt9vcoFpRGEdgjO7cPgqqVCsYshnCKyK1lMVbi3anAJ2okLWbyQORuafp286VHHSmtcW_Kjr2pP7Y-kjpuZLR59HWmTuHI1z3dWxI4IqsD6Vmr0d8ltS0bvKm3_GjKfoLxcLCd5knrCCXAio2piHk6N_rc53DJvD2qsSaclvXAxF71x2DxB3NB6Pua1eWczGAgwW5AocHmyEKogYEdtzKw-2W-u3DWRJM3Ar2-Ga4MrAVntW_n5mD2P6U' }}
             style={styles.profilePic}
@@ -73,7 +77,7 @@ const CampusJournalFeedScreen = ({ navigation }) => {
               </View>
               <View style={styles.footerItem}>
                 <Ionicons name="location-outline" size={14} color="#6B7280" />
-                <Text style={styles.footerText}>Invertis Library</Text>
+                <Text style={styles.footerText}>{APP_CONFIG.UNIVERSITY_SHORT_NAME} Library</Text>
               </View>
             </View>
           </View>
@@ -85,7 +89,7 @@ const CampusJournalFeedScreen = ({ navigation }) => {
             <MaterialCommunityIcons name="auto-fix" size={24} color="#EA580C" />
           </View>
           <View style={styles.aiContent}>
-            <Text style={styles.aiTitle}>Invertia AI Reflection</Text>
+            <Text style={styles.aiTitle}>{APP_CONFIG.AI_ASSISTANT_NAME} Reflection</Text>
             <Text style={styles.aiText}>
               You've been extremely productive in the Library today! Your focused sessions are trending upwards. Why not reward yourself with a break at the cafeteria later?
             </Text>

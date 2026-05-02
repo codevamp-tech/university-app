@@ -8,6 +8,7 @@ import {
 import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import { APP_CONFIG } from '../../config/appConfig';
 
 const { width } = Dimensions.get('window');
 
@@ -46,7 +47,7 @@ const ERPDocumentsScreen = ({ navigation }) => {
             <Text style={styles.heroLabel}>SECURE REPOSITORY</Text>
             <Text style={styles.heroTitle}>Your Digital Vault.{'\n'}Verified & Permanent.</Text>
             <Text style={styles.heroDesc}>
-              Access your official Invertis University credentials with bank-grade security. Instant downloads, blockchain verification, and effortless sharing.
+              Access your official {APP_CONFIG.UNIVERSITY_NAME} credentials with bank-grade security. Instant downloads, blockchain verification, and effortless sharing.
             </Text>
             <View style={styles.heroBtns}>
               <TouchableOpacity style={styles.verifyBtn}>

@@ -51,15 +51,15 @@ const CampusJournalExplorerScreen = ({ navigation }) => {
       extraPhotos: 14
     },
     {
-      title: "Visit to Farmhouse",
+      title: "Industrial Tech Trip",
       date: 'NOV 04, 2023',
-      location: 'Green Meadows',
-      image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDC3SMhsh5lpfsviJ-MSxU3d2uVikQBgMD1HEQwsu6Tk_bFQMvwpOFhECP6HOwpMMs5DAQR34sNs2C_tNmmawjZrVD5oYk4D0kP8TTFwaS8GowqtyAYv2M_kKSTSr2aUfdLsCs1reH1RptCVoGT_3vRb1vaG6B7vddxzuzoO1l2wAtMyKIyu9u8bnKYXCJVUuK_q-w0Lpa7qs9rGcphaZpoOVOvrl1av6nnSGZv_06JNcFHW9EiJgcLoKcFmGBeu0D3IbGVIpweTRMs',
+      location: 'Noida Tech Zone',
+      image: 'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?q=80&w=1000&auto=format&fit=crop',
       details: [
-        'https://lh3.googleusercontent.com/aida-public/AB6AXuDP7yTkNOeCcGlg0F55DNyG-dTXE0pk0wiKJsNl1ftuivZJzB9lMLE2hgXRIGKnjRWWHJTytnuYr6oymuXUJ6K2WYJ0HRXC8mlav5cVmt-k2GMvEqw_EFD1A2PRPzTizVNsi-Yq0rOHWBSRKq0nRgNP_f48y77XrNOwtaYaIwKrn6-sgkV383ccT9OJry0fa_NerEE4K-FB85_lP6DZQMB1AgP-t2HpDSembWAcCADIDEc_cojrZHSgGSUe8uuelKTw3dzqDicLBIpn',
-        'https://lh3.googleusercontent.com/aida-public/AB6AXuDJjrQuK206ixAJ5Du-dY-zr57dCvkIUb1uHu3lA3ee0ZNVNsUciAaguYQ5s0lAqFeRSLp6owS8lauHQzCXijYp_T4tmWzB87btFrDfy-iO9sLbukzUdGDjuHgOcXNVp5segAXJVT0Zq5UU_Ve-r57cnTuIl12UIhWCH7SuKedWVf5VG-Fk40EaN2fhDfP8BcdxfY1FNKrFF8aBH_CeN0ruXjVYuK9CKJ7m3vMiwkYNXm6bToZJ2A5TwiS4nBB00EgcGgszVzhIl1qS'
+        'https://images.unsplash.com/photo-1518770660439-4636190af475?q=80&w=500&auto=format&fit=crop',
+        'https://images.unsplash.com/photo-1550751827-4bd374c3f58b?q=80&w=500&auto=format&fit=crop'
       ],
-      extraPhotos: 8
+      extraPhotos: 12
     }
   ];
 
@@ -68,6 +68,9 @@ const CampusJournalExplorerScreen = ({ navigation }) => {
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
         <View style={styles.headerLeft}>
+          <TouchableOpacity onPress={() => navigation.navigate('StudentMain')} style={{ marginRight: 8 }}>
+            <Ionicons name="arrow-back" size={24} color="#111827" />
+          </TouchableOpacity>
           <Image
             source={{ uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuA5eiPeOVvsDZzTS49GYwdSuvbKE3qojx7QZvxUoAnnrs2kNy858FgvoT6DfprGzfnh7shoB1N6Sae96Udnr82IvHKJkD_wlX7HnX9y3iz7yqmRxG-ZSfCia_q_7DUmyZWgRUhj661Y0b5NoWBLlQ3zvXH7xvp9qTb4tnwVYM-3onxnYYsNsWiH0zWv9lQuur-o_9CpRcPh6EJTKQTfQwCBn41s_OLWYES8XbOOCa54AqprIXpAjSHSfCtGcYi5FP5DCDo6tcnap4mI' }}
             style={styles.profilePic}

@@ -17,8 +17,8 @@ const HostelAmenitiesScreen = ({ navigation }) => {
   const hostels = {
     Boys: [
       {
-        name: 'Shivalik Boys Hostel',
-        rooms: '200 Rooms',
+        name: 'Himalaya Boys Hostel',
+        rooms: '220 Rooms',
         type: 'Single & Double Sharing',
         fee: '₹60,000/year',
         image: 'https://images.unsplash.com/photo-1555854877-bab0e564b8d5?q=80&w=400',
@@ -26,33 +26,87 @@ const HostelAmenitiesScreen = ({ navigation }) => {
         color: ['#4338CA', '#312E81'],
       },
       {
-        name: 'Himalaya Boys Hostel',
-        rooms: '150 Rooms',
-        type: 'Triple Sharing',
-        fee: '₹45,000/year',
+        name: 'Himgiri Boys Hostel',
+        rooms: '180 Rooms',
+        type: 'Double Sharing',
+        fee: '₹55,000/year',
         image: 'https://images.unsplash.com/photo-1568495248636-6432b97bd949?q=80&w=400',
         facilities: ['CCTV Security', 'WiFi', 'Indoor Sports', 'Study Hall'],
         color: ['#0891B2', '#065F73'],
       },
+      {
+        name: 'Aravali 1 Boys Hostel',
+        rooms: '150 Rooms',
+        type: 'Triple Sharing',
+        fee: '₹45,000/year',
+        image: 'https://images.unsplash.com/photo-1595526114035-0d45ed16cfbf?q=80&w=400',
+        facilities: ['CCTV Security', 'WiFi', 'Basketball Court', 'Laundry'],
+        color: ['#059669', '#064E3B'],
+      },
+      {
+        name: 'Aravali 2 Boys Hostel',
+        rooms: '150 Rooms',
+        type: 'Triple Sharing',
+        fee: '₹45,000/year',
+        image: 'https://images.unsplash.com/photo-1626178793926-22b28830aa30?q=80&w=400',
+        facilities: ['Security', 'WiFi', 'Common Room', 'Garden'],
+        color: ['#D97706', '#92400E'],
+      },
+      {
+        name: 'Nilgiri Boys Hostel',
+        rooms: '140 Rooms',
+        type: 'Double Sharing',
+        fee: '₹52,000/year',
+        image: 'https://images.unsplash.com/photo-1598911510795-d9f20e55ff68?q=80&w=400',
+        facilities: ['WiFi', '24/7 Water', 'Security', 'Library'],
+        color: ['#4B5563', '#1F2937'],
+      },
+      {
+        name: 'Shivalik Boys Hostel',
+        rooms: '200 Rooms',
+        type: 'Single Sharing',
+        fee: '₹65,000/year',
+        image: 'https://images.unsplash.com/photo-1527853787696-f7be74f2e3ee?q=80&w=400',
+        facilities: ['Air Conditioned', 'WiFi', 'Personal Storage', 'Gym'],
+        color: ['#6366F1', '#4338CA'],
+      },
     ],
     Girls: [
       {
-        name: 'Sahyadri Girls Hostel',
+        name: 'Kaveri Girls Hostel',
         rooms: '180 Rooms',
         type: 'Single & Double Sharing',
         fee: '₹65,000/year',
-        image: 'https://images.unsplash.com/photo-1543071220-6ee5bf71a54e?q=80&w=400',
+        image: 'https://images.unsplash.com/photo-1608198399988-341f9729926b?q=80&w=400',
         facilities: ['24/7 Lady Warden', 'CCTV', 'WiFi', 'Beauty Parlour', 'Common Room'],
         color: ['#DB2777', '#9D174D'],
       },
       {
-        name: 'Aravalli Girls Hostel',
+        name: 'Bhagirati Girls Hostel',
         rooms: '120 Rooms',
-        type: 'Triple Sharing',
-        fee: '₹48,000/year',
+        type: 'Double & Triple Sharing',
+        fee: '₹52,000/year',
         image: 'https://images.unsplash.com/photo-1631049307264-da0ec9d70304?q=80&w=400',
         facilities: ['Lady Security', 'WiFi', 'Garden Area', 'Study Room'],
         color: ['#7C3AED', '#5B21B6'],
+      },
+      {
+        name: 'Narmada Girls Hostel',
+        rooms: '150 Rooms',
+        type: 'Double Sharing',
+        fee: '₹58,000/year',
+        image: 'https://images.unsplash.com/photo-1621605815971-fbc98d665033?q=80&w=400',
+        facilities: ['Lady Warden', 'WiFi', 'Yoga Room', 'Gym'],
+        color: ['#EA580C', '#9A3412'],
+      },
+      {
+        name: 'Godavari Girls Hostel',
+        rooms: '130 Rooms',
+        type: 'Triple Sharing',
+        fee: '₹48,000/year',
+        image: 'https://images.unsplash.com/photo-1623341214825-9f4f963727da?q=80&w=400',
+        facilities: ['24/7 Security', 'WiFi', 'Indoor Games', 'Common Area'],
+        color: ['#059669', '#064E3B'],
       },
     ],
   };
@@ -139,7 +193,7 @@ const HostelAmenitiesScreen = ({ navigation }) => {
 
         {/* Mess & Food */}
         <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>🍽️ Mess & Food Plans</Text>
+          <Text style={styles.sectionTitle}>🍽️ Annapurna Mess & Food Plans</Text>
           {messFees.map((m, i) => (
             <View key={i} style={styles.messRow}>
               <View>

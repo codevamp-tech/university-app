@@ -8,7 +8,7 @@ import { useTheme } from '../../hooks/useTheme';
 
 const { width } = Dimensions.get('window');
 
-const TheHustleScreen = () => {
+const TheHustleScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
 
@@ -27,10 +27,12 @@ const TheHustleScreen = () => {
       
       {/* Header */}
       <View style={[styles.header, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
-        <TouchableOpacity style={styles.headerIconBtn}>
-          <MaterialIcons name="menu" size={26} color={colors.primary} />
-        </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>The Hustle</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={[styles.headerIconBtn, { marginRight: 8 }]}>
+            <MaterialIcons name="arrow-back" size={26} color={colors.primary} />
+          </TouchableOpacity>
+          <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>The Hustle</Text>
+        </View>
         <View style={styles.headerRight}>
           <TouchableOpacity style={styles.headerIconBtn}>
             <MaterialIcons name="notifications-none" size={26} color={colors.textSecondary} />

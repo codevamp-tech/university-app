@@ -5,6 +5,7 @@ import {
 import { Ionicons, MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import { APP_CONFIG } from '../../config/appConfig';
 
 const { width } = Dimensions.get('window');
 const DRAWER_WIDTH = width * 0.75;
@@ -76,7 +77,7 @@ const ChatScreen = ({ navigation }) => {
               <TouchableOpacity style={styles.menuBtn} onPress={toggleDrawer}>
                 <Ionicons name="menu" size={28} color="#1F2937" />
               </TouchableOpacity>
-              <Text style={styles.headerLogo}>Invertis Channels</Text>
+              <Text style={styles.headerLogo}>{APP_CONFIG.UNIVERSITY_SHORT_NAME} Channels</Text>
             </View>
             <View style={styles.headerRight}>
               <TouchableOpacity onPress={() => navigation.navigate('StudentSearch')}>
@@ -193,8 +194,8 @@ const ChatScreen = ({ navigation }) => {
               <MaterialCommunityIcons name="school" size={24} color="#FFFFFF" />
             </LinearGradient>
             <View>
-              <Text style={styles.drawerBrand}>Invertis</Text>
-              <Text style={styles.drawerSubBrand}>University Community</Text>
+              <Text style={styles.drawerBrand}>{APP_CONFIG.UNIVERSITY_SHORT_NAME}</Text>
+              <Text style={styles.drawerSubBrand}>{APP_CONFIG.UNIVERSITY_NAME} Community</Text>
             </View>
           </View>
 
@@ -204,11 +205,11 @@ const ChatScreen = ({ navigation }) => {
               style={[styles.channelItem, { backgroundColor: '#FFF7ED', borderColor: '#FB923C', borderWidth: 1 }]}
               onPress={() => {
                 toggleDrawer();
-                navigation.navigate('InvertisWelcome');
+                navigation.navigate('CampusAIWelcome');
               }}
             >
               <MaterialIcons name="smart-toy" size={22} color="#EA580C" />
-              <Text style={[styles.channelItemText, { color: '#EA580C' }]}>Invertis AI Assistant</Text>
+              <Text style={[styles.channelItemText, { color: '#EA580C' }]}>{APP_CONFIG.UNIVERSITY_SHORT_NAME} AI Assistant</Text>
               <View style={styles.newBadge}>
                 <Text style={styles.newBadgeText}>NEW</Text>
               </View>

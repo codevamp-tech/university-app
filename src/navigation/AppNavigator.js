@@ -16,6 +16,11 @@ import MainWalletScreen from '../screens/student/MainWalletScreen';
 import CartScreen from '../screens/student/CartScreen';
 import ProductDetailScreen from '../screens/student/ProductDetailScreen';
 
+// Campus Food Ordering
+import CampusBitesMenuScreen from '../screens/student/CampusBitesMenuScreen';
+import FoodItemDetailScreen from '../screens/student/FoodItemDetailScreen';
+import FoodCartScreen from '../screens/student/FoodCartScreen';
+
 // Student standalone screens
 import PersonalInfoScreen from '../screens/student/PersonalInfoScreen';
 import AcademicDetailsScreen from '../screens/student/AcademicDetailsScreen';
@@ -30,6 +35,11 @@ import ChatScreen from '../screens/student/ChatScreen';
 import StudentSearchScreen from '../screens/student/StudentSearchScreen';
 import OtherStudentProfileScreen from '../screens/student/OtherStudentProfileScreen';
 import RaiseIssueScreen from '../screens/student/RaiseIssueScreen';
+import SkillGapTestScreen from '../screens/student/SkillGapTestScreen';
+import DeepDiveAnalysisScreen from '../screens/student/DeepDiveAnalysisScreen';
+import FitnessDetailScreen from '../screens/student/FitnessDetailScreen';
+import LibraryMainScreen from '../screens/student/library/LibraryMainScreen';
+import BookDetailScreen from '../screens/student/library/BookDetailScreen';
 
 // Mentally Module Screens
 import MentallyMainScreen from '../screens/student/mentally/MentallyMainScreen';
@@ -37,12 +47,13 @@ import DigitalDetoxScreen from '../screens/student/mentally/DigitalDetoxScreen';
 import GuidedMeditationScreen from '../screens/student/mentally/GuidedMeditationScreen';
 import MoodJournalScreen from '../screens/student/mentally/MoodJournalScreen';
 import ZenMusicScreen from '../screens/student/mentally/ZenMusicScreen';
+import CounsellorBookingScreen from '../screens/student/mentally/CounsellorBookingScreen';
 
-// Invertis AI Assistant Screens
-import InvertisWelcomeScreen from '../screens/student/ai/InvertisWelcomeScreen';
-import InvertisChatScreen from '../screens/student/ai/InvertisChatScreen';
-import InvertisThinkingScreen from '../screens/student/ai/InvertisThinkingScreen';
-import InvertisHelpScreen from '../screens/student/ai/InvertisHelpScreen';
+// AI Assistant Screens
+import CampusAIWelcomeScreen from '../screens/student/ai/CampusAIWelcomeScreen';
+import CampusAIChatScreen from '../screens/student/ai/CampusAIChatScreen';
+import CampusAIThinkingScreen from '../screens/student/ai/CampusAIThinkingScreen';
+import CampusAIHelpScreen from '../screens/student/ai/CampusAIHelpScreen';
 
 // Campus Journal Screens
 import CampusJournalFeedScreen from '../screens/student/journal/CampusJournalFeedScreen';
@@ -103,10 +114,20 @@ const AppNavigator = () => {
       <Stack.Screen name="ProductDetail" component={ProductDetailScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="TheHustle" component={TheHustleScreen} options={{ animation: 'fade' }} />
       <Stack.Screen name="ERPHub" component={ERPTabs} options={{ animation: 'fade' }} />
+
+      {/* Campus Food Ordering */}
+      <Stack.Screen name="CampusBitesMenu" component={CampusBitesMenuScreen} options={{ animation: 'slide_from_bottom' }} />
+      <Stack.Screen name="FoodItemDetail" component={FoodItemDetailScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="FoodCart" component={FoodCartScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="Chat" component={ChatScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="StudentSearch" component={StudentSearchScreen} options={{ animation: 'fade', presentation: 'transparentModal' }} />
       <Stack.Screen name="OtherStudentProfile" component={OtherStudentProfileScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="RaiseIssue" component={RaiseIssueScreen} options={{ animation: 'slide_from_bottom' }} />
+      <Stack.Screen name="SkillGapTest" component={SkillGapTestScreen} options={{ animation: 'slide_from_bottom' }} />
+      <Stack.Screen name="DeepDiveAnalysis" component={DeepDiveAnalysisScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="FitnessDetail" component={FitnessDetailScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="LibraryMain" component={LibraryMainScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="BookDetail" component={BookDetailScreen} options={{ animation: 'slide_from_right' }} />
 
       {/* Mentally Module */}
       <Stack.Screen name="MentallyMain" component={MentallyMainScreen} options={{ animation: 'slide_from_bottom' }} />
@@ -114,12 +135,13 @@ const AppNavigator = () => {
       <Stack.Screen name="GuidedMeditation" component={GuidedMeditationScreen} options={{ animation: 'fade' }} />
       <Stack.Screen name="MoodJournal" component={MoodJournalScreen} options={{ animation: 'fade' }} />
       <Stack.Screen name="ZenMusic" component={ZenMusicScreen} options={{ animation: 'fade' }} />
+      <Stack.Screen name="CounsellorBooking" component={CounsellorBookingScreen} options={{ animation: 'slide_from_right' }} />
 
-      {/* Invertis AI Assistant Module */}
-      <Stack.Screen name="InvertisWelcome" component={InvertisWelcomeScreen} options={{ animation: 'slide_from_bottom' }} />
-      <Stack.Screen name="InvertisChat" component={InvertisChatScreen} options={{ animation: 'fade' }} />
-      <Stack.Screen name="InvertisThinking" component={InvertisThinkingScreen} options={{ animation: 'fade' }} />
-      <Stack.Screen name="InvertisHelp" component={InvertisHelpScreen} options={{ animation: 'fade' }} />
+      {/* AI Assistant Module */}
+      <Stack.Screen name="CampusAIWelcome" component={CampusAIWelcomeScreen} options={{ animation: 'slide_from_bottom' }} />
+      <Stack.Screen name="CampusAIChat" component={CampusAIChatScreen} options={{ animation: 'fade' }} />
+      <Stack.Screen name="CampusAIThinking" component={CampusAIThinkingScreen} options={{ animation: 'fade' }} />
+      <Stack.Screen name="CampusAIHelp" component={CampusAIHelpScreen} options={{ animation: 'fade' }} />
 
       {/* Campus Journal Module */}
       <Stack.Screen name="CampusJournal" component={JournalTabs} options={{ animation: 'slide_from_bottom' }} />

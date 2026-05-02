@@ -12,10 +12,11 @@ import {
 } from 'react-native';
 import { Ionicons, MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { APP_CONFIG } from '../../../config/appConfig';
 
 const { width } = Dimensions.get('window');
 
-const InvertisThinkingScreen = ({ navigation, route }) => {
+const CampusAIThinkingScreen = ({ navigation, route }) => {
   const query = route.params?.query || 'Analyzing query...';
   
   const pulseAnim = useRef(new Animated.Value(0.4)).current;
@@ -76,7 +77,7 @@ const InvertisThinkingScreen = ({ navigation, route }) => {
           <View style={styles.mascotGlow}>
             <MaterialIcons name="smart-toy" size={20} color="#FFFFFF" />
           </View>
-          <Text style={styles.headerTitle}>Invertis AI Assistant</Text>
+          <Text style={styles.headerTitle}>{APP_CONFIG.AI_ASSISTANT_NAME}</Text>
         </View>
         <TouchableOpacity style={styles.moreBtn}>
           <Ionicons name="ellipsis-vertical" size={20} color="#6B7280" />
@@ -106,7 +107,7 @@ const InvertisThinkingScreen = ({ navigation, route }) => {
                 <Animated.View style={[styles.dot, { opacity: dot3 }]} />
               </View>
               
-              <Text style={styles.thinkingText}>Analyzing academic data from ERP...</Text>
+              <Text style={styles.thinkingText}>Analyzing academic data from {APP_CONFIG.UNIVERSITY_ID_PREFIX} ERP...</Text>
               
               <View style={styles.progressBarBg}>
                 <Animated.View 
@@ -350,4 +351,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default InvertisThinkingScreen;
+export default CampusAIThinkingScreen;

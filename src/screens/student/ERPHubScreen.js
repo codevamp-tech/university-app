@@ -8,6 +8,7 @@ import {
 import { MaterialIcons, MaterialCommunityIcons, Feather, Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import { APP_CONFIG } from '../../config/appConfig';
 
 const { width } = Dimensions.get('window');
 
@@ -52,12 +53,15 @@ const ERPHubScreen = ({ navigation }) => {
       {/* Header */}
       <View style={[styles.header, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
         <View style={styles.headerLeft}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginRight: 4 }}>
+            <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
+          </TouchableOpacity>
           <LinearGradient colors={['#EA580C', '#9A3412']} style={styles.logoIconBg}>
             <MaterialCommunityIcons name="account-balance-wallet" size={18} color="#FFFFFF" />
           </LinearGradient>
           <View>
             <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>ERP Hub</Text>
-            <Text style={[styles.headerSub, { color: colors.textSecondary }]}>Invertis University</Text>
+            <Text style={[styles.headerSub, { color: colors.textSecondary }]}>{APP_CONFIG.UNIVERSITY_NAME}</Text>
           </View>
         </View>
         <View style={styles.headerRight}>
@@ -134,19 +138,10 @@ const ERPHubScreen = ({ navigation }) => {
             </View>
             <Text style={[styles.busPassTitle, { color: isDark ? '#818CF8' : '#4338CA' }]}>Smart Bus Pass</Text>
             <Text style={[styles.busPassDesc, { color: colors.textSecondary }]}>
-              Route 14: Bareilly Junction → University Campus
+              Route 14: City Center → {APP_CONFIG.UNIVERSITY_SHORT_NAME} Campus
             </Text>
 
-            <View style={styles.busInfoRow}>
-              <View style={[styles.busInfoChip, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
-                <MaterialIcons name="access-time" size={12} color={isDark ? '#818CF8' : '#4338CA'} />
-                <Text style={[styles.busInfoChipText, { color: isDark ? '#818CF8' : '#4338CA' }]}>Next bus in 12 mins</Text>
-              </View>
 
-              <View style={[styles.busInfoChip, { backgroundColor: '#4338CA' }]}>
-                <Text style={[styles.busInfoChipText, { color: '#FFFFFF' }]}>Seat 14B</Text>
-              </View>
-            </View>
             <TouchableOpacity style={[styles.showPassBtn, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
               <MaterialIcons name="qr-code-2" size={18} color={isDark ? '#818CF8' : '#4338CA'} />
               <Text style={[styles.showPassText, { color: isDark ? '#818CF8' : '#4338CA' }]}>Show Pass</Text>
@@ -190,6 +185,28 @@ const ERPHubScreen = ({ navigation }) => {
             </TouchableOpacity>
           </View>
 
+
+          {/* Attendance */}
+          <TouchableOpacity
+            style={[styles.essentialCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+            onPress={() => navigation.navigate('ERPAttendanceTab')}
+            activeOpacity={0.85}
+          >
+            <LinearGradient colors={isDark ? ['#064E3B', '#047857'] : ['#ECFDF5', '#DCFCE7']} style={styles.essentialIconBg}>
+              <MaterialCommunityIcons name="shield-check" size={22} color={isDark ? '#34D399' : '#059669'} />
+            </LinearGradient>
+            <View style={styles.essentialContent}>
+              <Text style={[styles.essentialCardTitle, { color: colors.textPrimary }]}>Attendance</Text>
+              <Text style={[styles.essentialCardDesc, { color: colors.textSecondary }]}>View your subject-wise attendance insights.</Text>
+
+              <View style={styles.essentialFooter}>
+                <View style={[styles.dueBadge, { backgroundColor: isDark ? 'rgba(52, 211, 153, 0.2)' : '#ECFDF5' }]}>
+                  <Text style={[styles.dueText, { color: isDark ? '#34D399' : '#059669' }]}>85% Overall</Text>
+                </View>
+                <MaterialIcons name="chevron-right" size={20} color={colors.textMuted} />
+              </View>
+            </View>
+          </TouchableOpacity>
 
           {/* Fees */}
           <TouchableOpacity
@@ -371,8 +388,8 @@ const ERPHubScreen = ({ navigation }) => {
                   <MaterialIcons name="school" size={14} color="#FFFFFF" />
                 </LinearGradient>
                 <View>
-                  <Text style={styles.lcUniversityName}>Invertis University</Text>
-                  <Text style={styles.lcBareilly}>Bareilly, Uttar Pradesh</Text>
+                  <Text style={styles.lcUniversityName}>{APP_CONFIG.UNIVERSITY_NAME}</Text>
+                  <Text style={styles.lcBareilly}>{APP_CONFIG.CAMPUS_LOCATION}</Text>
                 </View>
               </View>
               <View style={styles.lcCardTypeBadge}>
@@ -391,7 +408,7 @@ const ERPHubScreen = ({ navigation }) => {
                 <Text style={styles.lcStudentSem}>Semester VII  •  Section A</Text>
                 <View style={styles.lcIdRow}>
                   <Text style={styles.lcIdLabel}>ID: </Text>
-                  <Text style={styles.lcIdValue}>INV2024001</Text>
+                  <Text style={styles.lcIdValue}>{APP_CONFIG.UNIVERSITY_ID_PREFIX}2024001</Text>
                 </View>
               </View>
             </View>
@@ -429,7 +446,7 @@ const ERPHubScreen = ({ navigation }) => {
                   />
                 ))}
               </View>
-              <Text style={styles.lcBarcodeText}>INV-LIB-2024-001</Text>
+              <Text style={styles.lcBarcodeText}>{APP_CONFIG.UNIVERSITY_ID_PREFIX}-LIB-2024-001</Text>
             </View>
 
             <View style={styles.lcFooterRow}>
@@ -532,7 +549,7 @@ const ERPHubScreen = ({ navigation }) => {
                 />
                 <Text style={styles.drawerName}>Aryan Kumar</Text>
                 <Text style={styles.drawerRole}>B.Tech CSE - VII Sem</Text>
-                <Text style={styles.drawerId}>ID: INV2024001</Text>
+                <Text style={styles.drawerId}>ID: {APP_CONFIG.UNIVERSITY_ID_PREFIX}2024001</Text>
               </LinearGradient>
 
               <View style={styles.drawerItems}>

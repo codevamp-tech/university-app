@@ -12,6 +12,7 @@ import {
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../../constants/colors';
+import { APP_CONFIG } from '../../config/appConfig';
 
 const { width } = Dimensions.get('window');
 
@@ -21,7 +22,7 @@ const FACULTY = [
     name: 'Dr. Amitabh Sharma',
     role: 'Head of Department',
     dept: 'Computer Science',
-    email: 'amitabh.s@invertis.org',
+    email: `amitabh.s@${APP_CONFIG.UNIVERSITY_DOMAIN}`,
     image: 'https://api.aifaces.com/api/v1/face?seed=doctor',
   },
   {
@@ -29,7 +30,7 @@ const FACULTY = [
     name: 'Prof. Sneha Gupta',
     role: 'Associate Professor',
     dept: 'Artificial Intelligence',
-    email: 'sneha.g@invertis.org',
+    email: `sneha.g@${APP_CONFIG.UNIVERSITY_DOMAIN}`,
     image: 'https://api.aifaces.com/api/v1/face?seed=professor',
   },
   {
@@ -37,7 +38,7 @@ const FACULTY = [
     name: 'Mr. Rajeev Verma',
     role: 'Senior Lecturer',
     dept: 'Software Engineering',
-    email: 'rajeev.v@invertis.org',
+    email: `rajeev.v@${APP_CONFIG.UNIVERSITY_DOMAIN}`,
     image: 'https://api.aifaces.com/api/v1/face?seed=rajeev',
   },
   {
@@ -45,7 +46,7 @@ const FACULTY = [
     name: 'Dr. Meera Iyer',
     role: 'Assistant Professor',
     dept: 'Data Science',
-    email: 'meera.i@invertis.org',
+    email: `meera.i@${APP_CONFIG.UNIVERSITY_DOMAIN}`,
     image: 'https://api.aifaces.com/api/v1/face?seed=meera',
   },
 ];

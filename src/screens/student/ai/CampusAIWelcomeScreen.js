@@ -12,10 +12,11 @@ import {
 } from 'react-native';
 import { Ionicons, MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { APP_CONFIG } from '../../../config/appConfig';
 
 const { width } = Dimensions.get('window');
 
-const InvertisWelcomeScreen = ({ navigation }) => {
+const CampusAIWelcomeScreen = ({ navigation }) => {
   const SUGGESTIONS = [
     {
       id: '1',
@@ -78,7 +79,7 @@ const InvertisWelcomeScreen = ({ navigation }) => {
               style={styles.mascotSmall}
             />
           </View>
-          <Text style={styles.headerTitle}>Invertis AI Assistant</Text>
+          <Text style={styles.headerTitle}>{APP_CONFIG.AI_ASSISTANT_NAME}</Text>
         </View>
         <TouchableOpacity style={styles.moreBtn}>
           <Ionicons name="ellipsis-vertical" size={20} color="#6B7280" />
@@ -100,7 +101,7 @@ const InvertisWelcomeScreen = ({ navigation }) => {
           </View>
           <Text style={styles.heroGreeting}>
             Namaste! I'm {'\n'}
-            <Text style={styles.heroHighlight}>Invertis AI.</Text>
+            <Text style={styles.heroHighlight}>{APP_CONFIG.UNIVERSITY_SHORT_NAME} AI.</Text>
           </Text>
           <Text style={styles.heroSubtext}>
             Your personal campus co-pilot. Ask me about your classes, attendance, fees, or even for career guidance.
@@ -113,7 +114,7 @@ const InvertisWelcomeScreen = ({ navigation }) => {
             <TouchableOpacity
               key={item.id}
               style={styles.card}
-              onPress={() => navigation.navigate('InvertisChat', { initialQuery: item.title })}
+              onPress={() => navigation.navigate('CampusAIChat', { initialQuery: item.title })}
             >
               <View style={[styles.iconContainer, { backgroundColor: item.bgColor }]}>
                 {renderIcon(item)}
@@ -137,7 +138,7 @@ const InvertisWelcomeScreen = ({ navigation }) => {
           <Text style={styles.placeholderText}>Type a message...</Text>
           <TouchableOpacity 
             style={styles.sendBtn}
-            onPress={() => navigation.navigate('InvertisChat')}
+            onPress={() => navigation.navigate('CampusAIChat')}
           >
             <LinearGradient
               colors={['#EA580C', '#9A3412']}
@@ -333,4 +334,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default InvertisWelcomeScreen;
+export default CampusAIWelcomeScreen;

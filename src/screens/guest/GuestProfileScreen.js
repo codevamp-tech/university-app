@@ -13,6 +13,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather, MaterialCommunityIcons, Ionicons, FontAwesome5 } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { APP_CONFIG } from '../../config/appConfig';
 
 const { width } = Dimensions.get('window');
 
@@ -64,7 +65,7 @@ const GuestProfileScreen = ({ navigation }) => {
               </LinearGradient>
             </View>
             <Text style={styles.proName}>Guest User</Text>
-            <Text style={styles.proEmail}>exploring@invertis.edu</Text>
+            <Text style={styles.proEmail}>exploring@{APP_CONFIG.STUDENT_EMAIL_DOMAIN}</Text>
           </View>
         </LinearGradient>
 

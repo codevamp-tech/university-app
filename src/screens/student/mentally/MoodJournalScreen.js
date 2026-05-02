@@ -13,6 +13,7 @@ import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../../hooks/useTheme';
+import { APP_CONFIG } from '../../../config/appConfig';
 
 
 const { width } = Dimensions.get('window');
@@ -70,7 +71,7 @@ const MoodJournalScreen = ({ navigation }) => {
         {/* Hero Header */}
         <View style={styles.heroSection}>
           <Text style={[styles.heroTitle, { color: colors.textPrimary }]}>Mood Journal</Text>
-          <Text style={[styles.heroSub, { color: colors.textSecondary }]}>How’s your headspace today, Invertis student?</Text>
+          <Text style={[styles.heroSub, { color: colors.textSecondary }]}>How’s your headspace today, {APP_CONFIG.UNIVERSITY_SHORT_NAME} student?</Text>
         </View>
 
 
@@ -210,31 +211,6 @@ const MoodJournalScreen = ({ navigation }) => {
         <View style={{ height: 120 }} />
       </ScrollView>
 
-      {/* Bottom Navigation Mimic */}
-      <View style={[styles.bottomNav, { paddingBottom: insets.bottom || 20, backgroundColor: isDark ? 'rgba(30, 41, 59, 0.95)' : 'rgba(255, 255, 255, 0.85)', borderTopColor: colors.border, borderTopWidth: 1 }]}>
-        <TouchableOpacity style={styles.navItem}>
-          <MaterialIcons name="library-music" size={24} color={colors.textSecondary} />
-          <Text style={[styles.navText, { color: colors.textSecondary }]}>Zen</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem}>
-          <MaterialIcons name="self-improvement" size={24} color={colors.textSecondary} />
-          <Text style={[styles.navText, { color: colors.textSecondary }]}>Meditate</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={[styles.navItem, styles.navItemActive]}>
-          <View style={[styles.activeIndicator, { backgroundColor: isDark ? 'rgba(254, 152, 50, 0.2)' : 'rgba(139, 75, 0, 0.1)' }]}>
-            <MaterialIcons name="edit-note" size={24} color={colors.primary} />
-            <Text style={[styles.navText, { color: colors.primary }]}>Journal</Text>
-          </View>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem}>
-          <MaterialIcons name="timer-off" size={24} color={colors.textSecondary} />
-          <Text style={[styles.navText, { color: colors.textSecondary }]}>Detox</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem}>
-          <MaterialIcons name="person" size={24} color={colors.textSecondary} />
-          <Text style={[styles.navText, { color: colors.textSecondary }]}>Profile</Text>
-        </TouchableOpacity>
-      </View>
 
     </View>
   );
@@ -500,40 +476,6 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
 
-  bottomNav: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'center',
-    paddingTop: 12,
-    borderTopLeftRadius: 48,
-    borderTopRightRadius: 48,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -8 },
-    shadowOpacity: 0.05,
-    shadowRadius: 32,
-    elevation: 10,
-  },
-
-  navItem: {
-    alignItems: 'center',
-    padding: 12,
-  },
-  activeIndicator: {
-    backgroundColor: 'rgba(139, 75, 0, 0.1)',
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 999,
-    alignItems: 'center',
-  },
-  navText: {
-    fontSize: 11,
-    fontWeight: '600',
-    marginTop: 4,
-  },
 
 });
 

@@ -14,11 +14,12 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 
+import { APP_CONFIG } from '../config/appConfig';
+
 const LoginScreen = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const [securityKey, setSecurityKey] = useState('');
   const [loading, setLoading] = useState(false);
-  const [role, setRole] = useState('Student');
   const insets = useSafeAreaInsets();
 
   const handleLogin = () => {
@@ -29,11 +30,7 @@ const LoginScreen = ({ navigation }) => {
     setLoading(true);
     setTimeout(() => {
       setLoading(false);
-      if (role === 'Teacher') {
-        navigation.replace('TeacherMain');
-      } else {
-        navigation.replace('StudentMain');
-      }
+      navigation.replace('StudentMain');
     }, 1200);
   };
 
@@ -66,23 +63,6 @@ const LoginScreen = ({ navigation }) => {
             </Text>
           </View>
 
-          {/* Role Selector */}
-          <View style={styles.roleContainer}>
-            <TouchableOpacity
-              style={[styles.roleTab, role === 'Student' && styles.roleTabActive]}
-              onPress={() => setRole('Student')}
-              activeOpacity={0.8}
-            >
-              <Text style={[styles.roleTabText, role === 'Student' && styles.roleTabTextActive]}>Student</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.roleTab, role === 'Teacher' && styles.roleTabActive]}
-              onPress={() => setRole('Teacher')}
-              activeOpacity={0.8}
-            >
-              <Text style={[styles.roleTabText, role === 'Teacher' && styles.roleTabTextActive]}>Teacher</Text>
-            </TouchableOpacity>
-          </View>
 
           {/* Form Section */}
           <View style={styles.formContainer}>
@@ -91,7 +71,7 @@ const LoginScreen = ({ navigation }) => {
               <Text style={styles.inputLabel}>ACADEMIC EMAIL</Text>
               <TextInput
                 style={styles.input}
-                placeholder="name@invertis.edu"
+                placeholder={`name@${APP_CONFIG.STUDENT_EMAIL_DOMAIN}`}
 
                 placeholderTextColor="#9CA3AF"
                 value={email}
@@ -151,10 +131,6 @@ const LoginScreen = ({ navigation }) => {
 
           {/* Footer Section */}
           <View style={styles.footerContainer}>
-            <TouchableOpacity>
-              <Text style={styles.enrollmentLink}>New to the faculty? Apply for Enrollment</Text>
-            </TouchableOpacity>
-
             <View style={styles.footerLinks}>
               <TouchableOpacity>
                 <Text style={styles.footerLinkText}>LEGAL POLICY</Text>
@@ -201,35 +177,6 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     lineHeight: 22,
     letterSpacing: -0.2,
-  },
-  roleContainer: {
-    flexDirection: 'row',
-    backgroundColor: '#F3F4F6',
-    borderRadius: 999,
-    padding: 4,
-    marginBottom: 32,
-  },
-  roleTab: {
-    flex: 1,
-    paddingVertical: 12,
-    alignItems: 'center',
-    borderRadius: 999,
-  },
-  roleTabActive: {
-    backgroundColor: '#FFFFFF',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  roleTabText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#6B7280',
-  },
-  roleTabTextActive: {
-    color: '#111827',
   },
   formContainer: {
     marginBottom: 32,
@@ -312,13 +259,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 'auto',
     paddingTop: 40,
-  },
-  enrollmentLink: {
-    fontSize: 14,
-    color: '#4338CA',
-    fontWeight: '500',
-    textDecorationLine: 'underline',
-    marginBottom: 20,
   },
   footerLinks: {
     flexDirection: 'row',

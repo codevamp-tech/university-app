@@ -1,5 +1,6 @@
 import React from 'react';
 import { useTheme } from '../../hooks/useTheme';
+import { APP_CONFIG } from '../../config/appConfig';
 
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
@@ -176,7 +177,7 @@ const ERPFeesScreen = ({ navigation }) => {
             </View>
             <View style={styles.transInfo}>
               <Text style={[styles.transName, { color: colors.textPrimary }]}>Hostel Admission Fee</Text>
-              <Text style={[styles.transId, { color: colors.textSecondary }]}>Transaction ID: #INV-982341 | 12 Jul 2024</Text>
+              <Text style={[styles.transId, { color: colors.textSecondary }]}>Transaction ID: #{APP_CONFIG.UNIVERSITY_ID_PREFIX}-982341 | 12 Jul 2024</Text>
             </View>
             <View style={styles.transRight}>
               <Text style={[styles.transAmount, { color: colors.primary }]}>₹ 35,000</Text>
@@ -195,7 +196,7 @@ const ERPFeesScreen = ({ navigation }) => {
             </View>
             <View style={styles.transInfo}>
               <Text style={[styles.transName, { color: colors.textPrimary }]}>Carry Over Exam Fee</Text>
-              <Text style={[styles.transId, { color: colors.textSecondary }]}>Transaction ID: #INV-982105 | 05 Jun 2024</Text>
+              <Text style={[styles.transId, { color: colors.textSecondary }]}>Transaction ID: #{APP_CONFIG.UNIVERSITY_ID_PREFIX}-982105 | 05 Jun 2024</Text>
             </View>
             <View style={styles.transRight}>
               <Text style={[styles.transAmount, { color: colors.primary }]}>₹ 1,500</Text>
@@ -215,16 +216,16 @@ const ERPFeesScreen = ({ navigation }) => {
             colors={isDark ? ['#1E1B4B', '#0F172A'] : ['#312E81', '#1E1B4B']}
             style={[styles.footerCard, { borderColor: isDark ? colors.border : 'transparent', borderWidth: isDark ? 1 : 0 }]}
           >
-            <Text style={styles.footerTitle}>Invertis University</Text>
+            <Text style={styles.footerTitle}>{APP_CONFIG.UNIVERSITY_NAME}</Text>
             <Text style={[styles.footerAddr, { color: isDark ? 'rgba(148, 163, 184, 0.8)' : 'rgba(199,210,254,0.8)' }]}>
-              NH-24, Bareilly-Lucknow Highway,{'\n'}
+              {APP_CONFIG.CAMPUS_LOCATION}{'\n'}
               Bareilly, Uttar Pradesh 243123{'\n'}
               Contact: +91 0581-2460442
             </Text>
             <View style={styles.footerInfo}>
               <View>
                 <Text style={styles.footerInfoLabel}>FINANCE HELPDESK</Text>
-                <Text style={styles.footerInfoText}>finance@invertis.org</Text>
+                <Text style={styles.footerInfoText}>finance@${APP_CONFIG.UNIVERSITY_DOMAIN}</Text>
               </View>
               <View style={[styles.footerDivider, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.2)' }]} />
               <View>
@@ -323,10 +324,10 @@ const styles = StyleSheet.create({
   quickPayHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 18 },
   quickPayTitle: { fontSize: 19, fontWeight: '900' },
 
-  payGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  payGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 12 },
   payGridItem: {
     borderRadius: 16, padding: 16, alignItems: 'center', gap: 10,
-    width: (width - 32 - 48 - 12) / 2,
+    width: '48%',
   },
   payGridIcon: { width: 48, height: 48, borderRadius: 24, justifyContent: 'center', alignItems: 'center' },
   payGridLabel: { fontSize: 11, fontWeight: '700' },

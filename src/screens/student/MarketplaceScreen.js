@@ -6,6 +6,7 @@ import { Ionicons, MaterialIcons, MaterialCommunityIcons } from '@expo/vector-ic
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../hooks/useTheme';
+import { APP_CONFIG } from '../../config/appConfig';
 
 
 const { width } = Dimensions.get('window');
@@ -33,7 +34,7 @@ const MarketplaceScreen = ({ navigation }) => {
             source={{ uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuC6mmtjUA28NY_AB8YFu2Ri2e3lSkRbJCYpAbrgwHHzzLntRM9rNTLFJIT-pf3fW5gQ-_hRX8LB8ZDdqw5ls_d4bA10oIXuBlKp8kv7onee50cVXADdy7BPVn6kAg4Co9Gbp6XiTx5yITLttWLtkQQag4sVTILELHpLT0_-WAXmJWUVCHpSfhFuYmROstnRxdO_T4ym_KOCd8CmJm60WORR2yoPF8RiqYCiJsTUrQcbumydveuPeijNqG_991IufFMlU7g1DbJ3nqtG' }}
             style={[styles.avatarTiny, { borderColor: colors.border, borderWidth: 1 }]}
           />
-          <Text style={[styles.headerLogo, { color: colors.textPrimary }]}>Invertis Hub</Text>
+          <Text style={[styles.headerLogo, { color: colors.textPrimary }]}>{APP_CONFIG.UNIVERSITY_SHORT_NAME} Hub</Text>
         </View>
 
         <View style={styles.headerRight}>
@@ -65,7 +66,7 @@ const MarketplaceScreen = ({ navigation }) => {
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
 
-        {/* Invertis Marketplace Hero Banner */}
+        {/* Marketplace Hero Banner */}
         <View style={styles.sectionContainer}>
           <View style={styles.heroCard}>
             <ImageBackground
@@ -77,7 +78,7 @@ const MarketplaceScreen = ({ navigation }) => {
                 style={styles.heroOverlay}
               >
                 <View style={styles.heroBadge}>
-                  <Text style={styles.heroBadgeText}>Invertis MARKETPLACE</Text>
+                  <Text style={styles.heroBadgeText}>{APP_CONFIG.UNIVERSITY_SHORT_NAME} MARKETPLACE</Text>
                 </View>
                 <Text style={styles.heroTitle}>Turn your skills into Campus Credits.</Text>
                 <Text style={styles.heroSub}>The student economy is booming. Hire a peer or sell your gear.</Text>
@@ -153,15 +154,15 @@ const MarketplaceScreen = ({ navigation }) => {
             </View>
 
             <View style={styles.gigContent}>
-              <Text style={[styles.gigTitle, { color: colors.textPrimary }]}>Python Debugging & Code Review</Text>
-              <Text style={[styles.gigDesc, { color: colors.textSecondary }]}>Struggling with your semester projects? I provide professional code audits and logic debugging for Python applications.</Text>
+              <Text style={[styles.gigTitle, { color: colors.textPrimary }]}>Python Mentorship from a Senior</Text>
+              <Text style={[styles.gigDesc, { color: colors.textSecondary }]}>Get 1-on-1 guidance from a senior developer. Master Python concepts, architecture patterns, and industry best practices.</Text>
 
 
               <View style={[styles.gigAuthorRow, { borderBottomColor: colors.border }]}>
-                <Image source={{ uri: 'https://i.pravatar.cc/100?u=rahul' }} style={styles.gigAuthorImg} />
+                <Image source={{ uri: 'https://randomuser.me/api/portraits/men/32.jpg' }} style={styles.gigAuthorImg} />
                 <View>
                   <Text style={[styles.gigAuthorName, { color: colors.textPrimary }]}>Rahul Verma</Text>
-                  <Text style={[styles.gigAuthorSub, { color: colors.textSecondary }]}>B.Tech CS, 3rd Year</Text>
+                  <Text style={[styles.gigAuthorSub, { color: colors.textSecondary }]}>B.Tech CS, 4th Year</Text>
                 </View>
               </View>
 
@@ -221,15 +222,15 @@ const MarketplaceScreen = ({ navigation }) => {
                   id: 1,
                   title: 'B.Tech 3rd Sem Books',
                   price: '₹650',
-                  image: 'https://images.unsplash.com/photo-1512820790803-83ca734da794?q=80&w=2098&auto=format&fit=crop',
+                  image: 'https://images.unsplash.com/photo-1497633762265-9d179a990aa6?q=80&w=2073&auto=format&fit=crop',
                   desc: 'Complete set of core subject books for B.Tech CS 3rd Semester. Perfect for exam prep.',
                   badge: 'USED - GOOD',
-                  seller: { name: 'Rahul Verma', year: '4th Year, CS', avatar: 'https://i.pravatar.cc/150?u=rahul' }
+                  seller: { name: 'Rahul Verma', year: '4th Year, CS', avatar: 'https://randomuser.me/api/portraits/men/32.jpg' }
                 }
               })}
             >
               <View style={styles.itemImgBox}>
-                <Image source={{ uri: 'https://images.unsplash.com/photo-1512820790803-83ca734da794?q=80&w=2098&auto=format&fit=crop' }} style={styles.itemImg} />
+                <Image source={{ uri: 'https://images.unsplash.com/photo-1497633762265-9d179a990aa6?q=80&w=2073&auto=format&fit=crop' }} style={styles.itemImg} />
                 <View style={[styles.itemBadge, { backgroundColor: isDark ? colors.background : '#FFFFFF' }]}>
                   <Text style={[styles.itemBadgeText, { color: colors.textPrimary }]}>USED - GOOD</Text>
                 </View>
@@ -261,15 +262,15 @@ const MarketplaceScreen = ({ navigation }) => {
                   id: 2,
                   title: 'Lab Coat (Size M)',
                   price: '₹250',
-                  image: 'https://images.unsplash.com/photo-1584031908035-776eb8a40552?q=80&w=2000&auto=format&fit=crop',
+                  image: 'https://images.unsplash.com/photo-1518152006812-edab29b069ac?q=80&w=2070&auto=format&fit=crop',
                   desc: 'Standard white lab coat, clean and ironed. Mandatory for chemistry and physics labs.',
                   badge: 'NEAR NEW',
-                  seller: { name: 'Aryan Singh', year: '2nd Year, ME', avatar: 'https://i.pravatar.cc/150?u=aryan' }
+                  seller: { name: 'Aryan Singh', year: '2nd Year, ME', avatar: 'https://randomuser.me/api/portraits/men/44.jpg' }
                 }
               })}
             >
               <View style={styles.itemImgBox}>
-                <Image source={{ uri: 'https://images.unsplash.com/photo-1584031908035-776eb8a40552?q=80&w=2000&auto=format&fit=crop' }} style={styles.itemImg} />
+                <Image source={{ uri: 'https://images.unsplash.com/photo-1518152006812-edab29b069ac?q=80&w=2070&auto=format&fit=crop' }} style={styles.itemImg} />
                 <View style={[styles.itemBadge, { backgroundColor: isDark ? '#374151' : '#E5E7EB' }]}>
                   <Text style={[styles.itemBadgeText, { color: isDark ? '#E5E7EB' : '#374151' }]}>NEAR NEW</Text>
                 </View>
@@ -297,7 +298,7 @@ const MarketplaceScreen = ({ navigation }) => {
                   image: 'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?q=80&w=2000&auto=format&fit=crop',
                   desc: 'M1 Space Grey, 8GB/256GB. Battery health 92%. Best for CS students.',
                   badge: 'BEST DEAL',
-                  seller: { name: 'Sneha Kapoor', year: '3rd Year, IT', avatar: 'https://i.pravatar.cc/150?u=sneha' }
+                  seller: { name: 'Sneha Kapoor', year: '3rd Year, IT', avatar: 'https://randomuser.me/api/portraits/women/44.jpg' }
                 }
               })}
             >
@@ -325,15 +326,15 @@ const MarketplaceScreen = ({ navigation }) => {
                   id: 4,
                   title: 'Hercules Cycle',
                   price: '₹5,500',
-                  image: 'https://images.unsplash.com/photo-1589118949245-7d48d24f8450?q=80&w=2000&auto=format&fit=crop',
+                  image: 'https://images.unsplash.com/photo-1532298229144-0ee0505adfe0?q=80&w=2000&auto=format&fit=crop',
                   desc: '21 speed, disc brakes, 1yr old. Well maintained and perfect for campus commutes.',
                   badge: 'BIKE',
-                  seller: { name: 'Karan Mehra', year: '2nd Year, BBA', avatar: 'https://i.pravatar.cc/150?u=karan' }
+                  seller: { name: 'Karan Mehra', year: '2nd Year, BBA', avatar: 'https://randomuser.me/api/portraits/men/1.jpg' }
                 }
               })}
             >
               <View style={styles.itemImgBox}>
-                <Image source={{ uri: 'https://images.unsplash.com/photo-1589118949245-7d48d24f8450?q=80&w=2000&auto=format&fit=crop' }} style={styles.itemImg} />
+                <Image source={{ uri: 'https://images.unsplash.com/photo-1532298229144-0ee0505adfe0?q=80&w=2000&auto=format&fit=crop' }} style={styles.itemImg} />
                 <View style={[styles.itemBadge, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F3F4F6' }]}>
                   <Text style={[styles.itemBadgeText, { color: colors.textPrimary }]}>BIKE</Text>
                 </View>
@@ -358,7 +359,7 @@ const MarketplaceScreen = ({ navigation }) => {
                   image: 'https://images.unsplash.com/photo-1544244015-0cd4b3ffc6b0?q=80&w=2000&auto=format&fit=crop',
                   desc: 'Sky Blue, 64GB. Perfect for digital note taking. Supports Apple Pencil 2.',
                   badge: 'GADGET',
-                  seller: { name: 'Isha Goel', year: '3rd Year, B.Des', avatar: 'https://i.pravatar.cc/150?u=isha' }
+                  seller: { name: 'Isha Goel', year: '3rd Year, B.Des', avatar: 'https://randomuser.me/api/portraits/women/2.jpg' }
                 }
               })}
             >
@@ -385,15 +386,15 @@ const MarketplaceScreen = ({ navigation }) => {
                   id: 6,
                   title: 'Nike Air Jordan 1',
                   price: '₹8,900',
-                  image: 'https://images.unsplash.com/photo-1543163521-1bf539c55dd2?q=80&w=2000&auto=format&fit=crop',
+                  image: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?q=80&w=2070&auto=format&fit=crop',
                   desc: 'Classic Chicago colorway. Size 9, rarely used. Original box and bill available.',
                   badge: 'FOOTWEAR',
-                  seller: { name: 'Aryan Singh', year: '2nd Year, ME', avatar: 'https://i.pravatar.cc/150?u=aryan' }
+                  seller: { name: 'Aryan Singh', year: '2nd Year, ME', avatar: 'https://randomuser.me/api/portraits/men/44.jpg' }
                 }
               })}
             >
               <View style={styles.itemImgBox}>
-                <Image source={{ uri: 'https://images.unsplash.com/photo-1543163521-1bf539c55dd2?q=80&w=2000&auto=format&fit=crop' }} style={styles.itemImg} />
+                <Image source={{ uri: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?q=80&w=2070&auto=format&fit=crop' }} style={styles.itemImg} />
                 <View style={[styles.itemBadge, { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.2)' : '#ECFDF5' }]}>
                   <Text style={[styles.itemBadgeText, { color: isDark ? '#10B981' : '#065F46' }]}>FOOTWEAR</Text>
                 </View>
@@ -418,7 +419,7 @@ const MarketplaceScreen = ({ navigation }) => {
                   image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=2000&auto=format&fit=crop',
                   desc: 'Industry leading noise cancelling headphones. 30 hours battery. Mint condition.',
                   badge: 'ELECTRONICS',
-                  seller: { name: 'Rahul Verma', year: '4th Year, CS', avatar: 'https://i.pravatar.cc/150?u=rahul' }
+                  seller: { name: 'Rahul Verma', year: '4th Year, CS', avatar: 'https://randomuser.me/api/portraits/men/32.jpg' }
                 }
               })}
             >
@@ -462,15 +463,15 @@ const MarketplaceScreen = ({ navigation }) => {
                   id: 8,
                   title: 'Marshall Major IV',
                   price: '₹11,999',
-                  image: 'https://images.unsplash.com/photo-1546435770-a3e426bf472b?q=80&w=2000&auto=format&fit=crop',
+                  image: 'https://images.unsplash.com/photo-1583394838336-acd977736f90?q=80&w=2000&auto=format&fit=crop',
                   desc: 'Iconic headphones with 80+ hours of wireless playtime. Bluetooth 5.0.',
                   badge: 'HOT',
-                  seller: { name: ' Aryan Singh', year: '2nd Year, ME', avatar: 'https://i.pravatar.cc/150?u=aryan' }
+                  seller: { name: ' Aryan Singh', year: '2nd Year, ME', avatar: 'https://randomuser.me/api/portraits/men/44.jpg' }
                 }
               })}
             >
               <View style={styles.itemImgBox}>
-                <Image source={{ uri: 'https://images.unsplash.com/photo-1546435770-a3e426bf472b?q=80&w=2000&auto=format&fit=crop' }} style={styles.itemImg} />
+                <Image source={{ uri: 'https://images.unsplash.com/photo-1583394838336-acd977736f90?q=80&w=2000&auto=format&fit=crop' }} style={styles.itemImg} />
                 <View style={[styles.itemBadge, { backgroundColor: '#EF4444' }]}>
                   <Text style={[styles.itemBadgeText, { color: '#FFFFFF' }]}>HOT</Text>
                 </View>
@@ -557,7 +558,7 @@ const MarketplaceScreen = ({ navigation }) => {
                 </View>
               </View>
               <View style={styles.itemContent}>
-                <Text style={[styles.itemTitle, { color: colors.textPrimary }]}>Invertis Hoodie</Text>
+                <Text style={[styles.itemTitle, { color: colors.textPrimary }]}>{APP_CONFIG.UNIVERSITY_SHORT_NAME} Hoodie</Text>
                 <Text style={[styles.itemDesc, { color: colors.textSecondary }]} numberOfLines={2}>Limited edition, size L.</Text>
                 <View style={styles.itemFooter}>
                   <Text style={[styles.itemPrice, { color: colors.textPrimary }]}>₹899</Text>
@@ -653,7 +654,7 @@ const MarketplaceScreen = ({ navigation }) => {
 
             <View style={[styles.itemCard, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
               <View style={styles.itemImgBox}>
-                <Image source={{ uri: 'https://images.unsplash.com/photo-1611078489935-0cb964de46d6?q=80&w=2000&auto=format&fit=crop' }} style={styles.itemImg} />
+                <Image source={{ uri: 'https://images.unsplash.com/photo-1496181133206-80ce9b88a853?q=80&w=2000&auto=format&fit=crop' }} style={styles.itemImg} />
                 <View style={[styles.itemBadge, { backgroundColor: isDark ? colors.border : '#F9FAFB' }]}>
                   <Text style={[styles.itemBadgeText, { color: colors.textPrimary }]}>LAPTOP</Text>
                 </View>

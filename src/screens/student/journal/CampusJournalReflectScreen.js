@@ -5,6 +5,7 @@ import {
 import { MaterialIcons, MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { APP_CONFIG } from '../../../config/appConfig';
 
 const { width } = Dimensions.get('window');
 
@@ -21,15 +22,15 @@ const CampusJournalReflectScreen = ({ navigation }) => {
 
   const memories = [
     { title: 'Coffee with Friends', date: 'Oct 20, 2023', img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuD4x7NILjiBMRNJk0GcRS9TQWEx7KvkYPB-geF6gj7H0aNoIAZgv1IYfvEbMZfCYUG-BMLP65Ycrs7atD897WWjjeqxgMrc0lbPqiBQosBh8mexLmiNwmGR-tS719GdnOsYrAWmVvj6h-eoetfDq0kaKaDOYCBFNE-A0kHn9smVes11OqCj4--CshrfJq2VhTk0smoHDh94zthdmT3scvV2G1GWwwvsCQ7B5JOFgwASL2wCoq4TlVaxTbi_zuDG6rpZOkJywtD7LlVC' },
-    { title: 'Invertis Sunset', date: 'Oct 18, 2023', img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBGtQeza_5VUf83oAR66HdgEOp9frFcVcEJv7xw76WwRtbAR0grNPVxU8NeT-KwAtR_99PE4DjRL-aHZFp8AvZVbtP8GvAxyTpZt4oZUGBLhnHO2J6_Kl6F2BllR4iMaWHz-blqeRlY4uleCcczJJWp_Fk8cUHt1FLqBkFlobzoIFUkMlmSjO94YxpKqfBR3tflsYcctw4bcB2lGIleeexBBtOKxuHaXlTNZ0cnmYhn7PMHuFvs11Yr3y9Rjkz1HSYx-X-hwfjlFnBJ' },
+    { title: `${APP_CONFIG.UNIVERSITY_SHORT_NAME} Sunset`, date: 'Oct 18, 2023', img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBGtQeza_5VUf83oAR66HdgEOp9frFcVcEJv7xw76WwRtbAR0grNPVxU8NeT-KwAtR_99PE4DjRL-aHZFp8AvZVbtP8GvAxyTpZt4oZUGBLhnHO2J6_Kl6F2BllR4iMaWHz-blqeRlY4uleCcczJJWp_Fk8cUHt1FLqBkFlobzoIFUkMlmSjO94YxpKqfBR3tflsYcctw4bcB2lGIleeexBBtOKxuHaXlTNZ0cnmYhn7PMHuFvs11Yr3y9Rjkz1HSYx-X-hwfjlFnBJ' },
   ];
 
   return (
     <View style={styles.container}>
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Ionicons name="chevron-back" size={28} color="#EA580C" />
+        <TouchableOpacity onPress={() => navigation.navigate('StudentMain')}>
+          <Ionicons name="arrow-back" size={28} color="#EA580C" />
         </TouchableOpacity>
         <View style={styles.headerTitleContainer}>
           <Image
@@ -52,9 +53,9 @@ const CampusJournalReflectScreen = ({ navigation }) => {
           </View>
           <LinearGradient colors={['#EA580C', '#9A3412', '#431407']} style={styles.sparkCard} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
             <View style={styles.sparkInner}>
-              <Text style={styles.sparkSub}>AI Prompt • Bareilly Campus</Text>
+              <Text style={styles.sparkSub}>AI Prompt • {APP_CONFIG.CAMPUS_LOCATION} Campus</Text>
               <Text style={styles.sparkQuestion}>
-                Invertis Tech Fest Day 1 is over! What's one moment you'll never forget from the hackathon?
+                {APP_CONFIG.UNIVERSITY_SHORT_NAME} Tech Fest Day 1 is over! What's one moment you'll never forget from the hackathon?
               </Text>
               <TouchableOpacity style={styles.sparkBtn}>
                 <Text style={styles.sparkBtnText}>Write Now</Text>
@@ -68,10 +69,10 @@ const CampusJournalReflectScreen = ({ navigation }) => {
           <View style={styles.entryHeader}>
             <View>
               <Text style={styles.entryTitle}>Today's Entry</Text>
-              <Text style={styles.entrySub}>October 24, 2023 • Invertis Main Library</Text>
+              <Text style={styles.entrySub}>October 24, 2023 • {APP_CONFIG.UNIVERSITY_SHORT_NAME} Main Library</Text>
             </View>
             <View style={styles.pulseBadge}>
-              <Text style={styles.pulseText}>Invertis Pulse</Text>
+              <Text style={styles.pulseText}>{APP_CONFIG.UNIVERSITY_SHORT_NAME} Pulse</Text>
             </View>
           </View>
 
@@ -94,7 +95,7 @@ const CampusJournalReflectScreen = ({ navigation }) => {
               <TextInput
                 style={styles.textArea}
                 multiline
-                placeholder="Start typing your thoughts about today's classes at Invertis..."
+                placeholder={`Start typing your thoughts about today's classes at ${APP_CONFIG.UNIVERSITY_SHORT_NAME}...`}
                 placeholderTextColor="#9CA3AF"
               />
               <View style={styles.toolRow}>
@@ -115,9 +116,9 @@ const CampusJournalReflectScreen = ({ navigation }) => {
             <MaterialIcons name="auto-awesome" size={24} color="#FFFFFF" />
           </View>
           <View style={styles.aiReflectContent}>
-            <Text style={styles.aiReflectTitle}>Invertia AI Reflection</Text>
+            <Text style={styles.aiReflectTitle}>{APP_CONFIG.AI_ASSISTANT_NAME} Reflection</Text>
             <Text style={styles.aiReflectText}>
-              You've been feeling focused and inspired this week, especially during your lab sessions in Bareilly! Your engagement with the Tech Fest reflects a strong creative surge. Keep it up, Arjun!
+              You've been feeling focused and inspired this week, especially during your lab sessions in {APP_CONFIG.CAMPUS_LOCATION}! Your engagement with the Tech Fest reflects a strong creative surge. Keep it up, Arjun!
             </Text>
           </View>
         </View>

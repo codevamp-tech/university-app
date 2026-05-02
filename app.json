@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "Invertis University",
-    "slug": "invertis-university",
+    "name": "University Portal",
+    "slug": "university-portal",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -14,14 +14,14 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.invertis.university"
+      "bundleIdentifier": "com.university.portal"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#F0F4FF"
       },
-      "package": "com.invertis.university",
+      "package": "com.university.portal",
       "edgeToEdgeEnabled": true
     },
     "web": {

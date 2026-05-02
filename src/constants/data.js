@@ -1,3 +1,5 @@
+import { APP_CONFIG } from '../config/appConfig';
+
 export const STUDENT_USER = {
   id: '2024-8849-01',
   name: 'Julian Sterling',
@@ -78,14 +80,14 @@ export const NOTIFICATIONS = [
 ];
 
 export const STUDENTS_LIST = [
-  { id: '1', rollNo: '21CSE001', name: 'Aarav Vardhan', status: null },
-  { id: '2', rollNo: '21CSE002', name: 'Ananya Singh', status: 'absent' },
-  { id: '3', rollNo: '21CSE003', name: 'Arjun Malhotra', status: 'present' },
-  { id: '4', rollNo: '21CSE004', name: 'Ishaan Reddy', status: 'absent' },
-  { id: '5', rollNo: '21CSE005', name: 'Meera Iyer', status: null },
-  { id: '6', rollNo: '21CSE006', name: 'Riya Sharma', status: 'present' },
-  { id: '7', rollNo: '21CSE007', name: 'Dev Patel', status: null },
-  { id: '8', rollNo: '21CSE008', name: 'Priya Nair', status: 'present' },
+  { id: '1', rollNo: `${APP_CONFIG.UNIVERSITY_ID_PREFIX}CSE001`, name: 'Aarav Vardhan', status: null },
+  { id: '2', rollNo: `${APP_CONFIG.UNIVERSITY_ID_PREFIX}CSE002`, name: 'Ananya Singh', status: 'absent' },
+  { id: '3', rollNo: `${APP_CONFIG.UNIVERSITY_ID_PREFIX}CSE003`, name: 'Arjun Malhotra', status: 'present' },
+  { id: '4', rollNo: `${APP_CONFIG.UNIVERSITY_ID_PREFIX}CSE004`, name: 'Ishaan Reddy', status: 'absent' },
+  { id: '5', rollNo: `${APP_CONFIG.UNIVERSITY_ID_PREFIX}CSE005`, name: 'Meera Iyer', status: null },
+  { id: '6', rollNo: `${APP_CONFIG.UNIVERSITY_ID_PREFIX}CSE006`, name: 'Riya Sharma', status: 'present' },
+  { id: '7', rollNo: `${APP_CONFIG.UNIVERSITY_ID_PREFIX}CSE007`, name: 'Dev Patel', status: null },
+  { id: '8', rollNo: `${APP_CONFIG.UNIVERSITY_ID_PREFIX}CSE008`, name: 'Priya Nair', status: 'present' },
 ];
 
 export const CURRICULUM = [

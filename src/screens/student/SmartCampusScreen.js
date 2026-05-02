@@ -4,7 +4,11 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
+import { MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../hooks/useTheme';
+import { APP_CONFIG } from '../../config/appConfig';
+
 
 const { width } = Dimensions.get('window');
 
@@ -16,7 +20,7 @@ const SmartCampusScreen = () => {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
-      
+
       {/* Header */}
       <View style={[styles.header, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
         <View style={styles.headerLeft}>
@@ -24,7 +28,7 @@ const SmartCampusScreen = () => {
             source={{ uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuC6mmtjUA28NY_AB8YFu2Ri2e3lSkRbJCYpAbrgwHHzzLntRM9rNTLFJIT-pf3fW5gQ-_hRX8LB8ZDdqw5ls_d4bA10oIXuBlKp8kv7onee50cVXADdy7BPVn6kAg4Co9Gbp6XiTx5yITLttWLtkQQag4sVTILELHpLT0_-WAXmJWUVCHpSfhFuYmROstnRxdO_T4ym_KOCd8CmJm60WORR2yoPF8RiqYCiJsTUrQcbumydveuPeijNqG_991IufFMlU7g1DbJ3nqtG' }}
             style={[styles.avatarTiny, { borderColor: colors.primary, borderWidth: 1 }]}
           />
-          <Text style={[styles.headerLogo, { color: colors.textPrimary }]}>Invertis Smart Campus</Text>
+          <Text style={[styles.headerLogo, { color: colors.textPrimary }]}>{APP_CONFIG.UNIVERSITY_SHORT_NAME} Smart Campus</Text>
         </View>
         <TouchableOpacity style={[styles.creditPill, { backgroundColor: isDark ? 'rgba(234, 88, 12, 0.15)' : '#FFF7ED' }]}>
           <MaterialCommunityIcons name="wallet-outline" size={16} color={isDark ? '#FB923C' : "#EA580C"} />
@@ -34,9 +38,9 @@ const SmartCampusScreen = () => {
 
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        
+
         {/* Live Now Card */}
-        <View style={styles.sectionContainer}>
+        {/* <View style={styles.sectionContainer}>
           <View style={[styles.liveCard, { backgroundColor: isDark ? colors.card : '#FFF7ED' }]}>
             <View style={[styles.liveIconBox, { backgroundColor: isDark ? colors.background : '#FFEDD5' }]}>
               <MaterialCommunityIcons name="access-point" size={28} color={isDark ? colors.primary : "#9A3412"} />
@@ -53,11 +57,11 @@ const SmartCampusScreen = () => {
               <Text style={styles.checkInText}>Tap to Check-in</Text>
             </TouchableOpacity>
           </View>
-        </View>
+        </View> */}
 
 
         {/* Quick Actions */}
-        <View style={styles.sectionContainer}>
+        {/* <View style={styles.sectionContainer}>
           <View style={styles.sectionGroup}>
             <Text style={[styles.sectionTitle, { color: colors.primary }]}>Quick Actions</Text>
             <View style={[styles.divider, { backgroundColor: colors.border }]} />
@@ -78,54 +82,10 @@ const SmartCampusScreen = () => {
               </TouchableOpacity>
             ))}
           </View>
-        </View>
+        </View> */}
 
 
-        {/* AR Campus Feed */}
-        <View style={styles.sectionContainer}>
-          <View style={styles.arCard}>
-            <ImageBackground 
-              source={{ uri: 'https://images.unsplash.com/photo-1541339907198-e08756dedf3f?q=80&w=2070&auto=format&fit=crop' }} 
-              style={styles.arBg}
-              imageStyle={{ borderRadius: 32 }}
-            >
-              <LinearGradient colors={['rgba(0,0,0,0.7)', 'transparent', 'rgba(0,0,0,0.9)']} style={styles.arOverlay}>
-                <View style={styles.arTop}>
-                  <View style={styles.arLiveFeed}>
-                    <View style={styles.redDot} />
-                    <Text style={styles.arLiveText}>LIVE AR FEED</Text>
-                  </View>
-                  <Text style={styles.arScanningText}>Scanning for points of interest...</Text>
-                  
-                  <View style={styles.arFloatingLabels}>
-                    <View style={styles.arLabelBrown}>
-                      <MaterialIcons name="business" size={12} color="#FFFFFF" />
-                      <Text style={styles.arLabelText}>Engineering Block A</Text>
-                    </View>
-                    <View style={styles.arLabelTeal}>
-                      <MaterialIcons name="event" size={12} color="#FFFFFF" />
-                      <Text style={styles.arLabelText}>Tech Fest Expo '24</Text>
-                    </View>
-                  </View>
-                </View>
-                
-                <Text style={styles.arCamText}>AR CAMPUS VIEW</Text>
-                
-                <View style={styles.arBottomNav}>
-                  <TouchableOpacity style={[styles.arNavItem, styles.arNavActive]}>
-                    <Text style={[styles.arNavText, styles.arNavTextActive]}>Navigation</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.arNavItem}>
-                    <Text style={styles.arNavText}>Events</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.arNavItem}>
-                    <Text style={styles.arNavText}>Utilities</Text>
-                  </TouchableOpacity>
-                </View>
-              </LinearGradient>
-            </ImageBackground>
-          </View>
-        </View>
+
 
         {/* Current Location & Utilities */}
         <View style={styles.sectionContainer}>
@@ -138,9 +98,9 @@ const SmartCampusScreen = () => {
               <MaterialIcons name="my-location" size={24} color={isDark ? '#818CF8' : "#4338CA"} />
             </View>
           </View>
-          
+
           <Text style={[styles.utilitiesTitle, { color: colors.textSecondary }]}>NEARBY UTILITIES</Text>
-          
+
           <View style={[styles.utilityCard, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
             <MaterialCommunityIcons name="bookshelf" size={28} color={isDark ? '#34D399' : "#065F46"} />
             <View style={styles.utilityContent}>
@@ -151,7 +111,7 @@ const SmartCampusScreen = () => {
               <Text style={[styles.utilityBadgeTextTeal, { color: isDark ? '#34D399' : '#064E3B' }]}>5 SEATS FREE</Text>
             </View>
           </View>
-          
+
           <View style={[styles.utilityCard, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
             <MaterialIcons name="restaurant" size={28} color={isDark ? colors.primary : "#9A3412"} />
             <View style={styles.utilityContent}>
