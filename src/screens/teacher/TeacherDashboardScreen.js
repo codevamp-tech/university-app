@@ -56,6 +56,36 @@ const TeacherDashboardScreen = ({ navigation }) => {
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
       >
+        {/* Performance Overview Section */}
+        <View style={styles.performanceRow}>
+          <LinearGradient 
+            colors={['#FFF7ED', '#FFEDD5']} 
+            style={styles.perfPill}
+          >
+            <Text style={styles.perfValue}>9.4</Text>
+            <Text style={styles.perfLabel}>FACULTY RATING</Text>
+          </LinearGradient>
+          <LinearGradient 
+            colors={['#EEF2FF', '#E0E7FF']} 
+            style={styles.perfPill}
+          >
+            <Text style={[styles.perfValue, { color: '#3730A3' }]}>1,450</Text>
+            <Text style={[styles.perfLabel, { color: '#3730A3' }]}>FACULTY CREDITS</Text>
+          </LinearGradient>
+        </View>
+
+        <LinearGradient 
+          colors={['#ECFDF5', '#D1FAE5']} 
+          style={styles.aiInsightBox}
+        >
+          <View style={styles.aiIconCircle}>
+            <MaterialCommunityIcons name="auto-fix" size={20} color="#065F46" />
+          </View>
+          <Text style={styles.aiInsightText}>
+            <Text style={{ fontWeight: '800' }}>Performance Insight:</Text> Your student feedback for "AI & ML" is in the top 5% of the university. You've earned +50 credits this week!
+          </Text>
+        </LinearGradient>
+
         {/* Current Lecture Card */}
         <LinearGradient
           colors={['#FFFFFF', '#F9FAFB']}
@@ -635,6 +665,58 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#9CA3AF',
     fontWeight: '500',
+  },
+  // Performance Styles
+  performanceRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 20,
+  },
+  perfPill: {
+    flex: 1,
+    borderRadius: 24,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderWidth: 1,
+    borderColor: '#FFEDD5',
+    alignItems: 'flex-start',
+  },
+  perfValue: {
+    fontSize: 26,
+    fontWeight: '900',
+    color: '#9A3412',
+    letterSpacing: -0.5,
+  },
+  perfLabel: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#9A3412',
+    letterSpacing: 0.5,
+    marginTop: 4,
+  },
+  aiInsightBox: {
+    marginBottom: 24,
+    borderRadius: 24,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
+  },
+  aiIconCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(6,95,70,0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  aiInsightText: {
+    flex: 1,
+    fontSize: 12,
+    color: '#064E3B',
+    lineHeight: 18,
   },
 });
 

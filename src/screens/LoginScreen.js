@@ -19,6 +19,7 @@ import { APP_CONFIG } from '../config/appConfig';
 const LoginScreen = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const [securityKey, setSecurityKey] = useState('');
+  const [role, setRole] = useState('student');
   const [loading, setLoading] = useState(false);
   const insets = useSafeAreaInsets();
 
@@ -30,7 +31,11 @@ const LoginScreen = ({ navigation }) => {
     setLoading(true);
     setTimeout(() => {
       setLoading(false);
-      navigation.replace('StudentMain');
+      if (role === 'teacher') {
+        navigation.replace('TeacherMain');
+      } else {
+        navigation.replace('StudentMain');
+      }
     }, 1200);
   };
 
@@ -66,6 +71,22 @@ const LoginScreen = ({ navigation }) => {
 
           {/* Form Section */}
           <View style={styles.formContainer}>
+            {/* Role Selector */}
+            <View style={styles.roleContainer}>
+              <TouchableOpacity 
+                style={[styles.roleBtn, role === 'student' && styles.roleBtnActive]}
+                onPress={() => setRole('student')}
+              >
+                <Text style={[styles.roleText, role === 'student' && styles.roleTextActive]}>Student</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.roleBtn, role === 'teacher' && styles.roleBtnActive]}
+                onPress={() => setRole('teacher')}
+              >
+                <Text style={[styles.roleText, role === 'teacher' && styles.roleTextActive]}>Faculty</Text>
+              </TouchableOpacity>
+            </View>
+
             {/* Academic Email Field */}
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>ACADEMIC EMAIL</Text>
@@ -181,8 +202,37 @@ const styles = StyleSheet.create({
   formContainer: {
     marginBottom: 32,
   },
-  inputGroup: {
+  roleContainer: {
+    flexDirection: 'row',
     marginBottom: 24,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 12,
+    padding: 4,
+  },
+  roleBtn: {
+    flex: 1,
+    paddingVertical: 10,
+    alignItems: 'center',
+    borderRadius: 8,
+  },
+  roleBtnActive: {
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  roleText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#6B7280',
+  },
+  roleTextActive: {
+    color: '#111827',
+  },
+  inputGroup: {
+    marginBottom: 20,
   },
   inputLabel: {
     fontSize: 12,
