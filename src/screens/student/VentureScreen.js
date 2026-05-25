@@ -111,7 +111,7 @@ const VentureScreen = ({ navigation }) => {
               <MaterialIcons name="agriculture" size={28} color={isDark ? '#34D399' : '#16A34A'} />
             </View>
             <View style={[styles.startupLabel, { backgroundColor: isDark ? 'rgba(5, 150, 105, 0.2)' : '#DCFCE7' }]}><Text style={[styles.startupLabelText, { color: isDark ? '#A7F3D0' : '#166534' }]}>SERIES A SEED</Text></View>
-            <Text style={[styles.startupName, { color: colors.textPrimary }]}>AgriTech Bareilly</Text>
+            <Text style={[styles.startupName, { color: colors.textPrimary }]}>AgriTech Campus</Text>
             <Text style={[styles.startupDesc, { color: colors.textSecondary }]}>Smart IoT solutions for local sugarcane farmers to optimize irrigation.</Text>
 
             <View style={styles.progressRow}>

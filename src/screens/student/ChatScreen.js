@@ -74,6 +74,9 @@ const ChatScreen = ({ navigation }) => {
           {/* Main Header */}
           <View style={styles.header}>
             <View style={styles.headerLeft}>
+              <TouchableOpacity onPress={() => navigation.navigate('StudentMain', { screen: 'Community' })} style={{ marginRight: 8 }}>
+                <Ionicons name="arrow-back" size={24} color="#1F2937" />
+              </TouchableOpacity>
               <TouchableOpacity style={styles.menuBtn} onPress={toggleDrawer}>
                 <Ionicons name="menu" size={28} color="#1F2937" />
               </TouchableOpacity>

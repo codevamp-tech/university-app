@@ -3,7 +3,7 @@ import { useTheme } from '../../hooks/useTheme';
 
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, Image,
-  Dimensions, Animated, Modal, StatusBar,
+  Dimensions, Animated, Modal, StatusBar, TextInput, Platform,
 } from 'react-native';
 import { MaterialIcons, MaterialCommunityIcons, Feather, Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -18,6 +18,13 @@ const ERPHubScreen = ({ navigation }) => {
 
   const [drawerVisible, setDrawerVisible] = useState(false);
   const slideAnim = useRef(new Animated.Value(width)).current;
+
+  // Added states for Outpass
+  const [gatePassStatus, setGatePassStatus] = useState('idle'); // idle, pending, approved
+  const [showQRModal, setShowQRModal] = useState(false);
+  const [showBusPassModal, setShowBusPassModal] = useState(false);
+  const [showRequestModal, setShowRequestModal] = useState(false);
+  const [outpassForm, setOutpassForm] = useState({ reason: '', duration: '2 Hours' });
 
   const openDrawer = () => {
     setDrawerVisible(true);
@@ -142,7 +149,7 @@ const ERPHubScreen = ({ navigation }) => {
             </Text>
 
 
-            <TouchableOpacity style={[styles.showPassBtn, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
+            <TouchableOpacity style={[styles.showPassBtn, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]} onPress={() => setShowBusPassModal(true)}>
               <MaterialIcons name="qr-code-2" size={18} color={isDark ? '#818CF8' : '#4338CA'} />
               <Text style={[styles.showPassText, { color: isDark ? '#818CF8' : '#4338CA' }]}>Show Pass</Text>
             </TouchableOpacity>
@@ -168,9 +175,23 @@ const ERPHubScreen = ({ navigation }) => {
               </View>
 
             </View>
-            <TouchableOpacity style={[styles.outpassBtn, { backgroundColor: isDark ? '#059669' : '#059669' }]}>
-              <Text style={styles.outpassBtnText}>Request New</Text>
-              <MaterialIcons name="arrow-forward" size={14} color="#FFFFFF" />
+            <TouchableOpacity 
+              style={[
+                styles.outpassBtn, 
+                { backgroundColor: gatePassStatus === 'pending' ? '#FEF3C7' : gatePassStatus === 'approved' ? '#ECFDF5' : (isDark ? '#059669' : '#059669') }
+              ]}
+              onPress={() => {
+                if (gatePassStatus === 'idle') {
+                  setShowRequestModal(true);
+                } else if (gatePassStatus === 'approved') {
+                  setShowQRModal(true);
+                }
+              }}
+            >
+              <Text style={[styles.outpassBtnText, { color: gatePassStatus === 'pending' ? '#D97706' : gatePassStatus === 'approved' ? '#10B981' : '#FFFFFF' }]}>
+                {gatePassStatus === 'pending' ? 'WAITING...' : gatePassStatus === 'approved' ? 'VIEW PASS' : 'Request New'}
+              </Text>
+              {gatePassStatus === 'idle' && <MaterialIcons name="arrow-forward" size={14} color="#FFFFFF" />}
             </TouchableOpacity>
           </LinearGradient>
         </View>
@@ -389,7 +410,7 @@ const ERPHubScreen = ({ navigation }) => {
                 </LinearGradient>
                 <View>
                   <Text style={styles.lcUniversityName}>{APP_CONFIG.UNIVERSITY_NAME}</Text>
-                  <Text style={styles.lcBareilly}>{APP_CONFIG.CAMPUS_LOCATION}</Text>
+                  <Text style={styles.lcLocation}>{APP_CONFIG.CAMPUS_LOCATION}</Text>
                 </View>
               </View>
               <View style={styles.lcCardTypeBadge}>
@@ -533,6 +554,145 @@ const ERPHubScreen = ({ navigation }) => {
 
         <View style={{ height: 100 }} />
       </ScrollView>
+
+      {/* Bus Pass Modal */}
+      <Modal
+        visible={showBusPassModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowBusPassModal(false)}
+      >
+        <View style={styles.qrModalOverlay}>
+          <View style={[styles.qrContainer, { backgroundColor: colors.card }]}>
+            <View style={styles.qrHeader}>
+               <Text style={[styles.qrTitle, { color: colors.textPrimary }]}>Smart Bus Pass</Text>
+               <TouchableOpacity onPress={() => setShowBusPassModal(false)}>
+                 <MaterialIcons name="close" size={24} color={colors.textPrimary} />
+               </TouchableOpacity>
+            </View>
+            
+            <View style={styles.qrWrapper}>
+               <MaterialCommunityIcons name="qrcode" size={200} color={isDark ? '#FFF' : '#111827'} />
+               <View style={[styles.qrStatusBadge, { backgroundColor: '#4338CA' }]}>
+                 <Text style={styles.qrStatusText}>ROUTE 14: CAMPUS EXPRESS</Text>
+               </View>
+            </View>
+
+            <View style={styles.qrInfo}>
+               <Text style={[styles.qrInfoName, { color: colors.textPrimary }]}>Aryan Kumar</Text>
+               <Text style={[styles.qrInfoSub, { color: colors.textSecondary }]}>Valid until End of Semester</Text>
+            </View>
+
+            <TouchableOpacity 
+              style={[styles.qrDownloadBtn, { backgroundColor: '#4338CA' }]}
+              onPress={() => setShowBusPassModal(false)}
+            >
+               <Text style={styles.qrDownloadText}>DONE</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Gate Pass QR Modal */}
+      <Modal
+        visible={showQRModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowQRModal(false)}
+      >
+        <View style={styles.qrModalOverlay}>
+          <View style={[styles.qrContainer, { backgroundColor: colors.card }]}>
+            <View style={styles.qrHeader}>
+               <Text style={[styles.qrTitle, { color: colors.textPrimary }]}>Exit Gate Pass</Text>
+               <TouchableOpacity onPress={() => setShowQRModal(false)}>
+                 <MaterialIcons name="close" size={24} color={colors.textPrimary} />
+               </TouchableOpacity>
+            </View>
+            
+            <View style={styles.qrWrapper}>
+               <MaterialCommunityIcons name="qrcode" size={200} color={isDark ? '#FFF' : '#111827'} />
+               <View style={styles.qrStatusBadge}>
+                 <Text style={styles.qrStatusText}>VALID UNTIL 10:30 PM</Text>
+               </View>
+            </View>
+
+            <View style={styles.qrInfo}>
+               <Text style={[styles.qrInfoName, { color: colors.textPrimary }]}>Aryan Kumar</Text>
+               <Text style={[styles.qrInfoSub, { color: colors.textSecondary }]}>Room 402 • Main Hostel</Text>
+            </View>
+
+            <TouchableOpacity 
+              style={[styles.qrDownloadBtn, { backgroundColor: colors.primary }]}
+              onPress={() => setShowQRModal(false)}
+            >
+               <Text style={styles.qrDownloadText}>DONE</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Outpass Request Form Modal */}
+      <Modal
+        visible={showRequestModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowRequestModal(false)}
+      >
+        <View style={styles.requestModalOverlay}>
+          <View style={[styles.requestContainer, { backgroundColor: colors.card }]}>
+            <View style={styles.qrHeader}>
+               <Text style={[styles.qrTitle, { color: colors.textPrimary }]}>Apply for Outpass</Text>
+               <TouchableOpacity onPress={() => setShowRequestModal(false)}>
+                 <MaterialIcons name="close" size={24} color={colors.textPrimary} />
+               </TouchableOpacity>
+            </View>
+
+            <View style={styles.formGroup}>
+               <Text style={[styles.formLabel, { color: colors.textSecondary }]}>REASON FOR EXIT</Text>
+               <TextInput 
+                 style={[styles.formInput, { backgroundColor: isDark ? '#1F2937' : '#F9FAFB', color: colors.textPrimary, borderColor: colors.border }]}
+                 placeholder="e.g., Grocery shopping, Visiting family..."
+                 placeholderTextColor={colors.textMuted}
+                 value={outpassForm.reason}
+                 onChangeText={(text) => setOutpassForm({...outpassForm, reason: text})}
+               />
+            </View>
+
+            <View style={styles.formGroup}>
+               <Text style={[styles.formLabel, { color: colors.textSecondary }]}>DURATION</Text>
+               <View style={styles.durationRow}>
+                 {['2 Hours', '4 Hours', 'Full Day', 'Overnight'].map((d) => (
+                   <TouchableOpacity 
+                     key={d} 
+                     style={[
+                       styles.durationBtn, 
+                       { backgroundColor: outpassForm.duration === d ? colors.primary : isDark ? '#1F2937' : '#F1F5F9' }
+                     ]}
+                     onPress={() => setOutpassForm({...outpassForm, duration: d})}
+                   >
+                     <Text style={[styles.durationBtnText, { color: outpassForm.duration === d ? '#FFF' : colors.textPrimary }]}>{d}</Text>
+                   </TouchableOpacity>
+                 ))}
+               </View>
+            </View>
+
+            <TouchableOpacity 
+              style={[styles.submitBtn, { backgroundColor: colors.primary }]}
+              onPress={() => {
+                if (!outpassForm.reason) return;
+                setShowRequestModal(false);
+                setGatePassStatus('pending');
+                // Simulate warden approval
+                setTimeout(() => {
+                  setGatePassStatus('approved');
+                }, 3000);
+              }}
+            >
+               <Text style={styles.submitBtnText}>SEND TO WARDEN</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
 
       {/* Profile Drawer Modal */}
       <Modal visible={drawerVisible} transparent animationType="none" onRequestClose={closeDrawer}>
@@ -1120,7 +1280,7 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     color: '#FFFFFF',
   },
-  lcBareilly: {
+  lcLocation: {
     fontSize: 10,
     color: 'rgba(255,255,255,0.5)',
     fontWeight: '500',
@@ -1414,6 +1574,132 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
 
+  // QR Modal Styles
+  qrModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  qrContainer: {
+    width: '100%',
+    borderRadius: 32,
+    padding: 24,
+    alignItems: 'center',
+  },
+  qrHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    width: '100%',
+    marginBottom: 24,
+  },
+  qrTitle: {
+    fontSize: 20,
+    fontWeight: '900',
+  },
+  qrWrapper: {
+    padding: 20,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  qrStatusBadge: {
+    backgroundColor: '#10B981',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 99,
+    marginTop: 16,
+  },
+  qrStatusText: {
+    color: '#FFF',
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 1,
+  },
+  qrInfo: {
+    alignItems: 'center',
+    marginBottom: 32,
+  },
+  qrInfoName: {
+    fontSize: 18,
+    fontWeight: '900',
+    marginBottom: 4,
+  },
+  qrInfoSub: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  qrDownloadBtn: {
+    width: '100%',
+    paddingVertical: 16,
+    borderRadius: 16,
+    alignItems: 'center',
+  },
+  qrDownloadText: {
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  
+  // Request Modal Styles
+  requestModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'flex-end',
+  },
+  requestContainer: {
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    padding: 24,
+    paddingBottom: Platform.OS === 'ios' ? 40 : 24,
+  },
+  formGroup: {
+    marginBottom: 20,
+  },
+  formLabel: {
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 1,
+    marginBottom: 8,
+  },
+  formInput: {
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    fontSize: 15,
+    fontWeight: '500',
+    borderWidth: 1,
+  },
+  durationRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  durationBtn: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 12,
+  },
+  durationBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  submitBtn: {
+    width: '100%',
+    paddingVertical: 16,
+    borderRadius: 16,
+    alignItems: 'center',
+    marginTop: 12,
+  },
+  submitBtnText: {
+    color: '#FFF',
+    fontSize: 15,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
 });
 
 export default ERPHubScreen;

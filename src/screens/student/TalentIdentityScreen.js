@@ -181,7 +181,7 @@ const TalentIdentityScreen = ({ navigation }) => {
             <View style={[styles.proofItem, { backgroundColor: colors.background, borderColor: colors.border, borderWidth: 1 }]}>
               <View style={[styles.proofLeadIcon, { backgroundColor: colors.card }]}><MaterialIcons name="volunteer-activism" size={18} color={colors.primary} /></View>
               <View style={{ flex: 1 }}>
-                <Text style={[styles.proofName, { color: colors.textPrimary }]}>Bareilly Green Drive</Text>
+                <Text style={[styles.proofName, { color: colors.textPrimary }]}>Campus Green Drive</Text>
                 <Text style={[styles.proofMeta, { color: colors.textSecondary }]}>12 Hours • NGO Partner</Text>
               </View>
               <TouchableOpacity><Text style={[styles.viewProofText, { color: colors.primary }]}>VIEW PROOF</Text></TouchableOpacity>
@@ -210,9 +210,9 @@ const TalentIdentityScreen = ({ navigation }) => {
               </View>
             </View>
 
-            <Text style={styles.ventureTitle}>SkyDrone Bareilly</Text>
+            <Text style={styles.ventureTitle}>SkyDrone Campus</Text>
             <Text style={styles.ventureDesc}>
-              Leading a team of 5 to develop autonomous delivery drones for last-mile pharmaceutical logistics in rural Uttar Pradesh.
+              Leading a team of 5 to develop autonomous delivery drones for last-mile pharmaceutical logistics in rural regions.
             </Text>
             <View style={styles.ventureActions}>
               <TouchableOpacity style={styles.vActionBtn}>

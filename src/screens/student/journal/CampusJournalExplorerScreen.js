@@ -42,7 +42,7 @@ const CampusJournalExplorerScreen = ({ navigation }) => {
     {
       title: "Tanya's Birthday",
       date: 'OCT 12, 2023',
-      location: 'Bareilly Heights',
+      location: 'Campus Heights',
       image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDWO39sft8klSmQ_LnGKwnBIzQVupLvoyt1nxP_CQ2k7XyTJmT7J3B4ZuBpcKMzPlfVGsr1unSDrMFLdYVQ64wTzu-3abEAQCtPD7sk5mSIeIDNXrN8HEcoZzrHrcDfQ5yxfHGDWErOai4C1oB0wRR1GD6F8GUHbrk1CMHhpaW-Mb0xzbFxgJE-biyApQytHDPOo7BOYJlNlRvaQbgYBvFfgseMnu2yduzIXlDIo5WeRWzJpIsWAdIodT93akVgd1sFn3C4lISUT-2Y',
       details: [
         'https://lh3.googleusercontent.com/aida-public/AB6AXuCqou_b8pfepYJ0cvKctv4F4em48tbrDBM-Ono2RlDlQiK4k-TnPBnZaaRs5C1Y4Cj3PPCoi-yQA5ixDjv9ySsG7VS_Ddi1DGVH758K4m3gsMMTeyi0sjNwOBxq4zdBz8F1tcpjHrxBnBdrhgLwj_I8ZCdTsfyD2cB_47HSghSrWoH7InnG4Qf8rmtEH_w-CAlF_c1Pn5atnvlsSzp0mBSmEbsKcZH9KRnC8EClxCIlnVHqTcqcBI_4eenJV8MxaDrplzHqRsS9ONoO',

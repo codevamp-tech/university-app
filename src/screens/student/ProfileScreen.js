@@ -131,7 +131,7 @@ const ProfileScreen = () => {
             <View style={styles.proofItem}>
               <MaterialIcons name="volunteer-activism" size={20} color="#4953ac" />
               <View style={{ flex: 1, marginLeft: 12 }}>
-                <Text style={styles.itemTitle}>Bareilly Green Drive</Text>
+                <Text style={styles.itemTitle}>Campus Green Drive</Text>
                 <Text style={styles.itemMeta}>12 Hours • NGO Partner</Text>
               </View>
               <TouchableOpacity><Text style={styles.viewProofText}>VIEW PROOF</Text></TouchableOpacity>
@@ -144,7 +144,7 @@ const ProfileScreen = () => {
                 <Text style={styles.proofTitleWhite}>Venture Lab</Text>
                 <View style={styles.activeLabel}><Text style={styles.activeText}>ACTIVE</Text></View>
               </View>
-              <Text style={styles.ventureName}>SkyDrone Bareilly</Text>
+              <Text style={styles.ventureName}>SkyDrone Campus</Text>
               <Text style={styles.ventureDesc}>Leading a team of 5 to develop autonomous delivery drones for pharmaceuticals.</Text>
               <View style={styles.ventureActions}>
                 <TouchableOpacity style={styles.vBtn}><MaterialIcons name="link" size={14} color="#FFFFFF" /><Text style={styles.vBtnText}>Proofs</Text></TouchableOpacity>

@@ -218,9 +218,9 @@ const ERPFeesScreen = ({ navigation }) => {
           >
             <Text style={styles.footerTitle}>{APP_CONFIG.UNIVERSITY_NAME}</Text>
             <Text style={[styles.footerAddr, { color: isDark ? 'rgba(148, 163, 184, 0.8)' : 'rgba(199,210,254,0.8)' }]}>
-              {APP_CONFIG.CAMPUS_LOCATION}{'\n'}
-              Bareilly, Uttar Pradesh 243123{'\n'}
-              Contact: +91 0581-2460442
+              Main Campus, University Road{'\n'}
+              City Campus, State 123456{'\n'}
+              Contact: +91 000-000-0000
             </Text>
             <View style={styles.footerInfo}>
               <View>
