@@ -5,6 +5,8 @@ import { StatusBar } from 'expo-status-bar';
 import AppNavigator from './src/navigation/AppNavigator';
 import { ThemeProvider, ThemeContext } from './src/context/ThemeContext';
 
+import { UserProvider } from './src/context/UserContext';
+
 const AppContent = () => {
   const { isDark, colors } = React.useContext(ThemeContext);
   
@@ -20,7 +22,9 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <ThemeProvider>
-        <AppContent />
+        <UserProvider>
+          <AppContent />
+        </UserProvider>
       </ThemeProvider>
     </SafeAreaProvider>
   );

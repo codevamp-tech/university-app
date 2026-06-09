@@ -1,6 +1,7 @@
 import React from 'react';
 import { useTheme } from '../../hooks/useTheme';
 import { APP_CONFIG } from '../../config/appConfig';
+import { useUser } from '../../context/UserContext';
 
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
@@ -13,9 +14,33 @@ import { LinearGradient } from 'expo-linear-gradient';
 const { width } = Dimensions.get('window');
 
 const ERPFeesScreen = ({ navigation }) => {
+  const { user } = useUser();
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
 
+  const roman = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
+  const semNum = parseInt(user?.semester) || 7;
+  const displaySem = roman[semNum - 1] || 'VII';
+
+  const yearNum = parseInt(user?.year) || 4;
+  const startYear = 2026 - yearNum;
+  const currentAcademicYearStart = startYear + yearNum - 1;
+  const currentAcademicYearEnd = currentAcademicYearStart + 1;
+  const academicYearStr = `Academic Year ${currentAcademicYearStart}-${currentAcademicYearEnd.toString().slice(-2)}`;
+
+  const idStr = user?.id || '';
+  const idNum = parseInt(idStr.replace(/[^0-9]/g, '')) || 1;
+  const tuitionFeeVal = (idNum % 3 + 2) * 15000;
+  const devFeeVal = 6500;
+  const outstandingDuesVal = tuitionFeeVal + devFeeVal;
+
+  const formatCurrency = (amt) => {
+    return '₹ ' + amt.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  };
+
+  const courseTitle = user?.course
+    ? (user.branch && !user.course.includes(user.branch) ? `${user.course} - ${user.branch}` : user.course)
+    : 'B.Tech Computer Science Engineering';
 
   return (
     <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
@@ -45,8 +70,8 @@ const ERPFeesScreen = ({ navigation }) => {
           >
 
             <Text style={[styles.heroLabel, { color: 'rgba(255,255,255,0.7)' }]}>OUTSTANDING DUES</Text>
-            <Text style={styles.heroAmount}>₹ 48,500</Text>
-            <Text style={[styles.heroSub, { color: 'rgba(255,255,255,0.85)' }]}>Academic Year 2024-25 | VII Semester</Text>
+            <Text style={styles.heroAmount}>{formatCurrency(outstandingDuesVal)}</Text>
+            <Text style={[styles.heroSub, { color: 'rgba(255,255,255,0.85)' }]}>{academicYearStr} | {displaySem} Semester</Text>
             <View style={styles.heroBtns}>
               <TouchableOpacity style={[styles.payNowBtn, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#FFFFFF' }]}>
                 <MaterialIcons name="payments" size={18} color={isDark ? '#FFFFFF' : '#EA580C'} />
@@ -67,8 +92,8 @@ const ERPFeesScreen = ({ navigation }) => {
           <View style={[styles.feeCard, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
             <View style={styles.feeCardHeader}>
               <View>
-                <Text style={[styles.feeCardTitle, { color: colors.textPrimary }]}>Semester Fees</Text>
-                <Text style={[styles.feeCardSub, { color: colors.textSecondary }]}>B.Tech Computer Science Engineering</Text>
+                <Text style={[styles.feeCardTitle, { color: colors.textPrimary }]}>{displaySem} Semester Fees</Text>
+                <Text style={[styles.feeCardSub, { color: colors.textSecondary }]}>{courseTitle}</Text>
               </View>
               <View style={[styles.pendingBadge, { backgroundColor: isDark ? 'rgba(239, 68, 68, 0.2)' : '#F95630' }]}>
                 <Text style={[styles.pendingBadgeText, { color: isDark ? '#EF4444' : '#FFFFFF' }]}>PENDING</Text>
@@ -79,9 +104,9 @@ const ERPFeesScreen = ({ navigation }) => {
             <View style={[styles.feeRow, { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#F9FAFB' }]}>
               <View>
                 <Text style={[styles.feeLabel, { color: colors.textPrimary }]}>Tuition Fee</Text>
-                <Text style={[styles.feeDue, { color: colors.textSecondary }]}>Due Date: 15 Aug 2024</Text>
+                <Text style={[styles.feeDue, { color: colors.textSecondary }]}>Due Date: 15 Aug {currentAcademicYearStart}</Text>
               </View>
-              <Text style={[styles.feeAmount, { color: colors.primary }]}>₹ 42,000</Text>
+              <Text style={[styles.feeAmount, { color: colors.primary }]}>{formatCurrency(tuitionFeeVal)}</Text>
             </View>
 
 
@@ -91,7 +116,7 @@ const ERPFeesScreen = ({ navigation }) => {
                 <Text style={[styles.feeLabel, { color: colors.textPrimary }]}>Development Fee</Text>
                 <Text style={[styles.feeDue, { color: colors.textSecondary }]}>Mandatory annual component</Text>
               </View>
-              <Text style={[styles.feeAmount, { color: colors.primary }]}>₹ 6,500</Text>
+              <Text style={[styles.feeAmount, { color: colors.primary }]}>{formatCurrency(devFeeVal)}</Text>
             </View>
 
           </View>

@@ -41,18 +41,18 @@ const FitnessDetailScreen = ({ navigation }) => {
         <View style={styles.ringsSection}>
           <View style={styles.mainRings}>
             <View style={[styles.ringBig, { borderColor: '#EF444420' }]}>
-               <View style={[styles.ringBigFill, { borderColor: '#EF4444', borderRightColor: 'transparent', transform: [{ rotate: '45deg' }] }]} />
+              <View style={[styles.ringBigFill, { borderColor: '#EF4444', borderRightColor: 'transparent', transform: [{ rotate: '45deg' }] }]} />
             </View>
             <View style={[styles.ringMed, { borderColor: '#10B98120' }]}>
-               <View style={[styles.ringMedFill, { borderColor: '#10B981', borderBottomColor: 'transparent', transform: [{ rotate: '-15deg' }] }]} />
+              <View style={[styles.ringMedFill, { borderColor: '#10B981', borderBottomColor: 'transparent', transform: [{ rotate: '-15deg' }] }]} />
             </View>
             <View style={[styles.ringSmall, { borderColor: '#3B82F620' }]}>
-               <View style={[styles.ringSmallFill, { borderColor: '#3B82F6', borderLeftColor: 'transparent', transform: [{ rotate: '120deg' }] }]} />
+              <View style={[styles.ringSmallFill, { borderColor: '#3B82F6', borderLeftColor: 'transparent', transform: [{ rotate: '120deg' }] }]} />
             </View>
           </View>
           <View style={styles.ringsInfo}>
-             <Text style={[styles.activityTitle, { color: colors.textPrimary }]}>Daily Activity</Text>
-             <Text style={[styles.activitySub, { color: colors.textSecondary }]}>You're almost at your goal!</Text>
+            <Text style={[styles.activityTitle, { color: colors.textPrimary }]}>Daily Activity</Text>
+            <Text style={[styles.activitySub, { color: colors.textSecondary }]}>You're almost at your goal!</Text>
           </View>
         </View>
 
@@ -88,18 +88,18 @@ const FitnessDetailScreen = ({ navigation }) => {
           <View style={styles.bmiForm}>
             <View style={styles.bmiInputGroup}>
               <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Weight (kg)</Text>
-              <TextInput 
-                style={[styles.bmiInput, { color: colors.textPrimary, borderColor: colors.border }]} 
-                value={weight} 
+              <TextInput
+                style={[styles.bmiInput, { color: colors.textPrimary, borderColor: colors.border }]}
+                value={weight}
                 onChangeText={setWeight}
                 keyboardType="numeric"
               />
             </View>
             <View style={styles.bmiInputGroup}>
               <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Height (cm)</Text>
-              <TextInput 
-                style={[styles.bmiInput, { color: colors.textPrimary, borderColor: colors.border }]} 
-                value={height} 
+              <TextInput
+                style={[styles.bmiInput, { color: colors.textPrimary, borderColor: colors.border }]}
+                value={height}
                 onChangeText={setHeight}
                 keyboardType="numeric"
               />
@@ -150,7 +150,7 @@ const FitnessDetailScreen = ({ navigation }) => {
             {[40, 70, 45, 90, 65, 80, 50].map((h, i) => (
               <View key={i} style={styles.barCol}>
                 <View style={[styles.bar, { height: h, backgroundColor: i === 3 ? '#EF4444' : '#4338CA' }]} />
-                <Text style={[styles.barDay, { color: colors.textMuted }]}>{['M','T','W','T','F','S','S'][i]}</Text>
+                <Text style={[styles.barDay, { color: colors.textMuted }]}>{['M', 'T', 'W', 'T', 'F', 'S', 'S'][i]}</Text>
               </View>
             ))}
           </View>
@@ -199,7 +199,7 @@ const styles = StyleSheet.create({
   insightHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16 },
   insightTitle: { fontSize: 18, fontWeight: '800' },
   insightDesc: { fontSize: 14, lineHeight: 22, fontWeight: '500' },
-  
+
   bmiCard: { padding: 24, borderRadius: 28, borderWidth: 1, marginBottom: 24 },
   bmiTitle: { fontSize: 20, fontWeight: '900', marginBottom: 20 },
   bmiForm: { flexDirection: 'row', gap: 16, marginBottom: 24 },

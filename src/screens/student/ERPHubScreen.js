@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { useTheme } from '../../hooks/useTheme';
+import { useUser } from '../../context/UserContext';
 
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, Image,
@@ -13,6 +14,7 @@ import { APP_CONFIG } from '../../config/appConfig';
 const { width } = Dimensions.get('window');
 
 const ERPHubScreen = ({ navigation }) => {
+  const { user } = useUser();
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
 
@@ -64,7 +66,7 @@ const ERPHubScreen = ({ navigation }) => {
             <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
           </TouchableOpacity>
           <LinearGradient colors={['#EA580C', '#9A3412']} style={styles.logoIconBg}>
-            <MaterialCommunityIcons name="account-balance-wallet" size={18} color="#FFFFFF" />
+            <MaterialIcons name="account-balance-wallet" size={18} color="#FFFFFF" />
           </LinearGradient>
           <View>
             <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>ERP Hub</Text>
@@ -106,22 +108,35 @@ const ERPHubScreen = ({ navigation }) => {
                 Transit · Library · Fees · Documents — all in one place.
               </Text>
             </View>
-            <View style={[styles.heroStats, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.12)' }]}>
-              <View style={styles.heroStatItem}>
-                <Text style={styles.heroStatValue}>VII</Text>
-                <Text style={styles.heroStatLabel}>SEMESTER</Text>
-              </View>
-              <View style={[styles.heroStatDivider, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.2)' }]} />
-              <View style={styles.heroStatItem}>
-                <Text style={styles.heroStatValue}>8.42</Text>
-                <Text style={styles.heroStatLabel}>CGPA</Text>
-              </View>
-              <View style={[styles.heroStatDivider, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.2)' }]} />
-              <View style={styles.heroStatItem}>
-                <Text style={styles.heroStatValue}>CSE</Text>
-                <Text style={styles.heroStatLabel}>BRANCH</Text>
-              </View>
-            </View>
+            {(() => {
+              const roman = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
+              const displaySem = user?.semester ? (roman[user.semester - 1] || user.semester) : 'VII';
+              const displayCgpa = user?.cgpa ? user.cgpa.toFixed(2) : '8.42';
+              const displayBranch = user?.branch 
+                ? user.branch.split(' ').map(w => w[0]).join('').toUpperCase().substring(0, 4)
+                : user?.course 
+                ? user.course.split(' ').map(w => w[0]).join('').toUpperCase().substring(0, 4)
+                : 'CSE';
+
+              return (
+                <View style={[styles.heroStats, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.12)' }]}>
+                  <View style={styles.heroStatItem}>
+                    <Text style={styles.heroStatValue}>{displaySem}</Text>
+                    <Text style={styles.heroStatLabel}>SEMESTER</Text>
+                  </View>
+                  <View style={[styles.heroStatDivider, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.2)' }]} />
+                  <View style={styles.heroStatItem}>
+                    <Text style={styles.heroStatValue}>{displayCgpa}</Text>
+                    <Text style={styles.heroStatLabel}>CGPA</Text>
+                  </View>
+                  <View style={[styles.heroStatDivider, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.2)' }]} />
+                  <View style={styles.heroStatItem}>
+                    <Text style={styles.heroStatValue}>{displayBranch}</Text>
+                    <Text style={styles.heroStatLabel}>BRANCH</Text>
+                  </View>
+                </View>
+              );
+            })()}
           </LinearGradient>
         </View>
 
@@ -222,7 +237,7 @@ const ERPHubScreen = ({ navigation }) => {
 
               <View style={styles.essentialFooter}>
                 <View style={[styles.dueBadge, { backgroundColor: isDark ? 'rgba(52, 211, 153, 0.2)' : '#ECFDF5' }]}>
-                  <Text style={[styles.dueText, { color: isDark ? '#34D399' : '#059669' }]}>85% Overall</Text>
+                  <Text style={[styles.dueText, { color: isDark ? '#34D399' : '#059669' }]}>{user ? user.attendance : 85}% Overall</Text>
                 </View>
                 <MaterialIcons name="chevron-right" size={20} color={colors.textMuted} />
               </View>
@@ -241,7 +256,13 @@ const ERPHubScreen = ({ navigation }) => {
             </LinearGradient>
             <View style={styles.essentialContent}>
               <Text style={[styles.essentialCardTitle, { color: colors.textPrimary }]}>Fees & Payments</Text>
-              <Text style={[styles.essentialCardDesc, { color: colors.textSecondary }]}>Semester VII Tuition Fee installment pending.</Text>
+              {(() => {
+                const roman = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
+                const displaySem = user?.semester ? (roman[user.semester - 1] || user.semester) : 'VII';
+                return (
+                  <Text style={[styles.essentialCardDesc, { color: colors.textSecondary }]}>Semester {displaySem} Tuition Fee installment pending.</Text>
+                );
+              })()}
 
               <View style={styles.essentialFooter}>
                 <View style={[styles.dueBadge, { backgroundColor: isDark ? 'rgba(239, 68, 68, 0.2)' : '#FEE2E2' }]}>
@@ -264,11 +285,17 @@ const ERPHubScreen = ({ navigation }) => {
             </LinearGradient>
             <View style={styles.essentialContent}>
               <Text style={[styles.essentialCardTitle, { color: colors.textPrimary }]}>Results</Text>
-              <Text style={[styles.essentialCardDesc, { color: colors.textSecondary }]}>Semester VI Marksheet is now available for download.</Text>
+              {(() => {
+                const roman = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
+                const displayPrevSem = user?.semester && user.semester > 1 ? (roman[user.semester - 2] || (user.semester - 1)) : 'VI';
+                return (
+                  <Text style={[styles.essentialCardDesc, { color: colors.textSecondary }]}>Semester {displayPrevSem} Marksheet is now available for download.</Text>
+                );
+              })()}
 
               <View style={styles.essentialFooter}>
                 <View style={[styles.dueBadge, { backgroundColor: isDark ? 'rgba(129, 140, 248, 0.2)' : '#EEF2FF' }]}>
-                  <Text style={[styles.dueText, { color: isDark ? '#818CF8' : '#4338CA' }]}>CGPA: 8.42</Text>
+                  <Text style={[styles.dueText, { color: isDark ? '#818CF8' : '#4338CA' }]}>CGPA: {user ? user.cgpa.toFixed(2) : '8.42'}</Text>
                 </View>
                 <MaterialIcons name="chevron-right" size={20} color={colors.textMuted} />
               </View>
@@ -420,16 +447,22 @@ const ERPHubScreen = ({ navigation }) => {
 
             <View style={styles.lcStudentRow}>
               <Image
-                source={{ uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuC6mmtjUA28NY_AB8YFu2Ri2e3lSkRbJCYpAbrgwHHzzLntRM9rNTLFJIT-pf3fW5gQ-_hRX8LB8ZDdqw5ls_d4bA10oIXuBlKp8kv7onee50cVXADdy7BPVn6kAg4Co9Gbp6XiTx5yITLttWLtkQQag4sVTILELHpLT0_-WAXmJWUVCHpSfhFuYmROstnRxdO_T4ym_KOCd8CmJm60WORR2yoPF8RiqYCiJsTUrQcbumydveuPeijNqG_991IufFMlU7g1DbJ3nqtG' }}
+                source={{ uri: user?.gender === 'F' ? 'https://i.pravatar.cc/150?img=47' : 'https://i.pravatar.cc/150?img=12' }}
                 style={styles.lcAvatar}
               />
               <View style={styles.lcStudentInfo}>
-                <Text style={styles.lcStudentName}>Aryan Kumar</Text>
-                <Text style={styles.lcStudentDept}>B.Tech Computer Science & Engineering</Text>
-                <Text style={styles.lcStudentSem}>Semester VII  •  Section A</Text>
+                <Text style={styles.lcStudentName}>{user?.name || 'Aryan Kumar'}</Text>
+                <Text style={styles.lcStudentDept}>{user?.course ? `${user.course} ${user.branch ? '- ' + user.branch : ''}` : 'B.Tech Computer Science & Engineering'}</Text>
+                {(() => {
+                  const roman = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
+                  const displaySem = user?.semester ? (roman[user.semester - 1] || user.semester) : 'VII';
+                  return (
+                    <Text style={styles.lcStudentSem}>Semester {displaySem}  •  Section A</Text>
+                  );
+                })()}
                 <View style={styles.lcIdRow}>
                   <Text style={styles.lcIdLabel}>ID: </Text>
-                  <Text style={styles.lcIdValue}>{APP_CONFIG.UNIVERSITY_ID_PREFIX}2024001</Text>
+                  <Text style={styles.lcIdValue}>{user?.id || `${APP_CONFIG.UNIVERSITY_ID_PREFIX}2024001`}</Text>
                 </View>
               </View>
             </View>
@@ -467,7 +500,7 @@ const ERPHubScreen = ({ navigation }) => {
                   />
                 ))}
               </View>
-              <Text style={styles.lcBarcodeText}>{APP_CONFIG.UNIVERSITY_ID_PREFIX}-LIB-2024-001</Text>
+              <Text style={styles.lcBarcodeText}>{user?.id ? `${APP_CONFIG.UNIVERSITY_ID_PREFIX}-LIB-${user.id}` : `${APP_CONFIG.UNIVERSITY_ID_PREFIX}-LIB-2024-001`}</Text>
             </View>
 
             <View style={styles.lcFooterRow}>
@@ -704,12 +737,23 @@ const ERPHubScreen = ({ navigation }) => {
             <TouchableOpacity activeOpacity={1}>
               <LinearGradient colors={['#EA580C', '#9A3412']} style={styles.drawerHeader}>
                 <Image
-                  source={{ uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuC6mmtjUA28NY_AB8YFu2Ri2e3lSkRbJCYpAbrgwHHzzLntRM9rNTLFJIT-pf3fW5gQ-_hRX8LB8ZDdqw5ls_d4bA10oIXuBlKp8kv7onee50cVXADdy7BPVn6kAg4Co9Gbp6XiTx5yITLttWLtkQQag4sVTILELHpLT0_-WAXmJWUVCHpSfhFuYmROstnRxdO_T4ym_KOCd8CmJm60WORR2yoPF8RiqYCiJsTUrQcbumydveuPeijNqG_991IufFMlU7g1DbJ3nqtG' }}
+                  source={{ uri: user?.gender === 'F' ? 'https://i.pravatar.cc/150?img=47' : 'https://i.pravatar.cc/150?img=12' }}
                   style={styles.drawerAvatar}
                 />
-                <Text style={styles.drawerName}>Aryan Kumar</Text>
-                <Text style={styles.drawerRole}>B.Tech CSE - VII Sem</Text>
-                <Text style={styles.drawerId}>ID: {APP_CONFIG.UNIVERSITY_ID_PREFIX}2024001</Text>
+                <Text style={styles.drawerName}>{user?.name || 'Aryan Kumar'}</Text>
+                {(() => {
+                  const roman = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
+                  const displaySem = user?.semester ? (roman[user.semester - 1] || user.semester) : 'VII';
+                  const displayBranch = user?.branch 
+                    ? user.branch.split(' ').map(w => w[0]).join('').toUpperCase().substring(0, 4)
+                    : user?.course 
+                    ? user.course.split(' ').map(w => w[0]).join('').toUpperCase().substring(0, 4)
+                    : 'CSE';
+                  return (
+                    <Text style={styles.drawerRole}>{user?.course ? user.course.split(' ')[0] : 'B.Tech'} {displayBranch} - Sem {displaySem}</Text>
+                  );
+                })()}
+                <Text style={styles.drawerId}>ID: {user?.id || `${APP_CONFIG.UNIVERSITY_ID_PREFIX}2024001`}</Text>
               </LinearGradient>
 
               <View style={styles.drawerItems}>

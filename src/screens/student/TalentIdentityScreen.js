@@ -7,6 +7,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../hooks/useTheme';
 import { APP_CONFIG } from '../../config/appConfig';
+import { useUser } from '../../context/UserContext';
+import { getCategoryLabel } from '../../data/aiEngine';
 
 
 const { width } = Dimensions.get('window');
@@ -14,7 +16,63 @@ const { width } = Dimensions.get('window');
 const TalentIdentityScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
+  const { user } = useUser();
 
+  if (!user) return null;
+
+  const displayCerts = [
+    ...(user.certsDone || []),
+    ...(user.certsInProgress || []),
+  ].filter(c => {
+    const cl = c.toLowerCase();
+    return cl !== 'yes' && cl !== 'no' && cl !== 'na' && cl !== 'n/a' && cl !== 'none' && cl !== '';
+  });
+
+  const finalCerts = displayCerts.length > 0 
+    ? displayCerts.map((name, idx) => ({
+        id: idx,
+        name: name,
+        issuer: name.toLowerCase().includes('aws') || name.toLowerCase().includes('cloud')
+          ? 'AWS Academy'
+          : name.toLowerCase().includes('google')
+          ? 'Google Cloud'
+          : name.toLowerCase().includes('nptel') || name.toLowerCase().includes('swayam')
+          ? 'NPTEL'
+          : `${APP_CONFIG.UNIVERSITY_SHORT_NAME} Venture Lab`,
+        date: 'Issued recently',
+        img: idx % 2 === 0 
+          ? 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?w=400&auto=format&fit=crop'
+          : 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=400&auto=format&fit=crop'
+      }))
+    : [
+        {
+          id: 0,
+          name: user.course?.toLowerCase().includes('medicine') || user.course?.toLowerCase().includes('bpharma')
+            ? 'Basic Pharmacology'
+            : user.course?.toLowerCase().includes('mba') || user.course?.toLowerCase().includes('bba')
+            ? 'Advanced Excel'
+            : 'Python Foundations',
+          issuer: `${APP_CONFIG.UNIVERSITY_SHORT_NAME} Academy`,
+          date: 'Recommended Certification',
+          img: 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?w=400&auto=format&fit=crop'
+        },
+        {
+          id: 1,
+          name: user.course?.toLowerCase().includes('medicine') || user.course?.toLowerCase().includes('bpharma')
+            ? 'Clinical Trials & Ethics'
+            : user.course?.toLowerCase().includes('mba') || user.course?.toLowerCase().includes('bba')
+            ? 'Data Visualization with BI'
+            : 'Cloud Architect Associate',
+          issuer: 'AWS Academy Partner',
+          date: 'Recommended Certification',
+          img: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=400&auto=format&fit=crop'
+        }
+      ];
+
+  const isFemaleAvatar = user.gender === 'F' || user.gender === 'Female';
+  const avatarUrl = isFemaleAvatar
+    ? 'https://images.pexels.com/photos/733872/pexels-photo-733872.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=500'
+    : 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=500';
 
   return (
     <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
@@ -24,7 +82,6 @@ const TalentIdentityScreen = ({ navigation }) => {
           <MaterialIcons name="school" size={26} color={colors.primary} />
           <Text style={[styles.headerLogo, { color: colors.textPrimary }]}>{APP_CONFIG.UNIVERSITY_NAME}</Text>
         </View>
-
 
         <View style={styles.headerRight}>
           <TouchableOpacity 
@@ -37,21 +94,18 @@ const TalentIdentityScreen = ({ navigation }) => {
             />
           </TouchableOpacity>
           <Image
-            source={{ uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuC6mmtjUA28NY_AB8YFu2Ri2e3lSkRbJCYpAbrgwHHzzLntRM9rNTLFJIT-pf3fW5gQ-_hRX8LB8ZDdqw5ls_d4bA10oIXuBlKp8kv7onee50cVXADdy7BPVn6kAg4Co9Gbp6XiTx5yITLttWLtkQQag4sVTILELHpLT0_-WAXmJWUVCHpSfhFuYmROstnRxdO_T4ym_KOCd8CmJm60WORR2yoPF8RiqYCiJsTUrQcbumydveuPeijNqG_991IufFMlU7g1DbJ3nqtG' }}
+            source={{ uri: avatarUrl }}
             style={[styles.avatarSmall, { borderColor: colors.primary }]}
           />
-
         </View>
       </View>
-
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         {/* Profile Header Image */}
         <View style={styles.profileHeroSection}>
           <View style={[styles.profileHeroCard, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: isDark ? 1 : 0 }]}>
-
             <Image
-              source={{ uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuC6mmtjUA28NY_AB8YFu2Ri2e3lSkRbJCYpAbrgwHHzzLntRM9rNTLFJIT-pf3fW5gQ-_hRX8LB8ZDdqw5ls_d4bA10oIXuBlKp8kv7onee50cVXADdy7BPVn6kAg4Co9Gbp6XiTx5yITLttWLtkQQag4sVTILELHpLT0_-WAXmJWUVCHpSfhFuYmROstnRxdO_T4ym_KOCd8CmJm60WORR2yoPF8RiqYCiJsTUrQcbumydveuPeijNqG_991IufFMlU7g1DbJ3nqtG' }}
+              source={{ uri: avatarUrl }}
               style={styles.heroImg}
               resizeMode="cover"
             />
@@ -61,7 +115,7 @@ const TalentIdentityScreen = ({ navigation }) => {
                   <View style={[styles.eliteBadge, { backgroundColor: colors.primary }]}>
                     <Text style={styles.eliteBadgeText}>PULSE ELITE</Text>
                   </View>
-                  <Text style={styles.heroName}>Aryan Sharma</Text>
+                  <Text style={styles.heroName}>{user?.name || 'Student'}</Text>
                 </View>
                 {/* Editable Profile Picture Icon */}
                 <TouchableOpacity style={[styles.editPicBtn, { backgroundColor: colors.background }]}>
@@ -75,8 +129,8 @@ const TalentIdentityScreen = ({ navigation }) => {
 
         {/* Major & Batch Info */}
         <View style={styles.basicInfo}>
-          <Text style={[styles.majorText, { color: colors.primary }]}>B.Tech Computer Science Engineering</Text>
-          <Text style={[styles.batchSubText, { color: colors.textSecondary }]}>Batch of 2025 • {APP_CONFIG.CAMPUS_LOCATION}</Text>
+          <Text style={[styles.majorText, { color: colors.primary }]}>{user?.course || 'Course'} {user?.branch ? `- ${user?.branch}` : ''}</Text>
+          <Text style={[styles.batchSubText, { color: colors.textSecondary }]}>Year {user?.year || '1'} • {APP_CONFIG.CAMPUS_LOCATION}</Text>
 
 
           {/* LinkedIn-style Connections */}
@@ -92,11 +146,11 @@ const TalentIdentityScreen = ({ navigation }) => {
           <View style={styles.capsuleRow}>
             <View style={[styles.capsule, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
               <Text style={styles.capsuleLabel}>CURRENT YEAR</Text>
-              <Text style={[styles.capsuleValue, { color: colors.textPrimary }]}>3rd Year</Text>
+              <Text style={[styles.capsuleValue, { color: colors.textPrimary }]}>Year {user?.year || '1'}</Text>
             </View>
             <View style={[styles.capsule, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
               <Text style={styles.capsuleLabel}>STUDENT ID</Text>
-              <Text style={[styles.capsuleValue, { color: colors.textPrimary }]}>{APP_CONFIG.UNIVERSITY_ID_PREFIX}-2022-094</Text>
+              <Text style={[styles.capsuleValue, { color: colors.textPrimary }]}>{user?.id || 'ID-XXX'}</Text>
             </View>
             <View style={[styles.capsule, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
               <Text style={styles.capsuleLabel}>VIBE CHECK</Text>
@@ -131,15 +185,15 @@ const TalentIdentityScreen = ({ navigation }) => {
 
           <View style={styles.acadGrid}>
             <View style={styles.acadItem}>
-              <Text style={[styles.acadValue, { color: colors.primary }]}>8.9 <Text style={[styles.acadMax, { color: colors.textMuted }]}>/ 10.0</Text></Text>
+              <Text style={[styles.acadValue, { color: colors.primary }]}>{user?.cgpa || '0.0'} <Text style={[styles.acadMax, { color: colors.textMuted }]}>/ 10.0</Text></Text>
               <Text style={[styles.acadLabel, { color: colors.textMuted }]}>CUMULATIVE GPA</Text>
-              <View style={[styles.pBar, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : colors.border }]}><View style={[styles.pFill, { width: '89%', backgroundColor: colors.primary }]} /></View>
+              <View style={[styles.pBar, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : colors.border }]}><View style={[styles.pFill, { width: `${(user?.cgpa || 0) * 10}%`, backgroundColor: colors.primary }]} /></View>
             </View>
 
             <View style={styles.acadItem}>
-              <Text style={[styles.acadValue, { color: '#f59e0b' }]}>85%</Text>
+              <Text style={[styles.acadValue, { color: '#f59e0b' }]}>{user?.attendance || 0}%</Text>
               <Text style={[styles.acadLabel, { color: colors.textMuted }]}>ATTENDANCE</Text>
-              <View style={[styles.pBar, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : colors.border }]}><View style={[styles.pFill, { width: '85%', backgroundColor: '#f59e0b' }]} /></View>
+              <View style={[styles.pBar, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : colors.border }]}><View style={[styles.pFill, { width: `${user?.attendance || 0}%`, backgroundColor: '#f59e0b' }]} /></View>
             </View>
 
           </View>
@@ -239,22 +293,16 @@ const TalentIdentityScreen = ({ navigation }) => {
           </View>
 
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.certScroll}>
-            <View style={[styles.certCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-              <Image
-                source={{ uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDeMp8KExPP-mtUke2kOSExXY2ZF0-KPSr4_BWISAEV96WQMjZ8c-gIN8N3MDVuNL3W9P2_QTb65_Gb1bjdLEqfql5syAODPJ8LX2PiNu4gT15Aa5_NiE57znpo1K5waCxyCC5oGtICTefR_R_YtqVaBM8u_bJp8nBmneBlPCkLW-FDAJEFU_VJrSE7KazdaU4cW2QJ7QRo-YUED9COkt-K6YA3QZrsOTsdzy4dr4_Pdh4gj6aVDhwuB7x3XKOzPxkBc24eqBNAMZnf' }}
-                style={styles.certImg}
-              />
-              <Text style={[styles.certName, { color: colors.textPrimary }]}>Cloud Foundations</Text>
-              <Text style={[styles.certIssuer, { color: colors.textSecondary }]}>Issued by AWS Academy • June 2024</Text>
-            </View>
-            <View style={[styles.certCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-              <Image
-                source={{ uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCFxNwf4tljvU2VUw0hoE1MaYbT7rBYyYSN8DZsmFulMlYTRxq9XVsza7Ng0S5c_JtrU4OCXX7gY6VAdV87Dv6_UqlY9sBl8Jm52Z3ZUo1YYjTmuQI1QcuyIlny77qhXJvJA7d5zsC1LOFO6kjBJh9cFwYrupFj-gtmeFEFxBMExwb6ClkG16Q9VR1PMBUuNrExWGoLA5l9Bt_TAu2QHprIfZzE9ogRIW4ekHFeA4-QW7rhISgJoqcnmcOeZ0Vn891YbiFqPciNPBct' }}
-                style={styles.certImg}
-              />
-              <Text style={[styles.certName, { color: colors.textPrimary }]}>Full Stack Dev</Text>
-              <Text style={[styles.certIssuer, { color: colors.textSecondary }]}>{APP_CONFIG.UNIVERSITY_SHORT_NAME} Venture Lab • Mar 2024</Text>
-            </View>
+            {finalCerts.map((cert) => (
+              <View key={cert.id} style={[styles.certCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                <Image
+                  source={{ uri: cert.img }}
+                  style={styles.certImg}
+                />
+                <Text style={[styles.certName, { color: colors.textPrimary }]}>{cert.name}</Text>
+                <Text style={[styles.certIssuer, { color: colors.textSecondary }]}>{cert.issuer} • {cert.date}</Text>
+              </View>
+            ))}
           </ScrollView>
 
         </View>

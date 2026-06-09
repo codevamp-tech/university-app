@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { useTheme } from '../../hooks/useTheme';
+import { useUser } from '../../context/UserContext';
+import { getAcademicSubjects } from '../../data/aiEngine';
 
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
@@ -11,24 +13,63 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 const { width } = Dimensions.get('window');
 
-const semesterData = {
-  VII: {
-    label: 'Fall 2023 • Ongoing Evaluation',
-    sgpa: '8.90',
-    subjects: [
-      { code: 'CS701', name: 'Artificial Intelligence & Robotics', credits: 4, grade: 'A+' },
-      { code: 'CS702', name: 'Cloud Computing Architectures', credits: 3, grade: 'A' },
-      { code: 'CS703', name: 'Network Security & Cryptography', credits: 4, grade: 'O' },
-    ],
-  },
-  VI: { label: 'Spring 2023 • Completed', sgpa: '8.25', subjects: [] },
-  V: { label: 'Fall 2022 • Completed', sgpa: '8.10', subjects: [] },
-};
-
 const ERPResultsScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
-  const [expandedSem, setExpandedSem] = useState('VII');
+  const { user } = useUser();
+
+  const roman = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
+  const userSem = user?.semester || 7;
+  const sgpaHistory = user?.sgpaHistory || [8.5, 8.2, 7.9, 8.1, 8.3, 8.25];
+
+  // Dynamically expand to the current semester
+  const currentSemRoman = roman[userSem - 1] || 'VII';
+  const [expandedSem, setExpandedSem] = useState(currentSemRoman);
+
+  const academicSubjects = getAcademicSubjects(user || { course: 'B.Tech CSE' });
+
+  // Generate current semester subjects with grades
+  const currentSemesterSubjects = academicSubjects.map((sub, idx) => {
+    const grades = ['O', 'A+', 'A', 'B+'];
+    const creditsList = [4, 3, 4, 3, 3];
+    return {
+      code: `${user?.course ? user.course.split(' ').map(w => w[0]).join('').toUpperCase().substring(0, 3) : 'CS'}${301 + idx}`,
+      name: sub,
+      credits: creditsList[idx % creditsList.length],
+      grade: grades[idx % grades.length]
+    };
+  });
+
+  // Build dynamic semesterData object
+  const semesterData = {};
+  
+  // Current semester
+  semesterData[currentSemRoman] = {
+    label: `Fall ${new Date().getFullYear()} • Ongoing Evaluation`,
+    sgpa: Math.min((user?.cgpa ? (user.cgpa + 0.25) : 8.9), 10.0).toFixed(2),
+    subjects: currentSemesterSubjects
+  };
+
+  // Completed semesters from history
+  sgpaHistory.forEach((sgpaVal, idx) => {
+    const semIndex = idx;
+    if (semIndex < userSem - 1) {
+      const rName = roman[semIndex];
+      const term = semIndex % 2 === 0 ? 'Fall' : 'Spring';
+      const yearOffset = Math.floor((userSem - 1 - semIndex) / 2);
+      const yearStr = `${new Date().getFullYear() - yearOffset}`;
+      semesterData[rName] = {
+        label: `${term} ${yearStr} • Completed`,
+        sgpa: sgpaVal.toFixed(2),
+        subjects: [] // detailed subjects not needed for past semesters in UI expansion
+      };
+    }
+  });
+
+  // Calculate total credits
+  const totalCredits = 180;
+  const completedCredits = Math.max(userSem - 1, 1) * 22;
+  const creditsPct = Math.round((completedCredits / totalCredits) * 100);
 
 
   return (
@@ -52,7 +93,7 @@ const ERPResultsScreen = ({ navigation }) => {
         {/* Hero */}
         <View style={styles.sectionContainer}>
           <Text style={[styles.heroTitle, { color: colors.textPrimary }]}>Semester Results</Text>
-          <Text style={[styles.heroSub, { color: colors.textSecondary }]}>B.Tech Computer Science & Engineering • VII Sem</Text>
+          <Text style={[styles.heroSub, { color: colors.textSecondary }]}>{user?.course || 'B.Tech CSE'} • Semester {currentSemRoman}</Text>
           <TouchableOpacity style={[styles.downloadBtn, { backgroundColor: isDark ? colors.card : '#FFFFFF', borderColor: colors.border, borderWidth: 1 }]}>
             <MaterialIcons name="download" size={18} color={isDark ? '#818CF8' : '#4338CA'} />
             <Text style={[styles.downloadBtnText, { color: isDark ? '#818CF8' : '#4338CA' }]}>Download Provisional Marksheet</Text>
@@ -72,7 +113,7 @@ const ERPResultsScreen = ({ navigation }) => {
           >
 
             <Text style={[styles.cgpaLabel, { color: 'rgba(255,255,255,0.7)' }]}>CUMULATIVE GRADE</Text>
-            <Text style={styles.cgpaValue}>8.42</Text>
+            <Text style={styles.cgpaValue}>{user ? user.cgpa.toFixed(2) : '8.42'}</Text>
             <View style={styles.cgpaBadge}>
               <MaterialIcons name="trending-up" size={14} color="#FFFFFF" />
               <Text style={styles.cgpaBadgeText}>TOP 5% OF BATCH</Text>
@@ -86,11 +127,11 @@ const ERPResultsScreen = ({ navigation }) => {
           <View style={[styles.creditsCard, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
             <Text style={[styles.creditsLabel, { color: colors.textSecondary }]}>ACADEMIC PROGRESS</Text>
             <View style={styles.creditsRow}>
-              <Text style={[styles.creditsValue, { color: colors.textPrimary }]}>142</Text>
-              <Text style={[styles.creditsTotal, { color: colors.textSecondary }]}>/ 180 Credits</Text>
+              <Text style={[styles.creditsValue, { color: colors.textPrimary }]}>{completedCredits}</Text>
+              <Text style={[styles.creditsTotal, { color: colors.textSecondary }]}>/ {totalCredits} Credits</Text>
             </View>
             <View style={[styles.progressBarBg, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F3F4F6' }]}>
-              <View style={[styles.progressBarFill, { width: '78%', backgroundColor: isDark ? '#34D399' : '#059669' }]} />
+              <View style={[styles.progressBarFill, { width: `${creditsPct}%`, backgroundColor: isDark ? '#34D399' : '#059669' }]} />
             </View>
           </View>
         </View>
@@ -116,7 +157,7 @@ const ERPResultsScreen = ({ navigation }) => {
 
           {Object.entries(semesterData).map(([sem, data]) => {
             const isExpanded = expandedSem === sem;
-            const isActive = sem === 'VII';
+            const isActive = sem === currentSemRoman;
             return (
               <View key={sem}>
                 <TouchableOpacity
@@ -180,13 +221,16 @@ const ERPResultsScreen = ({ navigation }) => {
 
 
 
+
               </View>
             );
           })}
 
           <TouchableOpacity style={styles.showAllBtn}>
             <MaterialIcons name="history" size={20} color={colors.primary} />
-            <Text style={[styles.showAllText, { color: colors.primary }]}>Show All Semesters (I - IV)</Text>
+            <Text style={[styles.showAllText, { color: colors.primary }]}>
+              Show All Semesters (I - {userSem > 1 ? (roman[userSem - 2] || (userSem - 1)) : 'I'})
+            </Text>
           </TouchableOpacity>
 
 

@@ -6,11 +6,70 @@ import { Ionicons, MaterialIcons, MaterialCommunityIcons } from '@expo/vector-ic
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { APP_CONFIG } from '../../config/appConfig';
+import { useUser } from '../../context/UserContext';
+import { getPersonaBadge } from '../../data/aiEngine';
 
 const { width } = Dimensions.get('window');
 
 const ProfileScreen = () => {
   const insets = useSafeAreaInsets();
+  const { user } = useUser();
+  
+  if (!user) return null;
+
+  const displayCerts = [
+    ...(user.certsDone || []),
+    ...(user.certsInProgress || []),
+  ].filter(c => {
+    const cl = c.toLowerCase();
+    return cl !== 'yes' && cl !== 'no' && cl !== 'na' && cl !== 'n/a' && cl !== 'none' && cl !== '';
+  });
+
+  const finalCerts = displayCerts.length > 0 
+    ? displayCerts.map((name, idx) => ({
+        id: idx,
+        name: name,
+        issuer: name.toLowerCase().includes('aws') || name.toLowerCase().includes('cloud')
+          ? 'AWS Academy'
+          : name.toLowerCase().includes('google')
+          ? 'Google Cloud'
+          : name.toLowerCase().includes('nptel') || name.toLowerCase().includes('swayam')
+          ? 'NPTEL'
+          : `${APP_CONFIG.UNIVERSITY_SHORT_NAME} Venture Lab`,
+        date: 'Issued recently',
+        img: idx % 2 === 0 
+          ? 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?w=400&auto=format&fit=crop'
+          : 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=400&auto=format&fit=crop'
+      }))
+    : [
+        {
+          id: 0,
+          name: user.course?.toLowerCase().includes('medicine') || user.course?.toLowerCase().includes('bpharma')
+            ? 'Basic Pharmacology'
+            : user.course?.toLowerCase().includes('mba') || user.course?.toLowerCase().includes('bba')
+            ? 'Advanced Excel'
+            : 'Python Foundations',
+          issuer: `${APP_CONFIG.UNIVERSITY_SHORT_NAME} Academy`,
+          date: 'Recommended Certification',
+          img: 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?w=400&auto=format&fit=crop'
+        },
+        {
+          id: 1,
+          name: user.course?.toLowerCase().includes('medicine') || user.course?.toLowerCase().includes('bpharma')
+            ? 'Clinical Trials & Ethics'
+            : user.course?.toLowerCase().includes('mba') || user.course?.toLowerCase().includes('bba')
+            ? 'Data Visualization with BI'
+            : 'Cloud Architect Associate',
+          issuer: 'AWS Academy Partner',
+          date: 'Recommended Certification',
+          img: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=400&auto=format&fit=crop'
+        }
+      ];
+
+  const isFemaleAvatar = user.gender === 'F' || user.gender === 'Female';
+  const avatarUrl = isFemaleAvatar
+    ? 'https://images.pexels.com/photos/733872/pexels-photo-733872.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=500'
+    : 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=500';
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -25,7 +84,7 @@ const ProfileScreen = () => {
             <MaterialIcons name="smart-toy" size={22} color="#6B7280" />
           </TouchableOpacity>
           <Image
-            source={{ uri: 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=500' }}
+            source={{ uri: avatarUrl }}
             style={styles.avatarTiny}
           />
         </View>
@@ -36,29 +95,29 @@ const ProfileScreen = () => {
         <View style={styles.profileSection}>
           <View style={styles.profileImageWrap}>
             <Image 
-              source={{ uri: 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=500' }} 
+              source={{ uri: avatarUrl }} 
               style={styles.profileImg} 
               resizeMode="cover"
             />
             <LinearGradient colors={['transparent', 'rgba(0,0,0,0.8)']} style={styles.imgOverlay}>
               <View style={styles.pulseEliteBadge}>
-                <Text style={styles.pulseEliteText}>PULSE ELITE</Text>
+                <Text style={styles.pulseEliteText}>{getPersonaBadge(user.personaType).toUpperCase()}</Text>
               </View>
-              <Text style={styles.profileName}>Aarav Sharma</Text>
+              <Text style={styles.profileName}>{user.name}</Text>
             </LinearGradient>
           </View>
           
           <View style={styles.profileInfoWrap}>
-            <Text style={styles.profileMajor}>B.Tech Computer Science Engineering</Text>
-            <Text style={styles.profileSub}>Batch of 2025 • {APP_CONFIG.UNIVERSITY_NAME}</Text>
+            <Text style={styles.profileMajor}>{user.course} {user.branch}</Text>
+            <Text style={styles.profileSub}>Year {user.year} • {APP_CONFIG.UNIVERSITY_NAME}</Text>
             <View style={styles.infoCapsuleRow}>
               <View style={styles.infoCapsule}>
-                <Text style={styles.infoLabel}>YEAR</Text>
-                <Text style={styles.infoValue}>3rd Year</Text>
+                <Text style={styles.infoLabel}>SEM</Text>
+                <Text style={styles.infoValue}>S{user.semester}</Text>
               </View>
               <View style={styles.infoCapsule}>
                 <Text style={styles.infoLabel}>ID</Text>
-                <Text style={styles.infoValue}>{APP_CONFIG.UNIVERSITY_ID_PREFIX}-2022-094</Text>
+                <Text style={styles.infoValue}>{user.id}</Text>
               </View>
               <View style={styles.infoCapsule}>
                 <Text style={styles.infoLabel}>VIBE</Text>
@@ -76,8 +135,8 @@ const ProfileScreen = () => {
           <View style={styles.aiContent}>
             <Text style={styles.aiTitle}>Personalized AI Pulse</Text>
             <Text style={styles.aiText}>
-              "Aarav, your trajectory in <Text style={{ fontWeight: '800', color: '#4953ac' }}>Cloud Computing</Text> is exceptional. 
-              Maintaining your 8.9 CGPA while leading projects puts you in the top 5% of your batch."
+              "{user.name.split(' ')[0]}, your trajectory in <Text style={{ fontWeight: '800', color: '#4953ac' }}>{user.course}</Text> is exceptional. 
+              Maintaining your {user.cgpa} CGPA while engaging in {user.extracurricular.length} clubs puts you in the top 5% of your batch."
             </Text>
           </View>
         </View>
@@ -91,14 +150,14 @@ const ProfileScreen = () => {
             </View>
             <View style={styles.statRow}>
               <View>
-                <Text style={styles.bigStat}>8.9 <Text style={styles.statMax}>/ 10</Text></Text>
+                <Text style={styles.bigStat}>{user.cgpa} <Text style={styles.statMax}>/ 10</Text></Text>
                 <Text style={styles.statLabel}>CUMULATIVE GPA</Text>
-                <View style={styles.miniBar}><View style={[styles.miniFill, { width: '89%', backgroundColor: '#4953ac' }]} /></View>
+                <View style={styles.miniBar}><View style={[styles.miniFill, { width: `${(user.cgpa/10)*100}%`, backgroundColor: '#4953ac' }]} /></View>
               </View>
               <View>
-                <Text style={styles.bigStat}>85%</Text>
+                <Text style={styles.bigStat}>{user.attendance}%</Text>
                 <Text style={styles.statLabel}>ATTENDANCE</Text>
-                <View style={styles.miniBar}><View style={[styles.miniFill, { width: '85%', backgroundColor: '#8b4b00' }]} /></View>
+                <View style={styles.miniBar}><View style={[styles.miniFill, { width: `${user.attendance}%`, backgroundColor: '#8b4b00' }]} /></View>
               </View>
             </View>
           </View>
@@ -123,19 +182,47 @@ const ProfileScreen = () => {
           <View style={styles.socialCard}>
             <View style={styles.proofHeader}>
               <View>
-                <Text style={styles.proofTitle}>Social Impact Credits</Text>
-                <Text style={styles.proofSub}>Community Service</Text>
+                <Text style={styles.proofTitle}>Hustle & Activities</Text>
+                <Text style={styles.proofSub}>Leadership & Extracurriculars</Text>
               </View>
-              <View style={styles.scoreBadge}><Text style={styles.scoreText}>420 pts</Text></View>
-            </View>
-            <View style={styles.proofItem}>
-              <MaterialIcons name="volunteer-activism" size={20} color="#4953ac" />
-              <View style={{ flex: 1, marginLeft: 12 }}>
-                <Text style={styles.itemTitle}>Campus Green Drive</Text>
-                <Text style={styles.itemMeta}>12 Hours • NGO Partner</Text>
+              <View style={styles.scoreBadge}>
+                <Text style={styles.scoreText}>
+                  {((user.extracurricular?.length || 0) + (user.leadership?.length || 0)) * 100} pts
+                </Text>
               </View>
-              <TouchableOpacity><Text style={styles.viewProofText}>VIEW PROOF</Text></TouchableOpacity>
             </View>
+
+            {user.leadership && user.leadership.filter(Boolean).length > 0 && (
+              <View style={{ marginBottom: 16 }}>
+                <Text style={{ fontSize: 10, fontWeight: '800', color: '#6B7280', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 8 }}>
+                  Leadership Roles
+                </Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                  {user.leadership.filter(c => c && c.toLowerCase() !== 'no' && c.toLowerCase() !== 'na' && c.toLowerCase() !== 'n/a' && c.toLowerCase() !== 'none').map((item, index) => (
+                    <View key={index} style={{ backgroundColor: '#EEF2FF', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12, borderWidth: 1, borderColor: '#C7D2FE', flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                      <MaterialIcons name="grade" size={14} color="#4953ac" />
+                      <Text style={{ fontSize: 12, fontWeight: '700', color: '#4953ac' }}>{item}</Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            )}
+
+            {user.extracurricular && user.extracurricular.filter(Boolean).length > 0 && (
+              <View>
+                <Text style={{ fontSize: 10, fontWeight: '800', color: '#6B7280', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 8 }}>
+                  Extracurriculars
+                </Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                  {user.extracurricular.filter(c => c && c.toLowerCase() !== 'no' && c.toLowerCase() !== 'na' && c.toLowerCase() !== 'n/a' && c.toLowerCase() !== 'none').map((item, index) => (
+                    <View key={index} style={{ backgroundColor: '#FFF7ED', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12, borderWidth: 1, borderColor: '#FFEDD5', flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                      <MaterialIcons name="stars" size={14} color="#EA580C" />
+                      <Text style={{ fontSize: 12, fontWeight: '700', color: '#EA580C' }}>{item}</Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            )}
           </View>
 
           <View style={styles.ventureCard}>
@@ -144,8 +231,8 @@ const ProfileScreen = () => {
                 <Text style={styles.proofTitleWhite}>Venture Lab</Text>
                 <View style={styles.activeLabel}><Text style={styles.activeText}>ACTIVE</Text></View>
               </View>
-              <Text style={styles.ventureName}>SkyDrone Campus</Text>
-              <Text style={styles.ventureDesc}>Leading a team of 5 to develop autonomous delivery drones for pharmaceuticals.</Text>
+              <Text style={styles.ventureName}>{user.course.includes('Computer') ? 'SkyDrone Campus' : 'HealthTech Innovators'}</Text>
+              <Text style={styles.ventureDesc}>Leading a team of 5 to develop autonomous solutions in {user.course}.</Text>
               <View style={styles.ventureActions}>
                 <TouchableOpacity style={styles.vBtn}><MaterialIcons name="link" size={14} color="#FFFFFF" /><Text style={styles.vBtnText}>Proofs</Text></TouchableOpacity>
                 <TouchableOpacity style={styles.vBtn}><MaterialIcons name="rocket-launch" size={14} color="#FFFFFF" /><Text style={styles.vBtnText}>Startup ID</Text></TouchableOpacity>
@@ -164,20 +251,15 @@ const ProfileScreen = () => {
             </TouchableOpacity>
           </View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.certsContainer}>
-            <View style={styles.certCard}>
-              <View style={styles.certImgBox}>
-                <Image source={{ uri: 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?w=400&auto=format&fit=crop' }} style={styles.certImg} />
+            {finalCerts.map((cert) => (
+              <View key={cert.id} style={styles.certCard}>
+                <View style={styles.certImgBox}>
+                  <Image source={{ uri: cert.img }} style={styles.certImg} />
+                </View>
+                <Text style={styles.certName}>{cert.name}</Text>
+                <Text style={styles.certIssuer}>{cert.issuer} • {cert.date}</Text>
               </View>
-              <Text style={styles.certName}>Cloud Foundations</Text>
-              <Text style={styles.certIssuer}>AWS Academy • June 2024</Text>
-            </View>
-            <View style={styles.certCard}>
-              <View style={styles.certImgBox}>
-                <Image source={{ uri: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=400&auto=format&fit=crop' }} style={styles.certImg} />
-              </View>
-              <Text style={styles.certName}>Full Stack Dev</Text>
-              <Text style={styles.certIssuer}>{APP_CONFIG.UNIVERSITY_SHORT_NAME} Venture Lab • Mar 2024</Text>
-            </View>
+            ))}
           </ScrollView>
         </View>
 

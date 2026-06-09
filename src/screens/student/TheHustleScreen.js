@@ -1,25 +1,151 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Dimensions,
 } from 'react-native';
 import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../hooks/useTheme';
+import { useUser } from '../../context/UserContext';
+import { fetchStudentsFromSheet } from '../../data/googleSheetsService';
+import { LeaderboardPageSkeleton } from '../../components/SkeletonLoader';
 
 const { width } = Dimensions.get('window');
 
 const TheHustleScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
+  const { user } = useUser();
 
+  const [students, setStudents] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const leaderboardData = [
-    { id: '1', name: 'Kabir Das', score: '9.1k', rank: 1, avatar: 'https://i.pravatar.cc/150?u=kabir', trend: 'up' },
-    { id: '2', name: 'Sneha Kapoor', score: '8.8k', rank: 2, avatar: 'https://i.pravatar.cc/150?u=sneha', trend: 'same' },
-    { id: '3', name: 'Aryan Singh', score: '8.4k', rank: 3, avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuC6mmtjUA28NY_AB8YFu2Ri2e3lSkRbJCYpAbrgwHHzzLntRM9rNTLFJIT-pf3fW5gQ-_hRX8LB8ZDdqw5ls_d4bA10oIXuBlKp8kv7onee50cVXADdy7BPVn6kAg4Co9Gbp6XiTx5yITLttWLtkQQag4sVTILELHpLT0_-WAXmJWUVCHpSfhFuYmROstnRxdO_T4ym_KOCd8CmJm60WORR2yoPF8RiqYCiJsTUrQcbumydveuPeijNqG_991IufFMlU7g1DbJ3nqtG', trend: 'up', isMe: true },
-    { id: '4', name: 'Meera Patel', score: '8.2k', rank: 4, avatar: 'https://i.pravatar.cc/150?u=meera', trend: 'down' },
-    { id: '5', name: 'Ishaan Sharma', score: '7.9k', rank: 5, avatar: 'https://i.pravatar.cc/150?u=ishaan', trend: 'same' },
-  ];
+  useEffect(() => {
+    let active = true;
+    const loadData = async () => {
+      try {
+        const list = await fetchStudentsFromSheet();
+        if (active) {
+          setStudents(list);
+        }
+      } catch (err) {
+        console.warn('Leaderboard loading failed:', err);
+      } finally {
+        if (active) {
+          setLoading(false);
+        }
+      }
+    };
+    loadData();
+    return () => { active = false; };
+  }, []);
+
+  // Compute leaderboard scores
+  const computedLeaderboard = students.map(s => {
+    // 1. Certificates done: 500 pts each
+    const certCount = (s.certsDone || []).filter(c => {
+      const cl = c.toLowerCase();
+      return cl !== 'yes' && cl !== 'no' && cl !== 'na' && cl !== 'n/a' && cl !== 'none' && cl !== '';
+    }).length;
+
+    // 2. Leadership positions: 1000 pts each
+    const leadCount = (s.leadership || []).filter(c => c && c.toLowerCase() !== 'no' && c.toLowerCase() !== 'na' && c.toLowerCase() !== 'n/a' && c.toLowerCase() !== 'none').length;
+
+    // 3. Extracurricular activities: 500 pts each
+    const extraCount = (s.extracurricular || []).filter(c => c && c.toLowerCase() !== 'no' && c.toLowerCase() !== 'na' && c.toLowerCase() !== 'n/a' && c.toLowerCase() !== 'none').length;
+
+    // 4. CGPA & Attendance: CGPA * 200 + Attendance * 5
+    // Scale down any CGPA entered as a percentage (>10) and cap at 10.0
+    const cgpaVal = Math.min(s.cgpa > 10 ? s.cgpa / 10 : s.cgpa, 10.0);
+    const academicScore = Math.round(cgpaVal * 200) + Math.round((s.attendance || 0) * 5);
+
+    // 5. Special Google Student Ambassador bonus (5000 points)
+    const hasAmbassador = (s.leadership || []).some(l => l && (l.toLowerCase().includes('ambassador') || l.toLowerCase().includes('ambassasor')));
+    const ambassadorBonus = hasAmbassador ? 5000 : 0;
+
+    const totalScore = (certCount * 500) + (extraCount * 500) + (leadCount * 1000) + academicScore + ambassadorBonus;
+
+    // Determine avatar
+    const isFemaleAvatar = s.gender === 'F' || s.gender === 'Female';
+    const hash = s.name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % 99;
+    const avatar = isFemaleAvatar
+      ? `https://randomuser.me/api/portraits/women/${hash}.jpg`
+      : `https://randomuser.me/api/portraits/men/${hash}.jpg`;
+
+    return {
+      id: s.id,
+      name: s.name,
+      score: totalScore,
+      certCount,
+      leadCount,
+      extraCount,
+      isMe: user && s.id === user.id,
+      avatar,
+      course: s.course,
+      branch: s.branch,
+    };
+  });
+
+  // Sort by score descending
+  computedLeaderboard.sort((a, b) => b.score - a.score);
+
+  // Assign ranks
+  computedLeaderboard.forEach((item, index) => {
+    item.rank = index + 1;
+  });
+
+  // Get my record
+  const myRecord = computedLeaderboard.find(item => item.isMe) || (user ? {
+    id: user.id,
+    name: user.name,
+    score: 8450,
+    rank: 12,
+    leadCount: 1,
+    extraCount: 2,
+    certCount: 2,
+    avatar: user.gender === 'F' || user.gender === 'Female'
+      ? `https://randomuser.me/api/portraits/women/${user.name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % 99}.jpg`
+      : `https://randomuser.me/api/portraits/men/${user.name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % 99}.jpg`,
+  } : {
+    id: 'mock',
+    name: 'Student',
+    score: 8450,
+    rank: 12,
+    leadCount: 1,
+    extraCount: 2,
+    certCount: 2,
+    avatar: 'https://randomuser.me/api/portraits/men/1.jpg',
+  });
+
+  const myRank = myRecord.rank;
+  const myScore = myRecord.score;
+  const isTop10 = myRank <= 10;
+  const ptsToNext = isTop10 ? 0 : (computedLeaderboard[9]?.score || 10000) - myScore;
+  const topScore = computedLeaderboard[0]?.score || 20000;
+  const progressPercent = Math.min(Math.round((myScore / topScore) * 100), 100);
+
+  // Layout list of top students
+  const displayLeaderboard = computedLeaderboard.slice(0, 10);
+  const showMeAtBottom = user && myRank > 10;
+
+  if (loading) {
+    return (
+      <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
+        {/* Header still shows so the screen feels alive */}
+        <View style={[styles.header, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <TouchableOpacity onPress={() => navigation.goBack()} style={[styles.headerIconBtn, { marginRight: 8 }]}>
+              <MaterialIcons name="arrow-back" size={26} color={colors.primary} />
+            </TouchableOpacity>
+            <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>The Hustle</Text>
+          </View>
+        </View>
+        <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+          <LeaderboardPageSkeleton />
+          <View style={{ height: 100 }} />
+        </ScrollView>
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
@@ -39,7 +165,7 @@ const TheHustleScreen = ({ navigation }) => {
             <View style={styles.notifDot} />
           </TouchableOpacity>
           <Image
-            source={{ uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuC6mmtjUA28NY_AB8YFu2Ri2e3lSkRbJCYpAbrgwHHzzLntRM9rNTLFJIT-pf3fW5gQ-_hRX8LB8ZDdqw5ls_d4bA10oIXuBlKp8kv7onee50cVXADdy7BPVn6kAg4Co9Gbp6XiTx5yITLttWLtkQQag4sVTILELHpLT0_-WAXmJWUVCHpSfhFuYmROstnRxdO_T4ym_KOCd8CmJm60WORR2yoPF8RiqYCiJsTUrQcbumydveuPeijNqG_991IufFMlU7g1DbJ3nqtG' }}
+            source={{ uri: myRecord.avatar }}
             style={[styles.avatarTiny, { borderColor: colors.primary }]}
           />
         </View>
@@ -54,21 +180,23 @@ const TheHustleScreen = ({ navigation }) => {
             <Text style={[styles.pulseTitle, { color: colors.textMuted }]}>PULSE POINTS</Text>
             
             <View style={styles.scoreRow}>
-              <Text style={[styles.largeScore, { color: colors.textPrimary }]}>8,450</Text>
+              <Text style={[styles.largeScore, { color: colors.textPrimary }]}>{myScore.toLocaleString()}</Text>
               <View style={[styles.rankBox, { backgroundColor: isDark ? 'rgba(234, 88, 12, 0.15)' : '#FFF7ED', borderColor: colors.border }]}>
-                <Text style={[styles.rankText, { color: colors.primary }]}>#12</Text>
+                <Text style={[styles.rankText, { color: colors.primary }]}>#{myRank}</Text>
               </View>
             </View>
             
             <View style={styles.progressContainer}>
               <View style={[styles.progressBarBg, { backgroundColor: colors.border }]}>
-                <View style={[styles.progressBarFill, { width: '85%', backgroundColor: colors.primary }]} />
+                <View style={[styles.progressBarFill, { width: `${progressPercent}%`, backgroundColor: colors.primary }]} />
               </View>
-              <Text style={[styles.progressText, { color: colors.textSecondary }]}>550 pts to Top 10</Text>
+              <Text style={[styles.progressText, { color: colors.textSecondary }]}>
+                {isTop10 ? 'Top 10 Player!' : `${ptsToNext.toLocaleString()} pts to Top 10`}
+              </Text>
             </View>
             
             <Text style={[styles.pulseDesc, { backgroundColor: isDark ? colors.background : '#F9FAFB', color: colors.textSecondary }]}>
-              You are ranked #12 in Computer Science. Top 10 gets early access to premium internships.
+              You are ranked #{myRank} overall. {isTop10 ? 'You are in the Top 10! Keep maintaining your lead for early access to premium internships.' : `You need ${ptsToNext.toLocaleString()} more points to enter the Top 10 for early access to premium internships.`}
             </Text>
           </View>
         </View>
@@ -79,24 +207,24 @@ const TheHustleScreen = ({ navigation }) => {
           <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>The Hustle Grid</Text>
           
           <View style={styles.gridContainer}>
-            {/* Hackathons Card */}
+            {/* Certifications Card */}
             <View style={[styles.gridCard, { backgroundColor: isDark ? colors.card : '#FFF7ED', borderColor: colors.border }]}>
               <View style={[styles.gridIconBox, { backgroundColor: isDark ? colors.background : '#FFEDD5' }]}>
                 <MaterialCommunityIcons name="trophy-outline" size={28} color={colors.primary} />
               </View>
-              <Text style={[styles.gridTitle, { color: colors.textPrimary }]}>Hackathons</Text>
-              <Text style={[styles.gridSub, { color: colors.textSecondary }]}>2 Wins • 4 Participations</Text>
-              <Text style={[styles.gridPoints, { color: colors.primary }]}>+1,200 pts</Text>
+              <Text style={[styles.gridTitle, { color: colors.textPrimary }]}>Certifications</Text>
+              <Text style={[styles.gridSub, { color: colors.textSecondary }]}>{myRecord.certCount} Earned Credentials</Text>
+              <Text style={[styles.gridPoints, { color: colors.primary }]}>+{ (myRecord.certCount * 500).toLocaleString() } pts</Text>
             </View>
             
-            {/* Social Clubs Card */}
+            {/* Social & Leadership Card */}
             <View style={[styles.gridCard, { backgroundColor: isDark ? '#0C0A09' : '#F0F9FF', borderColor: isDark ? '#292524' : '#E0F2FE' }]}>
               <View style={[styles.gridIconBox, { backgroundColor: isDark ? 'rgba(2, 132, 199, 0.15)' : '#E0F2FE' }]}>
                 <MaterialCommunityIcons name="account-group-outline" size={28} color="#0284C7" />
               </View>
-              <Text style={[styles.gridTitle, { color: colors.textPrimary }]}>Social Clubs</Text>
-              <Text style={[styles.gridSub, { color: colors.textSecondary }]}>Event Lead (Coding Club)</Text>
-              <Text style={[styles.gridPoints, { color: '#0284C7' }]}>+850 pts</Text>
+              <Text style={[styles.gridTitle, { color: colors.textPrimary }]}>Hustle Activity</Text>
+              <Text style={[styles.gridSub, { color: colors.textSecondary }]}>{myRecord.leadCount} Roles • {myRecord.extraCount} Clubs</Text>
+              <Text style={[styles.gridPoints, { color: '#0284C7' }]}>+{ ((myRecord.leadCount * 1000) + (myRecord.extraCount * 500)).toLocaleString() } pts</Text>
             </View>
           </View>
         </View>
@@ -107,35 +235,69 @@ const TheHustleScreen = ({ navigation }) => {
           <View style={styles.leaderboardHeader}>
             <Text style={[styles.sectionTitle, { color: colors.textPrimary, marginBottom: 0 }]}>Monthly Leaderboard</Text>
             <TouchableOpacity style={[styles.filterBtn, { backgroundColor: colors.border }]}>
-              <Text style={[styles.filterText, { color: colors.textSecondary }]}>B.Tech CS</Text>
+              <Text style={[styles.filterText, { color: colors.textSecondary }]}>
+                {user?.course ? `${user.course} ${user.branch || ''}` : 'B.Tech CS'}
+              </Text>
               <MaterialIcons name="keyboard-arrow-down" size={16} color={colors.textSecondary} />
             </TouchableOpacity>
           </View>
           
           <View style={[styles.leaderboardCard, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
-            {leaderboardData.map((item, index) => (
+            {displayLeaderboard.map((item, index) => (
               <View key={item.id} style={[
                 styles.boardItem, 
                 item.isMe && [styles.boardItemActive, { backgroundColor: isDark ? 'rgba(234, 88, 12, 0.2)' : '#FFF7ED' }],
-                index === leaderboardData.length - 1 && { borderBottomWidth: 0 },
+                index === displayLeaderboard.length - 1 && !showMeAtBottom && { borderBottomWidth: 0 },
                 { borderBottomColor: colors.border }
               ]}>
-                <View style={styles.boardItemLeft}>
+                <View style={[styles.boardItemLeft, { flex: 1, marginRight: 8 }]}>
                   <Text style={[styles.boardRank, { color: colors.textMuted }, item.rank <= 3 && { color: colors.primary }]}>{item.rank}</Text>
                   <Image source={{ uri: item.avatar }} style={styles.boardAvatar} />
-                  <View>
-                    <Text style={[styles.boardName, { color: colors.textPrimary }, item.isMe && { color: colors.primary }]}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.boardName, { color: colors.textPrimary }, item.isMe && { color: colors.primary }]} numberOfLines={1}>
                       {item.name} {item.isMe && '(You)'}
                     </Text>
-                    {item.trend === 'up' && <Text style={styles.trendUp}>Up 2 spots ↗</Text>}
-                    {item.trend === 'down' && <Text style={styles.trendDown}>Down 1 spot ↘</Text>}
+                    <Text style={{ fontSize: 10, color: colors.textSecondary || '#6B7280' }} numberOfLines={1}>
+                      {item.course || ''} {item.branch || ''}
+                    </Text>
                   </View>
                 </View>
                 <View style={[styles.scorePill, { backgroundColor: colors.border }, item.isMe && { backgroundColor: colors.primary }]}>
-                  <Text style={[styles.scorePillText, { color: colors.textSecondary }, item.isMe && { color: '#FFFFFF' }]}>{item.score}</Text>
+                  <Text style={[styles.scorePillText, { color: colors.textSecondary }, item.isMe && { color: '#FFFFFF' }]}>
+                    {item.score.toLocaleString()} pts
+                  </Text>
                 </View>
               </View>
             ))}
+
+            {showMeAtBottom && (
+              <>
+                <View style={{ height: 1, backgroundColor: colors.border, marginVertical: 8, marginHorizontal: 12, borderStyle: 'dashed', borderRadius: 1 }} />
+                <View style={[
+                  styles.boardItem,
+                  styles.boardItemActive,
+                  { backgroundColor: isDark ? 'rgba(234, 88, 12, 0.2)' : '#FFF7ED', borderBottomWidth: 0 }
+                ]}>
+                  <View style={[styles.boardItemLeft, { flex: 1, marginRight: 8 }]}>
+                    <Text style={[styles.boardRank, { color: colors.primary }]}>{myRecord.rank}</Text>
+                    <Image source={{ uri: myRecord.avatar }} style={styles.boardAvatar} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.boardName, { color: colors.primary }]} numberOfLines={1}>
+                        {myRecord.name} (You)
+                      </Text>
+                      <Text style={{ fontSize: 10, color: colors.textSecondary || '#6B7280' }} numberOfLines={1}>
+                        {user?.course || ''} {user?.branch || ''}
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={[styles.scorePill, { backgroundColor: colors.primary }]}>
+                    <Text style={[styles.scorePillText, { color: '#FFFFFF' }]}>
+                      {myRecord.score.toLocaleString()} pts
+                    </Text>
+                  </View>
+                </View>
+              </>
+            )}
           </View>
           
           <TouchableOpacity style={[styles.viewFullBtn, { backgroundColor: colors.border }]}>
@@ -343,7 +505,8 @@ const styles = StyleSheet.create({
   leaderboardCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 32,
-    padding: 16,
+    paddingVertical: 8,
+    paddingHorizontal: 8,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.03,
@@ -354,14 +517,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#F3F4F6',
   },
   boardItemActive: {
     backgroundColor: '#FFF7ED',
-    marginHorizontal: -16,
-    paddingHorizontal: 16,
     borderRadius: 16,
     borderBottomWidth: 0,
   },

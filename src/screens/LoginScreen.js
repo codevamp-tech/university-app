@@ -15,28 +15,32 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { APP_CONFIG } from '../config/appConfig';
+import { useUser } from '../context/UserContext';
 
 const LoginScreen = ({ navigation }) => {
-  const [email, setEmail] = useState('');
+  const [loginId, setLoginId] = useState('');
   const [securityKey, setSecurityKey] = useState('');
   const [role, setRole] = useState('student');
   const [loading, setLoading] = useState(false);
   const insets = useSafeAreaInsets();
+  const { login } = useUser();
 
-  const handleLogin = () => {
-    if (!email || !securityKey) {
+  const handleLogin = async () => {
+    if (!loginId || !securityKey) {
       Alert.alert('Missing Info', 'Please enter your credentials.');
       return;
     }
     setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
+    const success = await login(loginId, role);
+    setLoading(false);
+    
+    if (success) {
       if (role === 'teacher') {
         navigation.replace('TeacherMain');
       } else {
         navigation.replace('StudentMain');
       }
-    }, 1200);
+    }
   };
 
   const handleGuest = () => {
@@ -87,18 +91,23 @@ const LoginScreen = ({ navigation }) => {
               </TouchableOpacity>
             </View>
 
-            {/* Academic Email Field */}
+            {/* Roll Number or Academic Email Field */}
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>ACADEMIC EMAIL</Text>
+              <Text style={styles.inputLabel}>
+                {role === 'student' ? 'STUDENT ROLL NUMBER' : 'ACADEMIC EMAIL'}
+              </Text>
               <TextInput
                 style={styles.input}
-                placeholder={`name@${APP_CONFIG.STUDENT_EMAIL_DOMAIN}`}
-
+                placeholder={
+                  role === 'student'
+                    ? 'e.g., 2400140140005'
+                    : `name@${APP_CONFIG.STUDENT_EMAIL_DOMAIN}`
+                }
                 placeholderTextColor="#9CA3AF"
-                value={email}
-                onChangeText={setEmail}
+                value={loginId}
+                onChangeText={setLoginId}
                 autoCapitalize="none"
-                keyboardType="email-address"
+                keyboardType={role === 'student' ? 'numeric' : 'email-address'}
               />
             </View>
 

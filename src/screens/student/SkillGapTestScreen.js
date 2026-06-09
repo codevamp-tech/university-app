@@ -7,6 +7,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons, MaterialIcons, Feather } from '@expo/vector-icons';
 import { useTheme } from '../../hooks/useTheme';
 import { APP_CONFIG } from '../../config/appConfig';
+import { useUser } from '../../context/UserContext';
+import { computeSkillGap } from '../../data/aiEngine';
 
 const { width } = Dimensions.get('window');
 
@@ -19,49 +21,53 @@ const SkillGapTestScreen = ({ navigation }) => {
   const [evaluating, setEvaluating] = useState(false);
   const [score, setScore] = useState(0);
   const [textAnswer, setTextAnswer] = useState('');
+  const [answers, setAnswers] = useState({});
   const [isListening, setIsListening] = useState(false);
+  const [testMode, setTestMode] = useState(null); // 'academic', 'industry', or 'mixed'
   const micAnim = useRef(new Animated.Value(1)).current;
 
-  const questions = [
-    {
-      id: 1,
-      topic: 'DSA - Arrays & Hashing',
-      type: 'mcq',
-      question: 'What is the time complexity of searching an element in a Hash Map in the average case?',
-      options: ['O(1)', 'O(log n)', 'O(n)', 'O(n log n)'],
-      correct: 0,
-    },
-    {
-      id: 2,
-      topic: 'System Design',
-      type: 'mcq',
-      question: 'Which component is used to distribute traffic across multiple servers?',
-      options: ['Database', 'Load Balancer', 'Cache', 'API Gateway'],
-      correct: 1,
-    },
-    {
-      id: 3,
-      topic: 'Software Engineering',
-      type: 'text',
-      question: 'Explain the difference between vertical and horizontal scaling in the context of distributed systems.',
-      placeholder: 'Explain in your own words...',
-    },
-    {
-      id: 4,
-      topic: 'Cloud Computing',
-      type: 'mcq',
-      question: 'Which AWS service is primarily used for serverless functions?',
-      options: ['EC2', 'S3', 'Lambda', 'RDS'],
-      correct: 2,
-    },
-    {
-      id: 5,
-      topic: 'Data Modeling',
-      type: 'text',
-      question: 'Why would you choose a NoSQL database like MongoDB over a traditional SQL database?',
-      placeholder: 'Describe a use case...',
-    },
-  ];
+  const { user, updateSkillScore } = useUser();
+  const gapData = user ? computeSkillGap(user) : { expectedSkills: ['DSA', 'System Design'], missingSkills: ['DSA', 'System Design'], academicMissingSkills: [], academicExpectedSkills: [], industryMissingSkills: [], industryExpectedSkills: [] };
+  
+  // Choose missing or expected based on mode
+  let topicsSource = [];
+  let fallbackSource = [];
+  
+  if (testMode === 'academic') {
+    topicsSource = gapData.academicMissingSkills || [];
+    fallbackSource = gapData.academicExpectedSkills || [];
+  } else if (testMode === 'industry') {
+    topicsSource = gapData.industryMissingSkills || [];
+    fallbackSource = gapData.industryExpectedSkills || [];
+  } else {
+    topicsSource = gapData.missingSkills || [];
+    fallbackSource = gapData.expectedSkills || [];
+  }
+
+  const dynamicTopics = topicsSource.length > 0 
+    ? topicsSource.slice(0, 5) 
+    : fallbackSource.slice(0, 5);
+  
+  const questions = dynamicTopics.map((topic, index) => {
+    if (index % 2 === 0) {
+      return {
+        id: index + 1,
+        topic: topic,
+        type: 'mcq',
+        question: `Which of the following is a key concept in ${topic}?`,
+        options: ['Fundamentals', 'Applied principles', 'Integration standards', 'All of the above'],
+        correct: 3,
+      };
+    } else {
+      return {
+        id: index + 1,
+        topic: topic,
+        type: 'text',
+        question: `Explain the importance of ${topic} and its core concepts.`,
+        placeholder: `Describe a scenario or use case for ${topic}...`,
+      };
+    }
+  });
 
   useEffect(() => {
     if (isListening) {
@@ -96,56 +102,160 @@ const SkillGapTestScreen = ({ navigation }) => {
   };
 
   const handleAnswer = (index) => {
+    setAnswers(prev => ({ ...prev, [currentQuestion]: index }));
     if (index === questions[currentQuestion].correct) {
       setScore(prev => prev + 1);
     }
-    nextQuestion();
+    nextQuestion({ ...answers, [currentQuestion]: index });
   };
 
-  const nextQuestion = () => {
+  const nextQuestion = (currentAnswers = answers) => {
+    let finalAnswers = { ...currentAnswers };
+    if (questions[currentQuestion].type === 'text') {
+      finalAnswers[currentQuestion] = textAnswer;
+      if (textAnswer.trim().length > 10) {
+        setScore(prev => prev + 1);
+      }
+    }
+
     if (currentQuestion < questions.length - 1) {
       setCurrentQuestion(prev => prev + 1);
       setTextAnswer('');
+      setAnswers(finalAnswers);
     } else {
-      finishTest();
+      finishTest(finalAnswers);
     }
   };
 
-  const finishTest = () => {
+  const finishTest = (finalAnswers) => {
     setEvaluating(true);
     setTimeout(() => {
       setEvaluating(false);
       setCompleted(true);
+
+      // Persist tested skill scores to UserContext
+      questions.forEach((q, idx) => {
+        let topicScore = 0;
+        const answer = finalAnswers[idx];
+        if (q.type === 'mcq') {
+          topicScore = answer === q.correct ? 90 : 30;
+        } else {
+          topicScore = (answer && answer.trim().length > 10) ? 85 : 0;
+        }
+
+        if (updateSkillScore) {
+          updateSkillScore(q.topic, topicScore);
+        }
+      });
     }, 2000);
   };
 
-  if (!testStarted) {
+  if (!testMode) {
     return (
       <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
             <Feather name="arrow-left" size={24} color={colors.textPrimary} />
           </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Skill Gap Test</Text>
+          <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>AI Assessment Focus</Text>
           <View style={{ width: 40 }} />
         </View>
 
-        <ScrollView contentContainerStyle={styles.centerContent}>
+        <ScrollView contentContainerStyle={styles.centerContent} showsVerticalScrollIndicator={false}>
           <View style={styles.heroIconBox}>
             <LinearGradient colors={['#EA580C', '#9A3412']} style={styles.heroIconGradient}>
               <MaterialCommunityIcons name="brain" size={60} color="#FFFFFF" />
             </LinearGradient>
           </View>
 
-          <Text style={[styles.title, { color: colors.textPrimary }]}>AI Skill Evaluation</Text>
+          <Text style={[styles.title, { color: colors.textPrimary, fontSize: 22 }]}>Choose Assessment Target</Text>
+          <Text style={[styles.subtitle, { color: colors.textSecondary, marginBottom: 24 }]}>
+            Select the focus area to evaluate and brush up your performance
+          </Text>
+
+          {/* Academic Syllabus Mode Card */}
+          <TouchableOpacity
+            style={[styles.infoCard, { width: '100%', marginBottom: 16, backgroundColor: colors.card, borderColor: colors.border, padding: 18, flexDirection: 'row', alignItems: 'center', gap: 16 }]}
+            onPress={() => setTestMode('academic')}
+          >
+            <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: isDark ? 'rgba(59,130,246,0.1)' : '#EFF6FF', justifyContent: 'center', alignItems: 'center' }}>
+              <Feather name="book-open" size={24} color="#3B82F6" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 16, fontWeight: '800', color: colors.textPrimary }}>Academic Syllabus</Text>
+              <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 4 }}>Brush up on course subjects (DSA, DBMS, etc.) to improve exam grades.</Text>
+              <Text style={{ fontSize: 11, fontWeight: '800', color: '#3B82F6', marginTop: 6 }}>{gapData.academicMissingSkills.length} syllabus gaps remaining</Text>
+            </View>
+            <Feather name="chevron-right" size={20} color={colors.textSecondary} />
+          </TouchableOpacity>
+
+          {/* Industry Placement Mode Card */}
+          <TouchableOpacity
+            style={[styles.infoCard, { width: '100%', marginBottom: 16, backgroundColor: colors.card, borderColor: colors.border, padding: 18, flexDirection: 'row', alignItems: 'center', gap: 16 }]}
+            onPress={() => setTestMode('industry')}
+          >
+            <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: isDark ? 'rgba(124,58,237,0.1)' : '#F5F3FF', justifyContent: 'center', alignItems: 'center' }}>
+              <Feather name="briefcase" size={24} color="#7C3AED" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 16, fontWeight: '800', color: colors.textPrimary }}>Industry & Placement</Text>
+              <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 4 }}>Evaluate job-ready tech, frameworks, and practical skills.</Text>
+              <Text style={{ fontSize: 11, fontWeight: '800', color: '#7C3AED', marginTop: 6 }}>{gapData.industryMissingSkills.length} career gaps remaining</Text>
+            </View>
+            <Feather name="chevron-right" size={20} color={colors.textSecondary} />
+          </TouchableOpacity>
+
+          {/* Mixed Mode Card */}
+          <TouchableOpacity
+            style={[styles.infoCard, { width: '100%', marginBottom: 24, backgroundColor: colors.card, borderColor: colors.border, padding: 18, flexDirection: 'row', alignItems: 'center', gap: 16 }]}
+            onPress={() => setTestMode('mixed')}
+          >
+            <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: isDark ? 'rgba(234,88,12,0.1)' : '#FFF7ED', justifyContent: 'center', alignItems: 'center' }}>
+              <Feather name="compass" size={24} color="#EA580C" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 16, fontWeight: '800', color: colors.textPrimary }}>Comprehensive Test</Text>
+              <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 4 }}>A balanced mixture of syllabus subjects and career skills.</Text>
+              <Text style={{ fontSize: 11, fontWeight: '800', color: '#EA580C', marginTop: 6 }}>{gapData.missingSkills.length} total gaps remaining</Text>
+            </View>
+            <Feather name="chevron-right" size={20} color={colors.textSecondary} />
+          </TouchableOpacity>
+        </ScrollView>
+      </View>
+    );
+  }
+
+  if (!testStarted) {
+    const modeLabel = testMode === 'academic' ? 'Academic Syllabus' : testMode === 'industry' ? 'Industry & Placement' : 'Comprehensive';
+    return (
+      <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => setTestMode(null)} style={styles.backBtn}>
+            <Feather name="arrow-left" size={24} color={colors.textPrimary} />
+          </TouchableOpacity>
+          <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>{modeLabel} Evaluation</Text>
+          <View style={{ width: 40 }} />
+        </View>
+
+        <ScrollView contentContainerStyle={styles.centerContent}>
+          <View style={styles.heroIconBox}>
+            <LinearGradient colors={['#EA580C', '#9A3412']} style={styles.heroIconGradient}>
+              <MaterialCommunityIcons name={testMode === 'academic' ? "book-open-page-variant" : testMode === 'industry' ? "briefcase" : "brain"} size={60} color="#FFFFFF" />
+            </LinearGradient>
+          </View>
+
+          <Text style={[styles.title, { color: colors.textPrimary }]}>{modeLabel} Assessment</Text>
           <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-            This test will evaluate your current proficiency in DSA, System Design, and Cloud Computing to provide personalized feedback.
+            {topicsSource.length > 0 
+              ? `This test evaluates your proficiency in your missing topics: ${topicsSource.slice(0, 3).join(', ')} to bridge identified gaps.`
+              : `This test evaluates your proficiency in standard topics: ${fallbackSource.slice(0, 3).join(', ')}.`
+            }
           </Text>
 
           <View style={styles.infoGrid}>
             <View style={[styles.infoCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
               <MaterialCommunityIcons name="timer-outline" size={24} color="#EA580C" />
-              <Text style={[styles.infoVal, { color: colors.textPrimary }]}>1 Hour</Text>
+              <Text style={[styles.infoVal, { color: colors.textPrimary }]}>{questions.length * 10} Mins</Text>
               <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Duration</Text>
             </View>
             <View style={[styles.infoCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -158,15 +268,15 @@ const SkillGapTestScreen = ({ navigation }) => {
           <View style={styles.testFeatures}>
             <View style={styles.featureItem}>
               <MaterialIcons name="check-circle" size={18} color="#10B981" />
-              <Text style={[styles.featureText, { color: colors.textSecondary }]}>Adaptive difficulty based on performance</Text>
+              <Text style={[styles.featureText, { color: colors.textSecondary }]}>Adaptive questions based on course syllabus</Text>
             </View>
             <View style={styles.featureItem}>
               <MaterialIcons name="check-circle" size={18} color="#10B981" />
-              <Text style={[styles.featureText, { color: colors.textSecondary }]}>Mixed MCQ and Open-ended questions</Text>
+              <Text style={[styles.featureText, { color: colors.textSecondary }]}>Mixed MCQ and open-ended design problems</Text>
             </View>
             <View style={styles.featureItem}>
               <MaterialIcons name="check-circle" size={18} color="#10B981" />
-              <Text style={[styles.featureText, { color: colors.textSecondary }]}>Speech-to-Text for quick verbal answers</Text>
+              <Text style={[styles.featureText, { color: colors.textSecondary }]}>Persists performance to dynamically update your profile</Text>
             </View>
           </View>
 

@@ -1,5 +1,6 @@
 import React from 'react';
 import { useTheme } from '../../hooks/useTheme';
+import { useUser } from '../../context/UserContext';
 
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
@@ -13,8 +14,18 @@ import { APP_CONFIG } from '../../config/appConfig';
 const { width } = Dimensions.get('window');
 
 const ERPDocumentsScreen = ({ navigation }) => {
+  const { user } = useUser();
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
+
+  const yearNum = parseInt(user?.year) || 4;
+  const startYear = 2026 - yearNum;
+  const endYear = startYear + 4; // Default 4-year course
+  const validityText = `Valid until July ${endYear}`;
+
+  const courseTitle = user?.course
+    ? (user.branch && !user.course.includes(user.branch) ? `${user.course} ${user.branch}` : user.course)
+    : 'B.Tech CSE';
 
 
   return (
@@ -120,7 +131,7 @@ const ERPDocumentsScreen = ({ navigation }) => {
               <Text style={[styles.idCardDesc, { color: colors.textSecondary }]}>Official identity document valid for campus access, library services, and student discounts.</Text>
               <View style={styles.idCardMeta}>
                 <MaterialIcons name="schedule" size={14} color={isDark ? '#818CF8' : '#4953AC'} />
-                <Text style={[styles.idCardMetaText, { color: isDark ? '#818CF8' : '#4953AC' }]}>Valid until July 2024</Text>
+                <Text style={[styles.idCardMetaText, { color: isDark ? '#818CF8' : '#4953AC' }]}>{validityText}</Text>
               </View>
               <View style={styles.idCardActions}>
                 <TouchableOpacity style={[styles.downloadDocBtn, { backgroundColor: colors.primary }]}>
@@ -142,7 +153,7 @@ const ERPDocumentsScreen = ({ navigation }) => {
               <MaterialIcons name="mail" size={24} color="#EA580C" />
             </View>
             <Text style={[styles.docTitle, { color: colors.textPrimary }]}>Admission Letter</Text>
-            <Text style={[styles.docDesc, { color: colors.textSecondary }]}>Official confirmation of your enrollment in B.Tech CSE Batch 2020-2024.</Text>
+            <Text style={[styles.docDesc, { color: colors.textSecondary }]}>Official confirmation of your enrollment in {courseTitle} Batch {startYear}-{endYear}.</Text>
             <View style={[styles.statusBadge, { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.2)' : '#D1FAE5' }]}>
               <Text style={[styles.statusText, { color: isDark ? '#34D399' : '#065F46' }]}>Verified</Text>
             </View>

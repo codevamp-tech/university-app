@@ -1,5 +1,7 @@
 import React from 'react';
 import { useTheme } from '../../hooks/useTheme';
+import { useUser } from '../../context/UserContext';
+import { getAcademicSubjects } from '../../data/aiEngine';
 
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
@@ -12,22 +14,39 @@ import { APP_CONFIG } from '../../config/appConfig';
 
 const { width } = Dimensions.get('window');
 
-const attendanceData = {
-  overall: 85,
-  totalClasses: 320,
-  attendedClasses: 272,
-  subjects: [
-    { code: 'CS701', name: 'Artificial Intelligence & Robotics', percentage: 92, status: 'safe' },
-    { code: 'CS702', name: 'Cloud Computing Architectures', percentage: 85, status: 'safe' },
-    { code: 'CS703', name: 'Network Security & Cryptography', percentage: 72, status: 'warning' },
-    { code: 'CS704', name: 'Software Project Management', percentage: 88, status: 'safe' },
-    { code: 'CS705', name: 'Data Mining & Warehousing', percentage: 65, status: 'danger' },
-  ]
-};
-
 const ERPAttendanceScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
+  const { user } = useUser();
+
+  const roman = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
+  const semNum = parseInt(user?.semester) || 7;
+  const displaySem = roman[semNum - 1] || 'VII';
+
+  const academicSubjects = getAcademicSubjects(user || { course: 'B.Tech CSE' });
+  const overall = user ? user.attendance : 85;
+  const totalClasses = 320;
+  const attendedClasses = Math.round(overall * 3.2);
+
+  const subjects = academicSubjects.map((subject, idx) => {
+    const offsets = [7, -3, 5, -8, 2, -1, 4];
+    const offset = offsets[idx % offsets.length];
+    const percentage = Math.min(Math.max(overall + offset, 10), 100);
+    const status = percentage >= 75 ? 'safe' : percentage >= 60 ? 'warning' : 'danger';
+    return {
+      code: `${user?.course ? user.course.split(' ').map(w => w[0]).join('').toUpperCase().substring(0, 3) : 'CS'}${301 + idx}`,
+      name: subject,
+      percentage,
+      status
+    };
+  });
+
+  const attendanceData = {
+    overall,
+    totalClasses,
+    attendedClasses,
+    subjects
+  };
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -57,7 +76,7 @@ const ERPAttendanceScreen = ({ navigation }) => {
         {/* Hero Section */}
         <View style={styles.sectionContainer}>
           <Text style={[styles.heroTitle, { color: colors.textPrimary }]}>Attendance Insights</Text>
-          <Text style={[styles.heroSub, { color: colors.textSecondary }]}>Semester VII • {APP_CONFIG.UNIVERSITY_NAME}</Text>
+          <Text style={[styles.heroSub, { color: colors.textSecondary }]}>Semester {displaySem} • {APP_CONFIG.UNIVERSITY_NAME}</Text>
         </View>
 
         {/* Overall Attendance Card */}
@@ -92,7 +111,7 @@ const ERPAttendanceScreen = ({ navigation }) => {
               <View style={[styles.progressBarFill, { width: `${attendanceData.overall}%`, backgroundColor: isDark ? '#818CF8' : '#4338CA' }]} />
             </View>
             <Text style={[styles.progressHint, { color: isDark ? 'rgba(255,255,255,0.6)' : 'rgba(67,56,202,0.7)' }]}>
-              You are above the 75% minimum criteria. Keep it up!
+              {attendanceData.overall >= 75 ? 'You are above the 75% minimum criteria. Keep it up!' : 'Warning: Your attendance is below the 75% minimum criteria.'}
             </Text>
           </LinearGradient>
         </View>

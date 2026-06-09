@@ -8,12 +8,21 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 import { useTheme } from '../../hooks/useTheme';
 import { APP_CONFIG } from '../../config/appConfig';
+import { TimelineSkeleton } from '../../components/SkeletonLoader';
+import { useUser } from '../../context/UserContext';
+import { generateAIInsight, generateRoadmap, computeSkillGap, generateDynamicRoadmap } from '../../data/aiEngine';
+import { updateStudentSheet } from '../../data/googleSheetsService';
 
 const { width } = Dimensions.get('window');
 
 const DashboardScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const { colors, isDark, toggleTheme } = useTheme();
+  const { user, logout } = useUser();
+  const isFemaleAvatar = user?.gender === 'F' || user?.gender === 'Female';
+  const avatarUrl = isFemaleAvatar
+    ? 'https://images.pexels.com/photos/733872/pexels-photo-733872.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=500'
+    : 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=500';
   const [activeMood, setActiveMood] = React.useState(2);
   const [showProfileMenu, setShowProfileMenu] = React.useState(false);
   const [isHostelMode, setIsHostelMode] = React.useState(false);
@@ -21,7 +30,49 @@ const DashboardScreen = ({ navigation }) => {
   const [showQRModal, setShowQRModal] = React.useState(false);
   const [showRequestModal, setShowRequestModal] = React.useState(false);
   const [outpassForm, setOutpassForm] = React.useState({ reason: '', duration: '2 Hours' });
+  const [interestsInput, setInterestsInput] = React.useState('');
+  const [activeInterests, setActiveInterests] = React.useState('');
+  
+  const [roadmapData, setRoadmapData] = React.useState(null);
+  const [isGeneratingRoadmap, setIsGeneratingRoadmap] = React.useState(false);
 
+  React.useEffect(() => {
+    if (!user) return;
+    
+    if (!activeInterests) {
+      setRoadmapData(generateRoadmap(user, ''));
+      return;
+    }
+
+    let isMounted = true;
+    setIsGeneratingRoadmap(true);
+    
+    generateDynamicRoadmap(user, activeInterests)
+      .then(data => {
+        if (isMounted) {
+          setRoadmapData(data);
+          setIsGeneratingRoadmap(false);
+        }
+      })
+      .catch(err => {
+        console.error(err);
+        if (isMounted) {
+          setRoadmapData(generateRoadmap(user, activeInterests));
+          setIsGeneratingRoadmap(false);
+        }
+      });
+
+    return () => { isMounted = false; };
+  }, [user, activeInterests]);
+
+  const handleLogout = async () => {
+    setShowProfileMenu(false);
+    if (user && activeInterests) {
+      await updateStudentSheet(user.id, activeInterests);
+    }
+    logout();
+    navigation.replace('Login');
+  };
 
   return (
     <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
@@ -49,7 +100,7 @@ const DashboardScreen = ({ navigation }) => {
           </TouchableOpacity>
           <TouchableOpacity onPress={() => setShowProfileMenu(true)}>
             <Image
-              source={{ uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuC6mmtjUA28NY_AB8YFu2Ri2e3lSkRbJCYpAbrgwHHzzLntRM9rNTLFJIT-pf3fW5gQ-_hRX8LB8ZDdqw5ls_d4bA10oIXuBlKp8kv7onee50cVXADdy7BPVn6kAg4Co9Gbp6XiTx5yITLttWLtkQQag4sVTILELHpLT0_-WAXmJWUVCHpSfhFuYmROstnRxdO_T4ym_KOCd8CmJm60WORR2yoPF8RiqYCiJsTUrQcbumydveuPeijNqG_991IufFMlU7g1DbJ3nqtG' }}
+              source={{ uri: avatarUrl }}
               style={[styles.avatarSmall, { borderColor: colors.primary }]}
             />
           </TouchableOpacity>
@@ -74,12 +125,12 @@ const DashboardScreen = ({ navigation }) => {
 
             <View style={styles.menuHeader}>
               <Image
-                source={{ uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuC6mmtjUA28NY_AB8YFu2Ri2e3lSkRbJCYpAbrgwHHzzLntRM9rNTLFJIT-pf3fW5gQ-_hRX8LB8ZDdqw5ls_d4bA10oIXuBlKp8kv7onee50cVXADdy7BPVn6kAg4Co9Gbp6XiTx5yITLttWLtkQQag4sVTILELHpLT0_-WAXmJWUVCHpSfhFuYmROstnRxdO_T4ym_KOCd8CmJm60WORR2yoPF8RiqYCiJsTUrQcbumydveuPeijNqG_991IufFMlU7g1DbJ3nqtG' }}
+                source={{ uri: avatarUrl }}
                 style={styles.menuAvatar}
               />
               <View>
-                <Text style={[styles.menuName, { color: colors.textPrimary }]}>Aryan Kumar</Text>
-                <Text style={[styles.menuSub, { color: colors.textSecondary }]}>Student Account</Text>
+                <Text style={[styles.menuName, { color: colors.textPrimary }]}>{user?.name || 'Student'}</Text>
+                <Text style={[styles.menuSub, { color: colors.textSecondary }]}>{user?.id || 'Student Account'}</Text>
 
               </View>
             </View>
@@ -132,10 +183,7 @@ const DashboardScreen = ({ navigation }) => {
 
             <TouchableOpacity
               style={[styles.menuItem, styles.logoutItem, { backgroundColor: isDark ? 'rgba(239, 68, 68, 0.1)' : '#FEF2F2' }]}
-              onPress={() => {
-                setShowProfileMenu(false);
-                navigation.replace('Login');
-              }}
+              onPress={handleLogout}
             >
               <MaterialCommunityIcons name="logout" size={20} color="#EF4444" />
               <Text style={[styles.menuItemText, styles.logoutText]}>Log out</Text>
@@ -168,8 +216,8 @@ const DashboardScreen = ({ navigation }) => {
             </View>
 
             <View style={styles.qrInfo}>
-               <Text style={[styles.qrInfoName, { color: colors.textPrimary }]}>Aryan Kumar</Text>
-               <Text style={[styles.qrInfoSub, { color: colors.textSecondary }]}>Room 402 • Main Hostel</Text>
+               <Text style={[styles.qrInfoName, { color: colors.textPrimary }]}>{user?.name || 'Student'}</Text>
+               <Text style={[styles.qrInfoSub, { color: colors.textSecondary }]}>{user?.course || 'Room 402'}</Text>
             </View>
 
             <TouchableOpacity 
@@ -258,8 +306,8 @@ const DashboardScreen = ({ navigation }) => {
           >
             <View style={styles.userCardTop}>
               <View>
-                <Text style={[styles.welcomeTitle, { color: colors.textPrimary }]}>Hello, Aryan</Text>
-                <Text style={[styles.welcomeSub, { color: colors.textSecondary }]}>Senior B.Tech CSE • Class of '24</Text>
+                <Text style={[styles.welcomeTitle, { color: colors.textPrimary }]}>Hello, {user?.name?.split(' ')[0] || 'Student'}</Text>
+                <Text style={[styles.welcomeSub, { color: colors.textSecondary }]}>{user?.course} {user?.branch ? `• ${user?.branch}` : ''}</Text>
 
               </View>
               <MaterialCommunityIcons name="star-shooting-outline" size={32} color={colors.primary} style={{ opacity: 0.2 }} />
@@ -272,7 +320,7 @@ const DashboardScreen = ({ navigation }) => {
                 colors={isDark ? ['rgba(234, 88, 12, 0.2)', 'rgba(234, 88, 12, 0.1)'] : ['#FFF7ED', '#FFEDD5']} 
                 style={[styles.statPillOrange, { borderColor: isDark ? 'rgba(234, 88, 12, 0.3)' : '#FFEDD5' }]}
               >
-                <Text style={[styles.statValueOrange, { color: isDark ? '#FB923C' : '#9A3412' }]}>8.9</Text>
+                <Text style={[styles.statValueOrange, { color: isDark ? '#FB923C' : '#9A3412' }]}>{user?.cgpa || '0.0'}</Text>
                 <Text style={[styles.statLabelOrange, { color: isDark ? '#FB923C' : '#9A3412' }]}>ACADEMIC CGPA</Text>
               </LinearGradient>
               <LinearGradient 
@@ -292,7 +340,7 @@ const DashboardScreen = ({ navigation }) => {
                 <MaterialCommunityIcons name="auto-fix" size={20} color={isDark ? '#34D399' : '#065F46'} />
               </View>
               <Text style={[styles.aiSuggestionText, { color: isDark ? '#A7F3D0' : '#064E3B' }]}>
-                <Text style={{ fontWeight: '800' }}>AI Insight:</Text> Based on your Python scores, you're a 92% match for Senior Dev roles.
+                <Text style={{ fontWeight: '800' }}>AI Insight:</Text> {user ? generateAIInsight(user) : 'Connecting to AI Engine...'}
               </Text>
             </LinearGradient>
 
@@ -619,41 +667,112 @@ const DashboardScreen = ({ navigation }) => {
               </View>
             </View>
             <Text style={[styles.skillGapTitle, { color: colors.textPrimary }]}>Skill Gap Analysis</Text>
-            <Text style={[styles.skillGapDesc, { color: colors.textSecondary }]}>What's missing for FAANG?</Text>
+            {user && (() => {
+              const gapData = computeSkillGap(user);
+              const targetGoal = user.course?.toLowerCase().includes('medicine') || user.course?.toLowerCase().includes('mbbs') 
+                ? 'NEET-PG' : user.course?.toLowerCase().includes('computer') || user.course?.toLowerCase().includes('cse')
+                ? 'FAANG' : 'Top Placements';
+                
+              let missingItems = [
+                ...gapData.academicMissingSkills.map(skill => ({ name: skill, isAcademic: true, isMissing: true })),
+                ...gapData.industryMissingSkills.map(skill => ({ name: skill, isAcademic: false, isMissing: true }))
+              ];
+              if (missingItems.length === 0) {
+                missingItems = [
+                  ...gapData.academicExpectedSkills.map(skill => ({ name: skill, isAcademic: true, isMissing: false })),
+                  ...gapData.industryExpectedSkills.map(skill => ({ name: skill, isAcademic: false, isMissing: false }))
+                ];
+              }
+              const displaySkills = missingItems.slice(0, 6).map(item => {
+                const testedScore = user.skillScores ? user.skillScores[item.name] : undefined;
+                let score = 0;
+                if (item.isMissing) {
+                  score = testedScore !== undefined ? testedScore : 0;
+                } else {
+                  score = testedScore !== undefined ? testedScore : 90;
+                }
+                const color = score >= 75 ? '#10B981' : score >= 50 ? '#F59E0B' : '#EF4444';
+                return { ...item, score, color };
+              });
 
+              return (
+                <>
+                  <Text style={[styles.skillGapDesc, { color: colors.textSecondary }]}>What's missing for {targetGoal}?</Text>
+                  
+                  {/* Category Split Metrics */}
+                  <View style={{ flexDirection: 'row', gap: 12, marginTop: 12, marginBottom: 16 }}>
+                    <View style={{ flex: 1, padding: 12, borderRadius: 16, backgroundColor: isDark ? 'rgba(59,130,246,0.1)' : '#EFF6FF', borderWidth: 1, borderColor: isDark ? 'rgba(59,130,246,0.2)' : '#DBEAFE' }}>
+                      <Text style={{ fontSize: 10, fontWeight: '800', color: '#3B82F6', textTransform: 'uppercase', marginBottom: 4 }}>Academic Prep</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        <Text style={{ fontSize: 16, fontWeight: '900', color: colors.textPrimary }}>{gapData.academicMatchPct}%</Text>
+                        <View style={{ flex: 1, height: 4, backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)', borderRadius: 2 }}>
+                          <View style={{ height: '100%', width: `${gapData.academicMatchPct}%`, backgroundColor: '#3B82F6', borderRadius: 2 }} />
+                        </View>
+                      </View>
+                    </View>
+                    <View style={{ flex: 1, padding: 12, borderRadius: 16, backgroundColor: isDark ? 'rgba(124,58,237,0.1)' : '#F5F3FF', borderWidth: 1, borderColor: isDark ? 'rgba(124,58,237,0.2)' : '#EDE9FE' }}>
+                      <Text style={{ fontSize: 10, fontWeight: '800', color: '#7C3AED', textTransform: 'uppercase', marginBottom: 4 }}>Industry Skill</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        <Text style={{ fontSize: 16, fontWeight: '900', color: colors.textPrimary }}>{gapData.industryMatchPct}%</Text>
+                        <View style={{ flex: 1, height: 4, backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)', borderRadius: 2 }}>
+                          <View style={{ height: '100%', width: `${gapData.industryMatchPct}%`, backgroundColor: '#7C3AED', borderRadius: 2 }} />
+                        </View>
+                      </View>
+                    </View>
+                  </View>
 
-            <View style={styles.skillGapProgressSection}>
-              <View style={styles.skillProgressItem}>
-                <View style={styles.skillProgressHeader}>
-                  <Text style={[styles.skillName, { color: colors.textPrimary }]}>DSA</Text>
-                  <Text style={[styles.skillPercent, { color: colors.textPrimary }]}>65%</Text>
-                </View>
-                <View style={[styles.progressBarBg, { backgroundColor: isDark ? colors.background : '#F3F4F6' }]}>
-                  <View style={[styles.progressBarFill, { width: '65%', backgroundColor: '#F59E0B' }]} />
-                </View>
-              </View>
-
-              <View style={styles.skillProgressItem}>
-                <View style={styles.skillProgressHeader}>
-                  <Text style={[styles.skillName, { color: colors.textPrimary }]}>System Design</Text>
-                  <Text style={[styles.skillPercent, { color: colors.textPrimary }]}>40%</Text>
-                </View>
-                <View style={[styles.progressBarBg, { backgroundColor: isDark ? colors.background : '#F3F4F6' }]}>
-                  <View style={[styles.progressBarFill, { width: '40%', backgroundColor: '#EF4444' }]} />
-                </View>
-              </View>
-
-              <View style={styles.skillProgressItem}>
-                <View style={styles.skillProgressHeader}>
-                  <Text style={[styles.skillName, { color: colors.textPrimary }]}>Cloud Computing</Text>
-                  <Text style={[styles.skillPercent, { color: colors.textPrimary }]}>78%</Text>
-                </View>
-                <View style={[styles.progressBarBg, { backgroundColor: isDark ? colors.background : '#F3F4F6' }]}>
-                  <View style={[styles.progressBarFill, { width: '78%', backgroundColor: '#10B981' }]} />
-                </View>
-              </View>
-
-            </View>
+                  <View style={styles.skillGapProgressSection}>
+                    {displaySkills.map((skill, idx) => (
+                      <View key={idx} style={styles.skillProgressItem}>
+                        <View style={styles.skillProgressHeader}>
+                          <View style={{ flex: 1, marginRight: 8 }}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
+                              <Text style={[styles.skillName, { color: colors.textPrimary, fontSize: 14, fontWeight: '700' }]} numberOfLines={1}>{skill.name}</Text>
+                              <View style={{
+                                paddingHorizontal: 6,
+                                paddingVertical: 2,
+                                borderRadius: 6,
+                                backgroundColor: skill.isAcademic ? (isDark ? 'rgba(59,130,246,0.15)' : '#EFF6FF') : (isDark ? 'rgba(124,58,237,0.15)' : '#F5F3FF'),
+                                borderWidth: 0.5,
+                                borderColor: skill.isAcademic ? '#3B82F6' : '#7C3AED'
+                              }}>
+                                <Text style={{
+                                  fontSize: 8,
+                                  fontWeight: '800',
+                                  color: skill.isAcademic ? '#3B82F6' : '#7C3AED',
+                                  textTransform: 'uppercase',
+                                }}>
+                                  {skill.isAcademic ? 'Academic' : 'Industry'}
+                                </Text>
+                              </View>
+                              <View style={{
+                                paddingHorizontal: 6,
+                                paddingVertical: 2,
+                                borderRadius: 6,
+                                backgroundColor: skill.isMissing ? (isDark ? 'rgba(239,68,68,0.2)' : '#FEE2E2') : (isDark ? 'rgba(16,185,129,0.2)' : '#D1FAE5'),
+                              }}>
+                                <Text style={{
+                                  fontSize: 8,
+                                  fontWeight: '800',
+                                  color: skill.isMissing ? '#EF4444' : '#10B981',
+                                  textTransform: 'uppercase',
+                                }}>
+                                  {skill.isMissing ? 'Gap' : 'Good'}
+                                </Text>
+                              </View>
+                            </View>
+                          </View>
+                          <Text style={[styles.skillPercent, { color: colors.textPrimary }]}>{skill.score}%</Text>
+                        </View>
+                        <View style={[styles.progressBarBg, { backgroundColor: isDark ? colors.background : '#F3F4F6' }]}>
+                          <View style={[styles.progressBarFill, { width: `${skill.score}%`, backgroundColor: skill.color }]} />
+                        </View>
+                      </View>
+                    ))}
+                  </View>
+                </>
+              );
+            })()}
             <View style={styles.skillGapActions}>
               <TouchableOpacity 
                 style={styles.giveTestBtn}
@@ -678,87 +797,106 @@ const DashboardScreen = ({ navigation }) => {
         {/* ========== CAREER ROADMAP ========== */}
         <View style={styles.sectionContainer}>
           <View style={styles.roadmapHeader}>
-            <Text style={[styles.roadmapTitle, { color: colors.textPrimary }]}>Career Roadmap</Text>
-            <Text style={[styles.roadmapSubtitle, { color: colors.textSecondary }]}>Your projected path from Student to Senior Dev</Text>
-
+            <Text style={[styles.roadmapTitle, { color: colors.textPrimary }]}>{roadmapData ? `Suggested ${roadmapData.label}` : 'Suggested Career Roadmap'}</Text>
+            
+            {roadmapData && roadmapData.target ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 6, backgroundColor: isDark ? '#451A03' : '#FEF3C7', alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: '#F59E0B' }}>
+                <MaterialCommunityIcons name="briefcase-check" size={16} color={isDark ? '#FCD34D' : '#D97706'} />
+                <Text style={{ marginLeft: 6, fontSize: 13, fontWeight: '800', color: isDark ? '#FCD34D' : '#D97706' }}>
+                  Target Role: {roadmapData.target}
+                </Text>
+              </View>
+            ) : (
+              <Text style={[styles.roadmapSubtitle, { color: colors.textSecondary }]}>Your projected path towards success</Text>
+            )}
           </View>
 
           <View style={styles.timelineContainer}>
-            {/* Year 1 */}
-            <View style={styles.timelineItem}>
-              <View style={styles.timelineDotWrapper}>
-                <LinearGradient colors={['#10B981', '#059669']} style={styles.timelineDot} />
-                <View style={styles.timelineLine} />
+            {isGeneratingRoadmap ? (
+              <View style={{ paddingVertical: 8 }}>
+                <TimelineSkeleton steps={3} />
               </View>
-              <LinearGradient colors={isDark ? ['#064E3B', '#10B981'] : ['#F0FDF4', '#DCFCE7']} style={styles.timelineCard}>
-                <Text style={[styles.timelineYear, { color: colors.textSecondary }]}>YEAR 1: FOUNDATION</Text>
-                <Text style={[styles.timelineCardTitle, { color: colors.textPrimary }]}>Build Core CS Fundamentals</Text>
+            ) : (
+              <>
+                {roadmapData && roadmapData.steps.map((step, index) => {
+                  const isDone = step.status === 'done';
+                  const isCurrent = step.status === 'current';
+                  const dotColors = isCurrent ? ['#EA580C', '#9A3412'] : isDone ? ['#10B981', '#059669'] : ['#9CA3AF', '#6B7280'];
+                  const cardColors = isDark 
+                    ? (isCurrent ? ['#7C2D12', '#EA580C'] : isDone ? ['#064E3B', '#10B981'] : ['#1F2937', '#374151'])
+                    : (isCurrent ? ['#FFF7ED', '#FFEDD5'] : isDone ? ['#F0FDF4', '#DCFCE7'] : ['#F3F4F6', '#E5E7EB']);
 
-                <View style={styles.timelineTags}>
-                  <View style={styles.tag}><Text style={styles.tagText}>Python</Text></View>
-                  <View style={styles.tag}><Text style={styles.tagText}>DSA Basics</Text></View>
-                  <View style={styles.tag}><Text style={styles.tagText}>SQL</Text></View>
-                </View>
-              </LinearGradient>
-            </View>
+                  return (
+                    <View key={index} style={styles.timelineItem}>
+                      <View style={styles.timelineDotWrapper}>
+                        <LinearGradient colors={dotColors} style={[styles.timelineDot, isCurrent && styles.timelineDotActive, { borderColor: isDark && isCurrent ? colors.primaryLight : isCurrent ? '#FED7AA' : 'transparent' }]} />
+                        {index < roadmapData.steps.length - 1 && <View style={[styles.timelineLine, { backgroundColor: colors.border }]} />}
+                      </View>
+                      <LinearGradient 
+                        colors={cardColors} 
+                        style={[styles.timelineCard, isCurrent && styles.timelineCardActive, { borderColor: isDark && isCurrent ? colors.primary : isCurrent ? '#EA580C' : colors.border, borderWidth: 1 }]}
+                      >
+                        {isCurrent && (
+                          <View style={styles.activeBadge}>
+                            <Text style={styles.activeBadgeText}>CURRENT PHASE</Text>
+                          </View>
+                        )}
+                        <Text style={[styles.timelineYear, { color: isDark && isCurrent ? '#FED7AA' : colors.textSecondary }]}>PHASE {step.n}</Text>
+                        <Text style={[styles.timelineCardTitle, { color: isDark && isCurrent ? '#FFFFFF' : colors.textPrimary }]}>{step.title}</Text>
+                        
+                        <Text style={{ fontSize: 12, color: isDark && isCurrent ? '#FFFFFF' : colors.textSecondary, marginTop: 4 }}>{step.desc}</Text>
+                      </LinearGradient>
+                    </View>
+                  );
+                })}
 
-            {/* Year 2 */}
-            <View style={styles.timelineItem}>
-              <View style={styles.timelineDotWrapper}>
-                <LinearGradient colors={['#F59E0B', '#D97706']} style={styles.timelineDot} />
-                <View style={[styles.timelineLine, { backgroundColor: colors.border }]} />
+                {/* Pathway Outcome */}
+                {roadmapData && (
+                  <View style={[styles.timelineItem, { marginTop: 8 }]}>
+                    <View style={styles.timelineDotWrapper}>
+                      <LinearGradient colors={['#F59E0B', '#D97706']} style={[styles.timelineDot, styles.timelineDotActive, { borderColor: isDark ? '#FEF3C7' : '#FEF3C7' }]} />
+                    </View>
+                    <LinearGradient 
+                      colors={isDark ? ['#451A03', '#78350F'] : ['#FEF3C7', '#FDE68A']} 
+                      style={[styles.timelineCard, { borderColor: '#F59E0B', borderWidth: 1 }]}
+                    >
+                      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
+                        <MaterialCommunityIcons name="trophy" size={16} color={isDark ? '#FCD34D' : '#D97706'} />
+                        <Text style={[styles.timelineYear, { color: isDark ? '#FCD34D' : '#D97706', marginLeft: 6, marginBottom: 0 }]}>PATHWAY OUTCOME</Text>
+                      </View>
+                      <Text style={[styles.timelineCardTitle, { color: isDark ? '#FFFFFF' : colors.textPrimary, fontSize: 15 }]}>
+                        {roadmapData.outcome}
+                      </Text>
+                    </LinearGradient>
+                  </View>
+                )}
+              </>
+            )}
+
+            {/* Dynamic Interests Input */}
+            <View style={{ marginTop: 24, paddingHorizontal: 16, paddingBottom: 12, backgroundColor: colors.card, borderRadius: 16, borderWidth: 1, borderColor: colors.border }}>
+              <Text style={{ fontSize: 14, fontWeight: '700', color: colors.textPrimary, marginTop: 16, marginBottom: 8 }}>
+                Refine Your Pathway
+              </Text>
+              <Text style={{ fontSize: 12, color: colors.textSecondary, marginBottom: 12 }}>
+                Tell us your specific interests (e.g., AI, Robotics, Cardiology) and our AI will adapt your roadmap.
+              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <TextInput
+                  style={{ flex: 1, backgroundColor: isDark ? colors.background : '#F3F4F6', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10, color: colors.textPrimary, fontSize: 14 }}
+                  placeholder="E.g. Machine Learning, NLP..."
+                  placeholderTextColor={colors.textSecondary}
+                  value={interestsInput}
+                  onChangeText={setInterestsInput}
+                />
+                <TouchableOpacity 
+                  style={{ backgroundColor: colors.primary, paddingHorizontal: 16, paddingVertical: 12, borderRadius: 10 }}
+                  onPress={() => setActiveInterests(interestsInput)}
+                >
+                  <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14 }}>Refine</Text>
+                </TouchableOpacity>
               </View>
-              <LinearGradient colors={isDark ? ['#78350F', '#451A03'] : ['#FFFBEB', '#FEF3C7']} style={[styles.timelineCard, { borderColor: colors.border, borderWidth: 1 }]}>
-                <Text style={[styles.timelineYear, { color: isDark ? '#FCD34D' : colors.textSecondary }]}>YEAR 2: INTERMEDIATE</Text>
-                <Text style={[styles.timelineCardTitle, { color: colors.textPrimary }]}>Specialize & Build Projects</Text>
-                <View style={styles.timelineTags}>
-                  <View style={[styles.tag, { backgroundColor: isDark ? colors.background : '#FFFFFF', borderColor: colors.border }]}><Text style={[styles.tagText, { color: colors.textSecondary }]}>Web Dev</Text></View>
-                  <View style={[styles.tag, { backgroundColor: isDark ? colors.background : '#FFFFFF', borderColor: colors.border }]}><Text style={[styles.tagText, { color: colors.textSecondary }]}>DBMS</Text></View>
-                  <View style={[styles.tag, { backgroundColor: isDark ? colors.background : '#FFFFFF', borderColor: colors.border }]}><Text style={[styles.tagText, { color: colors.textSecondary }]}>OS</Text></View>
-                </View>
-              </LinearGradient>
             </View>
-
-
-            {/* Year 3 */}
-            <View style={styles.timelineItem}>
-              <View style={styles.timelineDotWrapper}>
-                <LinearGradient colors={['#3B82F6', '#2563EB']} style={styles.timelineDot} />
-                <View style={[styles.timelineLine, { backgroundColor: colors.border }]} />
-              </View>
-              <LinearGradient colors={isDark ? ['#1E3A8A', '#3B82F6'] : ['#EFF6FF', '#DBEAFE']} style={styles.timelineCard}>
-                <Text style={[styles.timelineYear, { color: isDark ? '#BFDBFE' : colors.textSecondary }]}>YEAR 3: ADVANCED</Text>
-                <Text style={[styles.timelineCardTitle, { color: isDark ? '#FFFFFF' : colors.textPrimary }]}>Internship & Open Source</Text>
-                <View style={styles.timelineTags}>
-                  <View style={[styles.tag, { backgroundColor: isDark ? colors.background : '#FFFFFF', borderColor: colors.border }]}><Text style={[styles.tagText, { color: colors.textSecondary }]}>React/Node</Text></View>
-                  <View style={[styles.tag, { backgroundColor: isDark ? colors.background : '#FFFFFF', borderColor: colors.border }]}><Text style={[styles.tagText, { color: colors.textSecondary }]}>Cloud</Text></View>
-                  <View style={[styles.tag, { backgroundColor: isDark ? colors.background : '#FFFFFF', borderColor: colors.border }]}><Text style={[styles.tagText, { color: colors.textSecondary }]}>DevOps</Text></View>
-                </View>
-              </LinearGradient>
-            </View>
-
-            {/* Year 4: SPECIALIZATION (Active) */}
-            <View style={styles.timelineItem}>
-              <View style={styles.timelineDotWrapper}>
-                <LinearGradient colors={['#EA580C', '#9A3412']} style={[styles.timelineDot, styles.timelineDotActive, { borderColor: isDark ? colors.primaryLight : '#FED7AA' }]} />
-              </View>
-              <LinearGradient 
-                colors={isDark ? ['#7C2D12', '#EA580C'] : ['#FFF7ED', '#FFEDD5']} 
-                style={[styles.timelineCard, styles.timelineCardActive, { borderColor: isDark ? colors.primary : '#EA580C' }]}
-              >
-                <View style={styles.activeBadge}>
-                  <Text style={styles.activeBadgeText}>CURRENT</Text>
-                </View>
-                <Text style={[styles.timelineYear, { color: isDark ? '#FED7AA' : colors.textSecondary }]}>YEAR 4: SPECIALIZATION</Text>
-                <Text style={[styles.timelineCardTitle, { color: isDark ? '#FFFFFF' : colors.textPrimary }]}>Mastery & Placement Prep</Text>
-                <View style={styles.timelineTags}>
-                  <View style={[styles.tag, styles.tagActive, { backgroundColor: colors.primary, borderColor: colors.primary }]}><Text style={[styles.tagText, styles.tagTextActive]}>System Design</Text></View>
-                  <View style={[styles.tag, styles.tagActive, { backgroundColor: colors.primary, borderColor: colors.primary }]}><Text style={[styles.tagText, styles.tagTextActive]}>Advanced DSA</Text></View>
-                  <View style={[styles.tag, styles.tagActive, { backgroundColor: colors.primary, borderColor: colors.primary }]}><Text style={[styles.tagText, styles.tagTextActive]}>Leadership</Text></View>
-                </View>
-              </LinearGradient>
-            </View>
-
           </View>
         </View>
 

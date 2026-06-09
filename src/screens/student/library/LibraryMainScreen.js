@@ -5,6 +5,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../../hooks/useTheme';
 import { Feather, MaterialIcons, Ionicons } from '@expo/vector-icons';
+import { useUser } from '../../../context/UserContext';
 
 const { width } = Dimensions.get('window');
 
@@ -68,12 +69,101 @@ export const booksData = [
     category: 'Psychology',
     pages: 499,
     description: 'The New York Times Bestseller. Kahneman takes us on a groundbreaking tour of the mind.'
+  },
+  {
+    id: '7',
+    title: "Gray's Anatomy",
+    author: 'Henry Gray',
+    cover: 'https://images.unsplash.com/photo-1576091160550-2173dba999ef?q=80&w=1000&auto=format&fit=crop',
+    rating: 4.9,
+    category: 'Anatomy',
+    pages: 1200,
+    description: 'The clinical reference book on human anatomy, widely recognized as a masterpiece in medical literature.'
+  },
+  {
+    id: '8',
+    title: 'Robbins Basic Pathology',
+    author: 'Vinay Kumar',
+    cover: 'https://images.unsplash.com/photo-1530026405186-ed1ea0ac7a63?q=80&w=1000&auto=format&fit=crop',
+    rating: 4.8,
+    category: 'Pathology',
+    pages: 952,
+    description: 'Readable, well-illustrated, and concise introduction to the study of human disease pathology.'
+  },
+  {
+    id: '9',
+    title: 'Essentials of Medical Pharmacology',
+    author: 'K.D. Tripathi',
+    cover: 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?q=80&w=1000&auto=format&fit=crop',
+    rating: 4.7,
+    category: 'Pharmacology',
+    pages: 1024,
+    description: 'Comprehensive guide to pharmaceuticals, mechanisms of action, and clinical therapeutic uses.'
+  },
+  {
+    id: '10',
+    title: 'Microelectronic Circuits',
+    author: 'Adel S. Sedra & Kenneth C. Smith',
+    cover: 'https://images.unsplash.com/photo-1517055727196-8800e2182046?q=80&w=1000&auto=format&fit=crop',
+    rating: 4.8,
+    category: 'Circuits',
+    pages: 1472,
+    description: 'The standard text for microelectronic circuit design, covering analog and digital devices.'
+  },
+  {
+    id: '11',
+    title: 'Digital Design',
+    author: 'M. Morris Mano',
+    cover: 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?q=80&w=1000&auto=format&fit=crop',
+    rating: 4.7,
+    category: 'Digital Systems',
+    pages: 565,
+    description: 'An introduction to digital design principles, logic gates, and hardware implementation.'
+  },
+  {
+    id: '12',
+    title: 'Principles of Electromagnetics',
+    author: 'Matthew N. O. Sadiku',
+    cover: 'https://images.unsplash.com/photo-1635070041078-e363dbe005cb?q=80&w=1000&auto=format&fit=crop',
+    rating: 4.6,
+    category: 'ECE',
+    pages: 848,
+    description: 'A textbook introducing electromagnetic wave propagation, transmission lines, and antenna systems.'
   }
 ];
 
 const LibraryMainScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
+  const { user } = useUser();
+
+  const sortedBooks = React.useMemo(() => {
+    if (!user) return booksData;
+
+    const courseLower = (user.course || '').toLowerCase();
+    const branchLower = (user.branch || '').toLowerCase();
+    const categoryLower = (user.category || '').toLowerCase();
+
+    let matchCategories = [];
+    if (categoryLower.includes('medical') || courseLower.includes('pharma') || courseLower.includes('mbbs') || courseLower.includes('medicine')) {
+      matchCategories = ['Medicine', 'Pharmacy', 'Anatomy', 'Pathology', 'Pharmacology'];
+    } else if (branchLower.includes('computer') || branchLower.includes('cse') || branchLower.includes('it') || courseLower.includes('mca') || courseLower.includes('bca') || branchLower.includes('software')) {
+      matchCategories = ['Programming', 'Software Engineering', 'AI / ML', 'Computer Science'];
+    } else if (branchLower.includes('electronics') || branchLower.includes('ec') || branchLower.includes('ece')) {
+      matchCategories = ['Electronics', 'ECE', 'Digital Systems', 'Circuits'];
+    } else if (courseLower.includes('mba') || courseLower.includes('bba') || courseLower.includes('com') || courseLower.includes('business')) {
+      matchCategories = ['Entrepreneurship', 'Management', 'Finance', 'Business'];
+    }
+
+    return [...booksData].sort((a, b) => {
+      const aMatch = matchCategories.includes(a.category);
+      const bMatch = matchCategories.includes(b.category);
+
+      if (aMatch && !bMatch) return -1;
+      if (!aMatch && bMatch) return 1;
+      return 0; // maintain original order
+    });
+  }, [user]);
 
   const renderBook = ({ item }) => (
     <TouchableOpacity 
@@ -117,7 +207,7 @@ const LibraryMainScreen = ({ navigation }) => {
       </View>
 
       <FlatList
-        data={booksData}
+        data={sortedBooks}
         renderItem={renderBook}
         keyExtractor={item => item.id}
         numColumns={2}
