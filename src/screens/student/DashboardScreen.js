@@ -12,6 +12,7 @@ import { TimelineSkeleton } from '../../components/SkeletonLoader';
 import { useUser } from '../../context/UserContext';
 import { generateAIInsight, generateRoadmap, computeSkillGap, generateDynamicRoadmap } from '../../data/aiEngine';
 import { updateStudentSheet } from '../../data/googleSheetsService';
+import { booksData } from '../student/library/LibraryMainScreen';
 
 const { width } = Dimensions.get('window');
 
@@ -19,6 +20,37 @@ const DashboardScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const { colors, isDark, toggleTheme } = useTheme();
   const { user, logout } = useUser();
+
+  // ── Dynamic featured books — same course-aware sorting as LibraryMainScreen ──
+  const featuredBooks = React.useMemo(() => {
+    if (!user) return booksData.slice(0, 4);
+    const courseLower = (user.course || '').toLowerCase();
+    const branchLower = (user.branch || '').toLowerCase();
+    const categoryLower = (user.category || '').toLowerCase();
+
+    let matchCategories = [];
+    if (courseLower.includes('pharma')) {
+      matchCategories = ['Pharmacology', 'Pharmaceutics', 'Anatomy', 'Pathology'];
+    } else if (categoryLower.includes('medical') || courseLower.includes('mbbs') || courseLower.includes('medicine')) {
+      matchCategories = ['Medicine', 'Anatomy', 'Pathology', 'Pharmacology'];
+    } else if (branchLower.includes('computer') || branchLower.includes('cse') || branchLower.includes('it') || courseLower.includes('mca') || courseLower.includes('bca') || branchLower.includes('software')) {
+      matchCategories = ['Programming', 'Software Engineering', 'AI / ML', 'Computer Science'];
+    } else if (branchLower.includes('electronics') || branchLower.includes('ec') || branchLower.includes('ece')) {
+      matchCategories = ['Electronics', 'ECE', 'Digital Systems', 'Circuits'];
+    } else if (courseLower.includes('mba') || courseLower.includes('bba') || courseLower.includes('com') || courseLower.includes('business')) {
+      matchCategories = ['Entrepreneurship', 'Management', 'Finance', 'Business'];
+    }
+
+    const sorted = [...booksData].sort((a, b) => {
+      const aMatch = matchCategories.includes(a.category);
+      const bMatch = matchCategories.includes(b.category);
+      if (aMatch && !bMatch) return -1;
+      if (!aMatch && bMatch) return 1;
+      return 0;
+    });
+    return sorted.slice(0, 4);
+  }, [user]);
+
   const isFemaleAvatar = user?.gender === 'F' || user?.gender === 'Female';
   const avatarUrl = isFemaleAvatar
     ? 'https://images.pexels.com/photos/733872/pexels-photo-733872.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=500'
@@ -585,18 +617,13 @@ const DashboardScreen = ({ navigation }) => {
           </View>
 
           <View style={styles.libraryGrid}>
-            {[
-              { id: '1', title: 'Clean Code', author: 'Robert Martin', img: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?q=80&w=1000&auto=format&fit=crop' },
-              { id: '2', title: 'Pragmatic Dev', author: 'Andrew Hunt', img: 'https://images.unsplash.com/photo-1516979187457-637abb4f9353?q=80&w=1000&auto=format&fit=crop' },
-              { id: '3', title: 'AI Theory', author: 'Stuart Russell', img: 'https://images.unsplash.com/photo-1614741118887-7a4ee193a5fa?q=80&w=1000&auto=format&fit=crop' },
-              { id: '4', title: 'Design Patterns', author: 'Erich Gamma', img: 'https://images.unsplash.com/photo-1541963463532-d68292c34b19?q=80&w=1000&auto=format&fit=crop' },
-            ].map((book) => (
+            {featuredBooks.map((book) => (
               <TouchableOpacity 
                 key={book.id} 
                 style={styles.libraryBookCard}
                 onPress={() => navigation.navigate('LibraryMain')}
               >
-                <Image source={{ uri: book.img }} style={styles.libraryBookImg} />
+                <Image source={{ uri: book.cover }} style={styles.libraryBookImg} />
                 <Text style={[styles.libraryBookTitle, { color: colors.textPrimary }]} numberOfLines={1}>{book.title}</Text>
                 <Text style={[styles.libraryBookAuthor, { color: colors.textMuted }]} numberOfLines={1}>{book.author}</Text>
               </TouchableOpacity>

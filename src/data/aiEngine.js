@@ -8,6 +8,7 @@ export function detectCategory(course = '') {
     c.includes('nursing') ||
     c.includes('bpt') ||
     c.includes('bmlt') ||
+    c.includes('pharma') ||
     c.includes('pharmacy') ||
     c.includes('bsc nursing') ||
     c.includes('bsc medical')
@@ -126,6 +127,16 @@ export function getAcademicSubjects(student) {
   if (c.includes('bmlt') || c.includes('lab tech')) {
     return ['General Microbiology', 'Human Anatomy & Physiology', 'Clinical Biochemistry'];
   }
+  if (c.includes('pharma') || c.includes('pharmacy')) {
+    return [
+      'Pharmaceutical Chemistry',
+      'Pharmacognosy & Phytochemistry',
+      'Pharmacology & Toxicology',
+      'Pharmaceutics (Drug Formulation)',
+      'Pharmaceutical Analysis',
+      'Hospital & Clinical Pharmacy',
+    ];
+  }
   return ['Core Subject Knowledge', 'Research Methodology', 'Professional Ethics'];
 }
 
@@ -186,6 +197,15 @@ export function getIndustrySkills(student) {
   }
   if (c.includes('bmlt') || c.includes('lab tech')) {
     return ['Hematology Testing', 'Histopathology Techniques', 'Laboratory Quality Control', 'Clinical Chemistry Analysis'];
+  }
+  if (c.includes('pharma') || c.includes('pharmacy')) {
+    return [
+      'Drug Regulatory Affairs (CDSCO/FDA)',
+      'Quality Control & GMP Compliance',
+      'Pharmacovigilance & Drug Safety',
+      'Medical Sales & Pharma Marketing',
+      'Clinical Research & Drug Trials',
+    ];
   }
   return ['Effective Communication', 'Creative Problem Solving'];
 }
@@ -587,6 +607,16 @@ export function generateRoadmap(student, interests = '') {
       { n: 2, title: 'Diagnostic Techniques', desc: 'Hematology, microbiology, biochemistry', status: 'current' },
       { n: 3, title: 'Quality Control', desc: 'ISO standards, SOP compliance', status: 'upcoming' },
       { n: 4, title: 'Advanced Certification', desc: 'NABL accreditation training', status: 'upcoming' },
+    ];
+  } else if (c.includes('pharma') || c.includes('pharmacy')) {
+    target = target || 'Pharmacist / Drug Regulatory Affairs';
+    outcome = 'Ready for Hospital Pharmacy, Regulatory Affairs & Clinical Research';
+    steps = [
+      { n: 1, title: 'Pharmaceutical Sciences', desc: 'Pharmaceutics, Chemistry, Pharmacognosy', status: 'done' },
+      { n: 2, title: 'Pharmacology & Clinical Skills', desc: 'Drug mechanisms, toxicology, hospital pharmacy', status: 'current' },
+      { n: 3, title: 'Regulatory Affairs', desc: 'CDSCO/FDA guidelines, GMP, drug submissions', status: 'upcoming' },
+      { n: 4, title: 'Pharmacovigilance / Clinical Research', desc: 'Drug safety monitoring, CRO internship', status: 'upcoming' },
+      { n: 5, title: 'Licensing & Career Path', desc: 'D.Pharm / B.Pharm license, GPAT, career placement', status: 'upcoming' },
     ];
   } else {
     target = target || 'Professional Career';

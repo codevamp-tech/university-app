@@ -129,6 +129,36 @@ export const booksData = [
     category: 'ECE',
     pages: 848,
     description: 'A textbook introducing electromagnetic wave propagation, transmission lines, and antenna systems.'
+  },
+  {
+    id: '13',
+    title: 'Pharmaceutics: Drug Formulation',
+    author: 'M.E. Aulton',
+    cover: 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?q=80&w=1000&auto=format&fit=crop',
+    rating: 4.8,
+    category: 'Pharmaceutics',
+    pages: 720,
+    description: 'The definitive guide to the design, manufacture and testing of modern pharmaceutical dosage forms.'
+  },
+  {
+    id: '14',
+    title: 'Pharmaceutical Microbiology',
+    author: 'W.B. Hugo & A.D. Russell',
+    cover: 'https://images.unsplash.com/photo-1530026405186-ed1ea0ac7a63?q=80&w=1000&auto=format&fit=crop',
+    rating: 4.6,
+    category: 'Pharmaceutics',
+    pages: 560,
+    description: 'Covers microbiological aspects of pharmaceuticals, from contamination control to sterile manufacturing.'
+  },
+  {
+    id: '15',
+    title: 'Foye\'s Medicinal Chemistry',
+    author: 'Thomas L. Lemke',
+    cover: 'https://images.unsplash.com/photo-1576671081837-49000212a370?q=80&w=1000&auto=format&fit=crop',
+    rating: 4.9,
+    category: 'Pharmacology',
+    pages: 1104,
+    description: 'The gold standard reference for medicinal chemistry — drug design, structure-activity relationships, and mechanisms.'
   }
 ];
 
@@ -145,8 +175,11 @@ const LibraryMainScreen = ({ navigation }) => {
     const categoryLower = (user.category || '').toLowerCase();
 
     let matchCategories = [];
-    if (categoryLower.includes('medical') || courseLower.includes('pharma') || courseLower.includes('mbbs') || courseLower.includes('medicine')) {
-      matchCategories = ['Medicine', 'Pharmacy', 'Anatomy', 'Pathology', 'Pharmacology'];
+    if (courseLower.includes('pharma')) {
+      // B.Pharma, D.Pharma, M.Pharma — Pharmacology books first
+      matchCategories = ['Pharmacology', 'Pharmaceutics', 'Anatomy', 'Pathology'];
+    } else if (categoryLower.includes('medical') || courseLower.includes('mbbs') || courseLower.includes('medicine')) {
+      matchCategories = ['Medicine', 'Anatomy', 'Pathology', 'Pharmacology'];
     } else if (branchLower.includes('computer') || branchLower.includes('cse') || branchLower.includes('it') || courseLower.includes('mca') || courseLower.includes('bca') || branchLower.includes('software')) {
       matchCategories = ['Programming', 'Software Engineering', 'AI / ML', 'Computer Science'];
     } else if (branchLower.includes('electronics') || branchLower.includes('ec') || branchLower.includes('ece')) {
