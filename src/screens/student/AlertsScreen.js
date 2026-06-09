@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions
 } from 'react-native';
@@ -8,6 +8,9 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { APP_CONFIG } from '../../config/appConfig';
 import { NOTIFICATIONS } from '../../constants/data';
 import { useTheme } from '../../hooks/useTheme';
+import { useUser } from '../../context/UserContext';
+import { getAlerts, markAllAlertsRead } from '../../data/apiService';
+
 
 
 const { width } = Dimensions.get('window');
@@ -17,13 +20,48 @@ const AlertsScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState('All Updates');
   const { colors, isDark } = useTheme();
+  const { accessToken } = useUser();
 
+  const [apiAlerts, setApiAlerts] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!accessToken) { setLoading(false); return; }
+    let mounted = true;
+    getAlerts(accessToken).then(({ data }) => {
+      if (!mounted) return;
+      setApiAlerts(data || []);
+      setLoading(false);
+    }).catch(() => setLoading(false));
+    return () => { mounted = false; };
+  }, [accessToken]);
+
+  const handleMarkAllRead = async () => {
+    if (accessToken) await markAllAlertsRead(accessToken);
+    setApiAlerts(prev => prev.map(a => ({ ...a, is_read: true })));
+  };
+
+  // Merge: API alerts on top, static fallback below (de-duplicated by id)
+  const allNotifs = [
+    ...apiAlerts.map(a => ({
+      id: a.id,
+      title: a.title,
+      description: a.body || a.message || '',
+      time: a.created_at ? new Date(a.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : 'Now',
+      icon: 'notifications-outline',
+      color: a.urgency === 'high' ? '#EF4444' : a.urgency === 'medium' ? '#F59E0B' : colors.primary,
+      isNew: !a.is_read,
+      type: a.type || 'announcement',
+      fromAPI: true,
+    })),
+    ...NOTIFICATIONS,
+  ];
 
   const filteredNotifs = activeTab === 'All Updates'
-    ? NOTIFICATIONS
+    ? allNotifs
     : activeTab === 'Grades'
-      ? NOTIFICATIONS.filter(n => n.type === 'grade')
-      : NOTIFICATIONS.filter(n => n.type === 'deadline');
+      ? allNotifs.filter(n => n.type === 'grade')
+      : allNotifs.filter(n => n.type === 'deadline');
 
   return (
     <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
@@ -38,7 +76,10 @@ const AlertsScreen = ({ navigation }) => {
           </LinearGradient>
           <Text style={[styles.headerLogo, { color: colors.textPrimary }]}>{APP_CONFIG.UNIVERSITY_NAME}</Text>
         </View>
-        <TouchableOpacity style={[styles.markAllButton, { backgroundColor: isDark ? colors.card : '#FFFFFF', borderColor: colors.border, borderWidth: 1 }]}>
+        <TouchableOpacity
+          style={[styles.markAllButton, { backgroundColor: isDark ? colors.card : '#FFFFFF', borderColor: colors.border, borderWidth: 1 }]}
+          onPress={handleMarkAllRead}
+        >
           <Text style={[styles.markAllText, { color: colors.primary }]}>Mark all as read</Text>
         </TouchableOpacity>
       </View>
@@ -120,41 +161,49 @@ const AlertsScreen = ({ navigation }) => {
         {/* Notification Items */}
         <View style={styles.notifsContainer}>
           <Text style={styles.sectionSubtitle}>
-            {filteredNotifs.length} updates
+            {filteredNotifs.length} update{filteredNotifs.length !== 1 ? 's' : ''}
           </Text>
 
-          {filteredNotifs.map((notif, index) => (
-            <LinearGradient
-              key={notif.id}
-              colors={[colors.card, colors.card]}
-              style={[styles.notifCard, { borderColor: colors.border }, index === filteredNotifs.length - 1 && styles.lastNotifCard]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 0, y: 1 }}
-            >
-
-              <View style={[styles.notifIcon, { backgroundColor: notif.color + '15' }]}>
-                <Ionicons name={notif.icon} size={22} color={notif.color} />
-                {notif.isNew && <View style={[styles.newDot, { borderColor: colors.card }]} />}
-              </View>
-
-
-              <View style={styles.notifContent}>
-                <View style={styles.notifHeader}>
-                  <Text style={[styles.notifTitle, { color: colors.textPrimary }]}>{notif.title}</Text>
-                  <Text style={[styles.notifTime, { color: colors.textSecondary }]}>{notif.time}</Text>
+          {loading ? (
+            [1, 2, 3].map(i => (
+              <View key={i} style={[styles.notifCard, { borderColor: colors.border, backgroundColor: colors.card }]}>
+                <View style={[styles.notifIcon, { backgroundColor: colors.border }]} />
+                <View style={{ flex: 1, gap: 8 }}>
+                  <View style={{ height: 14, width: '70%', backgroundColor: colors.border, borderRadius: 6 }} />
+                  <View style={{ height: 10, width: '90%', backgroundColor: colors.border, borderRadius: 6 }} />
                 </View>
-
-                <Text style={[styles.notifDesc, { color: colors.textSecondary }]}>{notif.description}</Text>
-                {notif.link && (
-                  <TouchableOpacity>
-                    <Text style={[styles.notifLink, { color: colors.primary }]}>{notif.link} →</Text>
-                  </TouchableOpacity>
-                )}
-
               </View>
-            </LinearGradient>
-          ))}
+            ))
+          ) : (
+            filteredNotifs.map((notif, index) => (
+              <LinearGradient
+                key={notif.id}
+                colors={[colors.card, colors.card]}
+                style={[styles.notifCard, { borderColor: notif.isNew ? colors.primary + '40' : colors.border }, index === filteredNotifs.length - 1 && styles.lastNotifCard]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 0, y: 1 }}
+              >
+                <View style={[styles.notifIcon, { backgroundColor: notif.color + '15' }]}>
+                  <Ionicons name={notif.icon} size={22} color={notif.color} />
+                  {notif.isNew && <View style={[styles.newDot, { borderColor: colors.card }]} />}
+                </View>
+                <View style={styles.notifContent}>
+                  <View style={styles.notifHeader}>
+                    <Text style={[styles.notifTitle, { color: colors.textPrimary }]} numberOfLines={1}>{notif.title}</Text>
+                    <Text style={[styles.notifTime, { color: colors.textSecondary }]}>{notif.time}</Text>
+                  </View>
+                  <Text style={[styles.notifDesc, { color: colors.textSecondary }]} numberOfLines={2}>{notif.description}</Text>
+                  {notif.link && (
+                    <TouchableOpacity>
+                      <Text style={[styles.notifLink, { color: colors.primary }]}>{notif.link} →</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              </LinearGradient>
+            ))
+          )}
         </View>
+
 
         <View style={{ height: 100 }} />
       </ScrollView>

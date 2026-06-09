@@ -25,4 +25,11 @@ export const APP_CONFIG = {
   GOOGLE_SHEETS_SPREADSHEET_ID: process.env.EXPO_PUBLIC_GOOGLE_SHEETS_SPREADSHEET_ID,
   GEMINI_API_KEY: process.env.EXPO_PUBLIC_GEMINI_API_KEY,
   GROQ_API_KEY: process.env.EXPO_PUBLIC_GROQ_API_KEY,
+
+  // ─── UniCampus Backend API ───────────────────────────────────────────────
+  API_BASE_URL: process.env.EXPO_PUBLIC_API_BASE_URL || 'http://54.174.185.143:8000',
+  TENANT_ID:    process.env.EXPO_PUBLIC_TENANT_ID    || 'd3b07384-d113-4956-a5db-e0e457e51c89',
+  DEPT_ID:      process.env.EXPO_PUBLIC_DEPT_ID      || 'e0c46647-7ee9-4c12-97b7-580ea5d3bc7d',
+  // Internal password — user types '1234' in app, this is what gets sent to the API
+  DEFAULT_PASSWORD: '1234@Uni',
 };

@@ -6,23 +6,44 @@ import { Ionicons, MaterialIcons, MaterialCommunityIcons, Feather } from '@expo/
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { APP_CONFIG } from '../../config/appConfig';
-
 import { useTheme } from '../../hooks/useTheme';
+import { useUser } from '../../context/UserContext';
+import { getWalletBalance, getTransactions } from '../../data/apiService';
 
 const { width } = Dimensions.get('window');
 
 const MainWalletScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
+  const { user, accessToken } = useUser();
 
+  const [wallet, setWallet] = React.useState(null);
+  const [transactions, setTransactions] = React.useState([]);
+  const [loading, setLoading] = React.useState(true);
 
-  const transactions = [
-    { id: 1, title: 'Bazaar Sale: Sem 3 Books', amount: '+₹650', type: 'credit', time: 'Today, 2:30 PM', icon: 'book-outline', color: '#10B981' },
-    { id: 2, title: 'Central Canteen: Coffee', amount: '-₹40', type: 'debit', time: 'Today, 11:15 AM', icon: 'coffee-outline', color: '#EF4444' },
-    { id: 3, title: `${APP_CONFIG.CAMPUS_BITES_NAME}: Paneer Tikka`, amount: '-₹120', type: 'debit', time: 'Yesterday', icon: 'fast-food-outline', color: '#EA580C' },
-    { id: 4, title: 'Reward: Lab Assistant', amount: '+₹500', type: 'credit', time: 'Oct 15', icon: 'star-outline', color: '#F59E0B' },
-    { id: 5, title: 'Library Fine', amount: '-₹25', type: 'debit', time: 'Oct 14', icon: 'library-outline', color: '#6B7280' },
-  ];
+  React.useEffect(() => {
+    if (!accessToken) { setLoading(false); return; }
+    let mounted = true;
+    Promise.all([
+      getWalletBalance(accessToken),
+      getTransactions(accessToken),
+    ]).then(([walletData, txnData]) => {
+      if (!mounted) return;
+      setWallet(walletData);
+      setTransactions(Array.isArray(txnData) ? txnData : []);
+      setLoading(false);
+    }).catch(() => setLoading(false));
+    return () => { mounted = false; };
+  }, [accessToken]);
+
+  const displayBalance = loading
+    ? '-'
+    : wallet
+    ? `₹${Number(wallet.balance).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`
+    : '₹0.00';
+
+  const currency = wallet?.currency || 'INR';
+
 
   return (
     <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
@@ -51,7 +72,7 @@ const MainWalletScreen = ({ navigation }) => {
           <View style={styles.cardTop}>
             <View>
               <Text style={styles.balanceLabel}>TOTAL BALANCE</Text>
-              <Text style={styles.balanceAmount}>₹1,250.00</Text>
+              <Text style={styles.balanceAmount}>{displayBalance}</Text>
             </View>
             <View style={styles.chipLogo}>
               <MaterialCommunityIcons name="chip" size={32} color="#F59E0B" />
@@ -61,7 +82,7 @@ const MainWalletScreen = ({ navigation }) => {
           <View style={styles.cardBottom}>
             <View>
               <Text style={styles.cardHolderLabel}>STUDENT ID</Text>
-              <Text style={styles.cardHolderValue}>{APP_CONFIG.UNIVERSITY_ID_PREFIX}-2022-094</Text>
+              <Text style={styles.cardHolderValue}>{user?.id || (APP_CONFIG.UNIVERSITY_ID_PREFIX + '-2022-094')}</Text>
             </View>
             <TouchableOpacity style={styles.rechargeBtn}>
               <Text style={styles.rechargeText}>ADD MONEY</Text>
@@ -81,25 +102,49 @@ const MainWalletScreen = ({ navigation }) => {
             <TouchableOpacity><Text style={[styles.seeAllText, { color: colors.primary }]}>See All</Text></TouchableOpacity>
           </View>
 
-
-          {transactions.map((txn) => (
-            <TouchableOpacity key={txn.id} style={[styles.txnItem, { borderBottomColor: colors.border }]}>
-              <View style={[styles.txnIcon, { backgroundColor: txn.color + '10' }]}>
-                {txn.icon.includes('smartphone') ? (
-                  <MaterialIcons name={txn.icon} size={22} color={txn.color} />
-                ) : (
-                  <Ionicons name={txn.icon} size={22} color={txn.color} />
-                )}
+          {loading ? (
+            // Skeleton placeholders while loading
+            [1,2,3].map(i => (
+              <View key={i} style={[styles.txnItem, { borderBottomColor: colors.border }]}>
+                <View style={[styles.txnIcon, { backgroundColor: colors.border }]} />
+                <View style={styles.txnInfo}>
+                  <View style={{ height: 14, width: '60%', backgroundColor: colors.border, borderRadius: 6, marginBottom: 6 }} />
+                  <View style={{ height: 10, width: '30%', backgroundColor: colors.border, borderRadius: 6 }} />
+                </View>
+                <View style={{ height: 16, width: 50, backgroundColor: colors.border, borderRadius: 6 }} />
               </View>
-              <View style={styles.txnInfo}>
-                <Text style={[styles.txnTitle, { color: colors.textPrimary }]}>{txn.title}</Text>
-                <Text style={[styles.txnTime, { color: colors.textSecondary }]}>{txn.time}</Text>
-              </View>
-              <Text style={[styles.txnAmount, { color: txn.type === 'credit' ? '#10B981' : colors.textPrimary }]}>
-                {txn.amount}
+            ))
+          ) : transactions.length === 0 ? (
+            <View style={{ alignItems: 'center', paddingVertical: 32 }}>
+              <MaterialCommunityIcons name="receipt" size={40} color={colors.textMuted} />
+              <Text style={[{ fontSize: 14, fontWeight: '600', marginTop: 12, color: colors.textMuted }]}>
+                No transactions yet
               </Text>
-            </TouchableOpacity>
-          ))}
+            </View>
+          ) : (
+            transactions.map((txn, idx) => (
+              <TouchableOpacity key={txn.id || idx} style={[styles.txnItem, { borderBottomColor: colors.border }]}>
+                <View style={[styles.txnIcon, { backgroundColor: (txn.type === 'credit' ? '#10B981' : '#EF4444') + '15' }]}>
+                  <Ionicons
+                    name={txn.type === 'credit' ? 'arrow-down-circle-outline' : 'arrow-up-circle-outline'}
+                    size={22}
+                    color={txn.type === 'credit' ? '#10B981' : '#EF4444'}
+                  />
+                </View>
+                <View style={styles.txnInfo}>
+                  <Text style={[styles.txnTitle, { color: colors.textPrimary }]} numberOfLines={1}>
+                    {txn.description || txn.title || 'Transaction'}
+                  </Text>
+                  <Text style={[styles.txnTime, { color: colors.textSecondary }]}>
+                    {txn.created_at ? new Date(txn.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : txn.time || '-'}
+                  </Text>
+                </View>
+                <Text style={[styles.txnAmount, { color: txn.type === 'credit' ? '#10B981' : colors.textPrimary }]}>
+                  {txn.type === 'credit' ? '+' : '-'}₹{Math.abs(txn.amount || 0).toLocaleString('en-IN')}
+                </Text>
+              </TouchableOpacity>
+            ))
+          )}
         </View>
 
 

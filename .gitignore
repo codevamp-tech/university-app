@@ -32,6 +32,7 @@ yarn-error.*
 
 # local env files — never commit real secrets
 .env
+seed-api.js
 .env.*
 !.env.example
 
