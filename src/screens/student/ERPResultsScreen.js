@@ -11,12 +11,14 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 
+import { getResults } from '../../data/apiService';
+
 const { width } = Dimensions.get('window');
 
 const ERPResultsScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
-  const { user } = useUser();
+  const { user, accessToken } = useUser();
 
   const roman = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
   const userSem = user?.semester || 7;
@@ -25,6 +27,7 @@ const ERPResultsScreen = ({ navigation }) => {
   // Dynamically expand to the current semester
   const currentSemRoman = roman[userSem - 1] || 'VII';
   const [expandedSem, setExpandedSem] = useState(currentSemRoman);
+  const [apiSemesterData, setApiSemesterData] = React.useState(null);
 
   const academicSubjects = getAcademicSubjects(user || { course: 'B.Tech CSE' });
 
@@ -40,11 +43,11 @@ const ERPResultsScreen = ({ navigation }) => {
     };
   });
 
-  // Build dynamic semesterData object
-  const semesterData = {};
+  // Build dynamic fallback semesterData object
+  const fallbackSemesterData = {};
   
   // Current semester
-  semesterData[currentSemRoman] = {
+  fallbackSemesterData[currentSemRoman] = {
     label: `Fall ${new Date().getFullYear()} • Ongoing Evaluation`,
     sgpa: Math.min((user?.cgpa ? (user.cgpa + 0.25) : 8.9), 10.0).toFixed(2),
     subjects: currentSemesterSubjects
@@ -58,13 +61,68 @@ const ERPResultsScreen = ({ navigation }) => {
       const term = semIndex % 2 === 0 ? 'Fall' : 'Spring';
       const yearOffset = Math.floor((userSem - 1 - semIndex) / 2);
       const yearStr = `${new Date().getFullYear() - yearOffset}`;
-      semesterData[rName] = {
+      fallbackSemesterData[rName] = {
         label: `${term} ${yearStr} • Completed`,
         sgpa: sgpaVal.toFixed(2),
         subjects: [] // detailed subjects not needed for past semesters in UI expansion
       };
     }
   });
+
+  React.useEffect(() => {
+    async function loadResults() {
+      if (!accessToken) return;
+      try {
+        const data = await getResults(accessToken);
+        if (data && data.length > 0) {
+          const semMap = {};
+          // Initialize semesters
+          for (let i = 1; i <= userSem; i++) {
+            const rName = roman[i - 1];
+            const isCurrent = i === userSem;
+            semMap[rName] = {
+              label: isCurrent ? `Fall ${new Date().getFullYear()} • Ongoing Evaluation` : `Completed`,
+              sgpa: isCurrent ? '8.50' : '8.00',
+              subjects: []
+            };
+          }
+
+          data.forEach(item => {
+            const semIndex = item.semester;
+            const rName = roman[semIndex - 1] || `${semIndex}`;
+            if (!semMap[rName]) {
+              semMap[rName] = {
+                label: semIndex === userSem ? `Fall ${new Date().getFullYear()} • Ongoing Evaluation` : `Completed`,
+                sgpa: '8.00',
+                subjects: []
+              };
+            }
+            semMap[rName].subjects.push({
+              code: item.subject_code,
+              name: item.subject_name || item.subject_code,
+              credits: item.credits || 3,
+              grade: item.grade || 'A'
+            });
+          });
+
+          // Apply historical SGPAs if they match
+          Object.keys(semMap).forEach(rName => {
+            const semIdx = roman.indexOf(rName);
+            if (semIdx !== -1 && sgpaHistory[semIdx]) {
+              semMap[rName].sgpa = sgpaHistory[semIdx].toFixed(2);
+            }
+          });
+
+          setApiSemesterData(semMap);
+        }
+      } catch (err) {
+        console.warn('[ResultsScreen] Error fetching results:', err);
+      }
+    }
+    loadResults();
+  }, [accessToken, userSem]);
+
+  const semesterData = apiSemesterData || fallbackSemesterData;
 
   // Calculate total credits
   const totalCredits = 180;

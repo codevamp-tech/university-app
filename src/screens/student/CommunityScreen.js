@@ -1,19 +1,74 @@
 import React from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Dimensions,
+  Modal, TextInput, Alert
 } from 'react-native';
 import { Ionicons, MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { APP_CONFIG } from '../../config/appConfig';
 import { useTheme } from '../../hooks/useTheme';
-
+import { useUser } from '../../context/UserContext';
+import { getSocialFeed, createPost } from '../../data/apiService';
 
 const { width } = Dimensions.get('window');
 
 const CommunityScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
+  const { accessToken, user } = useUser();
+
+  const [apiFeed, setApiFeed] = React.useState([]);
+  const [newPostContent, setNewPostContent] = React.useState('');
+  const [showCreateModal, setShowCreateModal] = React.useState(false);
+  const [posting, setPosting] = React.useState(false);
+
+  const loadFeed = React.useCallback(async () => {
+    if (!accessToken) return;
+    try {
+      const data = await getSocialFeed(accessToken);
+      if (data) setApiFeed(data);
+    } catch (err) {
+      console.warn('[CommunityScreen] Error fetching feed:', err);
+    }
+  }, [accessToken]);
+
+  React.useEffect(() => {
+    loadFeed();
+  }, [loadFeed]);
+
+  const handleCreatePost = async () => {
+    if (!newPostContent.trim()) return;
+    setPosting(true);
+    try {
+      if (accessToken) {
+        await createPost(accessToken, { content: newPostContent });
+        setNewPostContent('');
+        setShowCreateModal(false);
+        loadFeed();
+        Alert.alert('Post Created', 'Your post has been successfully shared with the campus feed.');
+      } else {
+        // Fallback simulation
+        const fakePost = {
+          id: Math.random().toString(),
+          content: newPostContent,
+          created_at: new Date().toISOString(),
+          user: {
+            username: user?.name || 'You',
+            avatar_url: user?.gender === 'F' ? 'https://i.pravatar.cc/150?img=47' : 'https://i.pravatar.cc/150?img=12'
+          }
+        };
+        setApiFeed(prev => [fakePost, ...prev]);
+        setNewPostContent('');
+        setShowCreateModal(false);
+        Alert.alert('Post Created', 'Your post has been shared locally (simulation).');
+      }
+    } catch (err) {
+      Alert.alert('Failed to Post', err.message || 'An error occurred.');
+    } finally {
+      setPosting(false);
+    }
+  };
 
 
   return (
@@ -26,7 +81,7 @@ const CommunityScreen = ({ navigation }) => {
         </View>
 
         <View style={styles.headerRight}>
-          <TouchableOpacity style={styles.headerIconBtn}>
+          <TouchableOpacity style={styles.headerIconBtn} onPress={() => setShowCreateModal(true)}>
             <Ionicons name="add-circle-outline" size={26} color={colors.textPrimary} />
           </TouchableOpacity>
           <TouchableOpacity style={styles.headerIconBtn} onPress={() => navigation.navigate('StudentSearch')}>
@@ -72,6 +127,30 @@ const CommunityScreen = ({ navigation }) => {
 
         {/* Feed Feed */}
         <View style={styles.feedContainer}>
+          {/* Live API Posts */}
+          {apiFeed.map(post => (
+            <View key={post.id} style={[styles.postCard, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
+              <View style={styles.postHeader}>
+                <View style={styles.postAuthor}>
+                  <Image
+                    source={{ uri: post.user?.avatar_url || 'https://i.pravatar.cc/150?u=' + post.id }}
+                    style={styles.authorAvatar}
+                  />
+                  <View>
+                    <Text style={[styles.authorName, { color: colors.textPrimary }]}>{post.user?.username || 'User'}</Text>
+                    <Text style={[styles.postMeta, { color: colors.textSecondary }]}>
+                      {new Date(post.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+              <Text style={[styles.postText, { color: colors.textPrimary, fontSize: 15, lineHeight: 22 }]}>{post.content}</Text>
+              {post.media_urls && post.media_urls.length > 0 && (
+                <Image source={{ uri: post.media_urls[0] }} style={styles.postImg} />
+              )}
+            </View>
+          ))}
+
           {/* Feed Card 1: Club Activity */}
           <View style={[styles.postCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
 
@@ -215,6 +294,36 @@ const CommunityScreen = ({ navigation }) => {
         <View style={{ height: 100 }} />
       </ScrollView>
 
+      {/* Create Post Modal */}
+      <Modal visible={showCreateModal} animationType="slide" transparent={true} onRequestClose={() => setShowCreateModal(false)}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
+          <View style={{ backgroundColor: colors.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, minHeight: 300 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <Text style={{ fontSize: 20, fontWeight: '900', color: colors.textPrimary }}>Create Post</Text>
+              <TouchableOpacity onPress={() => setShowCreateModal(false)}>
+                <Ionicons name="close" size={24} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+            <TextInput
+              placeholder="What's happening on campus?"
+              placeholderTextColor={colors.textSecondary}
+              style={{ flex: 1, color: colors.textPrimary, fontSize: 16, textAlignVertical: 'top', minHeight: 150, padding: 12, borderRadius: 12, backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F3F4F6' }}
+              multiline={true}
+              value={newPostContent}
+              onChangeText={setNewPostContent}
+            />
+            <TouchableOpacity 
+              style={{ backgroundColor: colors.primary, borderRadius: 16, padding: 14, alignItems: 'center', marginTop: 20 }}
+              onPress={handleCreatePost}
+              disabled={posting || !newPostContent.trim()}
+            >
+              <Text style={{ color: '#FFFFFF', fontWeight: '800', fontSize: 15 }}>
+                {posting ? 'Sharing...' : 'Share Post'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
 
     </View>
   );

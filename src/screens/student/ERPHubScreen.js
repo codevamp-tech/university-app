@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { useTheme } from '../../hooks/useTheme';
 import { useUser } from '../../context/UserContext';
+import { createOutpass } from '../../data/apiService';
 
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, Image,
@@ -14,9 +15,49 @@ import { APP_CONFIG } from '../../config/appConfig';
 const { width } = Dimensions.get('window');
 
 const ERPHubScreen = ({ navigation }) => {
-  const { user } = useUser();
+  const { user, accessToken } = useUser();
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
+
+  const borrowedBooks = React.useMemo(() => {
+    if (!user) return [
+      { id: '1', title: 'Data Structures & Algorithms', author: 'Cormen, Leiserson', dueDays: 2, urgent: true, color: '#EA580C', colors: ['#FFF7ED', '#FFEDD5'], darkColors: ['#7C2D12', '#9A3412'] },
+      { id: '2', title: 'Network Security Fundamentals', author: 'Stallings, William', dueDays: 14, urgent: false, color: '#4338CA', colors: ['#EEF2FF', '#E0E7FF'], darkColors: ['#1E1B4B', '#312E81'] },
+      { id: '3', title: 'Operating System Concepts', author: 'Silberschatz, Galvin', dueDays: 21, urgent: false, color: '#059669', colors: ['#F0FDF4', '#DCFCE7'], darkColors: ['#064E3B', '#047857'] }
+    ];
+
+    const courseLower = (user.course || '').toLowerCase();
+    const branchLower = (user.branch || '').toLowerCase();
+    const categoryLower = (user.category || '').toLowerCase();
+
+    if (courseLower.includes('pharma') || branchLower.includes('pharma') || categoryLower.includes('pharma')) {
+      return [
+        { id: '1', title: 'Essentials of Medical Pharmacology', author: 'K.D. Tripathi', dueDays: 2, urgent: true, color: '#EA580C', colors: ['#FFF7ED', '#FFEDD5'], darkColors: ['#7C2D12', '#9A3412'] },
+        { id: '2', title: 'Pharmaceutics: Drug Formulation', author: 'M.E. Aulton', dueDays: 14, urgent: false, color: '#4338CA', colors: ['#EEF2FF', '#E0E7FF'], darkColors: ['#1E1B4B', '#312E81'] },
+        { id: '3', title: 'Pharmaceutical Microbiology', author: 'W.B. Hugo & A.D. Russell', dueDays: 21, urgent: false, color: '#059669', colors: ['#F0FDF4', '#DCFCE7'], darkColors: ['#064E3B', '#047857'] }
+      ];
+    } else if (categoryLower.includes('medical') || courseLower.includes('mbbs') || courseLower.includes('medicine') || branchLower.includes('medicine')) {
+      return [
+        { id: '1', title: "Gray's Anatomy", author: 'Henry Gray', dueDays: 2, urgent: true, color: '#EA580C', colors: ['#FFF7ED', '#FFEDD5'], darkColors: ['#7C2D12', '#9A3412'] },
+        { id: '2', title: 'Robbins Basic Pathology', author: 'Vinay Kumar', dueDays: 14, urgent: false, color: '#4338CA', colors: ['#EEF2FF', '#E0E7FF'], darkColors: ['#1E1B4B', '#312E81'] },
+        { id: '3', title: 'Essentials of Medical Pharmacology', author: 'K.D. Tripathi', dueDays: 21, urgent: false, color: '#059669', colors: ['#F0FDF4', '#DCFCE7'], darkColors: ['#064E3B', '#047857'] }
+      ];
+    } else if (courseLower.includes('mba') || courseLower.includes('bba') || courseLower.includes('com') || courseLower.includes('business')) {
+      return [
+        { id: '1', title: 'Zero to One', author: 'Peter Thiel', dueDays: 2, urgent: true, color: '#EA580C', colors: ['#FFF7ED', '#FFEDD5'], darkColors: ['#7C2D12', '#9A3412'] },
+        { id: '2', title: 'Thinking, Fast and Slow', author: 'Daniel Kahneman', dueDays: 14, urgent: false, color: '#4338CA', colors: ['#EEF2FF', '#E0E7FF'], darkColors: ['#1E1B4B', '#312E81'] },
+        { id: '3', title: 'Principles of Management', author: 'Harold Koontz', dueDays: 21, urgent: false, color: '#059669', colors: ['#F0FDF4', '#DCFCE7'], darkColors: ['#064E3B', '#047857'] }
+      ];
+    }
+
+    // Default Computer Science
+    return [
+      { id: '1', title: 'Data Structures & Algorithms', author: 'Cormen, Leiserson', dueDays: 2, urgent: true, color: '#EA580C', colors: ['#FFF7ED', '#FFEDD5'], darkColors: ['#7C2D12', '#9A3412'] },
+      { id: '2', title: 'Network Security Fundamentals', author: 'Stallings, William', dueDays: 14, urgent: false, color: '#4338CA', colors: ['#EEF2FF', '#E0E7FF'], darkColors: ['#1E1B4B', '#312E81'] },
+      { id: '3', title: 'Operating System Concepts', author: 'Silberschatz, Galvin', dueDays: 21, urgent: false, color: '#059669', colors: ['#F0FDF4', '#DCFCE7'], darkColors: ['#064E3B', '#047857'] }
+    ];
+  }, [user]);
+
 
   const [drawerVisible, setDrawerVisible] = useState(false);
   const slideAnim = useRef(new Animated.Value(width)).current;
@@ -360,58 +401,30 @@ const ERPHubScreen = ({ navigation }) => {
               </LinearGradient>
             </View>
 
-
-            <View style={[styles.bookItem, { backgroundColor: isDark ? colors.background : '#F9FAFB', borderColor: colors.border }]}>
-              <LinearGradient colors={isDark ? ['#7C2D12', '#9A3412'] : ['#FFF7ED', '#FFEDD5']} style={styles.bookCover}>
-                <MaterialCommunityIcons name="book-open-variant" size={22} color={isDark ? '#FB923C' : '#EA580C'} />
-              </LinearGradient>
-              <View style={styles.bookInfo}>
-                <Text style={[styles.bookTitle, { color: colors.textPrimary }]}>Data Structures & Algorithms</Text>
-                <Text style={[styles.bookAuthor, { color: colors.textSecondary }]}>Cormen, Leiserson</Text>
-                <View style={styles.bookDueBadge}>
-                  <View style={[styles.urgentDot, { backgroundColor: '#EF4444' }]} />
-                  <Text style={[styles.bookDueText, { color: '#EF4444' }]}>Due in 2 days</Text>
+            {borrowedBooks.map((book) => (
+              <View key={book.id} style={[styles.bookItem, { backgroundColor: isDark ? colors.background : '#F9FAFB', borderColor: colors.border }]}>
+                <LinearGradient colors={isDark ? book.darkColors : book.colors} style={styles.bookCover}>
+                  <MaterialCommunityIcons name="book-open-variant" size={22} color={isDark ? book.color : book.color} />
+                </LinearGradient>
+                <View style={styles.bookInfo}>
+                  <Text style={[styles.bookTitle, { color: colors.textPrimary }]}>{book.title}</Text>
+                  <Text style={[styles.bookAuthor, { color: colors.textSecondary }]}>{book.author}</Text>
+                  <View style={styles.bookDueBadge}>
+                    <View style={[styles.urgentDot, { backgroundColor: book.urgent ? '#EF4444' : '#22C55E' }]} />
+                    <Text style={[styles.bookDueText, { color: book.urgent ? '#EF4444' : '#22C55E' }]}>Due in {book.dueDays} days</Text>
+                  </View>
                 </View>
+                {book.urgent ? (
+                  <TouchableOpacity style={styles.renewBtn}>
+                    <Text style={styles.renewBtnText}>Renew</Text>
+                  </TouchableOpacity>
+                ) : (
+                  <View style={[styles.onTimeBadge, { backgroundColor: isDark ? 'rgba(34, 197, 94, 0.2)' : '#DCFCE7' }]}>
+                    <Text style={[styles.onTimeText, { color: isDark ? '#4ADE80' : '#15803D' }]}>On Time</Text>
+                  </View>
+                )}
               </View>
-              <TouchableOpacity style={styles.renewBtn}>
-                <Text style={styles.renewBtnText}>Renew</Text>
-              </TouchableOpacity>
-            </View>
-
-
-            <View style={[styles.bookItem, { backgroundColor: isDark ? colors.background : '#F9FAFB', borderColor: colors.border }]}>
-              <LinearGradient colors={isDark ? ['#1E1B4B', '#312E81'] : ['#EEF2FF', '#E0E7FF']} style={styles.bookCover}>
-                <MaterialCommunityIcons name="book-open-variant" size={22} color={isDark ? '#818CF8' : '#4338CA'} />
-              </LinearGradient>
-              <View style={styles.bookInfo}>
-                <Text style={[styles.bookTitle, { color: colors.textPrimary }]}>Network Security Fundamentals</Text>
-                <Text style={[styles.bookAuthor, { color: colors.textSecondary }]}>Stallings, William</Text>
-                <View style={styles.bookDueBadge}>
-                  <View style={[styles.urgentDot, { backgroundColor: '#22C55E' }]} />
-                  <Text style={[styles.bookDueText, { color: '#22C55E' }]}>Due in 14 days</Text>
-                </View>
-              </View>
-              <View style={[styles.onTimeBadge, { backgroundColor: isDark ? 'rgba(34, 197, 94, 0.2)' : '#DCFCE7' }]}>
-                <Text style={[styles.onTimeText, { color: isDark ? '#4ADE80' : '#15803D' }]}>On Time</Text>
-              </View>
-            </View>
-
-            <View style={[styles.bookItem, { backgroundColor: isDark ? colors.background : '#F9FAFB', borderColor: colors.border }]}>
-              <LinearGradient colors={isDark ? ['#064E3B', '#047857'] : ['#F0FDF4', '#DCFCE7']} style={styles.bookCover}>
-                <MaterialCommunityIcons name="book-open-variant" size={22} color={isDark ? '#34D399' : '#059669'} />
-              </LinearGradient>
-              <View style={styles.bookInfo}>
-                <Text style={[styles.bookTitle, { color: colors.textPrimary }]}>Operating System Concepts</Text>
-                <Text style={[styles.bookAuthor, { color: colors.textSecondary }]}>Silberschatz, Galvin</Text>
-                <View style={styles.bookDueBadge}>
-                  <View style={[styles.urgentDot, { backgroundColor: '#22C55E' }]} />
-                  <Text style={[styles.bookDueText, { color: '#22C55E' }]}>Due in 21 days</Text>
-                </View>
-              </View>
-              <View style={[styles.onTimeBadge, { backgroundColor: isDark ? 'rgba(34, 197, 94, 0.2)' : '#DCFCE7' }]}>
-                <Text style={[styles.onTimeText, { color: isDark ? '#4ADE80' : '#15803D' }]}>On Time</Text>
-              </View>
-            </View>
+            ))}
           </View>
         </View>
 
@@ -711,10 +724,25 @@ const ERPHubScreen = ({ navigation }) => {
 
             <TouchableOpacity 
               style={[styles.submitBtn, { backgroundColor: colors.primary }]}
-              onPress={() => {
+              onPress={async () => {
                 if (!outpassForm.reason) return;
                 setShowRequestModal(false);
                 setGatePassStatus('pending');
+                try {
+                  if (accessToken) {
+                    const now = new Date();
+                    const exit_time = now.toISOString();
+                    const return_time = new Date(now.getTime() + 2 * 60 * 60 * 1000).toISOString();
+                    await createOutpass(accessToken, {
+                      reason: outpassForm.reason,
+                      destination: 'Out of Campus',
+                      exit_time,
+                      return_time
+                    });
+                  }
+                } catch (err) {
+                  console.warn('[ERPHub] Error creating outpass:', err);
+                }
                 // Simulate warden approval
                 setTimeout(() => {
                   setGatePassStatus('approved');

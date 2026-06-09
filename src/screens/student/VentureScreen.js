@@ -1,20 +1,186 @@
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Dimensions, TextInput,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Dimensions, TextInput, Alert, ActivityIndicator
 } from 'react-native';
 import { Ionicons, MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../hooks/useTheme';
 import { APP_CONFIG } from '../../config/appConfig';
-
+import { useUser } from '../../context/UserContext';
+import { getStartups, createStartup, submitPitch, triggerCofounderMatch } from '../../data/apiService';
 
 const { width } = Dimensions.get('window');
+
+const FALLBACK_STARTUPS = [
+  {
+    id: 'mock-1',
+    name: 'AgriTech Campus',
+    tagline: 'Smart IoT solutions for sugarcane farmers',
+    description: 'Smart IoT solutions for local sugarcane farmers to optimize irrigation.',
+    category: 'Agriculture',
+    stage: 'SERIES A SEED',
+    milestone_pct: 85,
+    looking_for: ['Co-founder', 'Investors']
+  },
+  {
+    id: 'mock-2',
+    name: 'EduSolve',
+    tagline: 'AI-driven vernacular language learning',
+    description: 'AI-driven vernacular language learning specifically for Rural UP students.',
+    category: 'Education',
+    stage: 'PRE-REVENUE',
+    milestone_pct: 40,
+    looking_for: ['React Native Developer', 'Marketing Lead']
+  }
+];
+
+const getStartupIconInfo = (category, isDark) => {
+  const cat = (category || '').toLowerCase();
+  if (cat.includes('agri')) {
+    return {
+      name: 'agriculture',
+      color: isDark ? '#34D399' : '#16A34A',
+      bgColor: isDark ? 'rgba(16, 185, 129, 0.1)' : '#F0FDF4',
+      tagBg: isDark ? 'rgba(5, 150, 105, 0.2)' : '#DCFCE7',
+      tagColor: isDark ? '#A7F3D0' : '#166534'
+    };
+  }
+  if (cat.includes('edu') || cat.includes('learn')) {
+    return {
+      name: 'auto-stories',
+      color: isDark ? '#60A5FA' : '#2563EB',
+      bgColor: isDark ? 'rgba(59, 130, 246, 0.1)' : '#EFF6FF',
+      tagBg: isDark ? 'rgba(30, 64, 175, 0.2)' : '#DBEAFE',
+      tagColor: isDark ? '#DBEAFE' : '#1D4ED8'
+    };
+  }
+  if (cat.includes('health') || cat.includes('med') || cat.includes('pharma') || cat.includes('clinic')) {
+    return {
+      name: 'medical-services',
+      color: isDark ? '#F87171' : '#DC2626',
+      bgColor: isDark ? 'rgba(248, 113, 113, 0.1)' : '#FEF2F2',
+      tagBg: isDark ? 'rgba(185, 28, 28, 0.2)' : '#FEE2E2',
+      tagColor: isDark ? '#FCA5A5' : '#991B1B'
+    };
+  }
+  return {
+    name: 'lightbulb',
+    color: isDark ? '#FBBF24' : '#D97706',
+    bgColor: isDark ? 'rgba(251, 191, 36, 0.1)' : '#FEF3C7',
+    tagBg: isDark ? 'rgba(180, 83, 9, 0.2)' : '#FEF3C7',
+    tagColor: isDark ? '#FDE68A' : '#78350F'
+  };
+};
 
 const VentureScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
+  const { accessToken, user } = useUser();
 
+  const [startups, setStartups] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [matching, setMatching] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
+  // Form states
+  const [vName, setVName] = useState('');
+  const [vPitch, setVPitch] = useState('');
+  const [vCategory, setVCategory] = useState(user?.category || 'Tech');
+  const [vLookingFor, setVLookingFor] = useState('Developer, Marketing');
+
+  const fetchAllStartups = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await getStartups(accessToken);
+      if (data && data.length > 0) {
+        setStartups(data);
+      } else {
+        setStartups(FALLBACK_STARTUPS);
+      }
+    } catch (err) {
+      console.warn('[VentureScreen] Failed to fetch startups from API, using fallback:', err.message);
+      setStartups(FALLBACK_STARTUPS);
+    } finally {
+      setLoading(false);
+    }
+  }, [accessToken]);
+
+  useEffect(() => {
+    fetchAllStartups();
+  }, [fetchAllStartups]);
+
+  const handleCoFounderMatch = async () => {
+    if (!accessToken) {
+      Alert.alert('Login Required', 'You must be logged in to match with co-founders.');
+      return;
+    }
+    setMatching(true);
+    try {
+      await triggerCofounderMatch(accessToken);
+      Alert.alert(
+        'AI Matchmaking Triggered',
+        'We have analyzed student profiles and triggered background matches. Check back soon for connections!'
+      );
+    } catch (err) {
+      Alert.alert('Error', err.message || 'Failed to trigger matchmaking.');
+    } finally {
+      setMatching(false);
+    }
+  }, [accessToken]);
+
+  const handleSubmitPitch = async () => {
+    if (!vName.trim() || !vPitch.trim()) {
+      Alert.alert('Validation Error', 'Venture Name and One-Sentence Pitch are required.');
+      return;
+    }
+
+    if (!accessToken) {
+      Alert.alert('Login Required', 'You must be logged in to submit a pitch.');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      // 1. Create the startup
+      const payload = {
+        name: vName.trim(),
+        tagline: vPitch.trim(),
+        description: vPitch.trim(),
+        category: vCategory,
+        looking_for: vLookingFor.split(',').map(s => s.trim()).filter(Boolean),
+      };
+
+      const newVenture = await createStartup(accessToken, payload);
+      
+      // 2. Submit the pitch deck
+      if (newVenture?.id) {
+        const deckUrl = `https://university.edu/decks/${encodeURIComponent(vName.trim().replace(/\s+/g, '_'))}_deck.pdf`;
+        await submitPitch(accessToken, {
+          venture_id: newVenture.id,
+          deck_url: deckUrl
+        });
+      }
+
+      Alert.alert('Success', 'Your venture has been registered and pitch deck submitted successfully!');
+      
+      // Reset form fields
+      setVName('');
+      setVPitch('');
+      
+      // Refresh list
+      fetchAllStartups();
+    } catch (err) {
+      Alert.alert('Error', err.message || 'Failed to submit pitch.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const isFemaleAvatar = user?.gender === 'F' || user?.gender === 'Female';
+  const avatarUrl = isFemaleAvatar
+    ? 'https://images.pexels.com/photos/733872/pexels-photo-733872.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=500'
+    : 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=500';
 
   return (
     <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
@@ -34,12 +200,11 @@ const VentureScreen = ({ navigation }) => {
           </TouchableOpacity>
 
           <Image
-            source={{ uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAHE5L8YlJMTs-XVOTgRgdskFym9IbSOOWmaoPDoXAVn44_p1piZ4DF1hbybIHboYED4wlgw5EjEf8xQVbYyd2ujbhVoBIHI34rqe-9joMu1KjOHC4gExjJ1EoR4Nq0FRsbmAyQmoMhL5z4fLdnRjvxDipaIV-TNoOKkRzF8AAjcBgx1CklNEikKZHQTYdba1-Xp0GoP-MEG3_P8uUSz546Q23VbY9WaghYVTNTFEOr6ShXvHSsOrKH7pS6YchureUbV49CKICrW-pl' }}
+            source={{ uri: avatarUrl }}
             style={[styles.avatarSmall, { borderColor: colors.primary }]}
           />
         </View>
       </View>
-
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         {/* Venture Launchpad Hero */}
@@ -67,10 +232,8 @@ const VentureScreen = ({ navigation }) => {
           </LinearGradient>
         </View>
 
-
         {/* Co-founder Match Card */}
         <View style={[styles.matchCard, { backgroundColor: isDark ? '#1E1B4B' : '#4338CA', shadowColor: '#4338CA' }]}>
-
           <View style={styles.cardHeader}>
             <View style={[styles.cardIconBox, { backgroundColor: 'rgba(255,255,255,0.1)' }]}>
               <MaterialIcons name="psychology-alt" size={28} color="#FFFFFF" />
@@ -85,14 +248,20 @@ const VentureScreen = ({ navigation }) => {
               <View style={[styles.mAvatar, { marginLeft: -8, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center', borderColor: isDark ? '#1E1B4B' : '#4338CA' }]}>
                 <Text style={{ fontSize: 9, color: '#FFFFFF', fontWeight: '800' }}>+42</Text>
               </View>
-
             </View>
-            <TouchableOpacity style={styles.startMatchBtn}>
-              <Text style={[styles.startMatchBtnText, { color: isDark ? '#1E1B4B' : '#4338CA' }]}>Start Matching</Text>
+            <TouchableOpacity 
+              style={styles.startMatchBtn}
+              onPress={handleCoFounderMatch}
+              disabled={matching}
+            >
+              {matching ? (
+                <ActivityIndicator size="small" color={isDark ? '#E0E7FF' : '#4338CA'} />
+              ) : (
+                <Text style={[styles.startMatchBtnText, { color: isDark ? '#E0E7FF' : '#4338CA' }]}>Start Matching</Text>
+              )}
             </TouchableOpacity>
           </View>
         </View>
-
 
         {/* Top Startups */}
         <View style={styles.sectionHeader}>
@@ -100,90 +269,117 @@ const VentureScreen = ({ navigation }) => {
             <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Top Startups</Text>
             <MaterialIcons name="star" size={20} color={colors.primary} />
           </View>
-          <TouchableOpacity><Text style={[styles.viewAllText, { color: colors.primary }]}>View All</Text></TouchableOpacity>
+          <TouchableOpacity onPress={fetchAllStartups}><Text style={[styles.viewAllText, { color: colors.primary }]}>Refresh</Text></TouchableOpacity>
         </View>
 
-
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.startupScroll} contentContainerStyle={styles.startupContainer}>
-          {/* Startup Card 1 */}
-          <View style={[styles.startupCard, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
-            <View style={[styles.startupIcon, { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.1)' : '#F0FDF4' }]}>
-              <MaterialIcons name="agriculture" size={28} color={isDark ? '#34D399' : '#16A34A'} />
-            </View>
-            <View style={[styles.startupLabel, { backgroundColor: isDark ? 'rgba(5, 150, 105, 0.2)' : '#DCFCE7' }]}><Text style={[styles.startupLabelText, { color: isDark ? '#A7F3D0' : '#166534' }]}>SERIES A SEED</Text></View>
-            <Text style={[styles.startupName, { color: colors.textPrimary }]}>AgriTech Campus</Text>
-            <Text style={[styles.startupDesc, { color: colors.textSecondary }]}>Smart IoT solutions for local sugarcane farmers to optimize irrigation.</Text>
-
-            <View style={styles.progressRow}>
-              <View style={styles.progressHeader}>
-                <Text style={[styles.progressText, { color: colors.textSecondary }]}>Milestone</Text>
-                <Text style={[styles.progressPct, { color: colors.primary }]}>85%</Text>
-              </View>
-              <View style={[styles.progressBar, { backgroundColor: colors.border }]}><View style={[styles.progressFill, { width: '85%', backgroundColor: colors.primary }]} /></View>
-            </View>
+        {loading ? (
+          <View style={{ padding: 40, alignItems: 'center' }}>
+            <ActivityIndicator size="large" color={colors.primary} />
           </View>
+        ) : (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.startupScroll} contentContainerStyle={styles.startupContainer}>
+            {startups.map((startup) => {
+              const iconInfo = getStartupIconInfo(startup.category, isDark);
+              const milestone = startup.milestone_pct !== undefined ? startup.milestone_pct : 50;
+              return (
+                <View key={startup.id} style={[styles.startupCard, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
+                  <View style={[styles.startupIcon, { backgroundColor: iconInfo.bgColor }]}>
+                    <MaterialIcons name={iconInfo.name} size={28} color={iconInfo.color} />
+                  </View>
+                  <View style={[styles.startupLabel, { backgroundColor: iconInfo.tagBg }]}>
+                    <Text style={[styles.startupLabelText, { color: iconInfo.tagColor }]}>
+                      {startup.stage || 'PRE-REVENUE'}
+                    </Text>
+                  </View>
+                  <Text style={[styles.startupName, { color: colors.textPrimary }]}>{startup.name}</Text>
+                  <Text style={[styles.startupDesc, { color: colors.textSecondary }]}>{startup.tagline || startup.description}</Text>
 
-
-          {/* Startup Card 2 */}
-          <View style={[styles.startupCard, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
-            <View style={[styles.startupIcon, { backgroundColor: isDark ? 'rgba(59, 130, 246, 0.1)' : '#EFF6FF' }]}>
-              <MaterialIcons name="auto-stories" size={28} color={isDark ? '#60A5FA' : '#2563EB'} />
-            </View>
-            <View style={[styles.startupLabel, { backgroundColor: isDark ? 'rgba(30, 64, 175, 0.2)' : '#DBEAFE' }]}><Text style={[styles.startupLabelText, { color: isDark ? '#DBEAFE' : '#1D4ED8' }]}>PRE-REVENUE</Text></View>
-            <Text style={[styles.startupName, { color: colors.textPrimary }]}>EduSolve</Text>
-            <Text style={[styles.startupDesc, { color: colors.textSecondary }]}>AI-driven vernacular language learning specifically for Rural UP students.</Text>
-
-            <View style={styles.progressRow}>
-              <View style={styles.progressHeader}>
-                <Text style={[styles.progressText, { color: colors.textSecondary }]}>Beta Testing</Text>
-                <Text style={[styles.progressPct, { color: colors.primary }]}>40%</Text>
-              </View>
-              <View style={[styles.progressBar, { backgroundColor: colors.border }]}><View style={[styles.progressFill, { width: '40%', backgroundColor: colors.primary }]} /></View>
-            </View>
-          </View>
-
-        </ScrollView>
-
+                  <View style={styles.progressRow}>
+                    <View style={styles.progressHeader}>
+                      <Text style={[styles.progressText, { color: colors.textSecondary }]}>Milestone</Text>
+                      <Text style={[styles.progressPct, { color: colors.primary }]}>{milestone}%</Text>
+                    </View>
+                    <View style={[styles.progressBar, { backgroundColor: colors.border }]}><View style={[styles.progressFill, { width: `${milestone}%`, backgroundColor: colors.primary }]} /></View>
+                  </View>
+                </View>
+              );
+            })}
+          </ScrollView>
+        )}
 
         {/* Pitch Form Card */}
         <View style={[styles.pitchCard, { backgroundColor: isDark ? colors.card : '#F3F4F6', borderColor: colors.border, borderWidth: 1 }]}>
           <Text style={[styles.pitchTitle, { color: colors.textPrimary }]}>Pitch Your Idea</Text>
           <Text style={[styles.pitchSub, { color: colors.textSecondary }]}>Ready to disrupt the market? Submit your pitch deck.</Text>
 
-
           <View style={styles.inputGroup}>
             <Text style={[styles.label, { color: colors.textSecondary }]}>VENTURE NAME</Text>
-            <TextInput style={[styles.input, { backgroundColor: isDark ? colors.background : '#FFFFFF', color: colors.textPrimary, borderColor: colors.border, borderWidth: 1 }]} placeholder={`e.g. ${APP_CONFIG.UNIVERSITY_SHORT_NAME} AI`} placeholderTextColor={isDark ? 'rgba(255,255,255,0.3)' : '#9CA3AF'} />
+            <TextInput 
+              style={[styles.input, { backgroundColor: isDark ? colors.background : '#FFFFFF', color: colors.textPrimary, borderColor: colors.border, borderWidth: 1 }]} 
+              placeholder={`e.g. ${APP_CONFIG.UNIVERSITY_SHORT_NAME} AI`} 
+              placeholderTextColor={isDark ? 'rgba(255,255,255,0.3)' : '#9CA3AF'} 
+              value={vName}
+              onChangeText={setVName}
+            />
           </View>
-
 
           <View style={styles.inputGroup}>
             <Text style={[styles.label, { color: colors.textSecondary }]}>ONE-SENTENCE PITCH</Text>
-            <TextInput style={[styles.input, { backgroundColor: isDark ? colors.background : '#FFFFFF', color: colors.textPrimary, borderColor: colors.border, borderWidth: 1, height: 80, textAlignVertical: 'top' }]} placeholder="What problem are you solving?" placeholderTextColor={isDark ? 'rgba(255,255,255,0.3)' : '#9CA3AF'} multiline />
+            <TextInput 
+              style={[styles.input, { backgroundColor: isDark ? colors.background : '#FFFFFF', color: colors.textPrimary, borderColor: colors.border, borderWidth: 1, height: 80, textAlignVertical: 'top' }]} 
+              placeholder="What problem are you solving?" 
+              placeholderTextColor={isDark ? 'rgba(255,255,255,0.3)' : '#9CA3AF'} 
+              multiline 
+              value={vPitch}
+              onChangeText={setVPitch}
+            />
           </View>
 
+          <View style={styles.inputGroup}>
+            <Text style={[styles.label, { color: colors.textSecondary }]}>CATEGORY (e.g. Agriculture, Education, Pharma, Tech)</Text>
+            <TextInput 
+              style={[styles.input, { backgroundColor: isDark ? colors.background : '#FFFFFF', color: colors.textPrimary, borderColor: colors.border, borderWidth: 1 }]} 
+              placeholder="e.g. Pharma" 
+              placeholderTextColor={isDark ? 'rgba(255,255,255,0.3)' : '#9CA3AF'} 
+              value={vCategory}
+              onChangeText={setVCategory}
+            />
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={[styles.label, { color: colors.textSecondary }]}>LOOKING FOR (comma separated)</Text>
+            <TextInput 
+              style={[styles.input, { backgroundColor: isDark ? colors.background : '#FFFFFF', color: colors.textPrimary, borderColor: colors.border, borderWidth: 1 }]} 
+              placeholder="e.g. Developer, Marketing, Co-founder" 
+              placeholderTextColor={isDark ? 'rgba(255,255,255,0.3)' : '#9CA3AF'} 
+              value={vLookingFor}
+              onChangeText={setVLookingFor}
+            />
+          </View>
 
           <TouchableOpacity style={[styles.uploadArea, { borderColor: colors.border, backgroundColor: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)' }]}>
             <MaterialIcons name="upload-file" size={24} color={colors.textSecondary} />
             <Text style={[styles.uploadText, { color: colors.textSecondary }]}>UPLOAD PITCH DECK (PDF)</Text>
           </TouchableOpacity>
 
-
-          <TouchableOpacity style={[styles.submitBtn, { backgroundColor: colors.primary, shadowColor: colors.primary }]}>
-            <Text style={styles.submitBtnText}>Submit Pitch</Text>
+          <TouchableOpacity 
+            style={[styles.submitBtn, { backgroundColor: colors.primary, shadowColor: colors.primary }]}
+            onPress={handleSubmitPitch}
+            disabled={submitting}
+          >
+            {submitting ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <Text style={styles.submitBtnText}>Submit Pitch</Text>
+            )}
           </TouchableOpacity>
-
         </View>
-
-
         <View style={{ height: 100 }} />
       </ScrollView>
-
-      {/* FAB */}
-
     </View>
   );
 };
+
 
 const styles = StyleSheet.create({
   container: {

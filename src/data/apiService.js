@@ -421,6 +421,52 @@ export async function createStartup(token, payload) {
   return unwrap(res);
 }
 
+/**
+ * POST /api/v1/venture/pitch
+ */
+export async function submitPitch(token, payload) {
+  const res = await apiCall('/api/v1/venture/pitch', {
+    method: 'POST',
+    headers: authHeaders(token),
+    body: JSON.stringify(payload),
+  });
+  return unwrap(res);
+}
+
+/**
+ * POST /api/v1/venture/cofounder/match
+ */
+export async function triggerCofounderMatch(token) {
+  const res = await apiCall('/api/v1/venture/cofounder/match', {
+    method: 'POST',
+    headers: authHeaders(token),
+  });
+  return unwrap(res);
+}
+
+/**
+ * GET /api/v1/venture/cofounder/matches
+ */
+export async function getCofounderMatches(token) {
+  const res = await apiCall('/api/v1/venture/cofounder/matches', {
+    headers: authHeaders(token),
+  });
+  return unwrap(res, []);
+}
+
+/**
+ * POST /api/v1/venture/cofounder/:matchId/respond
+ */
+export async function respondCofounderMatch(token, matchId, status) {
+  const res = await apiCall(`/api/v1/venture/cofounder/${matchId}/respond`, {
+    method: 'POST',
+    headers: authHeaders(token),
+    body: JSON.stringify({ status }),
+  });
+  return unwrap(res);
+}
+
+
 // ─── AI endpoints ─────────────────────────────────────────────────────────────
 
 /**

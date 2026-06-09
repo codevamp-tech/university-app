@@ -1,10 +1,11 @@
 import React from 'react';
 import { useTheme } from '../../hooks/useTheme';
 import { useUser } from '../../context/UserContext';
+import { getDocuments } from '../../data/apiService';
 
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Dimensions,
+  Dimensions, Alert
 } from 'react-native';
 import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -14,9 +15,10 @@ import { APP_CONFIG } from '../../config/appConfig';
 const { width } = Dimensions.get('window');
 
 const ERPDocumentsScreen = ({ navigation }) => {
-  const { user } = useUser();
+  const { user, accessToken } = useUser();
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
+  const [apiDocs, setApiDocs] = React.useState([]);
 
   const yearNum = parseInt(user?.year) || 4;
   const startYear = 2026 - yearNum;
@@ -26,6 +28,21 @@ const ERPDocumentsScreen = ({ navigation }) => {
   const courseTitle = user?.course
     ? (user.branch && !user.course.includes(user.branch) ? `${user.course} ${user.branch}` : user.course)
     : 'B.Tech CSE';
+
+  React.useEffect(() => {
+    async function loadDocs() {
+      if (!accessToken) return;
+      try {
+        const data = await getDocuments(accessToken);
+        if (data && data.documents) {
+          setApiDocs(data.documents);
+        }
+      } catch (err) {
+        console.warn('[DocumentsScreen] Error loading documents:', err);
+      }
+    }
+    loadDocs();
+  }, [accessToken]);
 
 
   return (
@@ -170,20 +187,46 @@ const ERPDocumentsScreen = ({ navigation }) => {
 
 
           {/* Degree Certificate */}
-          <View style={[styles.docCard, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
-            <View style={[styles.docIconBg, { backgroundColor: isDark ? 'rgba(73, 83, 172, 0.15)' : '#EEF2FF' }]}>
-              <MaterialIcons name="school" size={24} color={isDark ? '#818CF8' : '#4953AC'} />
-            </View>
-            <Text style={[styles.docTitle, { color: colors.textPrimary }]}>Degree Certificate</Text>
-            <Text style={[styles.docDesc, { color: colors.textSecondary }]}>Provisional degree certificate issued upon completion of program requirements.</Text>
-            <View style={[styles.statusBadge, { backgroundColor: isDark ? 'rgba(245, 158, 11, 0.2)' : '#FEF3C7' }]}>
-              <Text style={[styles.statusText, { color: isDark ? '#FCD34D' : '#92400E' }]}>Pending Approval</Text>
-            </View>
-            <TouchableOpacity style={[styles.lockedBtn, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#E6E8EA', borderColor: colors.border, borderWidth: 1 }]}>
-              <MaterialIcons name="lock" size={16} color={colors.textSecondary} />
-              <Text style={[styles.lockedText, { color: colors.textSecondary }]}>Download Locked</Text>
-            </TouchableOpacity>
-          </View>
+          {(() => {
+            const degreeUnlocked = apiDocs.includes('degree') || apiDocs.includes('graduation') || userSem >= 8;
+            return (
+              <View style={[styles.docCard, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
+                <View style={[styles.docIconBg, { backgroundColor: isDark ? 'rgba(73, 83, 172, 0.15)' : '#EEF2FF' }]}>
+                  <MaterialIcons name="school" size={24} color={isDark ? '#818CF8' : '#4953AC'} />
+                </View>
+                <Text style={[styles.docTitle, { color: colors.textPrimary }]}>Degree Certificate</Text>
+                <Text style={[styles.docDesc, { color: colors.textSecondary }]}>Provisional degree certificate issued upon completion of program requirements.</Text>
+                
+                {degreeUnlocked ? (
+                  <>
+                    <View style={[styles.statusBadge, { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.2)' : '#D1FAE5' }]}>
+                      <Text style={[styles.statusText, { color: isDark ? '#34D399' : '#065F46' }]}>Verified</Text>
+                    </View>
+                    <TouchableOpacity 
+                      style={[styles.downloadDocBtn, { backgroundColor: colors.primary, marginTop: 12, width: '100%', borderRadius: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10 }]}
+                      onPress={() => Alert.alert('Download Started', 'Degree Certificate is downloading...')}
+                    >
+                      <MaterialIcons name="download" size={16} color="#FFFFFF" />
+                      <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 13 }}>Download Degree</Text>
+                    </TouchableOpacity>
+                  </>
+                ) : (
+                  <>
+                    <View style={[styles.statusBadge, { backgroundColor: isDark ? 'rgba(245, 158, 11, 0.2)' : '#FEF3C7' }]}>
+                      <Text style={[styles.statusText, { color: isDark ? '#FCD34D' : '#92400E' }]}>Pending Approval</Text>
+                    </View>
+                    <TouchableOpacity 
+                      style={[styles.lockedBtn, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#E6E8EA', borderColor: colors.border, borderWidth: 1 }]}
+                      onPress={() => Alert.alert('Certificate Locked', 'Your Degree Certificate will be unlocked upon semester completion and academic approval.')}
+                    >
+                      <MaterialIcons name="lock" size={16} color={colors.textSecondary} />
+                      <Text style={[styles.lockedText, { color: colors.textSecondary }]}>Download Locked</Text>
+                    </TouchableOpacity>
+                  </>
+                )}
+              </View>
+            );
+          })()}
 
 
 

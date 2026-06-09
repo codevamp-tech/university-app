@@ -1,20 +1,52 @@
 import React from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ImageBackground, Dimensions
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ImageBackground, Dimensions, Alert
 } from 'react-native';
 import { Ionicons, MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../hooks/useTheme';
 import { APP_CONFIG } from '../../config/appConfig';
-
+import { useUser } from '../../context/UserContext';
+import { getShopListings, createOrder } from '../../data/apiService';
 
 const { width } = Dimensions.get('window');
 
 const MarketplaceScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
+  const { accessToken } = useUser();
+  
   const [cartCount, setCartCount] = React.useState(0);
+  const [apiListings, setApiListings] = React.useState([]);
+
+  const loadListings = React.useCallback(async () => {
+    if (!accessToken) return;
+    try {
+      const data = await getShopListings(accessToken);
+      if (data) setApiListings(data);
+    } catch (err) {
+      console.warn('[MarketplaceScreen] Error fetching listings:', err);
+    }
+  }, [accessToken]);
+
+  React.useEffect(() => {
+    loadListings();
+  }, [loadListings]);
+
+  const handleBuyItem = async (listingId, price) => {
+    try {
+      if (accessToken) {
+        await createOrder(accessToken, listingId, 1);
+        Alert.alert('Order Placed', `Successfully placed order for ${price}. Your wallet will be debited.`);
+      } else {
+        Alert.alert('Success', 'Item added to cart (Simulation).');
+      }
+      setCartCount(prev => prev + 1);
+    } catch (err) {
+      Alert.alert('Order Failed', err.message || 'An error occurred.');
+    }
+  };
 
 
   const addToCart = () => {
@@ -213,6 +245,45 @@ const MarketplaceScreen = ({ navigation }) => {
 
 
           <View style={styles.bazaarGrid}>
+            {/* Live API Listings */}
+            {apiListings.map(item => (
+              <TouchableOpacity 
+                key={item.id} 
+                style={[styles.itemCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+                onPress={() => navigation.navigate('ProductDetail', {
+                  item: {
+                    id: item.id,
+                    title: item.title,
+                    price: `₹${item.price}`,
+                    image: item.image_url || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?q=80&w=2000&auto=format&fit=crop',
+                    desc: item.description || 'No description provided.',
+                    badge: item.category ? item.category.toUpperCase() : 'CAMPUS',
+                    seller: { name: item.seller_name || 'Student', year: 'Uni Student', avatar: 'https://randomuser.me/api/portraits/men/32.jpg' }
+                  }
+                })}
+              >
+                <View style={styles.itemImgBox}>
+                  <Image source={{ uri: item.image_url || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?q=80&w=2000&auto=format&fit=crop' }} style={styles.itemImg} />
+                  <View style={[styles.itemBadge, { backgroundColor: isDark ? colors.background : '#FFFFFF' }]}>
+                    <Text style={[styles.itemBadgeText, { color: colors.textPrimary }]}>{item.category ? item.category.toUpperCase() : 'CAMPUS'}</Text>
+                  </View>
+                </View>
+
+                <View style={styles.itemContent}>
+                  <Text style={[styles.itemTitle, { color: colors.textPrimary }]}>{item.title}</Text>
+                  <Text style={[styles.itemDesc, { color: colors.textSecondary }]} numberOfLines={2}>{item.description}</Text>
+
+                  <View style={styles.itemFooter}>
+                    <Text style={[styles.itemPrice, { color: isDark ? colors.primaryLight : colors.primary }]}>₹{item.price}</Text>
+                    <View style={styles.itemActionRow}>
+                      <TouchableOpacity onPress={() => handleBuyItem(item.id, `₹${item.price}`)}>
+                        <MaterialIcons name="add-shopping-cart" size={20} color={colors.primary} />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            ))}
 
             <TouchableOpacity 
               style={[styles.itemCard, { backgroundColor: colors.card, borderColor: colors.border }]}

@@ -12,26 +12,29 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { APP_CONFIG } from '../../config/appConfig';
 
+import { getAttendance } from '../../data/apiService';
+
 const { width } = Dimensions.get('window');
 
 const ERPAttendanceScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
-  const { user } = useUser();
+  const { user, accessToken } = useUser();
+  const [apiAttendance, setApiAttendance] = React.useState(null);
 
   const roman = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
   const semNum = parseInt(user?.semester) || 7;
   const displaySem = roman[semNum - 1] || 'VII';
 
   const academicSubjects = getAcademicSubjects(user || { course: 'B.Tech CSE' });
-  const overall = user ? user.attendance : 85;
-  const totalClasses = 320;
-  const attendedClasses = Math.round(overall * 3.2);
+  const overallVal = user ? user.attendance : 85;
+  const totalClassesVal = 320;
+  const attendedClassesVal = Math.round(overallVal * 3.2);
 
-  const subjects = academicSubjects.map((subject, idx) => {
+  const fallbackSubjects = academicSubjects.map((subject, idx) => {
     const offsets = [7, -3, 5, -8, 2, -1, 4];
     const offset = offsets[idx % offsets.length];
-    const percentage = Math.min(Math.max(overall + offset, 10), 100);
+    const percentage = Math.min(Math.max(overallVal + offset, 10), 100);
     const status = percentage >= 75 ? 'safe' : percentage >= 60 ? 'warning' : 'danger';
     return {
       code: `${user?.course ? user.course.split(' ').map(w => w[0]).join('').toUpperCase().substring(0, 3) : 'CS'}${301 + idx}`,
@@ -41,11 +44,66 @@ const ERPAttendanceScreen = ({ navigation }) => {
     };
   });
 
-  const attendanceData = {
-    overall,
-    totalClasses,
-    attendedClasses,
-    subjects
+  React.useEffect(() => {
+    async function loadAttendance() {
+      if (!accessToken) return;
+      try {
+        const data = await getAttendance(accessToken);
+        if (data && data.length > 0) {
+          const subjectsMap = {};
+          let totalPresent = 0;
+          let totalClasses = 0;
+
+          data.forEach(item => {
+            const code = item.subject_code;
+            if (!subjectsMap[code]) {
+              subjectsMap[code] = {
+                code,
+                name: item.subject_name || code,
+                attended: 0,
+                total: 0
+              };
+            }
+            subjectsMap[code].total++;
+            totalClasses++;
+            if (item.present) {
+              subjectsMap[code].attended++;
+              totalPresent++;
+            }
+          });
+
+          const subjects = Object.values(subjectsMap).map(sub => {
+            const percentage = sub.total > 0 ? Math.round((sub.attended / sub.total) * 100) : 0;
+            const status = percentage >= 75 ? 'safe' : percentage >= 60 ? 'warning' : 'danger';
+            return {
+              code: sub.code,
+              name: sub.name,
+              percentage,
+              status
+            };
+          });
+
+          const overall = totalClasses > 0 ? Math.round((totalPresent / totalClasses) * 100) : 0;
+
+          setApiAttendance({
+            overall,
+            totalClasses,
+            attendedClasses: totalPresent,
+            subjects
+          });
+        }
+      } catch (err) {
+        console.warn('[AttendanceScreen] Error fetching from API:', err);
+      }
+    }
+    loadAttendance();
+  }, [accessToken]);
+
+  const attendanceData = apiAttendance || {
+    overall: overallVal,
+    totalClasses: totalClassesVal,
+    attendedClasses: attendedClassesVal,
+    subjects: fallbackSubjects
   };
 
   const getStatusColor = (status) => {

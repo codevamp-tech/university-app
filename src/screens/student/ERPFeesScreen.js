@@ -2,10 +2,11 @@ import React from 'react';
 import { useTheme } from '../../hooks/useTheme';
 import { APP_CONFIG } from '../../config/appConfig';
 import { useUser } from '../../context/UserContext';
+import { getFees, payFee } from '../../data/apiService';
 
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Dimensions,
+  Dimensions, Alert
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -14,9 +15,13 @@ import { LinearGradient } from 'expo-linear-gradient';
 const { width } = Dimensions.get('window');
 
 const ERPFeesScreen = ({ navigation }) => {
-  const { user } = useUser();
+  const { user, accessToken } = useUser();
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
+
+  const [apiFees, setApiFees] = React.useState([]);
+  const [fallbackPaid, setFallbackPaid] = React.useState(false);
+  const [loading, setLoading] = React.useState(false);
 
   const roman = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
   const semNum = parseInt(user?.semester) || 7;
@@ -30,9 +35,65 @@ const ERPFeesScreen = ({ navigation }) => {
 
   const idStr = user?.id || '';
   const idNum = parseInt(idStr.replace(/[^0-9]/g, '')) || 1;
-  const tuitionFeeVal = (idNum % 3 + 2) * 15000;
-  const devFeeVal = 6500;
-  const outstandingDuesVal = tuitionFeeVal + devFeeVal;
+
+  // SGPAs/RollNo based fee calculations
+  const tuitionFeeValBase = (idNum % 3 + 2) * 15000;
+  const devFeeValBase = 6500;
+
+  // Find if fees are paid in API
+  const tuitionPaid = apiFees.find(f => f.type === 'tuition')?.status === 'paid';
+  const devPaid = apiFees.find(f => f.type === 'development')?.status === 'paid';
+
+  const tuitionFeeVal = (tuitionPaid || fallbackPaid) ? 0 : tuitionFeeValBase;
+  const devFeeVal = (devPaid || fallbackPaid) ? 0 : devFeeValBase;
+
+  const outstandingDuesVal = fallbackPaid ? 0 : (
+    apiFees.length > 0 
+      ? apiFees.filter(f => f.status !== 'paid').reduce((acc, f) => acc + (f.amount || 0), 0)
+      : (tuitionFeeVal + devFeeVal)
+  );
+
+  React.useEffect(() => {
+    async function loadFees() {
+      if (!accessToken) return;
+      try {
+        const data = await getFees(accessToken);
+        if (data) {
+          setApiFees(data);
+        }
+      } catch (err) {
+        console.warn('[FeesScreen] Error loading fees:', err);
+      }
+    }
+    loadFees();
+  }, [accessToken]);
+
+  const handlePayNow = async () => {
+    if (outstandingDuesVal === 0) {
+      Alert.alert('No Dues', 'You have no outstanding dues to pay.');
+      return;
+    }
+    setLoading(true);
+    try {
+      if (accessToken && apiFees.length > 0) {
+        const pending = apiFees.filter(f => f.status !== 'paid');
+        for (const fee of pending) {
+          await payFee(accessToken, fee.id);
+        }
+        const data = await getFees(accessToken);
+        if (data) setApiFees(data);
+        Alert.alert('Payment Successful', 'All outstanding university fees have been paid via API.');
+      } else {
+        // Fallback simulation
+        setFallbackPaid(true);
+        Alert.alert('Payment Successful', 'Outstanding dues of ' + formatCurrency(outstandingDuesVal) + ' have been successfully paid.');
+      }
+    } catch (err) {
+      Alert.alert('Payment Failed', err.message || 'An error occurred during payment.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const formatCurrency = (amt) => {
     return '₹ ' + amt.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
@@ -73,9 +134,15 @@ const ERPFeesScreen = ({ navigation }) => {
             <Text style={styles.heroAmount}>{formatCurrency(outstandingDuesVal)}</Text>
             <Text style={[styles.heroSub, { color: 'rgba(255,255,255,0.85)' }]}>{academicYearStr} | {displaySem} Semester</Text>
             <View style={styles.heroBtns}>
-              <TouchableOpacity style={[styles.payNowBtn, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#FFFFFF' }]}>
+              <TouchableOpacity 
+                style={[styles.payNowBtn, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#FFFFFF' }]}
+                onPress={handlePayNow}
+                disabled={loading}
+              >
                 <MaterialIcons name="payments" size={18} color={isDark ? '#FFFFFF' : '#EA580C'} />
-                <Text style={[styles.payNowText, { color: isDark ? '#FFFFFF' : '#EA580C' }]}>Pay Now</Text>
+                <Text style={[styles.payNowText, { color: isDark ? '#FFFFFF' : '#EA580C' }]}>
+                  {loading ? 'Paying...' : 'Pay Now'}
+                </Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.ledgerBtn}>
                 <MaterialIcons name="download" size={18} color="#FFFFFF" />
@@ -95,8 +162,16 @@ const ERPFeesScreen = ({ navigation }) => {
                 <Text style={[styles.feeCardTitle, { color: colors.textPrimary }]}>{displaySem} Semester Fees</Text>
                 <Text style={[styles.feeCardSub, { color: colors.textSecondary }]}>{courseTitle}</Text>
               </View>
-              <View style={[styles.pendingBadge, { backgroundColor: isDark ? 'rgba(239, 68, 68, 0.2)' : '#F95630' }]}>
-                <Text style={[styles.pendingBadgeText, { color: isDark ? '#EF4444' : '#FFFFFF' }]}>PENDING</Text>
+              <View style={[
+                styles.pendingBadge, 
+                { backgroundColor: outstandingDuesVal === 0 ? (isDark ? 'rgba(52, 211, 153, 0.2)' : '#059669') : (isDark ? 'rgba(239, 68, 68, 0.2)' : '#F95630') }
+              ]}>
+                <Text style={[
+                  styles.pendingBadgeText, 
+                  { color: outstandingDuesVal === 0 ? (isDark ? '#34D399' : '#FFFFFF') : (isDark ? '#EF4444' : '#FFFFFF') }
+                ]}>
+                  {outstandingDuesVal === 0 ? 'PAID' : 'PENDING'}
+                </Text>
               </View>
             </View>
 
