@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,12 +7,15 @@ import {
   TouchableOpacity,
   Image,
   Dimensions,
+  Alert
 } from 'react-native';
+import { Audio } from 'expo-av';
 import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../../hooks/useTheme';
 import { APP_CONFIG } from '../../../config/appConfig';
+import { ActivityIndicator } from 'react-native';
 
 
 const { width } = Dimensions.get('window');
@@ -21,39 +24,180 @@ const ZenMusicScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
 
+  // Audio Player State
+  const [sound, setSound] = useState(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [position, setPosition] = useState(0);
+  const [duration, setDuration] = useState(45 * 60 * 1000);
+  
+  const [currentTrack, setCurrentTrack] = useState({
+    title: 'Deep Meditation',
+    sub: 'Zen Frequencies • Focus & Calm',
+    uri: 'https://res.cloudinary.com/ddlfjeqxs/video/upload/v1781803883/zen-music/q51xt1ybb463h1kdeddf.mp3',
+    image: 'https://images.unsplash.com/photo-1518241353330-0f7941c2d9b5?q=80&w=1000&auto=format&fit=crop',
+    id: 'meditation'
+  });
+
+  const onPlaybackStatusUpdate = (status) => {
+    if (status.isLoaded) {
+      setPosition(status.positionMillis);
+      if (status.durationMillis) {
+        setDuration(status.durationMillis);
+      }
+      setIsPlaying(status.isPlaying);
+      setIsLoading(status.isBuffering);
+    } else if (status.error) {
+      console.warn('Playback error:', status.error);
+      setIsLoading(false);
+    }
+  };
+
+  const playSound = async (track) => {
+    try {
+      if (!Audio || !Audio.Sound) {
+        Alert.alert('Native Module Required', 'Audio playback is not supported on this client yet.');
+        return;
+      }
+
+      // Immediately update UI to show the selected track and a loading state
+      setCurrentTrack(track);
+      setIsLoading(true);
+
+      if (sound) {
+        // Unload the old sound asynchronously without blocking
+        sound.unloadAsync().catch(e => console.warn('Unload error:', e));
+        setSound(null);
+      }
+
+      // Create new sound without auto-play initially
+      const { sound: newSound } = await Audio.Sound.createAsync(
+        { uri: track.uri },
+        { shouldPlay: false },
+        onPlaybackStatusUpdate,
+        false
+      );
+      
+      setSound(newSound);
+      setIsLoading(false);
+      
+      // Start playback explicitly
+      await newSound.playAsync();
+      setIsPlaying(true);
+    } catch (e) {
+      setIsLoading(false);
+      console.warn('Playback error:', e);
+      Alert.alert('Playback Error', 'Could not play audio track. ' + e.message);
+    }
+  };
+
+  const handlePlayPause = async () => {
+    if (!Audio || !Audio.Sound) {
+      Alert.alert('Native Module Required', 'Audio playback is not supported on this client yet. Rebuild required.');
+      return;
+    }
+    try {
+      if (!sound) {
+        await playSound(currentTrack);
+        return;
+      }
+      if (isPlaying) {
+        await sound.pauseAsync();
+        setIsPlaying(false);
+      } else {
+        await sound.playAsync();
+        setIsPlaying(true);
+      }
+    } catch (e) {
+      console.warn('Play/pause error:', e);
+    }
+  };
+
+  const formatTime = (ms) => {
+    const totalSecs = Math.floor(ms / 1000);
+    const m = Math.floor(totalSecs / 60);
+    const s = totalSecs % 60;
+    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  };
+
+  const progressPercent = duration > 0 ? (position / duration) * 100 : 0;
+
+  useEffect(() => {
+    // Configure audio session once
+    const configureAudio = async () => {
+      try {
+        if (Audio && Audio.setAudioModeAsync) {
+          await Audio.setAudioModeAsync({
+            playsInSilentModeIOS: true,
+            staysActiveInBackground: true,
+            shouldRouteThroughReceiverLongFormVideo: false,
+          });
+        }
+      } catch (e) {
+        console.warn('Initial audio mode error:', e);
+      }
+    };
+    configureAudio();
+
+    return () => {
+      if (sound) {
+        sound.unloadAsync().catch(e => console.warn('[ZenMusic] Cleanup unload error:', e));
+      }
+    };
+  }, [sound]);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      // When screen focuses, do nothing special
+      return () => {
+        // When screen loses focus (e.g. navigating away)
+        if (sound) {
+          sound.pauseAsync().catch(e => console.warn('[ZenMusic] Blur pause error:', e));
+          setIsPlaying(false);
+        }
+      };
+    }, [sound])
+  );
 
   const binauralBeats = [
-    { title: 'Alpha State', desc: 'Focus & Flow (8-14 Hz)', icon: 'psychology', color: '#006666' },
-    { title: 'Theta Dreams', desc: 'Deep Meditation (4-8 Hz)', icon: 'bedtime', color: '#4953AC' },
-    { title: 'Beta Boost', desc: 'Alertness (14-30 Hz)', icon: 'lightning-bolt', color: '#8B4B00', active: true },
-    { title: 'Gamma Insight', desc: 'High Processing (30+ Hz)', icon: 'lightbulb-outline', color: '#B02500' },
+    { title: 'Deep Meditation', desc: 'Zen Frequencies • Calm', icon: 'psychology', color: '#006666', uri: 'https://res.cloudinary.com/ddlfjeqxs/video/upload/v1781803883/zen-music/q51xt1ybb463h1kdeddf.mp3', id: 'meditation' },
+    { title: 'Inspiring Flow', desc: 'Female Vocals • Motivation', icon: 'lightbulb-outline', color: '#4953AC', uri: 'https://res.cloudinary.com/ddlfjeqxs/video/upload/v1781803850/zen-music/wfailvhjis4oml53moee.mp3', id: 'inspire_f' },
+    { title: 'Inspiring Momentum', desc: 'Male Vocals • Drive', icon: 'trending-up', color: '#8B4B00', uri: 'https://res.cloudinary.com/ddlfjeqxs/video/upload/v1781803864/zen-music/uiygfebabkx75ybratw4.mp3', id: 'inspire_m' },
   ];
 
   const soundscapes = [
     { 
-      title: 'Garden Winds', 
-      sub: 'University Central Plaza', 
-      icon: 'air', 
-      image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAYgd-7Fe36Z9Fu-8h3Cq4_ioXEvOD7m_5hspok35j1s5c_9g3TvAdNueOKxPngYTaYsyvrQWb7mT8zdMiGJRcN5KytpBuYqDjhnkpDfDYpXq_W8nwKbAkeonOIzWzryvXGmgQo3D1IsetnAAGsLQj3EOnXX0LIP0EjffXCEYww-r5MJ_5ui9ilKTW-wPa9o7yUB-lCaVh4MKG7pW9YevyVAJzcqqL015usPavKAcBAx08_c0MgnShqmoRe75xL-lIeppsXDkSkhGAK'
+      title: 'Mossy Dawn', 
+      sub: 'Morning Bird Chorus', 
+      icon: 'forest', 
+      uri: 'https://res.cloudinary.com/ddlfjeqxs/video/upload/v1781803894/zen-music/vexrnpnay0eherxruarj.mp3',
+      id: 'mossy_dawn',
+      image: 'https://images.unsplash.com/photo-1472214103451-9374bd1c798e?q=80&w=1000&auto=format&fit=crop'
     },
     { 
-      title: 'Study Hub Buzz', 
-      sub: 'Morning Cafe Murmurs', 
-      icon: 'groups', 
-      image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAXou1g59el6K4Rb45O3yFEbQ-SpTNpVtGkgKNOLUIfJeJaLgd_rSCv2gW2G3qYzhUjdItYt4remKvDsDejDvHQG1ud0yB9mH_A4Yk67czpdhdU2ngxiIjrQK3w4aemg9Sm1WX7uqVrMnncv2pa3sBpj_iv_yWK_DQ_UXdnf9cfWXnILnRjTDI5h6lEjAyGXtfPwiGYGD2Nh_ZTRRh8opzjuQw4H1VYIJJUc1D3kqTdxHZq94HIbhjDnBnQ8KAfHWNCqhW8I8PR7jGe'
+      title: 'Whispering Pines', 
+      sub: 'Soft Wind & Trees', 
+      icon: 'air', 
+      uri: 'https://res.cloudinary.com/ddlfjeqxs/video/upload/v1781803938/zen-music/icqqup3tksnpefbq4fgc.mp3',
+      id: 'whispering_pines',
+      image: 'https://images.unsplash.com/photo-1506126613408-eca07ce68773?q=80&w=1000&auto=format&fit=crop'
     },
   ];
 
   const curatedMixes = [
     { 
-      title: 'Exam Prep Power', 
-      sub: 'Alpha waves + Lo-fi Beats', 
-      image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCkYPkZm4wg1dieX55BEyZhLJOxFHegph7YjKBi7kwcxmAJwYMVbTGgQfDGJbUubPrWiKybRSS3jwTgE95s8sT9AZofqIqsY328E9uKh1oCb0mShm_cZIXwpWLRXIX2yiFfuGlIGj6R-FGA99WFm-kxvqqcAEsic8Xo5DVmmVVF7WnsuIxedvpMUnoYnz1wTkD_zrUlhHVY24RwS-OwiyfMkDXY_NHxRVJ9YlkjoDJIRbyeKSzETIbWrW8ZGpkEShTG4FirU1gCHlIY' 
+      title: 'Tideglass Calm', 
+      sub: 'Gentle relaxation', 
+      uri: 'https://res.cloudinary.com/ddlfjeqxs/video/upload/v1781803929/zen-music/w4xmosw5xm5nzaidmupg.mp3',
+      id: 'tideglass',
+      image: 'https://images.unsplash.com/photo-1511295742364-927d44ff6a38?q=80&w=1000&auto=format&fit=crop' 
     },
     { 
-      title: 'Campus Sleep Oasis', 
-      sub: 'Delta waves + Library Silence', 
-      image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAH72_fq5fFp6lvcq_u2QP-hWfUYd0awu4nznMOvl0qPniQjnlaAShsQ9bDTiGOkkI12UvrA5urGBlzr1OVYUiB41L-O6v0vN4-9L-8oYzX84fsbH0ca0Ez7p_qZSqijstgqLFSUzZSjqoP6ZRJFigqlFQJbwveedgTfLMVH8lGy-s_PDpOB3afrXejzWVtWPJdyh3UVfaLmXZfYC1XEdeq6sB_FWRdzsixsM0hcCi5qIJsRvSWp-HoIUQ2gkXMg_FNJvPmFPdjViPY' 
+      title: 'Tideglass Drift', 
+      sub: 'Deep ambient sleep', 
+      uri: 'https://res.cloudinary.com/ddlfjeqxs/video/upload/v1781803912/zen-music/qxyow2rur1la6aw84ghq.mp3',
+      id: 'tideglass_drift',
+      image: 'https://images.unsplash.com/photo-1434030216411-0b793f4b4173?q=80&w=1000&auto=format&fit=crop' 
     },
   ];
 
@@ -83,7 +227,7 @@ const ZenMusicScreen = ({ navigation }) => {
 
             <View style={styles.artContainer}>
               <Image 
-                source={{ uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAWtTpRxdTjwzQJOyeHOrPOtccbf921xutvioy0PShNHvDAddxFrI-xMgUnztGMG_CQ9KEA7WVJFEf79QR1edhzEelzWualXrHUuqU-1BhWfk-u_RVlXo0AfySJmVRgBETtgqVt3t9WDJHgQ23-kPF2VqBBRZAOH32NP6JFTxDVFN9YJqiqQk59TkAN4OJdXY6ZVhNHZBoYU1cLn12LiG4H4_-Ahzej8fk-hc9w7n2GwzMjYvq4JQ93PbfRYJUp_XloZhaICkFyTDnY' }} 
+                source={{ uri: currentTrack.image }} 
                 style={styles.heroImage} 
               />
               <LinearGradient
@@ -92,20 +236,22 @@ const ZenMusicScreen = ({ navigation }) => {
               />
               <View style={styles.heroInfo}>
                 <View style={styles.heroBadge}>
-                  <Text style={styles.heroBadgeText}>AMBIENT FOCUS</Text>
+                  <Text style={styles.heroBadgeText}>AMBIENT ZEN PLAYER</Text>
                 </View>
-                <Text style={styles.heroTitle}>Library Rain</Text>
-                <Text style={styles.heroSub}>{APP_CONFIG.UNIVERSITY_NAME} Campus Soundscapes</Text>
+                <Text style={styles.heroTitle}>{currentTrack.title}</Text>
+                <Text style={styles.heroSub}>{currentTrack.sub}</Text>
               </View>
             </View>
 
             <View style={styles.controlsInterface}>
               <View style={styles.playbackInfo}>
-                <View>
-                  <Text style={[styles.trackTitle, { color: isDark ? '#818CF8' : '#4953AC' }]}>Deep Concentration</Text>
-                  <Text style={[styles.trackSub, { color: colors.textSecondary }]}>Session Duration: 45:00</Text>
+                <View style={{ flex: 1, marginRight: 8 }}>
+                  <Text style={[styles.trackTitle, { color: isDark ? '#818CF8' : '#4953AC' }]}>{currentTrack.title}</Text>
+                  <Text style={[styles.trackSub, { color: colors.textSecondary }]}>
+                    {isLoading ? 'Buffering...' : (isPlaying ? 'Relieving Anxiety...' : 'Paused')}
+                  </Text>
                 </View>
-                <TouchableOpacity>
+                <TouchableOpacity onPress={() => Alert.alert('Added to Favorites', 'Track saved to library.')}>
                   <MaterialIcons name="favorite" size={24} color={colors.primary} />
                 </TouchableOpacity>
               </View>
@@ -115,27 +261,34 @@ const ZenMusicScreen = ({ navigation }) => {
                 <View style={[styles.progressBarBg, { backgroundColor: colors.border }]}>
                   <LinearGradient
                     colors={[colors.primary, colors.primaryDark]}
-                    style={[styles.progressBarFill, { width: '33%' }]}
+                    style={[styles.progressBarFill, { width: `${progressPercent}%` }]}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
                   />
                 </View>
 
                 <View style={styles.timeRow}>
-                  <Text style={[styles.timeText, { color: colors.textMuted }]}>15:20</Text>
-                  <Text style={[styles.timeText, { color: colors.textMuted }]}>45:00</Text>
+                  <Text style={[styles.timeText, { color: colors.textMuted }]}>{formatTime(position)}</Text>
+                  <Text style={[styles.timeText, { color: colors.textMuted }]}>{formatTime(duration)}</Text>
                 </View>
               </View>
 
 
               <View style={styles.mainControls}>
-                <TouchableOpacity><MaterialIcons name="shuffle" size={24} color={colors.textSecondary} /></TouchableOpacity>
-                <TouchableOpacity><MaterialIcons name="skip-previous" size={32} color={isDark ? '#818CF8' : '#4953AC'} /></TouchableOpacity>
-                <TouchableOpacity style={[styles.playBtnLarge, { backgroundColor: colors.primary, shadowColor: colors.primary }]}>
-                  <MaterialIcons name="pause" size={40} color="#FFFFFF" />
+                <TouchableOpacity onPress={() => Alert.alert('Shuffle mode', 'Zen shuffle is active.')}><MaterialIcons name="shuffle" size={24} color={colors.textSecondary} /></TouchableOpacity>
+                <TouchableOpacity onPress={() => Alert.alert('Previous track', 'Moving to previous track.')}><MaterialIcons name="skip-previous" size={32} color={isDark ? '#818CF8' : '#4953AC'} /></TouchableOpacity>
+                <TouchableOpacity 
+                  style={[styles.playBtnLarge, { backgroundColor: colors.primary, shadowColor: colors.primary }]}
+                  onPress={handlePlayPause}
+                >
+                  {isLoading ? (
+                    <ActivityIndicator color="#FFFFFF" size="large" />
+                  ) : (
+                    <MaterialIcons name={isPlaying ? "pause" : "play-arrow"} size={40} color="#FFFFFF" />
+                  )}
                 </TouchableOpacity>
-                <TouchableOpacity><MaterialIcons name="skip-next" size={32} color={isDark ? '#818CF8' : '#4953AC'} /></TouchableOpacity>
-                <TouchableOpacity><MaterialIcons name="repeat" size={24} color={colors.textSecondary} /></TouchableOpacity>
+                <TouchableOpacity onPress={() => Alert.alert('Next track', 'Moving to next track.')}><MaterialIcons name="skip-next" size={32} color={isDark ? '#818CF8' : '#4953AC'} /></TouchableOpacity>
+                <TouchableOpacity onPress={() => Alert.alert('Repeat mode', 'Zen repeat is active.')}><MaterialIcons name="repeat" size={24} color={colors.textSecondary} /></TouchableOpacity>
               </View>
 
 
@@ -156,35 +309,38 @@ const ZenMusicScreen = ({ navigation }) => {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Binaural Beats</Text>
-            <TouchableOpacity><Text style={[styles.viewAllText, { color: colors.primary }]}>View All</Text></TouchableOpacity>
+            <TouchableOpacity onPress={() => Alert.alert('Premium feature', 'Unlock all beats.')}><Text style={[styles.viewAllText, { color: colors.primary }]}>View All</Text></TouchableOpacity>
           </View>
 
           <View style={styles.beatsGrid}>
-            {binauralBeats.map((beat) => (
-              <TouchableOpacity 
-                key={beat.title} 
-                style={[
-                  styles.beatCard, 
-                  { backgroundColor: isDark ? colors.card : '#EFF1F2' },
-                  beat.active && [styles.beatCardActive, { backgroundColor: colors.card, borderColor: colors.primary + '4D' }]
-                ]}
-              >
+            {binauralBeats.map((beat) => {
+              const isCurrent = currentTrack.id === beat.id;
+              return (
+                <TouchableOpacity 
+                  key={beat.title} 
+                  style={[
+                    styles.beatCard, 
+                    { backgroundColor: isDark ? colors.card : '#EFF1F2' },
+                    isCurrent && [styles.beatCardActive, { backgroundColor: colors.card, borderColor: colors.primary + '4D' }]
+                  ]}
+                  onPress={() => playSound({ ...beat, image: currentTrack.image })}
+                >
 
-                <View style={[styles.beatIconBg, { backgroundColor: `${beat.color}1A` }]}>
-                  <MaterialIcons name={beat.icon} size={28} color={beat.color} />
-                </View>
-                <View style={styles.beatInfo}>
-                  <Text style={[styles.beatTitle, { color: colors.textPrimary }]}>{beat.title}</Text>
-                  <Text style={[styles.beatSub, { color: colors.textSecondary }]}>{beat.desc}</Text>
-                </View>
-                {beat.active ? (
-                  <MaterialIcons name="equalizer" size={20} color={colors.primary} />
-                ) : (
-                  <MaterialIcons name="play-circle-outline" size={20} color={colors.textSecondary} style={styles.playIcon} />
-                )}
-              </TouchableOpacity>
-
-            ))}
+                  <View style={[styles.beatIconBg, { backgroundColor: `${beat.color}1A` }]}>
+                    <MaterialIcons name={beat.icon} size={28} color={beat.color} />
+                  </View>
+                  <View style={styles.beatInfo}>
+                    <Text style={[styles.beatTitle, { color: colors.textPrimary }]}>{beat.title}</Text>
+                    <Text style={[styles.beatSub, { color: colors.textSecondary }]}>{beat.desc}</Text>
+                  </View>
+                  {isCurrent && isPlaying ? (
+                    <MaterialIcons name="equalizer" size={20} color={colors.primary} />
+                  ) : (
+                    <MaterialIcons name="play-circle-outline" size={20} color={colors.textSecondary} style={styles.playIcon} />
+                  )}
+                </TouchableOpacity>
+              );
+            })}
           </View>
         </View>
 
@@ -193,22 +349,29 @@ const ZenMusicScreen = ({ navigation }) => {
           <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Campus Ambience</Text>
 
           <View style={styles.ambienceGrid}>
-            {soundscapes.map((scene) => (
-              <TouchableOpacity key={scene.title} style={styles.ambienceCard}>
-                <Image source={{ uri: scene.image }} style={styles.ambienceImage} />
-                <LinearGradient
-                  colors={['transparent', 'rgba(0,0,0,0.8)']}
-                  style={styles.heroGradient}
-                />
-                <View style={styles.ambienceContent}>
-                  <Text style={styles.ambienceTitle}>{scene.title}</Text>
-                  <Text style={styles.ambienceSub}>{scene.sub}</Text>
-                </View>
-                <View style={styles.ambienceIconWrapper}>
-                  <MaterialIcons name={scene.icon} size={16} color="#FFFFFF" />
-                </View>
-              </TouchableOpacity>
-            ))}
+            {soundscapes.map((scene) => {
+              const isCurrent = currentTrack.id === scene.id;
+              return (
+                <TouchableOpacity 
+                  key={scene.title} 
+                  style={[styles.ambienceCard, isCurrent && { borderWidth: 2, borderColor: colors.primary }]}
+                  onPress={() => playSound(scene)}
+                >
+                  <Image source={{ uri: scene.image }} style={styles.ambienceImage} />
+                  <LinearGradient
+                    colors={['transparent', 'rgba(0,0,0,0.8)']}
+                    style={styles.heroGradient}
+                  />
+                  <View style={styles.ambienceContent}>
+                    <Text style={styles.ambienceTitle}>{scene.title}</Text>
+                    <Text style={styles.ambienceSub}>{scene.sub}</Text>
+                  </View>
+                  <View style={styles.ambienceIconWrapper}>
+                    <MaterialIcons name={isCurrent && isPlaying ? "pause" : scene.icon} size={16} color="#FFFFFF" />
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
           </View>
         </View>
 
@@ -223,20 +386,26 @@ const ZenMusicScreen = ({ navigation }) => {
           </View>
 
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.curatedScroll}>
-            {curatedMixes.map((mix) => (
-              <TouchableOpacity key={mix.title} style={styles.mixCard}>
-                <Image source={{ uri: mix.image }} style={styles.mixImage} />
-                <View style={styles.mixPlayOverlay}>
-                   <View style={[styles.smallPlayBtn, { backgroundColor: colors.primary }]}>
-                     <MaterialIcons name="play-arrow" size={32} color="#FFFFFF" />
-                   </View>
-                </View>
+            {curatedMixes.map((mix) => {
+              const isCurrent = currentTrack.id === mix.id;
+              return (
+                <TouchableOpacity 
+                  key={mix.title} 
+                  style={[styles.mixCard, isCurrent && { borderWidth: 2, borderColor: colors.primary, borderRadius: 16 }]}
+                  onPress={() => playSound(mix)}
+                >
+                  <Image source={{ uri: mix.image }} style={styles.mixImage} />
+                  <View style={styles.mixPlayOverlay}>
+                     <View style={[styles.smallPlayBtn, { backgroundColor: colors.primary, opacity: 1 }]}>
+                       <MaterialIcons name={isCurrent && isPlaying ? "pause" : "play-arrow"} size={32} color="#FFFFFF" />
+                     </View>
+                  </View>
 
-                <Text style={[styles.mixTitle, { color: colors.textPrimary }]}>{mix.title}</Text>
-                <Text style={[styles.mixSub, { color: colors.textSecondary }]}>{mix.sub}</Text>
-              </TouchableOpacity>
-
-            ))}
+                  <Text style={[styles.mixTitle, { color: colors.textPrimary }]}>{mix.title}</Text>
+                  <Text style={[styles.mixSub, { color: colors.textSecondary }]}>{mix.sub}</Text>
+                </TouchableOpacity>
+              );
+            })}
           </ScrollView>
         </View>
 

@@ -106,8 +106,17 @@ export const UserProvider = ({ children }) => {
     });
   };
 
+
+  const updateAvatarUrl = (newUrl) => {
+    setUser(prevUser => {
+      if (!prevUser) return null;
+      return { ...prevUser, avatar_url: newUrl };
+    });
+  };
+
   return (
-    <UserContext.Provider value={{ user, accessToken, login, logout, updateSkillScore }}>
+    <UserContext.Provider value={{ user, accessToken, login, logout, updateSkillScore, updateAvatarUrl }}>
+
       {children}
     </UserContext.Provider>
   );

@@ -122,11 +122,11 @@ const ERPResultsScreen = ({ navigation }) => {
     loadResults();
   }, [accessToken, userSem]);
 
-  const semesterData = apiSemesterData || fallbackSemesterData;
+  const semesterData = apiSemesterData || {};
 
   // Calculate total credits
   const totalCredits = 180;
-  const completedCredits = Math.max(userSem - 1, 1) * 22;
+  const completedCredits = apiSemesterData ? Math.max(userSem - 1, 1) * 22 : 0;
   const creditsPct = Math.round((completedCredits / totalCredits) * 100);
 
 
@@ -213,83 +213,84 @@ const ERPResultsScreen = ({ navigation }) => {
           <Text style={[styles.timelineTitle, { color: colors.textPrimary }]}>Academic Timeline</Text>
 
 
-          {Object.entries(semesterData).map(([sem, data]) => {
-            const isExpanded = expandedSem === sem;
-            const isActive = sem === currentSemRoman;
-            return (
-              <View key={sem}>
-                <TouchableOpacity
-                  style={[
-                    styles.semHeader,
-                    { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 },
-                    isActive && { borderColor: colors.primary, borderWidth: 1.5, backgroundColor: isDark ? 'rgba(234, 88, 12, 0.08)' : '#FFF7ED' }
-                  ]}
-                  onPress={() => setExpandedSem(isExpanded ? null : sem)}
-                >
-                  <View style={styles.semHeaderLeft}>
-                    <View style={[
-                      styles.semCircle,
-                      { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F3F4F6' },
-                      isActive && { backgroundColor: isDark ? 'rgba(234, 88, 12, 0.2)' : '#FFEDD5' }
-                    ]}>
-                      <Text style={[styles.semCircleText, { color: colors.textSecondary }, isActive && { color: colors.primary }]}>{sem}</Text>
-                    </View>
-                    <View>
-                      <Text style={[styles.semName, { color: colors.textPrimary }]}>Semester {sem}</Text>
-                      <Text style={[styles.semLabel, { color: colors.textSecondary }]}>{data.label}</Text>
-                    </View>
-                  </View>
-                  <View style={styles.semRight}>
-                    <View>
-                      <Text style={[styles.sgpaLabel, { color: colors.textSecondary }]}>SGPA</Text>
-                      <Text style={[styles.sgpaValue, { color: isActive ? colors.primary : colors.textPrimary }]}>{data.sgpa}</Text>
-                    </View>
-                    <MaterialIcons
-                      name={isExpanded ? 'expand-less' : 'expand-more'}
-                      size={24}
-                      color={colors.textSecondary}
-                    />
-                  </View>
-                </TouchableOpacity>
-
-
-
-
-                {isExpanded && data.subjects.length > 0 && (
-                  <View style={[styles.subjectsContainer, { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : colors.background }]}>
-                    {data.subjects.map((sub, idx) => (
-                      <View key={idx} style={[styles.subjectRow, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
-                        <View style={styles.subjectInfo}>
-                          <Text style={[styles.subjectCode, { color: isDark ? '#34D399' : '#059669' }]}>{sub.code}</Text>
-                          <Text style={[styles.subjectName, { color: colors.textPrimary }]}>{sub.name}</Text>
-                        </View>
-                        <View style={styles.subjectRight}>
-                          <View style={styles.creditBox}>
-                            <Text style={[styles.creditLabel, { color: colors.textSecondary }]}>CREDITS</Text>
-                            <Text style={[styles.creditValue, { color: colors.textPrimary }]}>{sub.credits}</Text>
-                          </View>
-                          <View style={[styles.gradeBox, { backgroundColor: colors.primary }]}>
-                            <Text style={styles.gradeText}>{sub.grade}</Text>
-                          </View>
-                        </View>
+          {Object.keys(semesterData).length === 0 ? (
+            <View style={{ padding: 24, alignItems: 'center', backgroundColor: colors.card, borderRadius: 16, borderColor: colors.border, borderWidth: 1, marginBottom: 12 }}>
+              <Text style={{ color: colors.textSecondary, fontWeight: '600' }}>No academic results available</Text>
+            </View>
+          ) : (
+            Object.entries(semesterData).map(([sem, data]) => {
+              const isExpanded = expandedSem === sem;
+              const isActive = sem === currentSemRoman;
+              return (
+                <View key={sem}>
+                  <TouchableOpacity
+                    style={[
+                      styles.semHeader,
+                      { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 },
+                      isActive && { borderColor: colors.primary, borderWidth: 1.5, backgroundColor: isDark ? 'rgba(234, 88, 12, 0.08)' : '#FFF7ED' }
+                    ]}
+                    onPress={() => setExpandedSem(isExpanded ? null : sem)}
+                  >
+                    <View style={styles.semHeaderLeft}>
+                      <View style={[
+                        styles.semCircle,
+                        { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F3F4F6' },
+                        isActive && { backgroundColor: isDark ? 'rgba(234, 88, 12, 0.2)' : '#FFEDD5' }
+                      ]}>
+                        <Text style={[styles.semCircleText, { color: colors.textSecondary }, isActive && { color: colors.primary }]}>{sem}</Text>
                       </View>
-                    ))}
-                  </View>
-                )}
+                      <View>
+                        <Text style={[styles.semName, { color: colors.textPrimary }]}>Semester {sem}</Text>
+                        <Text style={[styles.semLabel, { color: colors.textSecondary }]}>{data.label}</Text>
+                      </View>
+                    </View>
+                    <View style={styles.semRight}>
+                      <View>
+                        <Text style={[styles.sgpaLabel, { color: colors.textSecondary }]}>SGPA</Text>
+                        <Text style={[styles.sgpaValue, { color: isActive ? colors.primary : colors.textPrimary }]}>{data.sgpa}</Text>
+                      </View>
+                      <MaterialIcons
+                        name={isExpanded ? 'expand-less' : 'expand-more'}
+                        size={24}
+                        color={colors.textSecondary}
+                      />
+                    </View>
+                  </TouchableOpacity>
 
+                  {isExpanded && data.subjects.length > 0 && (
+                    <View style={[styles.subjectsContainer, { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : colors.background }]}>
+                      {data.subjects.map((sub, idx) => (
+                        <View key={idx} style={[styles.subjectRow, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
+                          <View style={styles.subjectInfo}>
+                            <Text style={[styles.subjectCode, { color: isDark ? '#34D399' : '#059669' }]}>{sub.code}</Text>
+                            <Text style={[styles.subjectName, { color: colors.textPrimary }]}>{sub.name}</Text>
+                          </View>
+                          <View style={styles.subjectRight}>
+                            <View style={styles.creditBox}>
+                              <Text style={[styles.creditLabel, { color: colors.textSecondary }]}>CREDITS</Text>
+                              <Text style={[styles.creditValue, { color: colors.textPrimary }]}>{sub.credits}</Text>
+                            </View>
+                            <View style={[styles.gradeBox, { backgroundColor: colors.primary }]}>
+                              <Text style={styles.gradeText}>{sub.grade}</Text>
+                            </View>
+                          </View>
+                        </View>
+                      ))}
+                    </View>
+                  )}
+                </View>
+              );
+            })
+          )}
 
-
-
-              </View>
-            );
-          })}
-
-          <TouchableOpacity style={styles.showAllBtn}>
-            <MaterialIcons name="history" size={20} color={colors.primary} />
-            <Text style={[styles.showAllText, { color: colors.primary }]}>
-              Show All Semesters (I - {userSem > 1 ? (roman[userSem - 2] || (userSem - 1)) : 'I'})
-            </Text>
-          </TouchableOpacity>
+          {Object.keys(semesterData).length > 0 && (
+            <TouchableOpacity style={styles.showAllBtn}>
+              <MaterialIcons name="history" size={20} color={colors.primary} />
+              <Text style={[styles.showAllText, { color: colors.primary }]}>
+                Show All Semesters (I - {userSem > 1 ? (roman[userSem - 2] || (userSem - 1)) : 'I'})
+              </Text>
+            </TouchableOpacity>
+          )}
 
 
         </View>

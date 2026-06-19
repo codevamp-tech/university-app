@@ -9,13 +9,18 @@ import {
   Dimensions,
   Platform,
   KeyboardAvoidingView,
-  Alert
+  Alert,
+  Image,
+  ActivityIndicator
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as ImagePicker from 'expo-image-picker';
 
 import { useTheme } from '../../hooks/useTheme';
+import { useUser } from '../../context/UserContext';
+import { createGrievanceAPI, uploadAvatarAPI } from '../../data/apiService';
 
 const { width } = Dimensions.get('window');
 
@@ -33,6 +38,7 @@ const CATEGORIES = [
 const RaiseIssueScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
+  const { accessToken } = useUser();
 
 
   // Form State
@@ -45,22 +51,74 @@ const RaiseIssueScreen = ({ navigation }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
 
+  // Attachment State
+  const [attachmentUri, setAttachmentUri] = useState(null);
+  const [attachmentUrl, setAttachmentUrl] = useState('');
+  const [isUploading, setIsUploading] = useState(false);
+
   // Dropdown States
   const [showCatMenu, setShowCatMenu] = useState(false);
   const [showSubMenu, setShowSubMenu] = useState(false);
 
-  const handleSubmit = () => {
+  const handlePickAttachment = async () => {
+    try {
+      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (permissionResult.granted === false) {
+        Alert.alert('Permission required', 'Permission to access camera roll is required!');
+        return;
+      }
+
+      const pickerResult = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        quality: 0.3,
+      });
+
+      if (!pickerResult.canceled && pickerResult.assets?.length > 0) {
+        const uri = pickerResult.assets[0].uri;
+        setAttachmentUri(uri);
+        setIsUploading(true);
+        const res = await uploadAvatarAPI(accessToken, uri);
+        if (res.ok && res.json?.success) {
+          setAttachmentUrl(res.json.data.avatar_url);
+          Alert.alert('Upload Successful', 'Attachment uploaded to Cloudinary.');
+        } else {
+          Alert.alert('Upload Failed', 'Could not upload attachment.');
+        }
+      }
+    } catch (e) {
+      console.warn("Error picking attachment:", e);
+      Alert.alert('Error', 'An error occurred while picking the attachment.');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleSubmit = async () => {
     if (!selectedCategory || !selectedSubCategory || !issueTitle || !description) {
       Alert.alert('Missing Info', 'Please fill all required fields before submitting.');
       return;
     }
 
     setIsSubmitting(true);
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      const payload = {
+        category: selectedCategory.id,
+        subject: `${selectedSubCategory} - ${issueTitle}`,
+        description: attachmentUrl ? `${description}\n\nAttachment: ${attachmentUrl}` : description,
+        priority: priority
+      };
+      const result = await createGrievanceAPI(accessToken, payload);
+      if (result) {
+        setShowSuccess(true);
+      } else {
+        Alert.alert('Submission Failed', 'Could not submit your issue. Please try again.');
+      }
+    } catch (err) {
+      Alert.alert('Error', err.message || 'An error occurred during submission.');
+    } finally {
       setIsSubmitting(false);
-      setShowSuccess(true);
-    }, 1500);
+    }
   };
 
   if (showSuccess) {
@@ -223,12 +281,31 @@ const RaiseIssueScreen = ({ navigation }) => {
 
             {/* Attachment */}
             <Text style={[styles.label, { color: colors.textSecondary }]}>Upload Attachment</Text>
-            <TouchableOpacity style={[styles.uploadBox, { backgroundColor: isDark ? 'rgba(234, 88, 12, 0.05)' : '#FFF7ED', borderColor: isDark ? 'rgba(234, 88, 12, 0.2)' : '#FFEDD5' }]}>
-              <LinearGradient colors={isDark ? ['#9A3412', '#7C2D12'] : ['#FFF7ED', '#FFEDD5']} style={styles.uploadIconBg}>
-                <MaterialCommunityIcons name="cloud-upload-outline" size={28} color={isDark ? '#FFFFFF' : "#EA580C"} />
-              </LinearGradient>
-              <Text style={[styles.uploadTitle, { color: colors.textPrimary }]}>Choose file or PDF</Text>
-              <Text style={[styles.uploadSub, { color: colors.textSecondary }]}>Maximum file size 5MB</Text>
+            <TouchableOpacity 
+              style={[styles.uploadBox, { backgroundColor: isDark ? 'rgba(234, 88, 12, 0.05)' : '#FFF7ED', borderColor: isDark ? 'rgba(234, 88, 12, 0.2)' : '#FFEDD5' }]}
+              onPress={handlePickAttachment}
+              disabled={isUploading}
+            >
+              {isUploading ? (
+                <View style={{ alignItems: 'center', paddingVertical: 10 }}>
+                  <ActivityIndicator size="large" color="#EA580C" />
+                  <Text style={[styles.uploadTitle, { color: colors.textPrimary, marginTop: 12 }]}>Uploading to Cloudinary...</Text>
+                </View>
+              ) : attachmentUri ? (
+                <View style={{ alignItems: 'center', paddingVertical: 10 }}>
+                  <Image source={{ uri: attachmentUri }} style={{ width: 80, height: 80, borderRadius: 12, marginBottom: 8 }} />
+                  <Text style={[styles.uploadTitle, { color: colors.textPrimary }]}>Attachment Uploaded</Text>
+                  <Text style={[styles.uploadSub, { color: colors.textSecondary }]}>Tap to replace image</Text>
+                </View>
+              ) : (
+                <>
+                  <LinearGradient colors={isDark ? ['#9A3412', '#7C2D12'] : ['#FFF7ED', '#FFEDD5']} style={styles.uploadIconBg}>
+                    <MaterialCommunityIcons name="cloud-upload-outline" size={28} color={isDark ? '#FFFFFF' : "#EA580C"} />
+                  </LinearGradient>
+                  <Text style={[styles.uploadTitle, { color: colors.textPrimary }]}>Choose image file</Text>
+                  <Text style={[styles.uploadSub, { color: colors.textSecondary }]}>Maximum file size 5MB</Text>
+                </>
+              )}
             </TouchableOpacity>
 
 

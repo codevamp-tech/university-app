@@ -33,7 +33,9 @@ import TheHustleScreen from '../screens/student/TheHustleScreen';
 import ERPTabs from './ERPTabs';
 import ChatScreen from '../screens/student/ChatScreen';
 import StudentSearchScreen from '../screens/student/StudentSearchScreen';
+import NotificationsScreen from '../screens/student/NotificationsScreen';
 import OtherStudentProfileScreen from '../screens/student/OtherStudentProfileScreen';
+import DMConversationScreen from '../screens/student/DMConversationScreen';
 import RaiseIssueScreen from '../screens/student/RaiseIssueScreen';
 import SkillGapTestScreen from '../screens/student/SkillGapTestScreen';
 import DeepDiveAnalysisScreen from '../screens/student/DeepDiveAnalysisScreen';
@@ -61,6 +63,7 @@ import CampusJournalReflectScreen from '../screens/student/journal/CampusJournal
 import CampusJournalExplorerScreen from '../screens/student/journal/CampusJournalExplorerScreen';
 import CampusJournalInsightsScreen from '../screens/student/journal/CampusJournalInsightsScreen';
 import SuggestWithAIScreen from '../screens/student/SuggestWithAIScreen';
+import ResumeBuilderScreen from '../screens/student/ResumeBuilderScreen';
 
 // Guest Detail Screens
 import FeeStructureScreen from '../screens/guest/FeeStructureScreen';
@@ -121,13 +124,16 @@ const AppNavigator = () => {
       <Stack.Screen name="FoodCart" component={FoodCartScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="Chat" component={ChatScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="StudentSearch" component={StudentSearchScreen} options={{ animation: 'fade', presentation: 'transparentModal' }} />
+      <Stack.Screen name="Notifications" component={NotificationsScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="OtherStudentProfile" component={OtherStudentProfileScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="DMConversation" component={DMConversationScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="RaiseIssue" component={RaiseIssueScreen} options={{ animation: 'slide_from_bottom' }} />
       <Stack.Screen name="SkillGapTest" component={SkillGapTestScreen} options={{ animation: 'slide_from_bottom' }} />
       <Stack.Screen name="DeepDiveAnalysis" component={DeepDiveAnalysisScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="FitnessDetail" component={FitnessDetailScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="LibraryMain" component={LibraryMainScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="BookDetail" component={BookDetailScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="ResumeBuilder" component={ResumeBuilderScreen} options={{ animation: 'slide_from_right' }} />
 
       {/* Mentally Module */}
       <Stack.Screen name="MentallyMain" component={MentallyMainScreen} options={{ animation: 'slide_from_bottom' }} />

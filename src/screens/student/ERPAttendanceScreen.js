@@ -27,7 +27,7 @@ const ERPAttendanceScreen = ({ navigation }) => {
   const displaySem = roman[semNum - 1] || 'VII';
 
   const academicSubjects = getAcademicSubjects(user || { course: 'B.Tech CSE' });
-  const overallVal = user ? user.attendance : 85;
+  const overallVal = user?.attendance || 85;
   const totalClassesVal = 320;
   const attendedClassesVal = Math.round(overallVal * 3.2);
 
@@ -152,7 +152,7 @@ const ERPAttendanceScreen = ({ navigation }) => {
             
             <View style={styles.overallMain}>
               <Text style={[styles.overallPercentage, { color: isDark ? '#A5B4FC' : '#312E81' }]}>
-                {attendanceData.overall}%
+                {attendanceData.overall}{attendanceData.overall !== '-' ? '%' : ''}
               </Text>
               <View style={styles.overallStats}>
                 <Text style={[styles.statValue, { color: isDark ? '#A5B4FC' : '#312E81' }]}>{attendanceData.attendedClasses}</Text>
@@ -166,10 +166,10 @@ const ERPAttendanceScreen = ({ navigation }) => {
             </View>
 
             <View style={[styles.progressBarBg, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#C7D2FE' }]}>
-              <View style={[styles.progressBarFill, { width: `${attendanceData.overall}%`, backgroundColor: isDark ? '#818CF8' : '#4338CA' }]} />
+              <View style={[styles.progressBarFill, { width: attendanceData.overall === '-' ? '0%' : `${attendanceData.overall}%`, backgroundColor: isDark ? '#818CF8' : '#4338CA' }]} />
             </View>
             <Text style={[styles.progressHint, { color: isDark ? 'rgba(255,255,255,0.6)' : 'rgba(67,56,202,0.7)' }]}>
-              {attendanceData.overall >= 75 ? 'You are above the 75% minimum criteria. Keep it up!' : 'Warning: Your attendance is below the 75% minimum criteria.'}
+              {attendanceData.overall === '-' ? 'No attendance records available.' : (attendanceData.overall >= 75 ? 'You are above the 75% minimum criteria. Keep it up!' : 'Warning: Your attendance is below the 75% minimum criteria.')}
             </Text>
           </LinearGradient>
         </View>
@@ -179,38 +179,44 @@ const ERPAttendanceScreen = ({ navigation }) => {
           <Text style={[styles.sectionHeading, { color: colors.textPrimary }]}>Subject-wise Breakdown</Text>
           
           <View style={styles.subjectsList}>
-            {attendanceData.subjects.map((subject, index) => {
-              const statusColor = getStatusColor(subject.status);
-              
-              return (
-                <View key={index} style={[styles.subjectCard, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
-                  <View style={styles.subjectHeader}>
-                    <View>
-                      <Text style={[styles.subjectCode, { color: colors.textSecondary }]}>{subject.code}</Text>
-                      <Text style={[styles.subjectName, { color: colors.textPrimary }]} numberOfLines={1}>{subject.name}</Text>
+            {attendanceData.subjects.length === 0 ? (
+              <View style={{ padding: 20, alignItems: 'center', backgroundColor: colors.card, borderRadius: 16, borderColor: colors.border, borderWidth: 1 }}>
+                <Text style={{ color: colors.textSecondary, fontWeight: '600' }}>No attendance data available</Text>
+              </View>
+            ) : (
+              attendanceData.subjects.map((subject, index) => {
+                const statusColor = getStatusColor(subject.status);
+                
+                return (
+                  <View key={index} style={[styles.subjectCard, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
+                    <View style={styles.subjectHeader}>
+                      <View>
+                        <Text style={[styles.subjectCode, { color: colors.textSecondary }]}>{subject.code}</Text>
+                        <Text style={[styles.subjectName, { color: colors.textPrimary }]} numberOfLines={1}>{subject.name}</Text>
+                      </View>
+                      <View style={[styles.percentageBadge, { backgroundColor: statusColor + '20' }]}>
+                        <Text style={[styles.percentageText, { color: statusColor }]}>{subject.percentage}%</Text>
+                      </View>
                     </View>
-                    <View style={[styles.percentageBadge, { backgroundColor: statusColor + '20' }]}>
-                      <Text style={[styles.percentageText, { color: statusColor }]}>{subject.percentage}%</Text>
+                    
+                    <View style={[styles.subjectProgressBg, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F3F4F6' }]}>
+                      <View style={[styles.subjectProgressFill, { width: `${subject.percentage}%`, backgroundColor: statusColor }]} />
                     </View>
+                    
+                    {subject.status === 'danger' && (
+                      <Text style={[styles.warningText, { color: statusColor }]}>
+                        <MaterialIcons name="error-outline" size={12} color={statusColor} /> Short attendance warning!
+                      </Text>
+                    )}
+                    {subject.status === 'warning' && (
+                      <Text style={[styles.warningText, { color: statusColor }]}>
+                        <MaterialIcons name="warning-amber" size={12} color={statusColor} /> Nearing minimum criteria.
+                      </Text>
+                    )}
                   </View>
-                  
-                  <View style={[styles.subjectProgressBg, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F3F4F6' }]}>
-                    <View style={[styles.subjectProgressFill, { width: `${subject.percentage}%`, backgroundColor: statusColor }]} />
-                  </View>
-                  
-                  {subject.status === 'danger' && (
-                    <Text style={[styles.warningText, { color: statusColor }]}>
-                      <MaterialIcons name="error-outline" size={12} color={statusColor} /> Short attendance warning!
-                    </Text>
-                  )}
-                  {subject.status === 'warning' && (
-                    <Text style={[styles.warningText, { color: statusColor }]}>
-                      <MaterialIcons name="warning-amber" size={12} color={statusColor} /> Nearing minimum criteria.
-                    </Text>
-                  )}
-                </View>
-              );
-            })}
+                );
+              })
+            )}
           </View>
         </View>
 

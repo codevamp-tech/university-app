@@ -1,17 +1,51 @@
 import React from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, TextInput, Dimensions,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, TextInput, Dimensions, Modal, Animated, Easing
 } from 'react-native';
 import { MaterialIcons, MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as ImagePicker from 'expo-image-picker';
+import { uploadAvatarAPI, createJournalAPI, listJournalAPI } from '../../../data/apiService';
+import { useUser } from '../../../context/UserContext';
 import { APP_CONFIG } from '../../../config/appConfig';
 
 const { width } = Dimensions.get('window');
 
 const CampusJournalReflectScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
+  const { accessToken, user } = useUser();
+  
   const [mood, setMood] = React.useState('Focused');
+  const [text, setText] = React.useState('');
+  const [tagsInput, setTagsInput] = React.useState('');
+  const LOCATIONS = ['Main campus', 'Canteen', 'Library', 'Auditorium', 'Play ground', 'Bus'];
+  const [location, setLocation] = React.useState(LOCATIONS[0]);
+  const [showLocationDropdown, setShowLocationDropdown] = React.useState(false);
+  const [images, setImages] = React.useState([]);
+  const [isSaving, setIsSaving] = React.useState(false);
+  const spinValue = React.useRef(new Animated.Value(0)).current;
+
+  React.useEffect(() => {
+    if (isSaving) {
+      Animated.loop(
+        Animated.timing(spinValue, {
+          toValue: 1,
+          duration: 1500,
+          easing: Easing.linear,
+          useNativeDriver: true,
+        })
+      ).start();
+    } else {
+      spinValue.setValue(0);
+    }
+  }, [isSaving]);
+
+  const spin = spinValue.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '360deg']
+  });
 
   const moods = [
     { name: 'Inspired', icon: 'sentiment-very-satisfied', color: '#ff9832' },
@@ -20,24 +54,111 @@ const CampusJournalReflectScreen = ({ navigation }) => {
     { name: 'Pensive', icon: 'psychology', color: '#14b8a6' },
   ];
 
-  const memories = [
-    { title: 'Coffee with Friends', date: 'Oct 20, 2023', img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuD4x7NILjiBMRNJk0GcRS9TQWEx7KvkYPB-geF6gj7H0aNoIAZgv1IYfvEbMZfCYUG-BMLP65Ycrs7atD897WWjjeqxgMrc0lbPqiBQosBh8mexLmiNwmGR-tS719GdnOsYrAWmVvj6h-eoetfDq0kaKaDOYCBFNE-A0kHn9smVes11OqCj4--CshrfJq2VhTk0smoHDh94zthdmT3scvV2G1GWwwvsCQ7B5JOFgwASL2wCoq4TlVaxTbi_zuDG6rpZOkJywtD7LlVC' },
-    { title: `${APP_CONFIG.UNIVERSITY_SHORT_NAME} Sunset`, date: 'Oct 18, 2023', img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBGtQeza_5VUf83oAR66HdgEOp9frFcVcEJv7xw76WwRtbAR0grNPVxU8NeT-KwAtR_99PE4DjRL-aHZFp8AvZVbtP8GvAxyTpZt4oZUGBLhnHO2J6_Kl6F2BllR4iMaWHz-blqeRlY4uleCcczJJWp_Fk8cUHt1FLqBkFlobzoIFUkMlmSjO94YxpKqfBR3tflsYcctw4bcB2lGIleeexBBtOKxuHaXlTNZ0cnmYhn7PMHuFvs11Yr3y9Rjkz1HSYx-X-hwfjlFnBJ' },
-  ];
+  const [memories, setMemories] = React.useState([]);
+
+  React.useEffect(() => {
+    const loadMemories = async () => {
+      try {
+        const data = await listJournalAPI(accessToken);
+        if (data) {
+          const withImages = data.filter(e => e.image_urls && e.image_urls.length > 0).slice(0, 5);
+          const mapped = withImages.map(m => ({
+            title: m.tags && m.tags.length > 0 ? `#${m.tags[0]}` : m.mood,
+            date: new Date(m.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+            img: m.image_urls[0]
+          }));
+          setMemories(mapped);
+        }
+      } catch (e) {
+        console.warn(e);
+      }
+    };
+    loadMemories();
+  }, []);
+
+  const handlePickImages = async () => {
+    let result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsMultipleSelection: true,
+      quality: 0.3,
+    });
+
+    if (!result.canceled && result.assets) {
+      const newImages = result.assets.map(asset => asset.uri);
+      setImages([...images, ...newImages]);
+    }
+  };
+
+  const handleSave = async () => {
+    if (!text.trim() && images.length === 0) return;
+    
+    setIsSaving(true);
+    try {
+      const uploadedUrls = [];
+      for (const uri of images) {
+        const uploadRes = await uploadAvatarAPI(accessToken, uri);
+        if (uploadRes.ok && uploadRes.json?.success) {
+          uploadedUrls.push(uploadRes.json.data.file_url || uploadRes.json.data.avatar_url);
+        } else {
+          uploadedUrls.push(uri);
+        }
+      }
+
+      const tags = tagsInput.split(',').map(t => t.trim()).filter(t => t.length > 0);
+
+      const newEntry = {
+        mood,
+        text,
+        images: uploadedUrls,
+        tags,
+        location,
+      };
+
+      const res = await createJournalAPI(accessToken, newEntry);
+      
+      // Fallback: update local storage anyway for immediate feed display without network reload
+      const existingData = await AsyncStorage.getItem('@unicampus_campus_journal');
+      const parsedData = existingData ? JSON.parse(existingData) : [];
+      if (res) {
+        parsedData.unshift({ ...newEntry, id: res.id || Date.now().toString(), date: new Date().toISOString() });
+      } else {
+        parsedData.unshift({ ...newEntry, id: Date.now().toString(), date: new Date().toISOString() });
+      }
+      await AsyncStorage.setItem('@unicampus_campus_journal', JSON.stringify(parsedData));
+      
+      navigation.goBack();
+    } catch (error) {
+      console.error('Error saving journal:', error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   return (
     <View style={styles.container}>
+      {/* Saving Overlay */}
+      <Modal transparent visible={isSaving} animationType="fade">
+        <View style={styles.savingOverlay}>
+          <View style={styles.savingBox}>
+            <Animated.View style={{ transform: [{ rotate: spin }] }}>
+              <MaterialCommunityIcons name="timer-sand" size={48} color="#EA580C" />
+            </Animated.View>
+            <Text style={styles.savingText}>Publishing Journal...</Text>
+          </View>
+        </View>
+      </Modal>
+
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
-        <TouchableOpacity onPress={() => navigation.navigate('StudentMain')}>
+        <TouchableOpacity onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={28} color="#EA580C" />
         </TouchableOpacity>
         <View style={styles.headerTitleContainer}>
           <Image
-            source={{ uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuD1fHmWkFI6lJjud3umiA_rCFqmv96gxkgTu7KSmgxsqeNe72Qs7tLivWHoIWlK68aW9JdDMIGD4qY0hj2VIZl_gDL4I0yZRsFtiSZqwBVSqCojbZhDGVnv1IQPeA6fGi8vN7HVrEEEaoV2izWQVngPdZKI92zZC9X0YNyyjwF2MNLkxE4A55Mkggi0T0NMarWQxV1IPcesyH5JuzXQXMoYxlwp_sFK1A8-oKpxNS_Y6twcRLoXrvNRFy4_1T_kTSWP0sWHKlj9NvZD' }}
+            source={{ uri: user?.avatar_url || (user?.gender === 'F' || user?.gender === 'Female' ? 'https://images.pexels.com/photos/733872/pexels-photo-733872.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=500' : 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=500') }}
             style={styles.headerProfile}
           />
-          <Text style={styles.headerTitle}>The Academic Agora</Text>
+          <Text style={styles.headerTitle}>New Journal Entry</Text>
         </View>
         <TouchableOpacity>
           <MaterialIcons name="psychology" size={28} color="#EA580C" />
@@ -45,34 +166,12 @@ const CampusJournalReflectScreen = ({ navigation }) => {
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {/* Daily Spark */}
-        <View style={styles.sparkSection}>
-          <View style={styles.sparkLabelRow}>
-            <MaterialIcons name="auto-awesome" size={18} color="#EA580C" />
-            <Text style={styles.sparkLabel}>DAILY SPARK</Text>
-          </View>
-          <LinearGradient colors={['#EA580C', '#9A3412', '#431407']} style={styles.sparkCard} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
-            <View style={styles.sparkInner}>
-              <Text style={styles.sparkSub}>AI Prompt • {APP_CONFIG.CAMPUS_LOCATION} Campus</Text>
-              <Text style={styles.sparkQuestion}>
-                {APP_CONFIG.UNIVERSITY_SHORT_NAME} Tech Fest Day 1 is over! What's one moment you'll never forget from the hackathon?
-              </Text>
-              <TouchableOpacity style={styles.sparkBtn}>
-                <Text style={styles.sparkBtnText}>Write Now</Text>
-              </TouchableOpacity>
-            </View>
-          </LinearGradient>
-        </View>
 
-        {/* Today's Entry */}
         <View style={styles.entrySection}>
           <View style={styles.entryHeader}>
             <View>
               <Text style={styles.entryTitle}>Today's Entry</Text>
-              <Text style={styles.entrySub}>October 24, 2023 • {APP_CONFIG.UNIVERSITY_SHORT_NAME} Main Library</Text>
-            </View>
-            <View style={styles.pulseBadge}>
-              <Text style={styles.pulseText}>{APP_CONFIG.UNIVERSITY_SHORT_NAME} Pulse</Text>
+              <Text style={styles.entrySub}>{new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })} • {location}</Text>
             </View>
           </View>
 
@@ -97,12 +196,69 @@ const CampusJournalReflectScreen = ({ navigation }) => {
                 multiline
                 placeholder={`Start typing your thoughts about today's classes at ${APP_CONFIG.UNIVERSITY_SHORT_NAME}...`}
                 placeholderTextColor="#9CA3AF"
+                value={text}
+                onChangeText={setText}
               />
+              
+              <View style={{ zIndex: 10 }}>
+                <TouchableOpacity 
+                  style={styles.inputRow}
+                  onPress={() => setShowLocationDropdown(!showLocationDropdown)}
+                >
+                  <Ionicons name="location-outline" size={18} color="#9CA3AF" />
+                  <Text style={[styles.metaInput, { color: location ? '#1E293B' : '#9CA3AF', paddingVertical: 12 }]}>
+                    {location || "Select Location"}
+                  </Text>
+                  <Ionicons name={showLocationDropdown ? "chevron-up" : "chevron-down"} size={18} color="#9CA3AF" />
+                </TouchableOpacity>
+                
+                {showLocationDropdown && (
+                  <View style={styles.dropdownContainer}>
+                    {LOCATIONS.map((loc, idx) => (
+                      <TouchableOpacity 
+                        key={idx} 
+                        style={styles.dropdownItem}
+                        onPress={() => { setLocation(loc); setShowLocationDropdown(false); }}
+                      >
+                        <Text style={styles.dropdownItemText}>{loc}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
+              </View>
+
+              <View style={styles.inputRow}>
+                <Ionicons name="pricetag-outline" size={18} color="#9CA3AF" />
+                <TextInput
+                  style={styles.metaInput}
+                  placeholder="Tags (comma separated)"
+                  placeholderTextColor="#9CA3AF"
+                  value={tagsInput}
+                  onChangeText={setTagsInput}
+                />
+              </View>
+              
+              {images.length > 0 && (
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.imagePreviewScroll}>
+                  {images.map((uri, idx) => (
+                    <View key={idx} style={styles.imagePreviewContainer}>
+                      <Image source={{ uri }} style={styles.imagePreview} />
+                      <TouchableOpacity 
+                        style={styles.removeImageBtn}
+                        onPress={() => setImages(images.filter((_, i) => i !== idx))}
+                      >
+                        <MaterialIcons name="close" size={16} color="#FFF" />
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                </ScrollView>
+              )}
+
               <View style={styles.toolRow}>
                 <TouchableOpacity style={styles.toolBtn}>
                   <Ionicons name="mic-outline" size={20} color="#4953ac" />
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.toolBtn}>
+                <TouchableOpacity style={styles.toolBtn} onPress={handlePickImages}>
                   <Ionicons name="image-outline" size={20} color="#4953ac" />
                 </TouchableOpacity>
               </View>
@@ -110,47 +266,45 @@ const CampusJournalReflectScreen = ({ navigation }) => {
           </View>
         </View>
 
-        {/* AI Reflection */}
-        <View style={styles.aiReflectBox}>
-          <View style={styles.aiReflectIcon}>
-            <MaterialIcons name="auto-awesome" size={24} color="#FFFFFF" />
-          </View>
-          <View style={styles.aiReflectContent}>
-            <Text style={styles.aiReflectTitle}>{APP_CONFIG.AI_ASSISTANT_NAME} Reflection</Text>
-            <Text style={styles.aiReflectText}>
-              You've been feeling focused and inspired this week, especially during your lab sessions in {APP_CONFIG.CAMPUS_LOCATION}! Your engagement with the Tech Fest reflects a strong creative surge. Keep it up, Arjun!
-            </Text>
-          </View>
-        </View>
 
         {/* Memory Lane */}
-        <View style={styles.memorySection}>
-          <View style={styles.memoryHeader}>
-            <Text style={styles.memoryTitle}>Memory Lane</Text>
-            <TouchableOpacity>
-              <Text style={styles.viewAllBtn}>View All Memories</Text>
-            </TouchableOpacity>
-          </View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.memoryScroll}>
-            {memories.map((m, i) => (
-              <TouchableOpacity key={i} style={styles.memoryCard}>
-                <Image source={{ uri: m.img }} style={styles.memoryImg} />
-                <LinearGradient colors={['transparent', 'rgba(0,0,0,0.8)']} style={styles.memoryOverlay}>
-                  <Text style={styles.memoryDate}>{m.date.toUpperCase()}</Text>
-                  <Text style={styles.memoryName}>{m.title}</Text>
-                </LinearGradient>
+        {memories.length > 0 && (
+          <View style={styles.memorySection}>
+            <View style={styles.memoryHeader}>
+              <Text style={styles.memoryTitle}>Memory Lane</Text>
+              <TouchableOpacity>
+                <Text style={styles.viewAllBtn}>View All Memories</Text>
               </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
+            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.memoryScroll}>
+              {memories.map((m, i) => (
+                <TouchableOpacity key={i} style={styles.memoryCard}>
+                  <Image source={{ uri: m.img }} style={styles.memoryImg} />
+                  <LinearGradient colors={['transparent', 'rgba(0,0,0,0.8)']} style={styles.memoryOverlay}>
+                    <Text style={styles.memoryDate}>{m.date.toUpperCase()}</Text>
+                    <Text style={styles.memoryName}>{m.title}</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        )}
 
         <View style={{ height: 120 }} />
       </ScrollView>
 
       {/* FAB (Save/Add) */}
-      <TouchableOpacity style={[styles.fab, { bottom: 100 }]}>
+      <TouchableOpacity 
+        style={[styles.fab, { bottom: 100 }, isSaving && { opacity: 0.7 }]} 
+        onPress={handleSave}
+        disabled={isSaving}
+      >
         <LinearGradient colors={['#EA580C', '#9A3412']} style={styles.fabGradient}>
-          <MaterialIcons name="check" size={32} color="#FFFFFF" />
+          {isSaving ? (
+            <MaterialIcons name="hourglass-empty" size={32} color="#FFFFFF" />
+          ) : (
+            <MaterialIcons name="check" size={32} color="#FFFFFF" />
+          )}
         </LinearGradient>
       </TouchableOpacity>
     </View>
@@ -350,6 +504,63 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
   },
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: '#f3f4f6',
+    marginBottom: 16,
+    paddingBottom: 8,
+  },
+  metaInput: {
+    flex: 1,
+    marginLeft: 8,
+    fontSize: 14,
+    color: '#374151',
+  },
+  dropdownContainer: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    borderRadius: 12,
+    marginTop: -8,
+    marginBottom: 16,
+    overflow: 'hidden',
+  },
+  dropdownItem: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f3f4f6',
+  },
+  dropdownItemText: {
+    fontSize: 14,
+    color: '#374151',
+  },
+  imagePreviewScroll: {
+    marginTop: 12,
+    marginBottom: 4,
+  },
+  imagePreviewContainer: {
+    marginRight: 12,
+    position: 'relative',
+  },
+  imagePreview: {
+    width: 80,
+    height: 80,
+    borderRadius: 12,
+  },
+  removeImageBtn: {
+    position: 'absolute',
+    top: -6,
+    right: -6,
+    backgroundColor: '#EA580C',
+    borderRadius: 12,
+    width: 24,
+    height: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   aiReflectBox: {
     backgroundColor: 'rgba(141, 237, 236, 0.2)',
     padding: 20,
@@ -455,6 +666,31 @@ const styles = StyleSheet.create({
     borderRadius: 32,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  savingOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  savingBox: {
+    width: 200,
+    padding: 24,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.25,
+    shadowRadius: 15,
+    elevation: 10,
+  },
+  savingText: {
+    marginTop: 16,
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#475569',
+    textAlign: 'center',
   },
 });
 

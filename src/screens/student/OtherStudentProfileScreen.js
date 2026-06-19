@@ -6,15 +6,27 @@ import { Ionicons, MaterialIcons, MaterialCommunityIcons } from '@expo/vector-ic
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { APP_CONFIG } from '../../config/appConfig';
+import { followUserAPI } from '../../data/apiService';
+import { getAvatarUrl } from '../../utils/avatar';
+import { useTheme } from '../../hooks/useTheme';
 
 const OtherStudentProfileScreen = ({ route, navigation }) => {
   const insets = useSafeAreaInsets();
   const { student } = route.params || {};
+  const { accessToken } = useUser();
+  const { colors, isDark } = useTheme();
   const [connectionStatus, setConnectionStatus] = useState('Connect'); // 'Connect', 'Pending', 'Connected'
 
-  const handleConnect = () => {
-    if (connectionStatus === 'Connect') {
+
+  const handleConnect = async () => {
+    if (connectionStatus === 'Connect' && student?.id) {
       setConnectionStatus('Pending');
+      try {
+        await followUserAPI(accessToken, student.id);
+      } catch(e) {
+        setConnectionStatus('Connect');
+        console.warn('Follow error', e);
+      }
     }
   };
 
@@ -25,14 +37,14 @@ const OtherStudentProfileScreen = ({ route, navigation }) => {
   if (!student) return null;
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      <View style={styles.header}>
+    <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
+      <View style={[styles.header, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerIconBtn}>
-          <Ionicons name="arrow-back" size={24} color="#1F2937" />
+          <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Profile</Text>
+        <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Profile</Text>
         <TouchableOpacity style={styles.headerIconBtn}>
-          <MaterialIcons name="more-horiz" size={24} color="#1F2937" />
+          <MaterialIcons name="more-horiz" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
       </View>
 
@@ -41,7 +53,7 @@ const OtherStudentProfileScreen = ({ route, navigation }) => {
         <View style={styles.profileHeroSection}>
           <View style={styles.profileHeroCard}>
             <LinearGradient colors={['#4953ac', '#8b2fc9']} style={styles.heroImgPlaceholder}>
-              <Text style={styles.heroInitial}>{student.name.charAt(0)}</Text>
+              <Image source={{ uri: student.avatar_url || getAvatarUrl(student.name) }} style={{ width: '100%', height: '100%', opacity: 0.6 }} />
             </LinearGradient>
             <LinearGradient colors={['transparent', 'rgba(0,0,0,0.85)']} style={styles.heroOverlay}>
               <Text style={styles.heroName}>{student.name}</Text>
@@ -51,17 +63,17 @@ const OtherStudentProfileScreen = ({ route, navigation }) => {
 
         {/* Major & Batch Info */}
         <View style={styles.basicInfo}>
-          <Text style={styles.majorText}>B.Tech Computer Science Engineering</Text>
-          <Text style={styles.batchSubText}>Batch of 2025 • {student.rollNo}</Text>
+          <Text style={[styles.majorText, { color: colors.primary }]}>B.Tech Computer Science Engineering</Text>
+          <Text style={[styles.batchSubText, { color: colors.textSecondary }]}>Batch of 2025 • {student.rollNo}</Text>
           
           <View style={styles.capsuleRow}>
-            <View style={styles.capsule}>
+            <View style={[styles.capsule, { backgroundColor: colors.card, borderColor: colors.border }]}>
               <Text style={styles.capsuleLabel}>FOLLOWERS</Text>
-              <Text style={styles.capsuleValue}>1.2K</Text>
+              <Text style={[styles.capsuleValue, { color: colors.textPrimary }]}>{student.followers || '1'}</Text>
             </View>
-            <View style={styles.capsule}>
+            <View style={[styles.capsule, { backgroundColor: colors.card, borderColor: colors.border }]}>
               <Text style={styles.capsuleLabel}>CONNECTIONS</Text>
-              <Text style={styles.capsuleValue}>500+</Text>
+              <Text style={[styles.capsuleValue, { color: colors.textPrimary }]}>{student.connections || '0'}</Text>
             </View>
           </View>
 
@@ -70,47 +82,48 @@ const OtherStudentProfileScreen = ({ route, navigation }) => {
             <TouchableOpacity 
               style={[
                 styles.actionBtnPrimary, 
-                connectionStatus === 'Pending' && styles.actionBtnPending
+                { backgroundColor: colors.primary, shadowColor: colors.primary },
+                connectionStatus === 'Pending' && [styles.actionBtnPending, { backgroundColor: colors.border }]
               ]}
               onPress={handleConnect}
             >
               <Ionicons 
                 name={connectionStatus === 'Pending' ? "time-outline" : "person-add-outline"} 
                 size={18} 
-                color={connectionStatus === 'Pending' ? '#4B5563' : '#FFFFFF'} 
+                color={connectionStatus === 'Pending' ? colors.textSecondary : '#FFFFFF'} 
               />
               <Text style={[
                 styles.actionBtnTextPrimary,
-                connectionStatus === 'Pending' && styles.actionBtnTextPending
+                connectionStatus === 'Pending' && { color: colors.textSecondary }
               ]}>
                 {connectionStatus}
               </Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.actionBtnSecondary} onPress={handleMessage}>
-              <Ionicons name="chatbubble-outline" size={18} color="#1F2937" />
-              <Text style={styles.actionBtnTextSecondary}>Message</Text>
+            <TouchableOpacity style={[styles.actionBtnSecondary, { backgroundColor: colors.card, borderColor: colors.border }]} onPress={handleMessage}>
+              <Ionicons name="chatbubble-outline" size={18} color={colors.textPrimary} />
+              <Text style={[styles.actionBtnTextSecondary, { color: colors.textPrimary }]}>Message</Text>
             </TouchableOpacity>
           </View>
         </View>
 
         {/* Bio */}
-        <View style={styles.sectionCard}>
-          <Text style={styles.cardTitle}>About</Text>
-          <Text style={styles.bioText}>
+        <View style={[styles.sectionCard, { backgroundColor: colors.card }]}>
+          <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>About</Text>
+          <Text style={[styles.bioText, { color: colors.textSecondary }]}>
             Passionate software engineering student deeply interested in Full Stack Development and AI. 
             Actively participating in hackathons and leading the {APP_CONFIG.UNIVERSITY_SHORT_NAME} Coding Club. Let's connect and build something awesome together!
           </Text>
         </View>
 
         {/* Skills */}
-        <View style={styles.sectionCard}>
-          <Text style={styles.cardTitle}>Top Skills</Text>
+        <View style={[styles.sectionCard, { backgroundColor: colors.card }]}>
+          <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>Top Skills</Text>
           <View style={styles.skillsRow}>
-            <View style={styles.skillBadge}><Text style={styles.skillText}>React Native</Text></View>
-            <View style={styles.skillBadge}><Text style={styles.skillText}>Node.js</Text></View>
-            <View style={styles.skillBadge}><Text style={styles.skillText}>Cloud Computing</Text></View>
-            <View style={styles.skillBadge}><Text style={styles.skillText}>Leadership</Text></View>
+            <View style={[styles.skillBadge, { backgroundColor: isDark ? colors.background : '#F3F4F6', borderColor: colors.border }]}><Text style={[styles.skillText, { color: colors.textPrimary }]}>React Native</Text></View>
+            <View style={[styles.skillBadge, { backgroundColor: isDark ? colors.background : '#F3F4F6', borderColor: colors.border }]}><Text style={[styles.skillText, { color: colors.textPrimary }]}>Node.js</Text></View>
+            <View style={[styles.skillBadge, { backgroundColor: isDark ? colors.background : '#F3F4F6', borderColor: colors.border }]}><Text style={[styles.skillText, { color: colors.textPrimary }]}>Cloud Computing</Text></View>
+            <View style={[styles.skillBadge, { backgroundColor: isDark ? colors.background : '#F3F4F6', borderColor: colors.border }]}><Text style={[styles.skillText, { color: colors.textPrimary }]}>Leadership</Text></View>
           </View>
         </View>
 

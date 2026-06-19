@@ -1,7 +1,8 @@
 import React, { useState, useRef } from 'react';
+import { getAvatarUrl } from "../../utils/avatar";
 import { useTheme } from '../../hooks/useTheme';
 import { useUser } from '../../context/UserContext';
-import { createOutpass } from '../../data/apiService';
+import { createOutpass, getAlerts } from '../../data/apiService';
 
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, Image,
@@ -19,44 +20,26 @@ const ERPHubScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
 
-  const borrowedBooks = React.useMemo(() => {
-    if (!user) return [
-      { id: '1', title: 'Data Structures & Algorithms', author: 'Cormen, Leiserson', dueDays: 2, urgent: true, color: '#EA580C', colors: ['#FFF7ED', '#FFEDD5'], darkColors: ['#7C2D12', '#9A3412'] },
-      { id: '2', title: 'Network Security Fundamentals', author: 'Stallings, William', dueDays: 14, urgent: false, color: '#4338CA', colors: ['#EEF2FF', '#E0E7FF'], darkColors: ['#1E1B4B', '#312E81'] },
-      { id: '3', title: 'Operating System Concepts', author: 'Silberschatz, Galvin', dueDays: 21, urgent: false, color: '#059669', colors: ['#F0FDF4', '#DCFCE7'], darkColors: ['#064E3B', '#047857'] }
-    ];
+  const [alerts, setAlerts] = useState([]);
 
-    const courseLower = (user.course || '').toLowerCase();
-    const branchLower = (user.branch || '').toLowerCase();
-    const categoryLower = (user.category || '').toLowerCase();
-
-    if (courseLower.includes('pharma') || branchLower.includes('pharma') || categoryLower.includes('pharma')) {
-      return [
-        { id: '1', title: 'Essentials of Medical Pharmacology', author: 'K.D. Tripathi', dueDays: 2, urgent: true, color: '#EA580C', colors: ['#FFF7ED', '#FFEDD5'], darkColors: ['#7C2D12', '#9A3412'] },
-        { id: '2', title: 'Pharmaceutics: Drug Formulation', author: 'M.E. Aulton', dueDays: 14, urgent: false, color: '#4338CA', colors: ['#EEF2FF', '#E0E7FF'], darkColors: ['#1E1B4B', '#312E81'] },
-        { id: '3', title: 'Pharmaceutical Microbiology', author: 'W.B. Hugo & A.D. Russell', dueDays: 21, urgent: false, color: '#059669', colors: ['#F0FDF4', '#DCFCE7'], darkColors: ['#064E3B', '#047857'] }
-      ];
-    } else if (categoryLower.includes('medical') || courseLower.includes('mbbs') || courseLower.includes('medicine') || branchLower.includes('medicine')) {
-      return [
-        { id: '1', title: "Gray's Anatomy", author: 'Henry Gray', dueDays: 2, urgent: true, color: '#EA580C', colors: ['#FFF7ED', '#FFEDD5'], darkColors: ['#7C2D12', '#9A3412'] },
-        { id: '2', title: 'Robbins Basic Pathology', author: 'Vinay Kumar', dueDays: 14, urgent: false, color: '#4338CA', colors: ['#EEF2FF', '#E0E7FF'], darkColors: ['#1E1B4B', '#312E81'] },
-        { id: '3', title: 'Essentials of Medical Pharmacology', author: 'K.D. Tripathi', dueDays: 21, urgent: false, color: '#059669', colors: ['#F0FDF4', '#DCFCE7'], darkColors: ['#064E3B', '#047857'] }
-      ];
-    } else if (courseLower.includes('mba') || courseLower.includes('bba') || courseLower.includes('com') || courseLower.includes('business')) {
-      return [
-        { id: '1', title: 'Zero to One', author: 'Peter Thiel', dueDays: 2, urgent: true, color: '#EA580C', colors: ['#FFF7ED', '#FFEDD5'], darkColors: ['#7C2D12', '#9A3412'] },
-        { id: '2', title: 'Thinking, Fast and Slow', author: 'Daniel Kahneman', dueDays: 14, urgent: false, color: '#4338CA', colors: ['#EEF2FF', '#E0E7FF'], darkColors: ['#1E1B4B', '#312E81'] },
-        { id: '3', title: 'Principles of Management', author: 'Harold Koontz', dueDays: 21, urgent: false, color: '#059669', colors: ['#F0FDF4', '#DCFCE7'], darkColors: ['#064E3B', '#047857'] }
-      ];
+  React.useEffect(() => {
+    async function loadAlerts() {
+      if (!accessToken) return;
+      try {
+        const res = await getAlerts(accessToken);
+        if (res && res.data) {
+          setAlerts(res.data);
+        }
+      } catch (err) {
+        console.warn('[ERPHubScreen] Error loading alerts:', err);
+      }
     }
+    loadAlerts();
+  }, [accessToken]);
 
-    // Default Computer Science
-    return [
-      { id: '1', title: 'Data Structures & Algorithms', author: 'Cormen, Leiserson', dueDays: 2, urgent: true, color: '#EA580C', colors: ['#FFF7ED', '#FFEDD5'], darkColors: ['#7C2D12', '#9A3412'] },
-      { id: '2', title: 'Network Security Fundamentals', author: 'Stallings, William', dueDays: 14, urgent: false, color: '#4338CA', colors: ['#EEF2FF', '#E0E7FF'], darkColors: ['#1E1B4B', '#312E81'] },
-      { id: '3', title: 'Operating System Concepts', author: 'Silberschatz, Galvin', dueDays: 21, urgent: false, color: '#059669', colors: ['#F0FDF4', '#DCFCE7'], darkColors: ['#064E3B', '#047857'] }
-    ];
-  }, [user]);
+  const borrowedBooks = React.useMemo(() => {
+    return [];
+  }, []);
 
 
   const [drawerVisible, setDrawerVisible] = useState(false);
@@ -385,8 +368,6 @@ const ERPHubScreen = ({ navigation }) => {
           </TouchableOpacity>
         </View>
 
-
-
         {/* Smart Library */}
         <View style={styles.sectionContainer}>
           <Text style={[styles.sectionHeading, { color: colors.textPrimary }]}>Smart Library</Text>
@@ -394,42 +375,45 @@ const ERPHubScreen = ({ navigation }) => {
             <View style={styles.libraryHeader}>
               <View>
                 <Text style={[styles.libraryTitle, { color: colors.textPrimary }]}>Borrowed Books</Text>
-                <Text style={[styles.librarySubtitle, { color: colors.textSecondary }]}>3 books currently checked out</Text>
+                <Text style={[styles.librarySubtitle, { color: colors.textSecondary }]}>0 books currently checked out</Text>
               </View>
               <LinearGradient colors={['#EA580C', '#9A3412']} style={styles.libraryIconBg}>
                 <MaterialIcons name="local-library" size={20} color="#FFFFFF" />
               </LinearGradient>
             </View>
 
-            {borrowedBooks.map((book) => (
-              <View key={book.id} style={[styles.bookItem, { backgroundColor: isDark ? colors.background : '#F9FAFB', borderColor: colors.border }]}>
-                <LinearGradient colors={isDark ? book.darkColors : book.colors} style={styles.bookCover}>
-                  <MaterialCommunityIcons name="book-open-variant" size={22} color={isDark ? book.color : book.color} />
-                </LinearGradient>
-                <View style={styles.bookInfo}>
-                  <Text style={[styles.bookTitle, { color: colors.textPrimary }]}>{book.title}</Text>
-                  <Text style={[styles.bookAuthor, { color: colors.textSecondary }]}>{book.author}</Text>
-                  <View style={styles.bookDueBadge}>
-                    <View style={[styles.urgentDot, { backgroundColor: book.urgent ? '#EF4444' : '#22C55E' }]} />
-                    <Text style={[styles.bookDueText, { color: book.urgent ? '#EF4444' : '#22C55E' }]}>Due in {book.dueDays} days</Text>
-                  </View>
-                </View>
-                {book.urgent ? (
-                  <TouchableOpacity style={styles.renewBtn}>
-                    <Text style={styles.renewBtnText}>Renew</Text>
-                  </TouchableOpacity>
-                ) : (
-                  <View style={[styles.onTimeBadge, { backgroundColor: isDark ? 'rgba(34, 197, 94, 0.2)' : '#DCFCE7' }]}>
-                    <Text style={[styles.onTimeText, { color: isDark ? '#4ADE80' : '#15803D' }]}>On Time</Text>
-                  </View>
-                )}
+            {borrowedBooks.length === 0 ? (
+              <View style={{ padding: 24, alignItems: 'center' }}>
+                <Text style={{ color: colors.textSecondary, fontWeight: '600' }}>No books currently checked out</Text>
               </View>
-            ))}
+            ) : (
+              borrowedBooks.map((book) => (
+                <View key={book.id} style={[styles.bookItem, { backgroundColor: isDark ? colors.background : '#F9FAFB', borderColor: colors.border }]}>
+                  <LinearGradient colors={isDark ? book.darkColors : book.colors} style={styles.bookCover}>
+                    <MaterialCommunityIcons name="book-open-variant" size={22} color={isDark ? book.color : book.color} />
+                  </LinearGradient>
+                  <View style={styles.bookInfo}>
+                    <Text style={[styles.bookTitle, { color: colors.textPrimary }]}>{book.title}</Text>
+                    <Text style={[styles.bookAuthor, { color: colors.textSecondary }]}>{book.author}</Text>
+                    <View style={styles.bookDueBadge}>
+                      <View style={[styles.urgentDot, { backgroundColor: book.urgent ? '#EF4444' : '#22C55E' }]} />
+                      <Text style={[styles.bookDueText, { color: book.urgent ? '#EF4444' : '#22C55E' }]}>Due in {book.dueDays} days</Text>
+                    </View>
+                  </View>
+                  {book.urgent ? (
+                    <TouchableOpacity style={styles.renewBtn}>
+                      <Text style={styles.renewBtnText}>Renew</Text>
+                    </TouchableOpacity>
+                  ) : (
+                    <View style={[styles.onTimeBadge, { backgroundColor: isDark ? 'rgba(34, 197, 94, 0.2)' : '#DCFCE7' }]}>
+                      <Text style={[styles.onTimeText, { color: isDark ? '#4ADE80' : '#15803D' }]}>On Time</Text>
+                    </View>
+                  )}
+                </View>
+              ))
+            )}
           </View>
         </View>
-
-
-
 
         {/* Student Library Card */}
         <View style={styles.sectionContainer}>
@@ -460,7 +444,7 @@ const ERPHubScreen = ({ navigation }) => {
 
             <View style={styles.lcStudentRow}>
               <Image
-                source={{ uri: user?.gender === 'F' ? 'https://i.pravatar.cc/150?img=47' : 'https://i.pravatar.cc/150?img=12' }}
+                source={{ uri: getAvatarUrl(user?.id || user?.email || 'me') }}
                 style={styles.lcAvatar}
               />
               <View style={styles.lcStudentInfo}>
@@ -482,17 +466,17 @@ const ERPHubScreen = ({ navigation }) => {
 
             <View style={styles.lcStatsRow}>
               <View style={styles.lcStatItem}>
-                <Text style={styles.lcStatValue}>3</Text>
+                <Text style={styles.lcStatValue}>0</Text>
                 <Text style={styles.lcStatLabel}>BORROWED</Text>
               </View>
               <View style={styles.lcStatDivider} />
               <View style={styles.lcStatItem}>
-                <Text style={styles.lcStatValue}>47</Text>
+                <Text style={styles.lcStatValue}>-</Text>
                 <Text style={styles.lcStatLabel}>BOOKS READ</Text>
               </View>
               <View style={styles.lcStatDivider} />
               <View style={styles.lcStatItem}>
-                <Text style={styles.lcStatValue}>₹45</Text>
+                <Text style={styles.lcStatValue}>₹0</Text>
                 <Text style={[styles.lcStatLabel, { color: '#FCA5A5' }]}>FINE DUE</Text>
               </View>
             </View>
@@ -529,70 +513,46 @@ const ERPHubScreen = ({ navigation }) => {
           </LinearGradient>
         </View>
 
-
         {/* Recent Alerts */}
         <View style={styles.sectionContainer}>
           <Text style={[styles.sectionHeading, { color: colors.textPrimary }]}>Recent Alerts</Text>
           <View style={[styles.alertsCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
 
-
-            <View style={styles.alertItem}>
-              <View style={[styles.alertIconBox, { backgroundColor: isDark ? 'rgba(239, 68, 68, 0.2)' : '#FEE2E2' }]}>
-                <MaterialIcons name="error-outline" size={16} color="#EF4444" />
+            {alerts.length === 0 ? (
+              <View style={{ padding: 24, alignItems: 'center' }}>
+                <Text style={{ color: colors.textSecondary, fontWeight: '600' }}>No recent alerts</Text>
               </View>
-              <View style={styles.alertContent}>
-                <View style={styles.alertTitleRow}>
-                  <Text style={[styles.alertItemTitle, { color: colors.textPrimary }]}>Fee due soon</Text>
-                  <Text style={[styles.alertTag, { color: '#EF4444', backgroundColor: isDark ? 'rgba(239, 68, 68, 0.2)' : '#FEE2E2' }]}>URGENT</Text>
+            ) : (
+              alerts.slice(0, 3).map((alert, idx) => (
+                <View key={alert.id || idx}>
+                  <View style={styles.alertItem}>
+                    <View style={[styles.alertIconBox, { backgroundColor: isDark ? 'rgba(234, 88, 12, 0.2)' : '#FFF7ED' }]}>
+                      <MaterialIcons name={alert.type === 'urgent' ? 'error-outline' : 'notifications-none'} size={16} color={colors.primary} />
+                    </View>
+                    <View style={styles.alertContent}>
+                      <View style={styles.alertTitleRow}>
+                        <Text style={[styles.alertItemTitle, { color: colors.textPrimary }]}>{alert.title || 'Notification'}</Text>
+                        {alert.type && (
+                          <Text style={[styles.alertTag, { color: colors.primary, backgroundColor: isDark ? 'rgba(234, 88, 12, 0.2)' : '#FFF7ED' }]}>
+                            {alert.type.toUpperCase()}
+                          </Text>
+                        )}
+                      </View>
+                      <Text style={[styles.alertItemDesc, { color: colors.textSecondary }]}>
+                        {alert.message || alert.content || ''}
+                      </Text>
+                    </View>
+                  </View>
+                  {idx < alerts.length - 1 && <View style={[styles.alertDivider, { backgroundColor: colors.border }]} />}
                 </View>
+              ))
+            )}
 
-                <Text style={[styles.alertItemDesc, { color: colors.textSecondary }]}>
-                  Last date for Semester VII fee payment is approaching. Avoid late fine by paying before Oct 15.
-                </Text>
-              </View>
-            </View>
-
-            <View style={[styles.alertDivider, { backgroundColor: colors.border }]} />
-
-
-            <View style={styles.alertItem}>
-              <View style={[styles.alertIconBox, { backgroundColor: isDark ? 'rgba(242, 185, 11, 0.2)' : '#FEF3C7' }]}>
-                <MaterialIcons name="account-balance-wallet" size={16} color="#F59E0B" />
-              </View>
-              <View style={styles.alertContent}>
-                <View style={styles.alertTitleRow}>
-                  <Text style={[styles.alertItemTitle, { color: colors.textPrimary }]}>Library fine pending</Text>
-                  <Text style={[styles.alertTag, { color: isDark ? '#FCD34D' : '#92400E', backgroundColor: isDark ? 'rgba(146, 64, 14, 0.3)' : '#FEF3C7' }]}>FINANCE</Text>
-                </View>
-
-                <Text style={[styles.alertItemDesc, { color: colors.textSecondary }]}>
-                  A fine of ₹45 is pending for 'Compiler Design' book. Please clear at the circulation desk.
-                </Text>
-              </View>
-            </View>
-
-            <View style={[styles.alertDivider, { backgroundColor: colors.border }]} />
-
-
-            <View style={[styles.alertItem, { opacity: isDark ? 0.8 : 0.6 }]}>
-              <View style={[styles.alertIconBox, { backgroundColor: isDark ? colors.background : '#F3F4F6' }]}>
-                <MaterialIcons name="check-circle-outline" size={16} color={colors.textMuted} />
-              </View>
-              <View style={styles.alertContent}>
-                <View style={styles.alertTitleRow}>
-                  <Text style={[styles.alertItemTitle, { color: colors.textPrimary }]}>Bus Pass Renewed</Text>
-                  <Text style={[styles.alertTag, { color: colors.textMuted, backgroundColor: isDark ? colors.background : '#F3F4F6' }]}>2 DAYS AGO</Text>
-                </View>
-                <Text style={[styles.alertItemDesc, { color: colors.textMuted }]}>
-                  Your digital bus pass has been successfully extended for Oct–Dec session.
-                </Text>
-              </View>
-            </View>
-
-
-            <TouchableOpacity style={[styles.clearAllBtn, { backgroundColor: isDark ? colors.background : '#F9FAFB', borderTopColor: colors.border }]}>
-              <Text style={[styles.clearAllText, { color: colors.textMuted }]}>Clear All Notifications</Text>
-            </TouchableOpacity>
+            {alerts.length > 0 && (
+              <TouchableOpacity style={[styles.clearAllBtn, { backgroundColor: isDark ? colors.background : '#F9FAFB', borderTopColor: colors.border }]}>
+                <Text style={[styles.clearAllText, { color: colors.textMuted }]}>Clear All Notifications</Text>
+              </TouchableOpacity>
+            )}
 
           </View>
         </View>
@@ -765,7 +725,7 @@ const ERPHubScreen = ({ navigation }) => {
             <TouchableOpacity activeOpacity={1}>
               <LinearGradient colors={['#EA580C', '#9A3412']} style={styles.drawerHeader}>
                 <Image
-                  source={{ uri: user?.gender === 'F' ? 'https://i.pravatar.cc/150?img=47' : 'https://i.pravatar.cc/150?img=12' }}
+                  source={{ uri: getAvatarUrl(user?.id || user?.email || 'me') }}
                   style={styles.drawerAvatar}
                 />
                 <Text style={styles.drawerName}>{user?.name || 'Aryan Kumar'}</Text>

@@ -5,6 +5,11 @@ import {
 import { Ionicons, MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as ImagePicker from 'expo-image-picker';
+import { uploadAvatarAPI } from '../../data/apiService';
+import { getAvatarUrl } from '../../utils/avatar';
+import { ActivityIndicator, Alert } from 'react-native';
+
 import { useTheme } from '../../hooks/useTheme';
 import { APP_CONFIG } from '../../config/appConfig';
 import { useUser } from '../../context/UserContext';
@@ -16,7 +21,8 @@ const { width } = Dimensions.get('window');
 const TalentIdentityScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
-  const { user } = useUser();
+    const { user, accessToken, updateAvatarUrl } = useUser();
+  const [isUploading, setIsUploading] = React.useState(false);
 
   if (!user) return null;
 
@@ -69,10 +75,40 @@ const TalentIdentityScreen = ({ navigation }) => {
         }
       ];
 
-  const isFemaleAvatar = user.gender === 'F' || user.gender === 'Female';
-  const avatarUrl = isFemaleAvatar
-    ? 'https://images.pexels.com/photos/733872/pexels-photo-733872.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=500'
-    : 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=500';
+    const handlePickImage = async () => {
+    try {
+      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (permissionResult.granted === false) {
+        Alert.alert('Permission required', 'Permission to access camera roll is required!');
+        return;
+      }
+
+      const pickerResult = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.3,
+      });
+
+      if (!pickerResult.canceled && pickerResult.assets?.length > 0) {
+        setIsUploading(true);
+        const res = await uploadAvatarAPI(accessToken, pickerResult.assets[0].uri);
+        if (res.ok && res.json?.success) {
+          updateAvatarUrl(res.json.data.avatar_url);
+        } else {
+          Alert.alert('Upload Failed', 'Could not upload profile picture.');
+        }
+      }
+    } catch (e) {
+      console.warn("Error picking image:", e);
+      Alert.alert('Error', 'An error occurred while picking the image.');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const avatarUrl = user?.avatar_url || getAvatarUrl(user?.id || user?.email || 'me');
+
 
   return (
     <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
@@ -117,9 +153,13 @@ const TalentIdentityScreen = ({ navigation }) => {
                   </View>
                   <Text style={styles.heroName}>{user?.name || 'Student'}</Text>
                 </View>
-                {/* Editable Profile Picture Icon */}
-                <TouchableOpacity style={[styles.editPicBtn, { backgroundColor: colors.background }]}>
-                  <Ionicons name="camera" size={20} color={colors.textPrimary} />
+                                {/* Editable Profile Picture Icon */}
+                <TouchableOpacity onPress={handlePickImage} style={[styles.editPicBtn, { backgroundColor: colors.background }]}>
+                  {isUploading ? (
+                    <ActivityIndicator size="small" color={colors.primary} />
+                  ) : (
+                    <Ionicons name="camera" size={20} color={colors.textPrimary} />
+                  )}
                 </TouchableOpacity>
               </View>
             </LinearGradient>

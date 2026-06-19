@@ -98,7 +98,9 @@ const ERPDocumentsScreen = ({ navigation }) => {
               </View>
               <View>
                 <Text style={[styles.statLabel, { color: colors.textSecondary }]}>VERIFIED</Text>
-                <Text style={[styles.statValue, { color: colors.textPrimary }]}>08 Documents</Text>
+                <Text style={[styles.statValue, { color: colors.textPrimary }]}>
+                  {apiDocs.length < 10 ? `0${apiDocs.length}` : apiDocs.length} Document{apiDocs.length === 1 ? '' : 's'}
+                </Text>
               </View>
             </View>
 
@@ -108,7 +110,7 @@ const ERPDocumentsScreen = ({ navigation }) => {
               </View>
               <View>
                 <Text style={[styles.statLabel, { color: colors.textSecondary }]}>IN PROGRESS</Text>
-                <Text style={[styles.statValue, { color: colors.textPrimary }]}>02 Requests</Text>
+                <Text style={[styles.statValue, { color: colors.textPrimary }]}>00 Requests</Text>
               </View>
             </View>
           </View>
@@ -119,153 +121,111 @@ const ERPDocumentsScreen = ({ navigation }) => {
             </View>
             <View>
               <Text style={[styles.statLabel, { color: colors.textSecondary }]}>RECENT SHARES</Text>
-              <Text style={[styles.statValue, { color: colors.textPrimary }]}>14 Transfers</Text>
+              <Text style={[styles.statValue, { color: colors.textPrimary }]}>- Transfers</Text>
             </View>
           </View>
-
-
         </View>
 
         {/* Essential Credentials */}
         <View style={styles.sectionContainer}>
           <Text style={[styles.essentialsTitle, { color: colors.textPrimary }]}>Essential Credentials</Text>
 
-
-          {/* Student Digital ID Card */}
-          <View style={[styles.idCard, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
-            <View style={styles.idCardImageBox}>
-              <LinearGradient colors={['#8B4B00', '#FE9832']} style={styles.idCardPlaceholder}>
-                <MaterialIcons name="badge" size={40} color="#FFFFFF" />
-              </LinearGradient>
-              <View style={[styles.verifiedBadge, { backgroundColor: isDark ? '#065F46' : '#006666' }]}>
-                <MaterialIcons name="verified" size={12} color="#FFFFFF" />
-                <Text style={[styles.verifiedText, { color: '#FFFFFF' }]}>Verified</Text>
-              </View>
+          {apiDocs.length === 0 ? (
+            <View style={{ padding: 32, alignItems: 'center', backgroundColor: colors.card, borderRadius: 20, borderColor: colors.border, borderWidth: 1, marginTop: 12 }}>
+              <MaterialCommunityIcons name="folder-open-outline" size={48} color={colors.textSecondary} style={{ marginBottom: 12 }} />
+              <Text style={{ color: colors.textPrimary, fontSize: 16, fontWeight: '700' }}>No Documents Available</Text>
+              <Text style={{ color: colors.textSecondary, fontSize: 13, textAlign: 'center', marginTop: 4 }}>
+                There are currently no certificates or academic documents verified in your vault.
+              </Text>
             </View>
+          ) : (
+            apiDocs.map((docKey) => {
+              const documentDetails = {
+                bona_fide: {
+                  title: 'Bona Fide Certificate',
+                  desc: 'Official student status verification certificate.',
+                  icon: 'verified',
+                  iconType: 'material',
+                  color: '#0D9488'
+                },
+                noc: {
+                  title: 'No Objection Certificate (NOC)',
+                  desc: 'Verification certificate for internship or college transfer.',
+                  icon: 'assignment-turned-in',
+                  iconType: 'material',
+                  color: '#7C3AED'
+                },
+                marksheets: {
+                  title: 'Academic Marksheets',
+                  desc: 'Semester-wise official academic records and grade cards.',
+                  icon: 'description',
+                  iconType: 'material',
+                  color: '#EA580C'
+                },
+                degree: {
+                  title: 'Degree Certificate',
+                  desc: 'Provisional degree certificate issued upon completion of program requirements.',
+                  icon: 'school',
+                  iconType: 'material',
+                  color: '#4953AC'
+                },
+                admission: {
+                  title: 'Admission Letter',
+                  desc: `Official confirmation of your enrollment in the ${courseTitle} program.`,
+                  icon: 'mail',
+                  iconType: 'material',
+                  color: '#EA580C'
+                },
+                character: {
+                  title: 'Character Certificate',
+                  desc: 'Verified certificate of conduct from the Dean\'s office.',
+                  icon: 'assignment-ind',
+                  iconType: 'material',
+                  color: '#0D9488'
+                },
+                migration: {
+                  title: 'Migration Certificate',
+                  desc: 'Official certificate for university transfer.',
+                  icon: 'arrow-up-bold-box-outline',
+                  iconType: 'material-community',
+                  color: '#7C3AED'
+                }
+              };
 
-            <View style={styles.idCardContent}>
-              <Text style={[styles.idCardTitle, { color: colors.textPrimary }]}>Student Digital ID Card</Text>
-              <Text style={[styles.idCardDesc, { color: colors.textSecondary }]}>Official identity document valid for campus access, library services, and student discounts.</Text>
-              <View style={styles.idCardMeta}>
-                <MaterialIcons name="schedule" size={14} color={isDark ? '#818CF8' : '#4953AC'} />
-                <Text style={[styles.idCardMetaText, { color: isDark ? '#818CF8' : '#4953AC' }]}>{validityText}</Text>
-              </View>
-              <View style={styles.idCardActions}>
-                <TouchableOpacity style={[styles.downloadDocBtn, { backgroundColor: colors.primary }]}>
-                  <MaterialIcons name="download" size={18} color="#FFFFFF" />
-                  <Text style={styles.downloadDocText}>Download</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={[styles.shareDocBtn, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#E6E8EA', borderColor: colors.border, borderWidth: 1 }]}>
-                  <MaterialIcons name="share" size={20} color={colors.textSecondary} />
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
+              const doc = documentDetails[docKey] || {
+                title: docKey.replace(/_/g, ' ').toUpperCase(),
+                desc: 'Official academic document in your secure repository.',
+                icon: 'file-present',
+                iconType: 'material',
+                color: colors.primary
+              };
 
-
-
-          {/* Admission Letter */}
-          <View style={[styles.docCard, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
-            <View style={[styles.docIconBg, { backgroundColor: isDark ? 'rgba(234, 88, 12, 0.15)' : '#FFF7ED' }]}>
-              <MaterialIcons name="mail" size={24} color="#EA580C" />
-            </View>
-            <Text style={[styles.docTitle, { color: colors.textPrimary }]}>Admission Letter</Text>
-            <Text style={[styles.docDesc, { color: colors.textSecondary }]}>Official confirmation of your enrollment in {courseTitle} Batch {startYear}-{endYear}.</Text>
-            <View style={[styles.statusBadge, { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.2)' : '#D1FAE5' }]}>
-              <Text style={[styles.statusText, { color: isDark ? '#34D399' : '#065F46' }]}>Verified</Text>
-            </View>
-            <View style={[styles.docFooter, { borderTopColor: colors.border }]}>
-              <TouchableOpacity style={styles.docFooterBtn}>
-                <Text style={[styles.docFooterBtnText, { color: colors.primary }]}>View PDF</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.docFooterBtn}>
-                <Text style={[styles.docFooterBtnText, { color: colors.textSecondary }]}>History</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-
-
-
-          {/* Degree Certificate */}
-          {(() => {
-            const degreeUnlocked = apiDocs.includes('degree') || apiDocs.includes('graduation') || userSem >= 8;
-            return (
-              <View style={[styles.docCard, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
-                <View style={[styles.docIconBg, { backgroundColor: isDark ? 'rgba(73, 83, 172, 0.15)' : '#EEF2FF' }]}>
-                  <MaterialIcons name="school" size={24} color={isDark ? '#818CF8' : '#4953AC'} />
+              return (
+                <View key={docKey} style={[styles.docCard, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1, marginBottom: 14 }]}>
+                  <View style={[styles.docIconBg, { backgroundColor: isDark ? 'rgba(234, 88, 12, 0.15)' : doc.color + '15' }]}>
+                    {doc.iconType === 'material-community' ? (
+                      <MaterialCommunityIcons name={doc.icon} size={24} color={doc.color} />
+                    ) : (
+                      <MaterialIcons name={doc.icon} size={24} color={doc.color} />
+                    )}
+                  </View>
+                  <Text style={[styles.docTitle, { color: colors.textPrimary }]}>{doc.title}</Text>
+                  <Text style={[styles.docDesc, { color: colors.textSecondary }]}>{doc.desc}</Text>
+                  <View style={[styles.statusBadge, { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.2)' : '#D1FAE5' }]}>
+                    <Text style={[styles.statusText, { color: isDark ? '#34D399' : '#065F46' }]}>Verified</Text>
+                  </View>
+                  <View style={[styles.docFooter, { borderTopColor: colors.border }]}>
+                    <TouchableOpacity style={styles.docFooterBtn} onPress={() => Alert.alert('Download Started', `${doc.title} is downloading...`)}>
+                      <Text style={[styles.docFooterBtnText, { color: colors.primary }]}>Download PDF</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.docFooterBtn}>
+                      <Text style={[styles.docFooterBtnText, { color: colors.textSecondary }]}>History</Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
-                <Text style={[styles.docTitle, { color: colors.textPrimary }]}>Degree Certificate</Text>
-                <Text style={[styles.docDesc, { color: colors.textSecondary }]}>Provisional degree certificate issued upon completion of program requirements.</Text>
-                
-                {degreeUnlocked ? (
-                  <>
-                    <View style={[styles.statusBadge, { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.2)' : '#D1FAE5' }]}>
-                      <Text style={[styles.statusText, { color: isDark ? '#34D399' : '#065F46' }]}>Verified</Text>
-                    </View>
-                    <TouchableOpacity 
-                      style={[styles.downloadDocBtn, { backgroundColor: colors.primary, marginTop: 12, width: '100%', borderRadius: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10 }]}
-                      onPress={() => Alert.alert('Download Started', 'Degree Certificate is downloading...')}
-                    >
-                      <MaterialIcons name="download" size={16} color="#FFFFFF" />
-                      <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 13 }}>Download Degree</Text>
-                    </TouchableOpacity>
-                  </>
-                ) : (
-                  <>
-                    <View style={[styles.statusBadge, { backgroundColor: isDark ? 'rgba(245, 158, 11, 0.2)' : '#FEF3C7' }]}>
-                      <Text style={[styles.statusText, { color: isDark ? '#FCD34D' : '#92400E' }]}>Pending Approval</Text>
-                    </View>
-                    <TouchableOpacity 
-                      style={[styles.lockedBtn, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#E6E8EA', borderColor: colors.border, borderWidth: 1 }]}
-                      onPress={() => Alert.alert('Certificate Locked', 'Your Degree Certificate will be unlocked upon semester completion and academic approval.')}
-                    >
-                      <MaterialIcons name="lock" size={16} color={colors.textSecondary} />
-                      <Text style={[styles.lockedText, { color: colors.textSecondary }]}>Download Locked</Text>
-                    </TouchableOpacity>
-                  </>
-                )}
-              </View>
-            );
-          })()}
-
-
-
-          {/* Character & Migration */}
-          <View style={styles.compactRow}>
-            <View style={[styles.compactCard, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
-              <View style={[styles.compactIcon, { backgroundColor: isDark ? 'rgba(13, 148, 136, 0.15)' : '#CCFBF1' }]}>
-                <MaterialIcons name="assignment-ind" size={22} color={isDark ? '#2DD4BF' : '#0D9488'} />
-              </View>
-              <Text style={[styles.compactTitle, { color: colors.textPrimary }]}>Character Certificate</Text>
-              <Text style={[styles.compactSub, { color: colors.textSecondary }]}>Verified by Dean's Office</Text>
-              <View style={styles.compactActions}>
-                <TouchableOpacity style={[styles.compactBtn, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F5F6F7', borderColor: colors.border, borderWidth: 1 }]}>
-                  <MaterialIcons name="visibility" size={18} color={colors.textSecondary} />
-                </TouchableOpacity>
-                <TouchableOpacity style={[styles.compactBtn, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F5F6F7', borderColor: colors.border, borderWidth: 1 }]}>
-                  <MaterialIcons name="share" size={18} color={colors.textSecondary} />
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            <View style={[styles.compactCard, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
-              <View style={[styles.compactIcon, { backgroundColor: isDark ? 'rgba(124, 58, 237, 0.15)' : '#F3E8FF' }]}>
-                <MaterialCommunityIcons name="arrow-up-bold-box-outline" size={22} color={isDark ? '#A78BFA' : '#7C3AED'} />
-              </View>
-              <Text style={[styles.compactTitle, { color: colors.textPrimary }]}>Migration Certificate</Text>
-              <Text style={[styles.compactSub, { color: colors.textSecondary }]}>Issued on Mar 12, 2024</Text>
-              <View style={styles.compactActions}>
-                <TouchableOpacity style={[styles.compactBtn, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F5F6F7', borderColor: colors.border, borderWidth: 1 }]}>
-                  <MaterialIcons name="visibility" size={18} color={colors.textSecondary} />
-                </TouchableOpacity>
-                <TouchableOpacity style={[styles.compactBtn, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F5F6F7', borderColor: colors.border, borderWidth: 1 }]}>
-                  <MaterialIcons name="share" size={18} color={colors.textSecondary} />
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-
-
+              );
+            })
+          )}
         </View>
 
         {/* Privacy & Safety */}

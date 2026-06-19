@@ -1,7 +1,9 @@
 import React from 'react';
+import { getAvatarUrl } from "../../utils/avatar";
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Dimensions, Platform, Modal, Switch, TextInput,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Dimensions, Platform, Modal, Switch, TextInput, Alert
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -9,17 +11,53 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../hooks/useTheme';
 import { APP_CONFIG } from '../../config/appConfig';
 import { TimelineSkeleton } from '../../components/SkeletonLoader';
+import ActivityRing from '../../components/ActivityRing';
 import { useUser } from '../../context/UserContext';
-import { generateAIInsight, generateRoadmap, computeSkillGap, generateDynamicRoadmap } from '../../data/aiEngine';
+import { useHealthMetrics } from '../../hooks/useHealthMetrics';
+import { generateAIInsight, generateRoadmap, computeSkillGap, generateDynamicRoadmap, fetchDynamicLLMInsight } from '../../data/aiEngine';
 import { updateStudentSheet } from '../../data/googleSheetsService';
 import { booksData } from '../student/library/LibraryMainScreen';
+import { listGrievancesAPI, resetPasswordAPI } from '../../data/apiService';
 
 const { width } = Dimensions.get('window');
 
 const DashboardScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const { colors, isDark, toggleTheme } = useTheme();
-  const { user, logout } = useUser();
+  const { user, logout, accessToken } = useUser();
+
+  // ─── Live Health Metrics ────────────────────────────────────────────────────
+  const { metrics, goals } = useHealthMetrics();
+
+  const stepsProgress = goals.steps > 0 ? Math.min(metrics.steps / goals.steps, 1) : 0;
+  const caloriesProgress = goals.calories > 0 ? Math.min(metrics.calories / goals.calories, 1) : 0;
+  const focusProgress = goals.focus > 0 ? Math.min(metrics.focusMinutes / goals.focus, 1) : 0;
+
+  const [raisedIssues, setRaisedIssues] = React.useState([]);
+  const [isLoadingIssues, setIsLoadingIssues] = React.useState(false);
+
+  const fetchRaisedIssues = React.useCallback(async () => {
+    if (!accessToken) return;
+    setIsLoadingIssues(true);
+    try {
+      const data = await listGrievancesAPI(accessToken);
+      if (data) {
+        setRaisedIssues(data);
+      }
+    } catch (error) {
+      console.warn('[Dashboard] Failed to fetch issues:', error);
+    } finally {
+      setIsLoadingIssues(false);
+    }
+  }, [accessToken]);
+
+  React.useEffect(() => {
+    fetchRaisedIssues();
+    const unsubscribe = navigation.addListener('focus', () => {
+      fetchRaisedIssues();
+    });
+    return unsubscribe;
+  }, [navigation, fetchRaisedIssues]);
 
   // ── Dynamic featured books — same course-aware sorting as LibraryMainScreen ──
   const featuredBooks = React.useMemo(() => {
@@ -52,11 +90,14 @@ const DashboardScreen = ({ navigation }) => {
   }, [user]);
 
   const isFemaleAvatar = user?.gender === 'F' || user?.gender === 'Female';
-  const avatarUrl = isFemaleAvatar
+  const avatarUrl = user?.avatar_url || (isFemaleAvatar
     ? 'https://images.pexels.com/photos/733872/pexels-photo-733872.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=500'
-    : 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=500';
+    : 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=500');
   const [activeMood, setActiveMood] = React.useState(2);
   const [showProfileMenu, setShowProfileMenu] = React.useState(false);
+  const [showResetModal, setShowResetModal] = React.useState(false);
+  const [resetUsername, setResetUsername] = React.useState('');
+  const [resetting, setResetting] = React.useState(false);
   const [isHostelMode, setIsHostelMode] = React.useState(false);
   const [gatePassStatus, setGatePassStatus] = React.useState('idle'); // idle, pending, approved
   const [showQRModal, setShowQRModal] = React.useState(false);
@@ -67,6 +108,54 @@ const DashboardScreen = ({ navigation }) => {
   
   const [roadmapData, setRoadmapData] = React.useState(null);
   const [isGeneratingRoadmap, setIsGeneratingRoadmap] = React.useState(false);
+  const [pathwayRetriesLeft, setPathwayRetriesLeft] = React.useState(1);
+  const [cachedInsight, setCachedInsight] = React.useState(null);
+
+  React.useEffect(() => {
+    if (!user) return;
+    const loadInsight = async () => {
+      try {
+        const key = `@ai_insight_${user.id}`;
+        const cached = await AsyncStorage.getItem(key);
+        if (cached) {
+          setCachedInsight(cached);
+        } else {
+          const freshInsight = await fetchDynamicLLMInsight(user);
+          if (freshInsight) {
+            setCachedInsight(freshInsight);
+            await AsyncStorage.setItem(key, freshInsight);
+          }
+        }
+      } catch(e) {
+        setCachedInsight(generateAIInsight(user));
+      }
+    };
+    loadInsight();
+  }, [user]);
+
+  const loadPathwayRetries = React.useCallback(async () => {
+    try {
+      const lastRefined = await AsyncStorage.getItem('@pathway_last_refined');
+      if (lastRefined) {
+        const daysSince = (Date.now() - parseInt(lastRefined)) / (1000 * 60 * 60 * 24);
+        if (daysSince < 1) {
+          setPathwayRetriesLeft(0);
+        } else {
+          setPathwayRetriesLeft(1);
+        }
+      } else {
+        setPathwayRetriesLeft(1);
+      }
+    } catch (err) {
+      console.warn(err);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    loadPathwayRetries();
+    const unsubscribe = navigation.addListener('focus', loadPathwayRetries);
+    return unsubscribe;
+  }, [navigation, loadPathwayRetries]);
 
   React.useEffect(() => {
     if (!user) return;
@@ -104,6 +193,24 @@ const DashboardScreen = ({ navigation }) => {
     }
     logout();
     navigation.replace('Login');
+  };
+
+  const handleResetPassword = async () => {
+    if (!resetUsername) {
+      Alert.alert('Missing Info', 'Please enter your roll number to reset your password.');
+      return;
+    }
+    setResetting(true);
+    try {
+      await resetPasswordAPI(resetUsername, user?.tenant_id || "123e4567-e89b-12d3-a456-426614174000");
+      Alert.alert('Reset Successful', 'A password reset link has been sent to your registered academic email.');
+      setShowResetModal(false);
+      setResetUsername('');
+    } catch (error) {
+      Alert.alert('Reset Failed', error.message || 'Could not process reset password request.');
+    } finally {
+      setResetting(false);
+    }
   };
 
   return (
@@ -182,6 +289,17 @@ const DashboardScreen = ({ navigation }) => {
 
             </TouchableOpacity>
 
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => {
+                setShowProfileMenu(false);
+                setShowResetModal(true);
+              }}
+            >
+              <MaterialCommunityIcons name="lock-reset" size={20} color={colors.textSecondary} />
+              <Text style={[styles.menuItemText, { color: colors.textPrimary }]}>Reset Password</Text>
+            </TouchableOpacity>
+
             <View style={styles.menuItem}>
               <View style={styles.menuItemLeft}>
                 <MaterialCommunityIcons name="moon-waning-crescent" size={20} color={colors.textSecondary} />
@@ -222,6 +340,39 @@ const DashboardScreen = ({ navigation }) => {
             </TouchableOpacity>
           </View>
         </TouchableOpacity>
+      </Modal>
+
+      {/* Forgot Password Modal */}
+      <Modal
+        visible={showResetModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowResetModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
+            <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>Reset Password</Text>
+            <Text style={[styles.modalSubtitle, { color: colors.textSecondary }]}>
+              Enter your roll number to receive password reset instructions.
+            </Text>
+            <TextInput
+              style={[styles.modalInput, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F3F4F6', color: colors.textPrimary }]}
+              placeholder="Roll Number"
+              placeholderTextColor={colors.textSecondary}
+              value={resetUsername}
+              onChangeText={setResetUsername}
+              autoCapitalize="none"
+            />
+            <View style={styles.modalActions}>
+              <TouchableOpacity style={styles.modalBtnCancel} onPress={() => setShowResetModal(false)}>
+                <Text style={styles.modalBtnTextCancel}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.modalBtnSubmit} onPress={handleResetPassword} disabled={resetting}>
+                <Text style={styles.modalBtnTextSubmit}>{resetting ? 'Sending...' : 'Send Reset Link'}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
       </Modal>
 
       {/* Gate Pass QR Modal */}
@@ -372,7 +523,7 @@ const DashboardScreen = ({ navigation }) => {
                 <MaterialCommunityIcons name="auto-fix" size={20} color={isDark ? '#34D399' : '#065F46'} />
               </View>
               <Text style={[styles.aiSuggestionText, { color: isDark ? '#A7F3D0' : '#064E3B' }]}>
-                <Text style={{ fontWeight: '800' }}>AI Insight:</Text> {user ? generateAIInsight(user) : 'Connecting to AI Engine...'}
+                <Text style={{ fontWeight: '800' }}>AI Insight:</Text> {cachedInsight || 'Connecting to AI Engine...'}
               </Text>
             </LinearGradient>
 
@@ -388,20 +539,19 @@ const DashboardScreen = ({ navigation }) => {
                 </View>
                 <View style={styles.fitnessHeaderText}>
                   <Text style={[styles.fitnessTitle, { color: colors.textPrimary }]}>Campus Fitness</Text>
-                  <Text style={[styles.fitnessSub, { color: colors.textSecondary }]}>Active for 42m today</Text>
+                  <Text style={[styles.fitnessSub, { color: colors.textSecondary }]}>
+                    {metrics.steps.toLocaleString()} / {goals.steps.toLocaleString()} steps today
+                  </Text>
                 </View>
                 <MaterialIcons name="chevron-right" size={24} color={colors.textMuted} />
               </View>
 
               <View style={styles.fitnessBody}>
                 <View style={styles.fitnessRingContainer}>
-                  <View style={styles.ringStack}>
-                    <View style={[styles.ringBase, { borderColor: '#EF444420' }]} />
-                    <View style={[styles.ringFill, { borderColor: '#EF4444', borderRightColor: 'transparent', transform: [{ rotate: '45deg' }] }]} />
-                    <View style={[styles.ringBase, { width: 34, height: 34, borderColor: '#10B98120' }]} />
-                    <View style={[styles.ringFill, { width: 34, height: 34, borderColor: '#10B981', borderBottomColor: 'transparent', transform: [{ rotate: '-15deg' }] }]} />
-                    <View style={[styles.ringBase, { width: 22, height: 22, borderColor: '#3B82F620' }]} />
-                    <View style={[styles.ringFill, { width: 22, height: 22, borderColor: '#3B82F6', borderLeftColor: 'transparent', transform: [{ rotate: '120deg' }] }]} />
+                  <View style={[styles.ringStack, { justifyContent: 'center', alignItems: 'center' }]}>
+                    <ActivityRing radius={32} stroke={10} progress={stepsProgress} color="#EF4444" bgColor="#EF444420" />
+                    <ActivityRing radius={22} stroke={10} progress={caloriesProgress} color="#10B981" bgColor="#10B98120" />
+                    <ActivityRing radius={12} stroke={10} progress={focusProgress} color="#3B82F6" bgColor="#3B82F620" />
                   </View>
                 </View>
 
@@ -410,23 +560,23 @@ const DashboardScreen = ({ navigation }) => {
                 <View style={styles.fitnessGridStats}>
                   <View style={styles.fitnessRow}>
                     <View style={styles.fitnessItem}>
-                      <Text style={[styles.fitnessVal, { color: colors.textPrimary }]}>8,420</Text>
-                      <Text style={styles.fitnessLabel}>STEPS</Text>
+                      <Text style={[styles.fitnessVal, { color: colors.textPrimary }]}>{metrics.steps.toLocaleString()}</Text>
+                      <Text style={[styles.fitnessLabel, { color: colors.textSecondary }]}>STEPS</Text>
                     </View>
                     <View style={styles.fitnessItem}>
-                      <Text style={[styles.fitnessVal, { color: colors.textPrimary }]}>420</Text>
-                      <Text style={styles.fitnessLabel}>KCAL</Text>
+                      <Text style={[styles.fitnessVal, { color: colors.textPrimary }]}>{metrics.calories}</Text>
+                      <Text style={[styles.fitnessLabel, { color: colors.textSecondary }]}>KCAL</Text>
                     </View>
                   </View>
                   <View style={[styles.fitnessHDivider, { backgroundColor: colors.border }]} />
                   <View style={styles.fitnessRow}>
                     <View style={styles.fitnessItem}>
-                      <Text style={[styles.fitnessVal, { color: colors.textPrimary }]}>45</Text>
-                      <Text style={styles.fitnessLabel}>FOCUS</Text>
+                      <Text style={[styles.fitnessVal, { color: colors.textPrimary }]}>{metrics.focusMinutes}</Text>
+                      <Text style={[styles.fitnessLabel, { color: colors.textSecondary }]}>FOCUS</Text>
                     </View>
                     <View style={styles.fitnessItem}>
-                      <Text style={[styles.fitnessVal, { color: colors.textPrimary }]}>7.2</Text>
-                      <Text style={styles.fitnessLabel}>SLEEP</Text>
+                      <Text style={[styles.fitnessVal, { color: colors.textPrimary }]}>{metrics.sleepHours}</Text>
+                      <Text style={[styles.fitnessLabel, { color: colors.textSecondary }]}>SLEEP</Text>
                     </View>
                   </View>
                 </View>
@@ -505,13 +655,16 @@ const DashboardScreen = ({ navigation }) => {
           <View style={styles.launchpadGrid}>
             <TouchableOpacity
               style={styles.launchBtn}
-              onPress={() => navigation.navigate('CampusBitesMenu')}
+              onPress={() => Alert.alert('Premium Feature', 'This feature is locked in the free trial.')}
             >
-              <LinearGradient colors={['#EA580C', '#9A3412']} style={styles.launchIconBg}>
+              <View style={[styles.lockBadge, { top: -4, right: -4, paddingHorizontal: 4, paddingVertical: 2, borderRadius: 4 }]}>
+                <MaterialIcons name="lock" size={8} color="#FFFFFF" />
+                <Text style={[styles.lockBadgeText, { fontSize: 8, marginLeft: 2 }]}>DEMO</Text>
+              </View>
+              <LinearGradient colors={['#EA580C', '#9A3412']} style={[styles.launchIconBg, { opacity: 0.5 }]}>
                 <MaterialCommunityIcons name="food" size={24} color="#FFFFFF" />
               </LinearGradient>
-              <Text style={[styles.launchText, { color: colors.textPrimary }]}>Order Food</Text>
-
+              <Text style={[styles.launchText, { color: colors.textPrimary, opacity: 0.5 }]}>Order Food</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -594,7 +747,7 @@ const DashboardScreen = ({ navigation }) => {
             </View>
             <View style={{ flex: 1 }}>
               <Text style={[styles.mentallyText, { color: isDark ? '#A5B4FC' : '#3730A3' }]}>
-                "Stress levels look slightly high before the Python finals. Need a 5-min mindfulness break?"
+                "Stress levels look slightly high before the {user?.major || 'academic'} finals. Need a 5-min mindfulness break?"
               </Text>
 
               <TouchableOpacity onPress={() => navigation.navigate('MentallyMain')}>
@@ -611,8 +764,8 @@ const DashboardScreen = ({ navigation }) => {
               <Text style={[styles.moduleTitle, { color: colors.textSecondary }]}>E-Library</Text>
               <Text style={[styles.sectionSub, { color: colors.textSecondary }]}>Expand your knowledge</Text>
             </View>
-            <TouchableOpacity onPress={() => navigation.navigate('LibraryMain')}>
-              <Text style={[styles.viewAllText, { color: '#EA580C' }]}>View All</Text>
+            <TouchableOpacity onPress={() => Alert.alert('Premium Feature', 'This feature is locked in the free trial.')}>
+              <Text style={[styles.viewAllText, { color: '#EA580C', opacity: 0.5 }]}>View All</Text>
             </TouchableOpacity>
           </View>
 
@@ -620,9 +773,13 @@ const DashboardScreen = ({ navigation }) => {
             {featuredBooks.map((book) => (
               <TouchableOpacity 
                 key={book.id} 
-                style={styles.libraryBookCard}
-                onPress={() => navigation.navigate('LibraryMain')}
+                style={[styles.libraryBookCard, { opacity: 0.5 }]}
+                onPress={() => Alert.alert('Premium Feature', 'This feature is locked in the free trial.')}
               >
+                <View style={[styles.lockBadge, { top: 5, left: 5, zIndex: 10 }]}>
+                  <MaterialIcons name="lock" size={10} color="#FFFFFF" />
+                  <Text style={styles.lockBadgeText}>DEMO LOCK</Text>
+                </View>
                 <Image source={{ uri: book.cover }} style={styles.libraryBookImg} />
                 <Text style={[styles.libraryBookTitle, { color: colors.textPrimary }]} numberOfLines={1}>{book.title}</Text>
                 <Text style={[styles.libraryBookAuthor, { color: colors.textMuted }]} numberOfLines={1}>{book.author}</Text>
@@ -648,11 +805,18 @@ const DashboardScreen = ({ navigation }) => {
               <MaterialCommunityIcons name="file-document-edit-outline" size={28} color={colors.primary} />
             </View>
             <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>AI Resume Builder</Text>
-            <Text style={[styles.cardDesc, { color: colors.textSecondary }]}>Smart tailoring based on your 8.9 CGPA and technical skills in {APP_CONFIG.UNIVERSITY_SHORT_NAME} labs.</Text>
+            <Text style={[styles.cardDesc, { color: colors.textSecondary, marginBottom: 8 }]}>Smart tailoring based on your 8.9 CGPA and technical skills in {APP_CONFIG.UNIVERSITY_SHORT_NAME} labs.</Text>
+            <View style={{flexDirection: 'row', alignItems: 'center', marginBottom: 12, backgroundColor: isDark ? 'rgba(139, 92, 246, 0.1)' : '#EDE9FE', alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6}}>
+              <MaterialCommunityIcons name="clock-outline" size={14} color={isDark ? '#A78BFA' : '#6D28D9'} />
+              <Text style={{fontSize: 10, fontWeight: '700', color: isDark ? '#A78BFA' : '#6D28D9', marginLeft: 4}}>GENERATES ONCE A WEEK</Text>
+            </View>
 
-            <TouchableOpacity style={[styles.resumeBtn, { backgroundColor: isDark ? colors.primary : '#111827' }]}>
-              <Text style={styles.resumeBtnText}>Update Resume</Text>
-              <MaterialIcons name="arrow-forward" size={16} color="#FFFFFF" style={{ marginLeft: 4 }} />
+            <TouchableOpacity 
+              style={[styles.resumeBtn, { backgroundColor: isDark ? colors.primary : '#111827' }]}
+              onPress={() => navigation.navigate('ResumeBuilder')}
+            >
+              <Text style={styles.resumeBtnText}>View / Build Resume</Text>
+              <MaterialCommunityIcons name="magic-staff" size={16} color="#FFFFFF" style={{ marginLeft: 4 }} />
             </TouchableOpacity>
             <View style={styles.resumeBgIcon}>
               <MaterialCommunityIcons name="file-document" size={120} color={colors.primary} style={{ opacity: 0.05 }} />
@@ -671,12 +835,21 @@ const DashboardScreen = ({ navigation }) => {
             <View>
               <Text style={styles.interviewTitle}>Mock Interview</Text>
               <Text style={[styles.interviewDesc, { color: isDark ? '#C7D2FE' : '#C7D2FE' }]}>Practice with specialized AI for 'Cloud Architect' roles.</Text>
-
             </View>
+
+            <View style={styles.lockBadge}>
+              <MaterialIcons name="lock" size={10} color="#FFFFFF" />
+              <Text style={styles.lockBadgeText}>DEMO LOCK</Text>
+            </View>
+
+            <TouchableOpacity
+              onPress={() => Alert.alert('Premium Feature', 'This feature is locked in the free trial.')}
+              style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 100 }}
+            />
             <View style={[styles.practicingRow, { backgroundColor: 'rgba(255,255,255,0.1)' }]}>
               <View style={styles.practicingAvatars}>
-                <Image source={{ uri: 'https://i.pravatar.cc/100?u=1' }} style={[styles.miniAvatar, { borderColor: isDark ? colors.primary : '#4338CA' }]} />
-                <Image source={{ uri: 'https://i.pravatar.cc/100?u=2' }} style={[styles.miniAvatar, { marginLeft: -10, borderColor: isDark ? colors.primary : '#4338CA' }]} />
+                <Image source={{ uri: getAvatarUrl('1') }} style={[styles.miniAvatar, { borderColor: isDark ? colors.primary : '#4338CA' }]} />
+                <Image source={{ uri: getAvatarUrl('2') }} style={[styles.miniAvatar, { marginLeft: -10, borderColor: isDark ? colors.primary : '#4338CA' }]} />
                 <View style={[styles.countBadge, { backgroundColor: isDark ? colors.card : '#E0E7FF', borderColor: isDark ? colors.primary : '#4338CA' }]}><Text style={[styles.countText, { color: isDark ? colors.textPrimary : '#312E81' }]}>+12</Text></View>
               </View>
               <Text style={styles.practicingText}>Practicing now</Text>
@@ -871,7 +1044,7 @@ const DashboardScreen = ({ navigation }) => {
                         <Text style={[styles.timelineYear, { color: isDark && isCurrent ? '#FED7AA' : colors.textSecondary }]}>PHASE {step.n}</Text>
                         <Text style={[styles.timelineCardTitle, { color: isDark && isCurrent ? '#FFFFFF' : colors.textPrimary }]}>{step.title}</Text>
                         
-                        <Text style={{ fontSize: 12, color: isDark && isCurrent ? '#FFFFFF' : colors.textSecondary, marginTop: 4 }}>{step.desc}</Text>
+                        <Text style={{ fontSize: 12, color: isDark && isCurrent ? '#FFFFFF' : (isCurrent ? '#4B5563' : colors.textSecondary), marginTop: 4 }}>{step.desc}</Text>
                       </LinearGradient>
                     </View>
                   );
@@ -917,10 +1090,27 @@ const DashboardScreen = ({ navigation }) => {
                   onChangeText={setInterestsInput}
                 />
                 <TouchableOpacity 
-                  style={{ backgroundColor: colors.primary, paddingHorizontal: 16, paddingVertical: 12, borderRadius: 10 }}
-                  onPress={() => setActiveInterests(interestsInput)}
+                  style={{ backgroundColor: pathwayRetriesLeft > 0 ? colors.primary : colors.textMuted, paddingHorizontal: 16, paddingVertical: 12, borderRadius: 10, flexDirection: 'row', alignItems: 'center', gap: 6 }}
+                  disabled={pathwayRetriesLeft === 0}
+                  onPress={async () => {
+                    const lastRefined = await AsyncStorage.getItem('@pathway_last_refined');
+                    if (lastRefined) {
+                      const daysSince = (Date.now() - parseInt(lastRefined)) / (1000 * 60 * 60 * 24);
+                      if (daysSince < 1) {
+                        Alert.alert('Daily Limit Reached', 'You can only refine your pathway once a day to ensure optimal AI performance.');
+                        setPathwayRetriesLeft(0);
+                        return;
+                      }
+                    }
+                    await AsyncStorage.setItem('@pathway_last_refined', Date.now().toString());
+                    setPathwayRetriesLeft(0);
+                    setActiveInterests(interestsInput);
+                  }}
                 >
-                  <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14 }}>Refine</Text>
+                  {pathwayRetriesLeft === 0 && <MaterialIcons name="lock" size={14} color="#fff" />}
+                  <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14 }}>
+                    {pathwayRetriesLeft > 0 ? `Refine (${pathwayRetriesLeft} left)` : 'Locked'}
+                  </Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -938,10 +1128,10 @@ const DashboardScreen = ({ navigation }) => {
             </View>
             <TouchableOpacity
               style={[styles.viewAllBtn, { backgroundColor: isDark ? 'rgba(234,88,12,0.15)' : '#FFF7ED' }]}
-              onPress={() => navigation.navigate('CampusBitesMenu')}
+              onPress={() => Alert.alert('Premium Feature', 'This feature is locked in the free trial.')}
             >
               <Text style={[styles.viewAllText, { color: colors.primary }]}>View All</Text>
-              <MaterialIcons name="arrow-forward" size={14} color={colors.primary} />
+              <MaterialIcons name="lock" size={14} color={colors.primary} style={{ marginLeft: 4 }} />
             </TouchableOpacity>
           </View>
 
@@ -988,7 +1178,7 @@ const DashboardScreen = ({ navigation }) => {
               <TouchableOpacity
                 key={food.id}
                 style={[styles.menuCard, { backgroundColor: colors.card }]}
-                onPress={() => navigation.navigate('CampusBitesMenu')}
+                onPress={() => Alert.alert('Premium Feature', 'This feature is locked in the free trial.')}
                 activeOpacity={0.85}
               >
                 <Image source={{ uri: food.image }} style={styles.menuCardImage} />
@@ -1014,6 +1204,10 @@ const DashboardScreen = ({ navigation }) => {
                     </View>
                   </View>
                 </View>
+                <View style={styles.lockBadge}>
+                   <MaterialIcons name="lock" size={10} color="#FFFFFF" />
+                   <Text style={styles.lockBadgeText}>LOCKED</Text>
+                </View>
               </TouchableOpacity>
             ))}
 
@@ -1032,6 +1226,114 @@ const DashboardScreen = ({ navigation }) => {
               <MaterialIcons name="arrow-forward" size={18} color={isDark ? '#FB923C' : '#9A3412'} />
             </TouchableOpacity>
           </ScrollView>
+        </View>
+
+        {/* Raised Issues Section */}
+        <View style={styles.sectionContainer}>
+          <View style={styles.sectionHeaderRow}>
+            <View>
+              <Text style={[styles.moduleTitle, { color: colors.textSecondary }]}>My Support Tickets</Text>
+              <Text style={[styles.sectionSub, { color: colors.textSecondary }]}>Issues you have raised</Text>
+            </View>
+            <TouchableOpacity onPress={() => navigation.navigate('RaiseIssue')}>
+              <Text style={[styles.viewAllText, { color: '#EA580C' }]}>+ Raise New</Text>
+            </TouchableOpacity>
+          </View>
+
+          {isLoadingIssues ? (
+            <View style={{ padding: 20, alignItems: 'center' }}>
+              <Text style={{ color: colors.textSecondary }}>Loading tickets...</Text>
+            </View>
+          ) : raisedIssues.length === 0 ? (
+            <View style={[styles.noIssuesCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <MaterialCommunityIcons name="ticket-confirmation-outline" size={36} color={colors.textMuted} style={{ marginBottom: 8 }} />
+              <Text style={[styles.noIssuesText, { color: colors.textSecondary }]}>No issues raised yet</Text>
+            </View>
+          ) : (
+            <View style={styles.issuesList}>
+              {raisedIssues.map((issue) => {
+                const statusLower = (issue.status || '').toLowerCase().replace('-', '_');
+                let statusColor = '#9CA3AF'; // gray
+                if (statusLower === 'pending') statusColor = '#3B82F6'; // blue
+                else if (statusLower === 'open') statusColor = '#EF4444'; // red
+                else if (statusLower === 'in_progress') statusColor = '#F59E0B'; // orange
+                else if (statusLower === 'resolved') statusColor = '#10B981'; // green
+
+                let categoryIcon = 'alert-circle-outline';
+                if (issue.category === 'academic') categoryIcon = 'school-outline';
+                else if (issue.category === 'technical') categoryIcon = 'laptop';
+                else if (issue.category === 'fees') categoryIcon = 'cash-outline';
+                else if (issue.category === 'hostel') categoryIcon = 'bed-outline';
+                else if (issue.category === 'transport') categoryIcon = 'bus-outline';
+                else if (issue.category === 'admin') categoryIcon = 'office-building-outline';
+                else if (issue.category === 'safety') categoryIcon = 'shield-check-outline';
+
+                return (
+                  <View key={issue.id} style={[styles.issueItemCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                    <View style={styles.issueItemHeader}>
+                      <View style={[styles.issueIconCircle, { backgroundColor: isDark ? 'rgba(234,88,12,0.1)' : '#FFF7ED' }]}>
+                        <MaterialCommunityIcons name={categoryIcon} size={20} color="#EA580C" />
+                      </View>
+                      <View style={{ flex: 1, marginLeft: 12 }}>
+                        <Text style={[styles.issueSubject, { color: colors.textPrimary }]} numberOfLines={1}>
+                          {issue.subject}
+                        </Text>
+                        <Text style={[styles.issueCategoryText, { color: colors.textMuted }]}>
+                          Category: {issue.category.toUpperCase()} • Priority: {issue.priority.toUpperCase()}
+                        </Text>
+                      </View>
+                      <View style={[styles.statusBadge, { backgroundColor: statusColor + '20' }]}>
+                        <Text style={[styles.statusBadgeText, { color: statusColor }]}>
+                          {issue.status.replace(/[-_]/g, ' ').toUpperCase()}
+                        </Text>
+                      </View>
+                    </View>
+                    {(() => {
+                      const extractAttachmentUrl = (desc) => {
+                        if (!desc) return null;
+                        const match = desc.match(/Attachment:\s*(https?:\/\/\S+)/i);
+                        return match ? match[1] : null;
+                      };
+                      const cleanDescription = (desc) => {
+                        if (!desc) return '';
+                        return desc.replace(/Attachment:\s*https?:\/\/\S+/gi, '').trim();
+                      };
+                      const attachmentUrl = extractAttachmentUrl(issue.description);
+                      const displayDesc = cleanDescription(issue.description);
+                      return (
+                        <>
+                          <Text style={[styles.issueDesc, { color: colors.textSecondary }]} numberOfLines={2}>
+                            {displayDesc}
+                          </Text>
+                          {attachmentUrl && (
+                            <View style={{ marginTop: 8, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                              <Image 
+                                source={{ uri: attachmentUrl }} 
+                                style={{ width: 80, height: 50, borderRadius: 8, borderWidth: 1, borderColor: colors.border }} 
+                                resizeMode="cover"
+                              />
+                              <View>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                                  <MaterialCommunityIcons name="paperclip" size={14} color={colors.primary} />
+                                  <Text style={{ fontSize: 12, fontWeight: '700', color: colors.primary }}>Image Attachment</Text>
+                                </View>
+                                <Text style={{ fontSize: 10, color: colors.textMuted }}>Uploaded to Cloudinary</Text>
+                              </View>
+                            </View>
+                          )}
+                        </>
+                      );
+                    })()}
+                    <View style={styles.issueFooter}>
+                      <Text style={[styles.issueTimeText, { color: colors.textMuted }]}>
+                        {new Date(issue.created_at).toLocaleDateString()} {new Date(issue.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </Text>
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
+          )}
         </View>
 
         <View style={{ height: 100 }} />
@@ -1353,6 +1655,13 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginVertical: 24,
   },
+  moodBtn: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   moodIcon: {
     width: 56,
     height: 56,
@@ -1504,8 +1813,25 @@ const styles = StyleSheet.create({
   interviewDesc: {
     fontSize: 14,
     color: '#C7D2FE',
-    marginTop: 8,
     lineHeight: 22,
+  },
+  lockBadge: {
+    position: 'absolute',
+    top: 16,
+    right: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(239, 68, 68, 0.95)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    zIndex: 10,
+  },
+  lockBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 9,
+    fontWeight: '900',
   },
   practicingRow: {
     flexDirection: 'row',
@@ -1938,8 +2264,6 @@ const styles = StyleSheet.create({
   ringStack: {
     width: 64,
     height: 64,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   ringBase: {
     position: 'absolute',
@@ -2228,6 +2552,129 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '900',
     letterSpacing: 0.5,
+  },
+  noIssuesCard: {
+    padding: 32,
+    borderRadius: 24,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 12,
+  },
+  noIssuesText: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginTop: 8,
+  },
+  issuesList: {
+    gap: 16,
+    marginTop: 12,
+  },
+  issueItemCard: {
+    padding: 20,
+    borderRadius: 24,
+    borderWidth: 1,
+  },
+  issueItemHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  issueIconCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  issueSubject: {
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  issueCategoryText: {
+    fontSize: 11,
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  statusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  statusBadgeText: {
+    fontSize: 10,
+    fontWeight: '900',
+  },
+  issueDesc: {
+    fontSize: 13,
+    lineHeight: 18,
+    marginBottom: 12,
+  },
+  issueFooter: {
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(128,128,128,0.1)',
+    paddingTop: 8,
+  },
+  issueTimeText: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    padding: 24,
+    minHeight: 250,
+  },
+  modalTitle: {
+    fontSize: 22,
+    fontWeight: '900',
+    color: '#1F2937',
+    marginBottom: 8,
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginBottom: 20,
+    lineHeight: 20,
+  },
+  modalInput: {
+    backgroundColor: '#F3F4F6',
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    fontSize: 15,
+    fontWeight: '500',
+    color: '#1F2937',
+    marginBottom: 24,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  modalBtnCancel: {
+    flex: 1,
+    backgroundColor: '#F3F4F6',
+    paddingVertical: 14,
+    borderRadius: 16,
+    alignItems: 'center',
+  },
+  modalBtnTextCancel: {
+    color: '#4B5563',
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  modalBtnSubmit: {
+    flex: 2,
+    backgroundColor: '#EA580C',
+    paddingVertical: 14,
+    borderRadius: 16,
+    alignItems: 'center',
+  },
+  modalBtnTextSubmit: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '800',
   },
 });
 

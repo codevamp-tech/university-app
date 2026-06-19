@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -8,12 +8,16 @@ import {
   Image,
   Dimensions,
   Platform,
+  Alert,
+  Modal
 } from 'react-native';
 import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../../hooks/useTheme';
 import { APP_CONFIG } from '../../../config/appConfig';
+import { useUser } from '../../../context/UserContext';
+import { listMoodEntriesAPI, listFocusSessionsAPI } from '../../../data/apiService';
 
 
 const { width } = Dimensions.get('window');
@@ -21,6 +25,88 @@ const { width } = Dimensions.get('window');
 const MentallyMainScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
+  const { user } = useUser();
+
+  const [moodValues, setMoodValues] = useState([0, 0, 0, 0, 0, 0, 0]);
+  const [dayLabels, setDayLabels] = useState(['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']);
+
+  // Report & Progress Modal States
+  const [totalSessions, setTotalSessions] = useState(0);
+  const [focusStats, setFocusStats] = useState({ count: 0, minutes: 0 });
+  const [moodLogsCount, setMoodLogsCount] = useState(0);
+  const [avgMoodVal, setAvgMoodVal] = useState(0);
+  const [showProgressModal, setShowProgressModal] = useState(false);
+
+  const loadMoodData = useCallback(async () => {
+    if (!user?.accessToken) return;
+    try {
+      const logs = await listMoodEntriesAPI(user.accessToken);
+      
+      const labels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      const last7 = [];
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        last7.push({
+          dateStr: d.toDateString(),
+          label: labels[d.getDay()],
+        });
+      }
+      
+      const heights = last7.map((day) => {
+        const match = logs.find(log => new Date(log.created_at).toDateString() === day.dateStr);
+        if (match) {
+          return match.intensity * 20; // 1-5 scale to 20-100%
+        }
+        return 0; // Dynamic! 0 height for unlogged days
+      });
+      
+      setMoodValues(heights);
+      setDayLabels(last7.map(d => d.label));
+    } catch (e) {
+      console.warn('Failed to load mood data:', e);
+    }
+  }, [user?.accessToken]);
+
+  const loadProgressStats = useCallback(async () => {
+    if (!user?.accessToken) return;
+    try {
+      // 1. Mood journal entries
+      const moodLogs = await listMoodEntriesAPI(user.accessToken);
+      setMoodLogsCount(moodLogs.length);
+
+      let totalMoodVal = 0;
+      moodLogs.forEach(log => {
+        totalMoodVal += (log.intensity * 20); // Scale to 100
+      });
+      const avgMood = moodLogs.length > 0 ? Math.round(totalMoodVal / moodLogs.length) : 0;
+      setAvgMoodVal(avgMood);
+
+      // 2. Focus sessions
+      const focusLogs = await listFocusSessionsAPI(user.accessToken);
+      const totalFocusMins = focusLogs.reduce((sum, s) => sum + (s.duration_minutes || 0), 0);
+      
+      setFocusStats({
+        count: focusLogs.length,
+        minutes: totalFocusMins
+      });
+
+      // Total sessions completed
+      setTotalSessions(moodLogs.length + focusLogs.length);
+    } catch (e) {
+      console.warn('[MentallyMain] Failed to load progress stats:', e);
+    }
+  }, [user?.accessToken]);
+
+  useEffect(() => {
+    loadMoodData();
+    loadProgressStats();
+    const unsubscribe = navigation.addListener('focus', () => {
+      loadMoodData();
+      loadProgressStats();
+    });
+    return unsubscribe;
+  }, [navigation, loadMoodData, loadProgressStats]);
 
 
   const mindfulnessBreaks = [
@@ -155,18 +241,16 @@ const MentallyMainScreen = ({ navigation }) => {
 
             </View>
             <View style={styles.chartContainer}>
-              {[60, 40, 85, 55, 30, 70, 90].map((height, index) => {
-                const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+              {moodValues.map((height, index) => {
                 let bgColor = isDark ? 'rgba(141, 237, 236, 0.2)' : '#8DEDEC66'; // Default tertiary
-                if (index === 2 || index === 6) bgColor = isDark ? 'rgba(254, 152, 50, 0.3)' : '#FE98324D'; // Orange for peaks
-                if (index === 4) bgColor = isDark ? 'rgba(249, 86, 48, 0.2)' : '#F9563033'; // Error color for low
+                if (height >= 85) bgColor = isDark ? 'rgba(254, 152, 50, 0.3)' : '#FE98324D'; // Orange for peaks
+                if (height < 50) bgColor = isDark ? 'rgba(249, 86, 48, 0.2)' : '#F9563033'; // Low mood color
                 return (
                   <View key={index} style={styles.chartBarCol}>
                     <View style={[styles.chartBar, { height: `${height}%`, backgroundColor: bgColor }]} />
-                    <Text style={[styles.chartDay, { color: colors.textSecondary }]}>{days[index]}</Text>
+                    <Text style={[styles.chartDay, { color: colors.textSecondary }]}>{dayLabels[index]}</Text>
                   </View>
                 );
-
               })}
             </View>
           </View>
@@ -181,13 +265,29 @@ const MentallyMainScreen = ({ navigation }) => {
               <TouchableOpacity
                 key={item.id}
                 style={styles.breakCard}
-                onPress={() => navigation.navigate(item.screen, item.params)}
+                onPress={() => {
+                  if (item.id === 'counsellor') {
+                    Alert.alert(
+                      '🔒 Trial Account Limit',
+                      'Therapist booking is not available in trial accounts.',
+                      [{ text: 'OK' }]
+                    );
+                    return;
+                  }
+                  navigation.navigate(item.screen, item.params);
+                }}
               >
                 <Image source={{ uri: item.image }} style={styles.breakImage} />
                 <LinearGradient
                   colors={['transparent', 'rgba(0,0,0,0.8)']}
                   style={styles.breakGradient}
                 />
+                {item.id === 'counsellor' && (
+                  <View style={styles.lockBadge}>
+                    <MaterialCommunityIcons name="lock" size={10} color="#FFFFFF" />
+                    <Text style={styles.lockBadgeText}>DEMO LOCK</Text>
+                  </View>
+                )}
                 <View style={styles.breakContent}>
                   <Text style={[styles.breakTag, { color: item.color }]}>{item.tag}</Text>
                   <Text style={styles.breakTitle}>{item.title}</Text>
@@ -203,12 +303,15 @@ const MentallyMainScreen = ({ navigation }) => {
             <View style={styles.progressIconBg}>
               <MaterialCommunityIcons name="spa" size={32} color={isDark ? '#2DD4BF' : '#006666'} />
             </View>
-            <Text style={[styles.progressTitle, { color: colors.textPrimary }]}>You're doing great, Aryan</Text>
+            <Text style={[styles.progressTitle, { color: colors.textPrimary }]}>You're doing great, {user?.name || 'Student'}</Text>
             <Text style={[styles.progressDesc, { color: colors.textSecondary }]}>
-              You have completed 12 mindfulness sessions this week. Your focus is improving by 14%.
+              You have completed {totalSessions} mindfulness breaks so far. Keep prioritizing your headspace!
             </Text>
 
-            <TouchableOpacity style={[styles.viewProgressBtn, { backgroundColor: colors.primary, shadowColor: colors.primary }]}>
+            <TouchableOpacity 
+              style={[styles.viewProgressBtn, { backgroundColor: colors.primary, shadowColor: colors.primary }]}
+              onPress={() => setShowProgressModal(true)}
+            >
               <Text style={styles.viewProgressText}>View My Progress</Text>
             </TouchableOpacity>
 
@@ -217,6 +320,66 @@ const MentallyMainScreen = ({ navigation }) => {
 
         <View style={{ height: 100 }} />
       </ScrollView>
+
+      {/* Progress Report Modal */}
+      <Modal
+        visible={showProgressModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowProgressModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
+            <View style={styles.modalHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <MaterialCommunityIcons name="spa" size={24} color={colors.primary} />
+                <Text style={[styles.modalHeaderTitle, { color: colors.textPrimary }]}>Student Wellness Report</Text>
+              </View>
+              <TouchableOpacity onPress={() => setShowProgressModal(false)} style={styles.closeModalBtn}>
+                <MaterialIcons name="close" size={24} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView contentContainerStyle={styles.modalScroll} showsVerticalScrollIndicator={false}>
+              <Text style={[styles.modalGreeting, { color: colors.textPrimary }]}>Hi, {user?.name || 'Student'}</Text>
+              <Text style={[styles.modalSubtitle, { color: colors.textSecondary }]}>Here is your live mindfulness & focus activity report:</Text>
+
+              {/* Stats Grid */}
+              <View style={styles.modalStatsGrid}>
+                <View style={[styles.statBox, { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#F9FAFB' }]}>
+                  <MaterialCommunityIcons name="timer-outline" size={24} color="#8B4B00" />
+                  <Text style={[styles.statNum, { color: colors.textPrimary }]}>{focusStats.minutes} mins</Text>
+                  <Text style={[styles.statLbl, { color: colors.textSecondary }]}>Focus Time</Text>
+                </View>
+                <View style={[styles.statBox, { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#F9FAFB' }]}>
+                  <MaterialCommunityIcons name="brain" size={24} color="#006666" />
+                  <Text style={[styles.statNum, { color: colors.textPrimary }]}>{focusStats.count}</Text>
+                  <Text style={[styles.statLbl, { color: colors.textSecondary }]}>Focus Sessions</Text>
+                </View>
+                <View style={[styles.statBox, { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#F9FAFB' }]}>
+                  <MaterialCommunityIcons name="notebook-outline" size={24} color="#4953AC" />
+                  <Text style={[styles.statNum, { color: colors.textPrimary }]}>{moodLogsCount}</Text>
+                  <Text style={[styles.statLbl, { color: colors.textSecondary }]}>Mood Logs</Text>
+                </View>
+                <View style={[styles.statBox, { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#F9FAFB' }]}>
+                  <MaterialCommunityIcons name="heart-outline" size={24} color="#B02500" />
+                  <Text style={[styles.statNum, { color: colors.textPrimary }]}>{avgMoodVal}%</Text>
+                  <Text style={[styles.statLbl, { color: colors.textSecondary }]}>Average Vibe</Text>
+                </View>
+              </View>
+
+              <View style={[styles.insightBox, { backgroundColor: isDark ? 'rgba(0,102,102,0.1)' : '#F0FDF4', borderColor: colors.border, borderWidth: 1 }]}>
+                <Text style={[styles.insightTitle, { color: colors.primary }]}>Wellness Insight</Text>
+                <Text style={[styles.insightDesc, { color: colors.textSecondary }]}>
+                  {totalSessions > 0 
+                    ? "Great progress! Regularly using breathing guides and writing in your journal helps reduce academic pressure, enhancing recall and memory retention by 15-20%."
+                    : "You haven't completed any focus sessions or mood logs today. Navigate to the Daily Mood Journal or start a Deep Breathing session to build your wellness consistency!"}
+                </Text>
+              </View>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -472,6 +635,103 @@ const styles = StyleSheet.create({
   viewProgressText: {
     color: '#FFFFFF',
     fontWeight: '700',
+  },
+  lockBadge: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(239, 68, 68, 0.95)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    zIndex: 10,
+  },
+  lockBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 9,
+    fontWeight: '900',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    paddingHorizontal: 24,
+    paddingTop: 24,
+    paddingBottom: 40,
+    maxHeight: '85%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  modalHeaderTitle: {
+    fontSize: 18,
+    fontWeight: '900',
+    letterSpacing: -0.5,
+  },
+  closeModalBtn: {
+    padding: 4,
+  },
+  modalScroll: {
+    paddingBottom: 24,
+  },
+  modalGreeting: {
+    fontSize: 24,
+    fontWeight: '900',
+    marginBottom: 4,
+    letterSpacing: -0.5,
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 24,
+  },
+  modalStatsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    marginBottom: 20,
+  },
+  statBox: {
+    width: '48%',
+    padding: 16,
+    borderRadius: 16,
+    marginBottom: 16,
+    gap: 6,
+  },
+  statNum: {
+    fontSize: 18,
+    fontWeight: '900',
+  },
+  statLbl: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  insightBox: {
+    padding: 20,
+    borderRadius: 20,
+    gap: 8,
+    marginTop: 10,
+  },
+  insightTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
+  insightDesc: {
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: '600',
   },
 });
 

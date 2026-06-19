@@ -12,28 +12,7 @@ import { getStartups, createStartup, submitPitch, triggerCofounderMatch } from '
 
 const { width } = Dimensions.get('window');
 
-const FALLBACK_STARTUPS = [
-  {
-    id: 'mock-1',
-    name: 'AgriTech Campus',
-    tagline: 'Smart IoT solutions for sugarcane farmers',
-    description: 'Smart IoT solutions for local sugarcane farmers to optimize irrigation.',
-    category: 'Agriculture',
-    stage: 'SERIES A SEED',
-    milestone_pct: 85,
-    looking_for: ['Co-founder', 'Investors']
-  },
-  {
-    id: 'mock-2',
-    name: 'EduSolve',
-    tagline: 'AI-driven vernacular language learning',
-    description: 'AI-driven vernacular language learning specifically for Rural UP students.',
-    category: 'Education',
-    stage: 'PRE-REVENUE',
-    milestone_pct: 40,
-    looking_for: ['React Native Developer', 'Marketing Lead']
-  }
-];
+const FALLBACK_STARTUPS = [];
 
 const getStartupIconInfo = (category, isDark) => {
   const cat = (category || '').toLowerCase();
@@ -89,6 +68,10 @@ const VentureScreen = ({ navigation }) => {
   const [vCategory, setVCategory] = useState(user?.category || 'Tech');
   const [vLookingFor, setVLookingFor] = useState('Developer, Marketing');
 
+  // Student's own posted startups states
+  const [myStartups, setMyStartups] = useState([]);
+  const [myLoading, setMyLoading] = useState(false);
+
   const fetchAllStartups = useCallback(async () => {
     setLoading(true);
     try {
@@ -106,11 +89,32 @@ const VentureScreen = ({ navigation }) => {
     }
   }, [accessToken]);
 
+  const fetchMyStartups = useCallback(async () => {
+    if (!accessToken) return;
+    setMyLoading(true);
+    try {
+      const data = await getStartups(accessToken, 0, 50, true);
+      if (data) {
+        setMyStartups(data);
+      }
+    } catch (err) {
+      console.warn('[VentureScreen] Failed to fetch my startups:', err.message);
+    } finally {
+      setMyLoading(false);
+    }
+  }, [accessToken]);
+
   useEffect(() => {
     fetchAllStartups();
-  }, [fetchAllStartups]);
+    fetchMyStartups();
+    const unsubscribe = navigation.addListener('focus', () => {
+      fetchAllStartups();
+      fetchMyStartups();
+    });
+    return unsubscribe;
+  }, [navigation, fetchAllStartups, fetchMyStartups]);
 
-  const handleCoFounderMatch = async () => {
+  const handleCoFounderMatch = useCallback(async () => {
     if (!accessToken) {
       Alert.alert('Login Required', 'You must be logged in to match with co-founders.');
       return;
@@ -154,12 +158,14 @@ const VentureScreen = ({ navigation }) => {
       const newVenture = await createStartup(accessToken, payload);
       
       // 2. Submit the pitch deck
-      if (newVenture?.id) {
+      if (newVenture && newVenture.id) {
         const deckUrl = `https://university.edu/decks/${encodeURIComponent(vName.trim().replace(/\s+/g, '_'))}_deck.pdf`;
         await submitPitch(accessToken, {
           venture_id: newVenture.id,
           deck_url: deckUrl
         });
+      } else {
+        throw new Error("Venture was registered but response was invalid.");
       }
 
       Alert.alert('Success', 'Your venture has been registered and pitch deck submitted successfully!');
@@ -170,6 +176,7 @@ const VentureScreen = ({ navigation }) => {
       
       // Refresh list
       fetchAllStartups();
+      fetchMyStartups();
     } catch (err) {
       Alert.alert('Error', err.message || 'Failed to submit pitch.');
     } finally {
@@ -178,9 +185,9 @@ const VentureScreen = ({ navigation }) => {
   };
 
   const isFemaleAvatar = user?.gender === 'F' || user?.gender === 'Female';
-  const avatarUrl = isFemaleAvatar
+  const avatarUrl = user?.avatar_url || (isFemaleAvatar
     ? 'https://images.pexels.com/photos/733872/pexels-photo-733872.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=500'
-    : 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=500';
+    : 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=500');
 
   return (
     <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
@@ -276,6 +283,13 @@ const VentureScreen = ({ navigation }) => {
           <View style={{ padding: 40, alignItems: 'center' }}>
             <ActivityIndicator size="large" color={colors.primary} />
           </View>
+        ) : startups.length === 0 ? (
+          <View style={[styles.emptyCard, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
+            <MaterialIcons name="lightbulb-outline" size={40} color={colors.textSecondary} style={{ marginBottom: 12 }} />
+            <Text style={[styles.emptyCardText, { color: colors.textSecondary }]}>
+              No startups active. There are currently no startups registered on the launchpad.
+            </Text>
+          </View>
         ) : (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.startupScroll} contentContainerStyle={styles.startupContainer}>
             {startups.map((startup) => {
@@ -288,7 +302,7 @@ const VentureScreen = ({ navigation }) => {
                   </View>
                   <View style={[styles.startupLabel, { backgroundColor: iconInfo.tagBg }]}>
                     <Text style={[styles.startupLabelText, { color: iconInfo.tagColor }]}>
-                      {startup.stage || 'PRE-REVENUE'}
+                      {(startup.stage || 'PRE-REVENUE').replace(/[-_]/g, ' ').toUpperCase()}
                     </Text>
                   </View>
                   <Text style={[styles.startupName, { color: colors.textPrimary }]}>{startup.name}</Text>
@@ -305,6 +319,67 @@ const VentureScreen = ({ navigation }) => {
               );
             })}
           </ScrollView>
+        )}
+
+        {/* My Posted Ideas */}
+        <View style={styles.sectionHeader}>
+          <View style={styles.sectionTitleRow}>
+            <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>My Posted Ideas</Text>
+            <MaterialCommunityIcons name="lightbulb-on-outline" size={22} color={colors.primary} />
+          </View>
+        </View>
+
+        {myLoading ? (
+          <View style={{ padding: 20, alignItems: 'center' }}>
+            <ActivityIndicator size="small" color={colors.primary} />
+          </View>
+        ) : myStartups.length === 0 ? (
+          <View style={[styles.myEmptyCard, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
+            <MaterialCommunityIcons name="lightbulb-outline" size={32} color={colors.textMuted} style={{ marginBottom: 8 }} />
+            <Text style={[styles.emptyCardText, { color: colors.textSecondary }]}>
+              You haven't posted any venture ideas yet.
+            </Text>
+          </View>
+        ) : (
+          <View style={styles.myStartupsList}>
+            {myStartups.map((startup) => {
+              const iconInfo = getStartupIconInfo(startup.category, isDark);
+              const milestone = startup.milestone_pct !== undefined ? startup.milestone_pct : 0;
+              return (
+                <View key={startup.id} style={[styles.myStartupItemCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                  <View style={styles.myStartupHeader}>
+                    <View style={[styles.myStartupIconCircle, { backgroundColor: iconInfo.bgColor }]}>
+                      <MaterialIcons name={iconInfo.name} size={20} color={iconInfo.color} />
+                    </View>
+                    <View style={{ flex: 1, marginLeft: 12 }}>
+                      <Text style={[styles.myStartupNameText, { color: colors.textPrimary }]}>{startup.name}</Text>
+                      <Text style={[styles.myStartupCategoryText, { color: colors.textMuted }]}>
+                        {(startup.category || '').toUpperCase()} • {(startup.stage || 'IDEA').replace(/[-_]/g, ' ').toUpperCase()}
+                      </Text>
+                    </View>
+                    <View style={[styles.myStatusBadge, { backgroundColor: iconInfo.tagBg }]}>
+                      <Text style={[styles.myStatusBadgeText, { color: iconInfo.tagColor }]}>
+                        {(startup.stage || 'IDEA').replace(/[-_]/g, ' ').toUpperCase()}
+                      </Text>
+                    </View>
+                  </View>
+                  <Text style={[styles.myStartupDescText, { color: colors.textSecondary }]}>
+                    {startup.tagline || startup.description}
+                  </Text>
+                  
+                  <View style={styles.myProgressSection}>
+                    <View style={styles.myProgressHeader}>
+                      <Text style={[styles.myProgressLabel, { color: colors.textMuted }]}>Milestone Progress</Text>
+                      <Text style={[styles.myProgressVal, { color: colors.primary }]}>{milestone}%</Text>
+                    </View>
+                    <View style={[styles.myProgressBarBg, { backgroundColor: isDark ? '#1F2937' : '#F3F4F6' }]}>
+                      <View style={[styles.myProgressBarFill, { width: `${milestone}%`, backgroundColor: colors.primary }]} />
+                    </View>
+                  </View>
+                </View>
+              );
+            })}
+          </View>
         )}
 
         {/* Pitch Form Card */}
@@ -726,6 +801,100 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.4,
     shadowRadius: 15,
     elevation: 12,
+  },
+  emptyCard: {
+    marginHorizontal: 16,
+    padding: 24,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
+  },
+  emptyCardText: {
+    fontSize: 14,
+    fontWeight: '600',
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  myEmptyCard: {
+    marginHorizontal: 16,
+    padding: 24,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
+  },
+  myStartupsList: {
+    gap: 16,
+    paddingHorizontal: 16,
+    marginBottom: 20,
+  },
+  myStartupItemCard: {
+    padding: 20,
+    borderRadius: 24,
+    borderWidth: 1,
+  },
+  myStartupHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  myStartupIconCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  myStartupNameText: {
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  myStartupCategoryText: {
+    fontSize: 11,
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  myStatusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  myStatusBadgeText: {
+    fontSize: 10,
+    fontWeight: '900',
+  },
+  myStartupDescText: {
+    fontSize: 13,
+    lineHeight: 18,
+    marginBottom: 16,
+  },
+  myProgressSection: {
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(128,128,128,0.1)',
+    paddingTop: 12,
+  },
+  myProgressHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 6,
+  },
+  myProgressLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  myProgressVal: {
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  myProgressBarBg: {
+    height: 6,
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  myProgressBarFill: {
+    height: '100%',
+    borderRadius: 3,
   },
 });
 

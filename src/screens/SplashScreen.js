@@ -3,8 +3,10 @@ import { View, Text, StyleSheet, Animated, Easing } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../constants/colors';
 import { APP_CONFIG } from '../config/appConfig';
+import { useUser } from '../context/UserContext';
 
 const SplashScreen = ({ navigation }) => {
+  const { user } = useUser();
   const logoAnim = useRef(new Animated.Value(0)).current;
   const textAnim = useRef(new Animated.Value(0)).current;
   const progressAnim = useRef(new Animated.Value(0)).current;
@@ -31,11 +33,19 @@ const SplashScreen = ({ navigation }) => {
     }).start();
 
     const timer = setTimeout(() => {
-      navigation.replace('Onboarding1');
+      if (user) {
+        if (user.role === 'teacher') {
+          navigation.replace('TeacherMain');
+        } else {
+          navigation.replace('StudentMain');
+        }
+      } else {
+        navigation.replace('Onboarding1');
+      }
     }, 2800);
 
     return () => clearTimeout(timer);
-  }, []);
+  }, [user, navigation]);
 
   const progressWidth = progressAnim.interpolate({
     inputRange: [0, 1],
@@ -73,7 +83,7 @@ const SplashScreen = ({ navigation }) => {
           <Text style={styles.appNameAccent}>UNIVERSITY</Text>
         </Text>
 
-        <Text style={styles.tagline}>UNIVERSITY PORTAL</Text>
+        <Text style={styles.tagline}>UNICAMPUS</Text>
       </Animated.View>
 
       <View style={styles.progressContainer}>

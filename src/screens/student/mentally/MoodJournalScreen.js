@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -8,46 +8,67 @@ import {
   TextInput,
   Image,
   Dimensions,
+  Alert
 } from 'react-native';
 import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../../hooks/useTheme';
 import { APP_CONFIG } from '../../../config/appConfig';
-
+import { useUser } from '../../../context/UserContext';
+import { listMoodEntriesAPI, createMoodEntryAPI } from '../../../data/apiService';
 
 const { width } = Dimensions.get('window');
+
+const defaultLogs = [
+  {
+    id: 'default-1',
+    title: 'Campus Evening Walk',
+    emoji: '🌿',
+    date: 'Yesterday, 9:30 PM',
+    desc: 'The sunset over the main block was stunning. Feeling a bit relieved after the Python test results came in...',
+    bgColor: 'rgba(0, 102, 102, 0.1)',
+    timestamp: Date.now() - 24 * 60 * 60 * 1000,
+    value: 80,
+  },
+  {
+    id: 'default-2',
+    title: 'Project Milestone',
+    emoji: '📚',
+    date: 'Oct 24, 11:15 AM',
+    desc: 'Finally cracked the logic for the Agora bento grid layout! Feeling very productive and energized for the rest of the day.',
+    bgColor: 'rgba(73, 83, 172, 0.1)',
+    timestamp: Date.now() - 3 * 24 * 60 * 60 * 1000,
+    value: 95,
+  },
+];
 
 const MoodJournalScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
-  const [activeMood, setActiveMood] = React.useState('Inspired');
+  const { user } = useUser();
+  const [activeMood, setActiveMood] = useState('Inspired');
+  const [journalText, setJournalText] = useState('');
+  const [logs, setLogs] = useState([]);
 
+  useEffect(() => {
+    const loadLogs = async () => {
+      if (!user?.accessToken) return;
+      try {
+        const data = await listMoodEntriesAPI(user.accessToken);
+        setLogs(data);
+      } catch (e) {
+        console.warn('Failed to load mood logs:', e);
+      }
+    };
+    loadLogs();
+  }, [user?.accessToken]);
 
   const moods = [
     { label: 'Calm', emoji: '😌', color: '#006666' },
     { label: 'Inspired', emoji: '✨', color: '#8B4B00' },
     { label: 'Tired', emoji: '😴', color: '#4953AC' },
     { label: 'Pensive', emoji: '🤔', color: '#595C5D' },
-  ];
-
-  const recentLogs = [
-    {
-      id: 1,
-      title: 'Campus Evening Walk',
-      emoji: '🌿',
-      date: 'Yesterday, 9:30 PM',
-      desc: 'The sunset over the main block was stunning. Feeling a bit relieved after the Python test results came in...',
-      bgColor: 'rgba(0, 102, 102, 0.1)',
-    },
-    {
-      id: 2,
-      title: 'Project Milestone',
-      emoji: '📚',
-      date: 'Oct 24, 11:15 AM',
-      desc: 'Finally cracked the logic for the Agora bento grid layout! Feeling very productive and energized for the rest of the day.',
-      bgColor: 'rgba(73, 83, 172, 0.1)',
-    },
   ];
 
   return (
@@ -137,21 +158,64 @@ const MoodJournalScreen = ({ navigation }) => {
             placeholderTextColor={colors.textMuted}
             multiline
             textAlignVertical="top"
+            value={journalText}
+            onChangeText={setJournalText}
           />
           <View style={styles.inputFooter}>
             <View style={styles.attachmentIcons}>
-              <TouchableOpacity style={[styles.attachBtn, { backgroundColor: isDark ? colors.background : '#F5F6F7' }]}>
+              <TouchableOpacity 
+                style={[styles.attachBtn, { backgroundColor: isDark ? colors.background : '#F5F6F7' }]}
+                onPress={() => Alert.alert('Premium feature', 'Unlock image attachments in mood journal.')}
+              >
                 <MaterialIcons name="image" size={20} color={isDark ? '#818CF8' : '#4953AC'} />
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.attachBtn, { backgroundColor: isDark ? colors.background : '#F5F6F7' }]}>
+              <TouchableOpacity 
+                style={[styles.attachBtn, { backgroundColor: isDark ? colors.background : '#F5F6F7' }]}
+                onPress={() => Alert.alert('Premium feature', 'Unlock voice logs in mood journal.')}
+              >
                 <MaterialIcons name="mic" size={20} color={isDark ? '#818CF8' : '#4953AC'} />
               </TouchableOpacity>
             </View>
             <TouchableOpacity
               style={[styles.logBtn, { backgroundColor: colors.primary, shadowColor: colors.primary }]}
-              onPress={() => {
-                alert('Journal entry saved successfully!');
-                navigation.goBack();
+              onPress={async () => {
+                if (!journalText.trim()) {
+                  Alert.alert('Empty Entry', 'Please write some thoughts before saving.');
+                  return;
+                }
+                
+                const moodEmojis = {
+                  Calm: '😌',
+                  Inspired: '✨',
+                  Tired: '😴',
+                  Pensive: '🤔',
+                };
+                const moodBgs = {
+                  Calm: 'rgba(0, 102, 102, 0.1)',
+                  Inspired: 'rgba(139, 75, 0, 0.1)',
+                  Tired: 'rgba(73, 83, 172, 0.1)',
+                  Pensive: 'rgba(89, 92, 93, 0.1)',
+                };
+                const moodValues = {
+                  Calm: 4, // out of 5
+                  Inspired: 5,
+                  Tired: 2,
+                  Pensive: 3,
+                };
+                
+                try {
+                  const newEntry = await createMoodEntryAPI(user.accessToken, {
+                    mood: activeMood,
+                    intensity: moodValues[activeMood] || 3,
+                    notes: journalText,
+                  });
+                  setLogs([newEntry, ...logs]);
+                  Alert.alert('Journal Logged! 📝', 'Your mood has been logged successfully.');
+                  setJournalText('');
+                  navigation.goBack();
+                } catch (e) {
+                  Alert.alert('Error', 'Failed to save mood entry.');
+                }
               }}
             >
               <Text style={styles.logBtnText}>Log Entry</Text>
@@ -164,47 +228,55 @@ const MoodJournalScreen = ({ navigation }) => {
         <View style={styles.logsSection}>
           <View style={styles.logsHeader}>
             <Text style={[styles.logsTitle, { color: colors.textPrimary }]}>Recent Logs</Text>
-            <TouchableOpacity><Text style={[styles.viewAllBtn, { color: colors.primary }]}>View All</Text></TouchableOpacity>
+            <TouchableOpacity onPress={() => Alert.alert('Premium feature', 'Unlock all filters.')}>
+              <Text style={[styles.viewAllBtn, { color: colors.primary }]}>View All</Text>
+            </TouchableOpacity>
           </View>
 
           <View style={styles.logsList}>
-            {/* Log 1 */}
-            <TouchableOpacity style={[styles.logCard, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
-              <View style={[styles.logEmojiBg, { backgroundColor: isDark ? 'rgba(0, 102, 102, 0.2)' : '#E0F2F1' }]}>
-                <MaterialCommunityIcons name="leaf" size={28} color={isDark ? '#2DD4BF' : '#006666'} />
-              </View>
-
-              <View style={styles.logInfo}>
-                <View style={styles.logHeaderRow}>
-                  <Text style={[styles.logDate, { color: colors.textMuted }]}>YESTERDAY, 9:30 PM</Text>
-                  <MaterialIcons name="more-vert" size={20} color={colors.textMuted} />
+            {logs.map((log) => {
+              const moodEmojis = {
+                Calm: '😌',
+                Inspired: '✨',
+                Tired: '😴',
+                Pensive: '🤔',
+              };
+              const moodBgs = {
+                Calm: 'rgba(0, 102, 102, 0.1)',
+                Inspired: 'rgba(139, 75, 0, 0.1)',
+                Tired: 'rgba(73, 83, 172, 0.1)',
+                Pensive: 'rgba(89, 92, 93, 0.1)',
+              };
+              const emoji = moodEmojis[log.mood] || '📝';
+              const bgColor = moodBgs[log.mood] || 'rgba(0,0,0,0.05)';
+              const title = `${log.mood} Headspace`;
+              const dateStr = new Date(log.created_at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
+              
+              return (
+              <TouchableOpacity 
+                key={log.id} 
+                style={[styles.logCard, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}
+                onPress={() => Alert.alert(`${emoji} ${title}`, `${dateStr}\n\n${log.notes}`)}
+              >
+                <View style={[styles.logEmojiBg, { backgroundColor: bgColor }]}>
+                  <Text style={{ fontSize: 28 }}>{emoji}</Text>
                 </View>
-                <Text style={[styles.logTitle, { color: colors.textPrimary }]}>Campus Evening Walk</Text>
-                <Text style={[styles.logDesc, { color: colors.textSecondary }]} numberOfLines={2}>
-                  The sunset over the main block was stunning. Feeling a bit relieved aft...
-                </Text>
-              </View>
 
-            </TouchableOpacity>
-
-            {/* Log 2 */}
-            <TouchableOpacity style={[styles.logCard, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
-              <View style={[styles.logEmojiBg, { backgroundColor: isDark ? 'rgba(129, 140, 248, 0.2)' : '#E8EAF6' }]}>
-                <MaterialCommunityIcons name="bookshelf" size={28} color={isDark ? '#818CF8' : '#4953AC'} />
-              </View>
-
-              <View style={styles.logInfo}>
-                <View style={styles.logHeaderRow}>
-                  <Text style={[styles.logDate, { color: colors.textMuted }]}>OCT 24, 11:15 AM</Text>
-                  <MaterialIcons name="more-vert" size={20} color={colors.textMuted} />
+                <View style={styles.logInfo}>
+                  <View style={styles.logHeaderRow}>
+                    <Text style={[styles.logDate, { color: colors.textMuted }]}>
+                      {dateStr}
+                    </Text>
+                    <MaterialIcons name="more-vert" size={20} color={colors.textMuted} />
+                  </View>
+                  <Text style={[styles.logTitle, { color: colors.textPrimary }]}>{title}</Text>
+                  <Text style={[styles.logDesc, { color: colors.textSecondary }]} numberOfLines={2}>
+                    {log.notes}
+                  </Text>
                 </View>
-                <Text style={[styles.logTitle, { color: colors.textPrimary }]}>Project Milestone</Text>
-                <Text style={[styles.logDesc, { color: colors.textSecondary }]} numberOfLines={2}>
-                  Finally cracked the logic for the Agora bento grid layout! Feeling...
-                </Text>
-              </View>
-
-            </TouchableOpacity>
+              </TouchableOpacity>
+              );
+            })}
           </View>
         </View>
 

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -7,11 +7,17 @@ import {
   TouchableOpacity,
   Dimensions,
   Animated,
+  Alert,
+  Modal,
 } from 'react-native';
+import { Audio } from 'expo-av';
 import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../../hooks/useTheme';
+import { useFocusEffect } from '@react-navigation/native';
+import { useUser } from '../../../context/UserContext';
+import { createFocusSessionAPI } from '../../../data/apiService';
 
 
 const { width } = Dimensions.get('window');
@@ -20,52 +26,262 @@ const GuidedMeditationScreen = ({ navigation, route }) => {
   const { mode } = route.params || {};
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
+  const { user } = useUser();
   const [duration, setDuration] = React.useState(10);
-
   const [isPlaying, setIsPlaying] = React.useState(false);
-  
+  const [selectedAmbience, setSelectedAmbience] = React.useState('nature');
+  const [showSettings, setShowSettings] = React.useState(false);
+
+  // Ambient sound state
+  const [ambientSound, setAmbientSound] = React.useState(null);
+
+  // Set up audio mode once
+  useEffect(() => {
+    const setupAudio = async () => {
+      try {
+        if (Audio && typeof Audio.setAudioModeAsync === 'function') {
+          await Audio.setAudioModeAsync({
+            playsInSilentModeIOS: true,
+            staysActiveInBackground: true,
+            shouldRouteThroughReceiverLongFormVideo: false,
+          });
+        }
+      } catch (e) {
+        console.warn('[AudioMeditation] Setup error:', e);
+      }
+    };
+    setupAudio();
+  }, []);
+
+  const ambienceTracks = {
+    water: 'https://cdn.freesound.org/previews/177/177479_1038806-hq.mp3', // Rain/Water
+    nature: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-11.mp3',
+    night: 'https://cdn.freesound.org/previews/180/180050_1728127-hq.mp3', // Wind/Night
+  };
+
+  const stopSound = async () => {
+    try {
+      if (ambientSound) {
+        await ambientSound.stopAsync();
+        await ambientSound.unloadAsync();
+        setAmbientSound(null);
+      }
+    } catch (e) {
+      console.warn('[MeditationSound] stop error:', e);
+    }
+  };
+
+  const playAmbientSound = async (type) => {
+    try {
+      await stopSound();
+      const uri = ambienceTracks[type];
+      if (!uri) return;
+
+      if (!Audio || !Audio.Sound) {
+        console.warn('Audio module is not available');
+        return;
+      }
+
+      const { sound: newSound } = await Audio.Sound.createAsync(
+        { uri },
+        { shouldPlay: true, isLooping: true, volume: 0.4 },
+        null,
+        false // Do not wait for full download, stream instantly
+      );
+      setAmbientSound(newSound);
+    } catch (e) {
+      console.warn('[MeditationSound] play error:', e);
+    }
+  };
+
+  // Sync ambient playback with isPlaying and selectedAmbience
+  useEffect(() => {
+    if (isPlaying) {
+      playAmbientSound(selectedAmbience);
+    } else {
+      stopSound();
+    }
+    return () => {
+      stopSound();
+    };
+  }, [isPlaying, selectedAmbience]);
+
+  const ambientSoundRef = useRef(null);
+  useEffect(() => {
+    ambientSoundRef.current = ambientSound;
+  }, [ambientSound]);
+
+  useFocusEffect(
+    useCallback(() => {
+      // Screen focused
+      return () => {
+        // Screen blurred
+        setIsPlaying(false);
+        if (ambientSoundRef.current) {
+          ambientSoundRef.current.stopAsync().catch(() => {});
+          ambientSoundRef.current.unloadAsync().catch(() => {});
+          setAmbientSound(null);
+        }
+      };
+    }, [])
+  );
+
+  // Breathing techniques for different relief modes
+  const techniques = React.useMemo(() => ({
+    Anxious: [
+      { state: 'Inhale', duration: 4 },
+      { state: 'Hold', duration: 4 },
+      { state: 'Exhale', duration: 4 },
+      { state: 'Hold', duration: 4 },
+    ],
+    Focus: [
+      { state: 'Inhale', duration: 4 },
+      { state: 'Hold', duration: 2 },
+      { state: 'Exhale', duration: 4 },
+    ],
+    'Burned Out': [
+      { state: 'Inhale', duration: 5 },
+      { state: 'Exhale', duration: 5 },
+    ],
+    'Visual Guide': [
+      { state: 'Inhale', duration: 4 },
+      { state: 'Hold', duration: 7 },
+      { state: 'Exhale', duration: 8 },
+    ],
+    'Deep Breathing': [
+      { state: 'Inhale', duration: 4 },
+      { state: 'Hold', duration: 7 },
+      { state: 'Exhale', duration: 8 },
+    ],
+    Default: [
+      { state: 'Inhale', duration: 4 },
+      { state: 'Exhale', duration: 4 },
+    ],
+  }), []);
+
+  // Theme settings mapped to each quick relief mode
+  const modeTheme = React.useMemo(() => {
+    switch (mode) {
+      case 'Anxious':
+        return {
+          colors: isDark ? ['#0E7490', '#155E75'] : ['#E0F2FE', '#BAE6FD'],
+          accent: isDark ? '#22D3EE' : '#0284C7',
+          desc: 'Quiet the mind with Box Breathing (4s Inhale, 4s Hold, 4s Exhale, 4s Hold) to calm the nervous system.',
+          subtitle: 'Box Breathing Cycle',
+        };
+      case 'Focus':
+        return {
+          colors: isDark ? ['#065F46', '#064E3B'] : ['#D1FAE5', '#A7F3D0'],
+          accent: isDark ? '#34D399' : '#059669',
+          desc: 'Sharpen concentration with 4-2-4 Breathing (4s Inhale, 2s Hold, 4s Exhale) to increase brain oxygenation.',
+          subtitle: 'Concentration Cycle',
+        };
+      case 'Burned Out':
+        return {
+          colors: isDark ? ['#C2410C', '#9A3412'] : ['#FFEDD5', '#FED7AA'],
+          accent: isDark ? '#FB923C' : '#EA580C',
+          desc: 'Restore energy with Resonant Breathing (5s Inhale, 5s Exhale) to balance autonomic activity and ease stress.',
+          subtitle: 'Resonant Flow',
+        };
+      case 'Visual Guide':
+      case 'Deep Breathing':
+      default:
+        return {
+          colors: isDark ? ['#6D28D9', '#5B21B6'] : ['#F5F3FF', '#EDE9FE'],
+          accent: isDark ? '#A78BFA' : '#7C3AED',
+          desc: 'Relax deeply with 4-7-8 Breathing (4s Inhale, 7s Hold, 8s Exhale) to release physical tension.',
+          subtitle: '4-7-8 Relaxing Breath',
+        };
+    }
+  }, [mode, isDark]);
+
+  const selectedTechnique = techniques[mode] || techniques.Default;
+
+  const [phaseIdx, setPhaseIdx] = React.useState(0);
+  const [breatheState, setBreatheState] = React.useState('Tap to Start');
+  const [secondsLeft, setSecondsLeft] = React.useState(4);
+  const [elapsedSeconds, setElapsedSeconds] = React.useState(0);
+
+  const formatTime = (secs) => {
+    const m = Math.floor(secs / 60);
+    const s = secs % 60;
+    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  };
+
   // Animation for the breathing circle
   const breatheAnim = useRef(new Animated.Value(1)).current;
   const opacityAnim = useRef(new Animated.Value(0.3)).current;
 
+  const triggerBreatheAnimation = (state, durationMs) => {
+    breatheAnim.stopAnimation();
+    opacityAnim.stopAnimation();
+    
+    if (state === 'Inhale') {
+      Animated.parallel([
+        Animated.timing(breatheAnim, { toValue: 1.3, duration: durationMs, useNativeDriver: true }),
+        Animated.timing(opacityAnim, { toValue: 0.8, duration: durationMs, useNativeDriver: true }),
+      ]).start();
+    } else if (state === 'Exhale') {
+      Animated.parallel([
+        Animated.timing(breatheAnim, { toValue: 1.0, duration: durationMs, useNativeDriver: true }),
+        Animated.timing(opacityAnim, { toValue: 0.3, duration: durationMs, useNativeDriver: true }),
+      ]).start();
+    } else if (state === 'Hold') {
+      Animated.timing(opacityAnim, { toValue: 0.6, duration: durationMs, useNativeDriver: true }).start();
+    }
+  };
+
   useEffect(() => {
-    let animation;
+    let timer;
     if (isPlaying) {
-      animation = Animated.loop(
-        Animated.sequence([
-          Animated.parallel([
-            Animated.timing(breatheAnim, {
-              toValue: 1.3,
-              duration: 4000,
-              useNativeDriver: true,
-            }),
-            Animated.timing(opacityAnim, {
-              toValue: 0.6,
-              duration: 4000,
-              useNativeDriver: true,
-            }),
-          ]),
-          Animated.parallel([
-            Animated.timing(breatheAnim, {
-              toValue: 1,
-              duration: 4000,
-              useNativeDriver: true,
-            }),
-            Animated.timing(opacityAnim, {
-              toValue: 0.3,
-              duration: 4000,
-              useNativeDriver: true,
-            }),
-          ]),
-        ])
-      );
-      animation.start();
+      // Set initial
+      let currentIdx = 0;
+      setPhaseIdx(0);
+      let phase = selectedTechnique[currentIdx];
+      setBreatheState(phase.state);
+      setSecondsLeft(phase.duration);
+      triggerBreatheAnimation(phase.state, phase.duration * 1000);
+
+      timer = setInterval(() => {
+        setElapsedSeconds((prevE) => {
+          if (prevE + 1 >= duration * 60) {
+            // Save completed session to API so progress updates dynamically
+            if (user?.accessToken) {
+              createFocusSessionAPI(user.accessToken, {
+                duration_minutes: duration,
+                session_type: mode || 'Focus',
+              }).catch(e => console.warn(e));
+            }
+            
+            setIsPlaying(false);
+            return 0;
+          }
+          return prevE + 1;
+        });
+
+        setSecondsLeft((prev) => {
+          if (prev <= 1) {
+            currentIdx = (currentIdx + 1) % selectedTechnique.length;
+            setPhaseIdx(currentIdx);
+            const nextPhase = selectedTechnique[currentIdx];
+            setBreatheState(nextPhase.state);
+            triggerBreatheAnimation(nextPhase.state, nextPhase.duration * 1000);
+            return nextPhase.duration;
+          }
+          return prev - 1;
+        });
+      }, 1000);
     } else {
+      setBreatheState(elapsedSeconds > 0 ? 'Paused' : 'Tap to Start');
+      setPhaseIdx(0);
+      setSecondsLeft(4);
       breatheAnim.setValue(1);
       opacityAnim.setValue(0.3);
     }
-    return () => animation?.stop();
-  }, [isPlaying]);
+    return () => {
+      if (timer) clearInterval(timer);
+    };
+  }, [isPlaying, selectedTechnique, duration]);
 
   return (
     <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
@@ -78,27 +294,34 @@ const GuidedMeditationScreen = ({ navigation, route }) => {
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: colors.primary }]}>Wellness Hub</Text>
         </View>
-        <View style={[styles.profileBox, { borderColor: isDark ? 'rgba(254, 152, 50, 0.4)' : 'rgba(139, 75, 0, 0.2)' }]}>
-          <MaterialCommunityIcons name="spa-outline" size={24} color={colors.primary} />
-        </View>
+        <TouchableOpacity 
+          style={[styles.profileBox, { borderColor: isDark ? 'rgba(254, 152, 50, 0.4)' : 'rgba(139, 75, 0, 0.2)' }]}
+          onPress={() => setShowSettings(true)}
+        >
+          <MaterialIcons name="tune" size={24} color={colors.primary} />
+        </TouchableOpacity>
       </View>
 
 
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+      <View style={{ flex: 1, paddingBottom: 40, justifyContent: 'space-between' }}>
         {/* Editorial Header */}
         <View style={styles.heroHeader}>
-          <Text style={[styles.heroTag, { color: colors.primary }]}>{mode ? mode.toUpperCase() : 'GUIDED EXPERIENCE'}</Text>
+          <Text style={[styles.heroTag, { color: modeTheme.accent }]}>{mode ? mode.toUpperCase() : 'GUIDED EXPERIENCE'}</Text>
           <Text style={[styles.heroTitle, { color: colors.textPrimary }]}>
-            {mode === 'Anxious' ? 'Quiet the Mind.' : 
-             mode === 'Focus' ? 'Sharpen the Eye.' :
-             mode === 'Burned Out' ? 'Recharge Yourself.' :
-             'Inhale Calm, \nExhale Stress.'}
+            {modeTheme.subtitle}
+          </Text>
+          <Text style={{ fontSize: 14, color: colors.textSecondary, marginTop: 8, lineHeight: 20 }}>
+            {modeTheme.desc}
           </Text>
         </View>
 
 
         {/* Pulsating Breathing Pacer */}
-        <View style={styles.breathingContainer}>
+        <TouchableOpacity 
+          activeOpacity={0.9} 
+          onPress={() => setIsPlaying(!isPlaying)}
+          style={styles.breathingContainer}
+        >
           <Animated.View 
             style={[
               styles.haloRing, 
@@ -117,114 +340,155 @@ const GuidedMeditationScreen = ({ navigation, route }) => {
             ]}
           >
             <LinearGradient
-              colors={isDark ? ['rgba(254, 152, 50, 0.2)', 'rgba(254, 152, 50, 0.4)'] : ['rgba(139, 75, 0, 0.1)', 'rgba(254, 152, 50, 0.2)']}
+              colors={modeTheme.colors}
               style={StyleSheet.absoluteFill}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
             />
             <View style={[styles.innerCircle, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
-              <Text style={[styles.breatheStatus, { color: colors.primary }]}>{isPlaying ? 'Inhale' : 'Ready?'}</Text>
-              <Text style={[styles.breatheTime, { color: colors.textSecondary }]}>4 Seconds</Text>
+              <Text style={[styles.breatheStatus, { color: colors.primary }]}>{breatheState}</Text>
+              <Text style={[styles.breatheTime, { color: colors.textSecondary }]}>{secondsLeft} Seconds</Text>
             </View>
           </Animated.View>
+        </TouchableOpacity>
 
-
-          {/* Progress Indicator */}
-          <View style={styles.progressSection}>
-            <View style={styles.progressInfo}>
-              <Text style={[styles.progressLabel, { color: colors.textSecondary }]}>Session Progress</Text>
-              <Text style={[styles.progressTime, { color: colors.textPrimary }]}>04:12 / 10:00</Text>
-            </View>
-            <View style={[styles.progressBarBg, { backgroundColor: colors.border }]}>
-              <LinearGradient
-                colors={[colors.primary, colors.primaryDark]}
-                style={[styles.progressBarFill, { width: '42%' }]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-              />
-            </View>
+        {/* Progress Indicator */}
+        <View style={styles.progressSection}>
+          <View style={styles.progressInfo}>
+            <Text style={[styles.progressLabel, { color: colors.textSecondary }]}>Session Progress</Text>
+            <Text style={[styles.progressTime, { color: colors.textPrimary }]}>{formatTime(elapsedSeconds)} / {duration}:00</Text>
           </View>
-
-        </View>
-
-        {/* Controls Grid */}
-        <View style={styles.controlsGrid}>
-          {/* Duration Selector */}
-          <View style={[styles.controlCard, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
-            <View style={styles.controlHeader}>
-              <MaterialIcons name="schedule" size={14} color={isDark ? '#818CF8' : '#4953AC'} />
-              <Text style={[styles.controlLabel, { color: isDark ? '#818CF8' : '#4953AC' }]}>SESSION DURATION</Text>
-            </View>
-
-            <View style={styles.durationButtons}>
-              {[5, 10, 15].map((t) => (
-                <TouchableOpacity
-                  key={t}
-                  style={[styles.durationBtn, { backgroundColor: colors.border }, duration === t && (styles.durationBtnActive, { backgroundColor: colors.primary })]}
-                  onPress={() => setDuration(t)}
-                >
-                  <Text style={[styles.durationText, { color: colors.textSecondary }, duration === t && (styles.durationTextActive, { color: '#FFFFFF' })]}>
-                    {t} MIN
-                  </Text>
-                </TouchableOpacity>
-
-              ))}
-            </View>
-          </View>
-
-          {/* Ambient Selection */}
-          <View style={[styles.controlCard, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
-            <View style={styles.controlHeader}>
-              <MaterialIcons name="filter-drama" size={14} color={isDark ? '#818CF8' : '#4953AC'} />
-              <Text style={[styles.controlLabel, { color: isDark ? '#818CF8' : '#4953AC' }]}>AMBIENCE</Text>
-            </View>
-
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.ambienceScroll}>
-              <TouchableOpacity style={[styles.ambienceIconBg, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.2)' : 'rgba(0, 102, 102, 0.1)' }]}>
-                <MaterialCommunityIcons name="water-outline" size={24} color={isDark ? '#2DD4BF' : '#006666'} />
-              </TouchableOpacity>
-              <TouchableOpacity style={[styles.ambienceIconBg, styles.ambienceIconActive, { backgroundColor: isDark ? 'rgba(254, 152, 50, 0.2)' : 'rgba(139, 75, 0, 0.1)', borderColor: colors.primary }]}>
-                <MaterialCommunityIcons name="nature" size={24} color={colors.primary} />
-              </TouchableOpacity>
-              <TouchableOpacity style={[styles.ambienceIconBg, { backgroundColor: isDark ? 'rgba(129, 140, 248, 0.2)' : 'rgba(73, 83, 172, 0.1)' }]}>
-                <MaterialCommunityIcons name="weather-night" size={24} color={isDark ? '#818CF8' : '#4953AC'} />
-              </TouchableOpacity>
-              <TouchableOpacity style={[styles.ambienceIconBg, { backgroundColor: colors.border }]}>
-                <MaterialIcons name="add" size={24} color={colors.textSecondary} />
-              </TouchableOpacity>
-
-            </ScrollView>
-          </View>
-        </View>
-
-        {/* Main Audio Controls */}
-        <View style={styles.audioControls}>
-          <TouchableOpacity style={[styles.audioBtnSmall, { backgroundColor: colors.border }]}>
-            <MaterialCommunityIcons name="skip-previous" size={32} color={colors.textPrimary} />
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={styles.playBtn}
-            onPress={() => setIsPlaying(!isPlaying)}
-          >
+          <View style={[styles.progressBarBg, { backgroundColor: colors.border }]}>
             <LinearGradient
               colors={[colors.primary, colors.primaryDark]}
-              style={styles.playBtnGradient}
-            >
-              <MaterialCommunityIcons 
-                name={isPlaying ? "pause" : "play"} 
-                size={48} 
-                color="#FFFFFF" 
-              />
-            </LinearGradient>
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.audioBtnSmall, { backgroundColor: colors.border }]}>
-            <MaterialCommunityIcons name="skip-next" size={32} color={colors.textPrimary} />
-          </TouchableOpacity>
+              style={[styles.progressBarFill, { width: `${duration > 0 ? (elapsedSeconds / (duration * 60)) * 100 : 0}%` }]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+            />
+          </View>
         </View>
 
+      </View>
 
-        <View style={{ height: 100 }} />
-      </ScrollView>
+      {/* Settings Modal */}
+      <Modal visible={showSettings} animationType="slide" transparent>
+        <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <TouchableOpacity style={{ flex: 1 }} onPress={() => setShowSettings(false)} />
+          <View style={{ backgroundColor: colors.background, borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 24, paddingBottom: insets.bottom + 24 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+              <Text style={{ fontSize: 20, fontWeight: '800', color: colors.textPrimary }}>Session Settings</Text>
+              <TouchableOpacity onPress={() => setShowSettings(false)}>
+                <MaterialIcons name="close" size={24} color={colors.textPrimary} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Controls Grid */}
+            <View style={{ gap: 16 }}>
+              {/* Duration Selector */}
+              <View style={[styles.controlCard, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
+                <View style={styles.controlHeader}>
+                  <MaterialIcons name="schedule" size={14} color={isDark ? '#818CF8' : '#4953AC'} />
+                  <Text style={[styles.controlLabel, { color: isDark ? '#818CF8' : '#4953AC' }]}>SESSION DURATION</Text>
+                </View>
+
+                <View style={styles.durationButtons}>
+                  {[5, 10, 15].map((t) => (
+                    <TouchableOpacity
+                      key={t}
+                      style={[
+                        styles.durationBtn, 
+                        { backgroundColor: colors.border }, 
+                        duration === t && styles.durationBtnActive, 
+                        duration === t && { backgroundColor: colors.primary }
+                      ]}
+                      onPress={() => setDuration(t)}
+                    >
+                      <Text style={[
+                        styles.durationText, 
+                        { color: colors.textSecondary }, 
+                        duration === t && styles.durationTextActive,
+                        duration === t && { color: '#FFFFFF' }
+                      ]}>
+                        {t} MIN
+                      </Text>
+                    </TouchableOpacity>
+
+                  ))}
+                </View>
+              </View>
+
+              {/* Ambient Selection */}
+              <View style={[styles.controlCard, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
+                <View style={styles.controlHeader}>
+                  <MaterialIcons name="filter-drama" size={14} color={isDark ? '#818CF8' : '#4953AC'} />
+                  <Text style={[styles.controlLabel, { color: isDark ? '#818CF8' : '#4953AC' }]}>AMBIENCE LOOP</Text>
+                </View>
+
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.ambienceScroll}>
+                  <TouchableOpacity 
+                    style={[
+                      styles.ambienceIconBg, 
+                      { 
+                        backgroundColor: selectedAmbience === 'water' 
+                          ? (isDark ? 'rgba(45, 212, 191, 0.35)' : 'rgba(45, 212, 191, 0.25)') 
+                          : (isDark ? 'rgba(45, 212, 191, 0.1)' : 'rgba(0, 102, 102, 0.05)'),
+                        borderColor: selectedAmbience === 'water' ? modeTheme.accent : 'transparent',
+                        borderWidth: selectedAmbience === 'water' ? 2 : 0 
+                      }
+                    ]}
+                    onPress={() => {
+                      setSelectedAmbience('water');
+                      if (!isPlaying) setIsPlaying(true);
+                    }}
+                  >
+                    <MaterialCommunityIcons name="water-outline" size={24} color={isDark ? '#2DD4BF' : '#006666'} />
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={[
+                      styles.ambienceIconBg, 
+                      { 
+                        backgroundColor: selectedAmbience === 'nature' 
+                          ? (isDark ? 'rgba(254, 152, 50, 0.35)' : 'rgba(254, 152, 50, 0.25)') 
+                          : (isDark ? 'rgba(254, 152, 50, 0.1)' : 'rgba(139, 75, 0, 0.05)'),
+                        borderColor: selectedAmbience === 'nature' ? modeTheme.accent : 'transparent',
+                        borderWidth: selectedAmbience === 'nature' ? 2 : 0 
+                      }
+                    ]}
+                    onPress={() => {
+                      setSelectedAmbience('nature');
+                      if (!isPlaying) setIsPlaying(true);
+                    }}
+                  >
+                    <MaterialCommunityIcons name="nature" size={24} color={isDark ? '#FE9832' : '#8B4B00'} />
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={[
+                      styles.ambienceIconBg, 
+                      { 
+                        backgroundColor: selectedAmbience === 'night' 
+                          ? (isDark ? 'rgba(129, 140, 248, 0.35)' : 'rgba(129, 140, 248, 0.25)') 
+                          : (isDark ? 'rgba(129, 140, 248, 0.1)' : 'rgba(73, 83, 172, 0.05)'),
+                        borderColor: selectedAmbience === 'night' ? modeTheme.accent : 'transparent',
+                        borderWidth: selectedAmbience === 'night' ? 2 : 0
+                      }
+                    ]}
+                    onPress={() => {
+                      setSelectedAmbience('night');
+                      if (!isPlaying) setIsPlaying(true);
+                    }}
+                  >
+                    <MaterialCommunityIcons name="weather-night" size={24} color={isDark ? '#818CF8' : '#4953AC'} />
+                  </TouchableOpacity>
+                  <TouchableOpacity style={[styles.ambienceIconBg, { backgroundColor: colors.border }]} onPress={() => Alert.alert('Premium feature', 'Unlock all ambient sounds in your profile settings.')}>
+                    <MaterialIcons name="add" size={24} color={colors.textSecondary} />
+                  </TouchableOpacity>
+                </ScrollView>
+              </View>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
     </View>
   );
 };
@@ -288,13 +552,18 @@ const styles = StyleSheet.create({
   },
 
   breathingContainer: {
+    width: 256,
+    height: 256,
+    alignSelf: 'center',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 40,
+    marginVertical: 40,
     position: 'relative',
   },
   haloRing: {
     position: 'absolute',
+    top: 0,
+    left: 0,
     width: 256,
     height: 256,
     borderRadius: 128,
@@ -328,6 +597,7 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: '900',
     marginBottom: 4,
+    textAlign: 'center',
   },
 
   breatheTime: {

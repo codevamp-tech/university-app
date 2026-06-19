@@ -9,6 +9,8 @@ import { useTheme } from '../../hooks/useTheme';
 import { APP_CONFIG } from '../../config/appConfig';
 import { useUser } from '../../context/UserContext';
 import { computeSkillGap } from '../../data/aiEngine';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Alert } from 'react-native';
 
 const { width } = Dimensions.get('window');
 
@@ -282,7 +284,18 @@ const SkillGapTestScreen = ({ navigation }) => {
 
           <TouchableOpacity 
             style={styles.startBtn}
-            onPress={() => setTestStarted(true)}
+            onPress={async () => {
+              const lastTest = await AsyncStorage.getItem('@skill_gap_last_test');
+              if (lastTest) {
+                const daysSince = (Date.now() - parseInt(lastTest)) / (1000 * 60 * 60 * 24);
+                if (daysSince < 7) {
+                  Alert.alert('Weekly Limit Reached', 'To ensure progressive tracking, the full Skill Gap test can only be taken once every 7 days. Keep practicing your identified weak points!');
+                  return;
+                }
+              }
+              await AsyncStorage.setItem('@skill_gap_last_test', Date.now().toString());
+              setTestStarted(true);
+            }}
           >
             <LinearGradient colors={['#EA580C', '#9A3412']} style={styles.startBtnGradient}>
               <Text style={styles.startBtnText}>Start AI Assessment</Text>

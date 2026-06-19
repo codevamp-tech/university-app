@@ -1398,3 +1398,130 @@ export function generateStaticLearningPath(skillName) {
     ]
   };
 }
+
+// ─── Groq LLM Dynamic AI Insight ──────────────────────────────────────────────
+export async function fetchDynamicLLMInsight(student) {
+  // Use the static insight as a base context for the LLM
+  const baseInsight = generateAIInsight(student);
+  
+  if (!APP_CONFIG.GROQ_API_KEY) {
+    return baseInsight;
+  }
+
+  const prompt = `
+You are an AI mentor for a university app.
+Student Info:
+Name: ${student.name}
+Course: ${student.course} in ${student.branch} (Year ${student.year}, Sem ${student.semester})
+CGPA: ${student.cgpa}
+Attendance: ${student.attendance}%
+Base Analysis: ${baseInsight}
+
+Generate a short, extremely personalized and motivating 1-2 sentence AI insight to show on their dashboard.
+Do not use markdown. Just return the text. Be inspiring but professional.
+`;
+
+  try {
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${APP_CONFIG.GROQ_API_KEY}`
+      },
+      body: JSON.stringify({
+        model: 'llama-3.3-70b-versatile',
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.7
+      })
+    });
+
+    const data = await response.json();
+    if (data.error) return baseInsight;
+    
+    return data.choices[0].message.content.trim();
+  } catch (error) {
+    console.error("Failed to fetch dynamic AI insight:", error);
+    return baseInsight;
+  }
+}
+
+// ─── Groq LLM ATS Resume Builder ──────────────────────────────────────────────
+export async function generateATSResume(student) {
+  if (!APP_CONFIG.GROQ_API_KEY) {
+    throw new Error("GROQ_API_KEY is missing. Cannot generate resume.");
+  }
+
+  const prompt = `
+You are an expert career counselor and resume writer. 
+Generate a professional, ATS-compatible resume in JSON format for the following student.
+Do not use markdown blocks, return ONLY raw JSON.
+
+Student Info:
+Name: ${student.name}
+Course: ${student.course} in ${student.branch} (Year ${student.year})
+CGPA: ${student.cgpa}
+Skills: ${student.skills ? student.skills.join(', ') : 'Various technical and soft skills'}
+Attendance: ${student.attendance}%
+Extracurricular/Clubs/Certs: (assume they are active in 2 tech clubs and have 1 certification based on typical profile if not provided)
+Base Analysis: ${generateAIInsight(student)}
+
+The JSON must exactly match this structure:
+{
+  "name": "Student Name",
+  "contact": "Email, Phone, LinkedIn/GitHub placeholders",
+  "objective": "A strong 2-sentence professional summary.",
+  "education": [
+    {
+      "institution": "University Name",
+      "degree": "Degree and Branch",
+      "duration": "Start Year - Expected Graduation Year",
+      "details": "GPA, relevant coursework"
+    }
+  ],
+  "experience": [
+    {
+      "role": "Role (e.g. Project Intern or Club Lead)",
+      "company": "Organization",
+      "duration": "Month Year - Month Year",
+      "bullets": ["Action-oriented bullet 1", "Action-oriented bullet 2"]
+    }
+  ],
+  "projects": [
+    {
+      "title": "Project Name",
+      "technologies": "Tech Stack used",
+      "description": "Short description of the project"
+    }
+  ],
+  "skills": ["Skill 1", "Skill 2", "Skill 3"]
+}
+`;
+
+  try {
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${APP_CONFIG.GROQ_API_KEY}`
+      },
+      body: JSON.stringify({
+        model: 'llama-3.3-70b-versatile',
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.6,
+        response_format: { type: "json_object" }
+      })
+    });
+
+    const data = await response.json();
+    if (data.error) throw new Error(data.error.message || "Groq API Error");
+
+    let textResponse = data.choices[0].message.content;
+    textResponse = textResponse.replace(/$$$$$$json/g, '').replace(/$$$$$$/g, '').trim();
+    
+    return JSON.parse(textResponse);
+  } catch (error) {
+    console.error("Failed to generate ATS resume:", error);
+    throw error;
+  }
+}
+

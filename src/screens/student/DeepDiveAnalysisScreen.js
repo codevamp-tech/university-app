@@ -9,6 +9,7 @@ import { useTheme } from '../../hooks/useTheme';
 import { useUser } from '../../context/UserContext';
 import { computeSkillGap, generateLearningPath } from '../../data/aiEngine';
 import { TimelineSkeleton, SkeletonBlock } from '../../components/SkeletonLoader';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width } = Dimensions.get('window');
 
@@ -29,8 +30,15 @@ const DeepDiveAnalysisScreen = ({ navigation }) => {
     setLoading(true);
     setLearningPath(null);
     try {
-      const path = await generateLearningPath(user, skillName);
-      setLearningPath(path);
+      const cacheKey = `@deepdive_path_${skillName.replace(/\s+/g, '_')}`;
+      const cached = await AsyncStorage.getItem(cacheKey);
+      if (cached) {
+        setLearningPath(JSON.parse(cached));
+      } else {
+        const path = await generateLearningPath(user, skillName);
+        await AsyncStorage.setItem(cacheKey, JSON.stringify(path));
+        setLearningPath(path);
+      }
     } catch (err) {
       console.error(err);
     } finally {

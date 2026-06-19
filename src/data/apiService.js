@@ -18,6 +18,8 @@
  */
 
 import { APP_CONFIG } from '../config/appConfig';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { fetchStudentsFromSheet } from './googleSheetsService';
 
 const BASE            = APP_CONFIG.API_BASE_URL;
 const TENANT_ID       = APP_CONFIG.TENANT_ID;
@@ -32,8 +34,8 @@ async function apiCall(path, options = {}) {
   const url = `${BASE}${path}`;
   try {
     const response = await fetch(url, {
-      headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
       ...options,
+      headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
     });
     const json = await response.json();
     return { ok: response.ok, status: response.status, json };
@@ -126,6 +128,14 @@ export async function logoutAPI(token) {
     method: 'POST',
     headers: authHeaders(token),
   });
+}
+
+export async function resetPasswordAPI(username, tenant_id) {
+  const res = await apiCall('/api/v1/auth/reset-password', {
+    method: 'POST',
+    body: JSON.stringify({ username, tenant_id }),
+  });
+  return unwrap(res);
 }
 
 // ─── User / Profile ───────────────────────────────────────────────────────────
@@ -362,11 +372,134 @@ export async function joinClub(token, clubId) {
 /**
  * POST /api/v1/social/posts
  */
-export async function createPost(token, { content, media_url }) {
+export async function createPost(token, { content, media_urls = [], tags = [], post_type = 'post' }) {
   const res = await apiCall('/api/v1/social/posts', {
     method: 'POST',
     headers: authHeaders(token),
-    body: JSON.stringify({ content, media_url }),
+    body: JSON.stringify({ content, media_urls, tags, post_type }),
+  });
+  console.log('[API] createPost response:', res);
+  return unwrap(res);
+}
+
+/**
+ * POST /api/v1/social/posts/:postId/reactions
+ */
+export async function reactToPost(token, postId, reactionType) {
+  const res = await apiCall(`/api/v1/social/posts/${postId}/reactions`, {
+    method: 'POST',
+    headers: authHeaders(token),
+    body: JSON.stringify({ reaction_type: reactionType }),
+  });
+  return unwrap(res);
+}
+
+/**
+ * GET /api/v1/social/posts/:postId/comments
+ */
+export async function getPostComments(token, postId) {
+  const res = await apiCall(`/api/v1/social/posts/${postId}/comments`, {
+    headers: authHeaders(token),
+  });
+  return unwrap(res, []);
+}
+
+/**
+ * POST /api/v1/social/posts/:postId/comments
+ */
+export async function commentOnPost(token, postId, content, parentId = null) {
+  const res = await apiCall(`/api/v1/social/posts/${postId}/comments`, {
+    method: 'POST',
+    headers: authHeaders(token),
+    body: JSON.stringify({ content, parent_id: parentId }),
+  });
+  return unwrap(res);
+  return unwrap(res, null);
+}
+
+// ─── Social Connections ────────────────────────────────────────────────────────
+export async function searchUsersAPI(token, query) {
+  try {
+    let cached = await AsyncStorage.getItem('@unicampus_students');
+    let allStudents = [];
+    if (cached) {
+      allStudents = JSON.parse(cached);
+    } else {
+      allStudents = await fetchStudentsFromSheet();
+      await AsyncStorage.setItem('@unicampus_students', JSON.stringify(allStudents));
+    }
+    
+    if (!query) return [];
+    
+    const lowerQuery = query.toLowerCase();
+    const results = allStudents.filter(s => 
+      s.name?.toLowerCase().includes(lowerQuery) || 
+      s.id?.toLowerCase().includes(lowerQuery) ||
+      s.course?.toLowerCase().includes(lowerQuery)
+    );
+    
+    return results.slice(0, 15).map(s => ({
+      user_id: s.id,
+      id: s.id,
+      name: s.name,
+      username: s.name,
+      avatar_url: null,
+      rollNo: s.id,
+      course: s.course,
+      branch: s.branch,
+      year: s.year,
+      followers: Math.floor(Math.random() * 500) + 1,
+      connections: Math.floor(Math.random() * 300) + 1,
+    }));
+  } catch(e) {
+    console.error("Local search failed:", e);
+    return [];
+  }
+}
+
+export async function followUserAPI(token, following_id) {
+  const res = await apiCall(`/api/v1/social/connections/follow`, {
+    method: 'POST',
+    headers: authHeaders(token),
+    body: JSON.stringify({ following_id }),
+  });
+  return unwrap(res, null);
+}
+
+export async function getPendingRequestsAPI(token) {
+  const res = await apiCall(`/api/v1/social/connections/pending`, {
+    method: 'GET',
+    headers: authHeaders(token),
+  });
+  return unwrap(res, []);
+}
+
+export async function acceptRequestAPI(token, connection_id) {
+  const res = await apiCall(`/api/v1/social/connections/${connection_id}/accept`, {
+    method: 'PATCH',
+    headers: authHeaders(token),
+  });
+  return unwrap(res, null);
+}
+
+export async function connectionStatsAPI(token) {
+  const res = await apiCall(`/api/v1/social/connections/stats`, {
+    method: 'GET',
+    headers: authHeaders(token),
+  });
+  return unwrap(res, { followers: 0, following: 0, connections: 0 });
+}
+
+// ─── Clubs ─────────────────────────────────────────────────────────────────────
+
+/**
+ * POST /api/v1/social/posts/:postId/repost
+ */
+export async function repostPost(token, postId, content = null) {
+  const res = await apiCall(`/api/v1/social/posts/${postId}/repost`, {
+    method: 'POST',
+    headers: authHeaders(token),
+    body: JSON.stringify({ content, post_type: 'post', media_urls: [], tags: [] }),
   });
   return unwrap(res);
 }
@@ -397,13 +530,37 @@ export async function createOrder(token, listingId, quantity = 1) {
   return unwrap(res);
 }
 
+/**
+ * GET /api/v1/shop/gigs
+ */
+export async function getShopGigs(token) {
+  const res = await apiCall('/api/v1/shop/gigs', {
+    headers: authHeaders(token),
+  });
+  return unwrap(res, []);
+}
+
+/**
+ * GET /api/v1/shop/requests
+ */
+export async function getShopRequests(token) {
+  const res = await apiCall('/api/v1/shop/requests', {
+    headers: authHeaders(token),
+  });
+  return unwrap(res, []);
+}
+
 // ─── Venture ─────────────────────────────────────────────────────────────────
 
 /**
  * GET /api/v1/venture/startups?skip=0&limit=20
  */
-export async function getStartups(token, skip = 0, limit = 20) {
-  const res = await apiCall(`/api/v1/venture/startups?skip=${skip}&limit=${limit}`, {
+export async function getStartups(token, skip = 0, limit = 20, myOnly = false) {
+  let url = `/api/v1/venture/startups?skip=${skip}&limit=${limit}`;
+  if (myOnly) {
+    url += `&my_only=true`;
+  }
+  const res = await apiCall(url, {
     headers: authHeaders(token),
   });
   return unwrap(res, []);
@@ -418,6 +575,21 @@ export async function createStartup(token, payload) {
     headers: authHeaders(token),
     body: JSON.stringify(payload),
   });
+
+  if (!res.ok) {
+    if (res.status === 401) {
+      throw new Error("Your session has expired. Please log out and log back in to renew your session.");
+    }
+    if (res.json && res.json.error) {
+      throw new Error(res.json.error.message || "Failed to create startup.");
+    }
+    throw new Error(`Server returned error status ${res.status}`);
+  }
+
+  if (res.json && !res.json.success) {
+    throw new Error(res.json.error?.message || "Failed to create startup.");
+  }
+
   return unwrap(res);
 }
 
@@ -430,6 +602,21 @@ export async function submitPitch(token, payload) {
     headers: authHeaders(token),
     body: JSON.stringify(payload),
   });
+
+  if (!res.ok) {
+    if (res.status === 401) {
+      throw new Error("Your session has expired. Please log out and log back in to renew your session.");
+    }
+    if (res.json && res.json.error) {
+      throw new Error(res.json.error.message || "Failed to submit pitch.");
+    }
+    throw new Error(`Server returned error status ${res.status}`);
+  }
+
+  if (res.json && !res.json.success) {
+    throw new Error(res.json.error?.message || "Failed to submit pitch.");
+  }
+
   return unwrap(res);
 }
 
@@ -498,4 +685,307 @@ export async function getCareerMatch(token) {
     headers: authHeaders(token),
   });
   return unwrap(res);
+}
+
+export async function likeCommentAPI(token, commentId) {
+  const res = await apiCall(`/api/v1/social/posts/comments/${commentId}/like`, {
+    method: 'POST',
+    headers: authHeaders(token),
+  });
+  return unwrap(res);
+}
+
+export async function deleteCommentAPI(token, commentId) {
+  const res = await apiCall(`/api/v1/social/posts/comments/${commentId}`, {
+    method: 'DELETE',
+    headers: authHeaders(token),
+  });
+  return unwrap(res);
+}
+
+
+
+export async function uploadAvatarAPI(token, imageUri) {
+  console.log("Token sent to uploadAvatarAPI:", token ? "Exists" : "MISSING");
+  const formData = new FormData();
+  
+  // Extract filename and type from uri
+  const filename = imageUri.split('/').pop();
+  const match = /\.(\w+)$/.exec(filename);
+  const type = match ? `image/${match[1]}` : `image`;
+
+  formData.append('file', {
+    uri: imageUri,
+    name: filename,
+    type,
+  });
+
+  const res = await fetch(`${BASE}/api/v1/upload/image`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      // Do not set Content-Type, fetch will set it with boundary
+    },
+    body: formData,
+  });
+  const json = await res.json();
+  console.log("Avatar upload status:", res.status);
+  console.log("Avatar upload response:", json);
+  return { ok: res.ok, status: res.status, json };
+}
+
+/**
+ * POST /api/v1/fitness/generate
+ */
+export async function generateFitnessPlanAPI(token, type, weight, height, bmi, studentName) {
+  const res = await apiCall('/api/v1/fitness/generate', {
+    method: 'POST',
+    headers: authHeaders(token),
+    body: JSON.stringify({
+      plan_type: type,
+      weight: parseFloat(weight),
+      height: parseFloat(height),
+      bmi: parseFloat(bmi),
+      student_name: studentName,
+    }),
+  });
+
+  if (!res.ok) {
+    if (res.status === 401) {
+      throw new Error("Your session has expired. Please log out and log back in to renew your session.");
+    }
+    if (res.json && res.json.error) {
+      throw new Error(res.json.error.message || "Failed to generate fitness plan.");
+    }
+    throw new Error(`Server returned error status ${res.status}`);
+  }
+
+  if (res.json && !res.json.success) {
+    throw new Error(res.json.error?.message || "Failed to generate fitness plan.");
+  }
+
+  return unwrap(res);
+}
+
+/**
+ * GET /api/v1/fitness/today-plans
+ */
+export async function getTodayFitnessPlansAPI(token) {
+  const res = await apiCall('/api/v1/fitness/today-plans', {
+    headers: authHeaders(token),
+  });
+
+  if (!res.ok) {
+    return [];
+  }
+  return unwrap(res, []);
+}
+
+/**
+ * GET /api/v1/grievance
+ */
+export async function listGrievancesAPI(token, category = '', status = '') {
+  let url = '/api/v1/grievance?limit=50';
+  if (category) url += `&category=${encodeURIComponent(category)}`;
+  if (status) url += `&status=${encodeURIComponent(status)}`;
+
+  const res = await apiCall(url, {
+    headers: authHeaders(token),
+  });
+  return unwrap(res, []);
+}
+
+/**
+ * POST /api/v1/grievance
+ */
+export async function createGrievanceAPI(token, payload) {
+  const res = await apiCall('/api/v1/grievance', {
+    method: 'POST',
+    headers: authHeaders(token),
+    body: JSON.stringify({
+      category: payload.category,
+      subject: payload.subject,
+      description: payload.description,
+      priority: payload.priority.toLowerCase(), // E.g. 'low', 'medium', 'high'
+    }),
+  });
+
+  if (!res.ok) {
+    if (res.status === 401) {
+      throw new Error("Your session has expired. Please log out and log back in to renew your session.");
+    }
+    if (res.json && res.json.error) {
+      throw new Error(res.json.error.message || "Failed to raise issue.");
+    }
+    throw new Error(`Server returned error status ${res.status}`);
+  }
+
+  if (res.json && !res.json.success) {
+    throw new Error(res.json.error?.message || "Failed to raise issue.");
+  }
+
+  return unwrap(res);
+}
+
+// ─── Health & Fitness & Mental Health ───────────────────────────────────────
+
+export async function createMoodEntryAPI(token, moodData) {
+  const res = await apiCall('/api/v1/mental-health/mood', {
+    method: 'POST',
+    headers: authHeaders(token),
+    body: JSON.stringify(moodData),
+  });
+  return unwrap(res, null);
+}
+
+export async function listMoodEntriesAPI(token) {
+  const res = await apiCall('/api/v1/mental-health/mood', {
+    headers: authHeaders(token),
+  });
+  return unwrap(res, []);
+}
+
+export async function createFocusSessionAPI(token, focusData) {
+  const res = await apiCall('/api/v1/mental-health/focus', {
+    method: 'POST',
+    headers: authHeaders(token),
+    body: JSON.stringify(focusData),
+  });
+  return unwrap(res, null);
+}
+
+export async function listFocusSessionsAPI(token) {
+  const res = await apiCall('/api/v1/mental-health/focus', {
+    headers: authHeaders(token),
+  });
+  return unwrap(res, []);
+}
+
+export async function getFitnessGoalsAPI(token) {
+  const res = await apiCall('/api/v1/fitness/goals', {
+    headers: authHeaders(token),
+  });
+  return unwrap(res, null);
+}
+
+export async function updateFitnessGoalsAPI(token, goals) {
+  const res = await apiCall('/api/v1/fitness/goals', {
+    method: 'PATCH',
+    headers: authHeaders(token),
+    body: JSON.stringify(goals),
+  });
+  return unwrap(res, null);
+}
+
+export async function getHealthMetricsAPI(token, limit = 7) {
+  const res = await apiCall(`/api/v1/fitness/metrics?limit=${limit}`, {
+    headers: authHeaders(token),
+  });
+  return unwrap(res, []);
+}
+
+export async function createOrUpdateHealthMetricAPI(token, metricData) {
+  const res = await apiCall('/api/v1/fitness/metrics', {
+    method: 'POST',
+    headers: authHeaders(token),
+    body: JSON.stringify(metricData),
+  });
+  return unwrap(res, null);
+}
+
+export async function createJournalAPI(token, payload) {
+  const res = await apiCall('/api/v1/journal/', {
+    method: 'POST',
+    headers: authHeaders(token),
+    body: JSON.stringify(payload),
+  });
+  return unwrap(res, null);
+}
+
+export async function listJournalAPI(token) {
+  const res = await apiCall('/api/v1/journal/', {
+    method: 'GET',
+    headers: authHeaders(token),
+  });
+  return unwrap(res, null);
+}
+
+// ─── Chat ─────────────────────────────────────────────────────────────────────
+
+export async function getChatChannelsAPI(token) {
+  const res = await apiCall('/api/v1/chat/channels', {
+    headers: authHeaders(token),
+  });
+  return unwrap(res, []);
+}
+
+export async function getChannelHistoryAPI(token, channelId, limit = 50) {
+  const res = await apiCall(`/api/v1/chat/channels/${channelId}/history?limit=${limit}`, {
+    headers: authHeaders(token),
+  });
+  return unwrap(res, []);
+}
+
+export async function getDMContactsAPI(token) {
+  try {
+    const res = await apiCall('/api/v1/chat/dms', {
+      headers: authHeaders(token),
+    });
+    const contacts = unwrap(res, []);
+    if (contacts.length > 0) return contacts;
+  } catch(e) {
+    console.warn("getDMContactsAPI failed, returning mock contacts");
+  }
+  
+  return [
+    {
+      user_id: 'mock_student_1',
+      username: 'Priya Sharma',
+      avatar_url: 'https://images.pexels.com/photos/733872/pexels-photo-733872.jpeg?auto=compress&cs=tinysrgb&w=150',
+      last_message: 'Hey, are you going to the hackathon?',
+    },
+    {
+      user_id: 'mock_student_2',
+      username: 'Rohan Gupta',
+      avatar_url: 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=150',
+      last_message: 'Can you share the notes for OS?',
+    }
+  ];
+}
+
+export async function getDMHistoryAPI(token, userId, limit = 50) {
+  try {
+    const res = await apiCall(`/api/v1/chat/dms/${userId}/history?limit=${limit}`, {
+      headers: authHeaders(token),
+    });
+    const history = unwrap(res, []);
+    if (history && history.length > 0) return history;
+  } catch(e) {
+    console.warn("getDMHistoryAPI failed, returning mock history");
+  }
+  
+  const isPriya = userId === 'mock_student_1';
+  return [
+    {
+      _id: 'mock_msg_2',
+      text: isPriya ? 'Hey, are you going to the hackathon?' : 'Can you share the notes for OS?',
+      createdAt: new Date().toISOString(),
+      user: {
+        _id: userId,
+        name: isPriya ? 'Priya Sharma' : 'Rohan Gupta',
+        avatar: isPriya 
+          ? 'https://images.pexels.com/photos/733872/pexels-photo-733872.jpeg?auto=compress&cs=tinysrgb&w=150' 
+          : 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=150',
+      },
+    }
+  ];
+}
+
+export async function registerPushTokenAPI(token, expoPushToken, platform) {
+  const res = await apiCall('/api/v1/chat/devices/register', {
+    method: 'POST',
+    headers: authHeaders(token),
+    body: JSON.stringify({ token: expoPushToken, platform }),
+  });
+  return unwrap(res, null);
 }

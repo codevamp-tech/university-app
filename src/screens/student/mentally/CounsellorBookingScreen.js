@@ -1,6 +1,6 @@
 import React from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Dimensions
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Dimensions, Alert
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -131,7 +131,10 @@ const CounsellorBookingScreen = ({ navigation }) => {
                 <Text style={[styles.priceLabel, { color: colors.textMuted }]}>Session • {c.duration}</Text>
                 <Text style={[styles.price, { color: colors.textPrimary }]}>{c.price}<Text style={styles.priceSub}> / session</Text></Text>
               </View>
-              <TouchableOpacity style={styles.bookBtn}>
+              <TouchableOpacity 
+                style={styles.bookBtn} 
+                onPress={() => Alert.alert('🔒 Trial Account Limit', 'Therapist booking is not available in trial accounts.')}
+              >
                 <LinearGradient colors={['#EA580C', '#9A3412']} style={styles.bookBtnGradient}>
                   <Text style={styles.bookBtnText}>Book Now</Text>
                 </LinearGradient>

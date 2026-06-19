@@ -2,7 +2,7 @@ import React from 'react';
 import { useTheme } from '../../hooks/useTheme';
 import { APP_CONFIG } from '../../config/appConfig';
 import { useUser } from '../../context/UserContext';
-import { getFees, payFee } from '../../data/apiService';
+import { getFees, payFee, getTransactions } from '../../data/apiService';
 
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
@@ -20,6 +20,7 @@ const ERPFeesScreen = ({ navigation }) => {
   const { colors, isDark } = useTheme();
 
   const [apiFees, setApiFees] = React.useState([]);
+  const [transactions, setTransactions] = React.useState([]);
   const [fallbackPaid, setFallbackPaid] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
 
@@ -36,22 +37,11 @@ const ERPFeesScreen = ({ navigation }) => {
   const idStr = user?.id || '';
   const idNum = parseInt(idStr.replace(/[^0-9]/g, '')) || 1;
 
-  // SGPAs/RollNo based fee calculations
-  const tuitionFeeValBase = (idNum % 3 + 2) * 15000;
-  const devFeeValBase = 6500;
-
   // Find if fees are paid in API
   const tuitionPaid = apiFees.find(f => f.type === 'tuition')?.status === 'paid';
   const devPaid = apiFees.find(f => f.type === 'development')?.status === 'paid';
 
-  const tuitionFeeVal = (tuitionPaid || fallbackPaid) ? 0 : tuitionFeeValBase;
-  const devFeeVal = (devPaid || fallbackPaid) ? 0 : devFeeValBase;
-
-  const outstandingDuesVal = fallbackPaid ? 0 : (
-    apiFees.length > 0 
-      ? apiFees.filter(f => f.status !== 'paid').reduce((acc, f) => acc + (f.amount || 0), 0)
-      : (tuitionFeeVal + devFeeVal)
-  );
+  const outstandingDuesVal = fallbackPaid ? 0 : apiFees.filter(f => f.status !== 'paid').reduce((acc, f) => acc + (f.amount || 0), 0);
 
   React.useEffect(() => {
     async function loadFees() {
@@ -63,6 +53,14 @@ const ERPFeesScreen = ({ navigation }) => {
         }
       } catch (err) {
         console.warn('[FeesScreen] Error loading fees:', err);
+      }
+      try {
+        const txData = await getTransactions(accessToken);
+        if (txData) {
+          setTransactions(txData);
+        }
+      } catch (err) {
+        console.warn('[FeesScreen] Error loading transactions:', err);
       }
     }
     loadFees();
@@ -175,62 +173,60 @@ const ERPFeesScreen = ({ navigation }) => {
               </View>
             </View>
 
-
-            <View style={[styles.feeRow, { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#F9FAFB' }]}>
-              <View>
-                <Text style={[styles.feeLabel, { color: colors.textPrimary }]}>Tuition Fee</Text>
-                <Text style={[styles.feeDue, { color: colors.textSecondary }]}>Due Date: 15 Aug {currentAcademicYearStart}</Text>
+            {apiFees.filter(f => f.type !== 'hostel' && f.type !== 'exam').length === 0 ? (
+              <View style={{ padding: 20, alignItems: 'center' }}>
+                <Text style={{ color: colors.textSecondary, fontWeight: '600' }}>No outstanding semester fees</Text>
               </View>
-              <Text style={[styles.feeAmount, { color: colors.primary }]}>{formatCurrency(tuitionFeeVal)}</Text>
-            </View>
-
-
-
-            <View style={[styles.feeRow, { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#F9FAFB' }]}>
-              <View>
-                <Text style={[styles.feeLabel, { color: colors.textPrimary }]}>Development Fee</Text>
-                <Text style={[styles.feeDue, { color: colors.textSecondary }]}>Mandatory annual component</Text>
-              </View>
-              <Text style={[styles.feeAmount, { color: colors.primary }]}>{formatCurrency(devFeeVal)}</Text>
-            </View>
-
+            ) : (
+              apiFees.filter(f => f.type !== 'hostel' && f.type !== 'exam').map((fee) => (
+                <View key={fee.id} style={[styles.feeRow, { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#F9FAFB' }]}>
+                  <View>
+                    <Text style={[styles.feeLabel, { color: colors.textPrimary }]}>{fee.type ? fee.type.charAt(0).toUpperCase() + fee.type.slice(1) : 'Fee'}</Text>
+                    <Text style={[styles.feeDue, { color: colors.textSecondary }]}>Due Date: {fee.due_date ? new Date(fee.due_date).toLocaleDateString() : 'N/A'}</Text>
+                  </View>
+                  <Text style={[styles.feeAmount, { color: colors.primary }]}>{formatCurrency(fee.amount || 0)}</Text>
+                </View>
+              ))
+            )}
           </View>
         </View>
 
+        {/* Hostel & Exam Fees */}
+        {apiFees.some(f => f.type === 'hostel' || f.type === 'exam') && (
+          <View style={styles.sectionContainer}>
+            <View style={styles.sideBySide}>
+              {apiFees.filter(f => f.type === 'hostel').map((f) => (
+                <LinearGradient
+                  key={f.id}
+                  colors={isDark ? ['#064E3B', '#111827'] : ['#ECFDF5', '#DCFCE7']}
+                  style={[styles.hostelCard, { borderBottomColor: isDark ? '#34D399' : '#059669', borderWidth: 1, borderColor: colors.border }]}
+                >
+                  <View style={styles.hostelHeader}>
+                    <Text style={[styles.hostelTitle, { color: isDark ? '#34D399' : '#059669' }]}>Hostel Fee</Text>
+                    <View style={[styles.paidBadge, { backgroundColor: f.status === 'paid' ? (isDark ? 'rgba(52, 211, 153, 0.2)' : '#059669') : '#EF4444' }]}>
+                      <Text style={[styles.paidText, { color: f.status === 'paid' ? (isDark ? '#34D399' : '#FFFFFF') : '#FFFFFF' }]}>{f.status.toUpperCase()}</Text>
+                    </View>
+                  </View>
+                  <Text style={[styles.hostelAmount, { color: colors.textPrimary }]}>{formatCurrency(f.amount || 0)}</Text>
+                  <Text style={[styles.hostelSub, { color: colors.textSecondary }]}>Himalaya Hostel - Room 302</Text>
+                </LinearGradient>
+              ))}
 
-
-        {/* Hostel & Exam */}
-        <View style={styles.sectionContainer}>
-          <View style={styles.sideBySide}>
-            <LinearGradient
-              colors={isDark ? ['#064E3B', '#111827'] : ['#ECFDF5', '#DCFCE7']}
-              style={[styles.hostelCard, { borderBottomColor: isDark ? '#34D399' : '#059669', borderWidth: 1, borderColor: colors.border }]}
-            >
-              <View style={styles.hostelHeader}>
-                <Text style={[styles.hostelTitle, { color: isDark ? '#34D399' : '#059669' }]}>Hostel Fee</Text>
-                <View style={[styles.paidBadge, { backgroundColor: isDark ? 'rgba(52, 211, 153, 0.2)' : '#059669' }]}>
-                  <Text style={[styles.paidText, { color: isDark ? '#34D399' : '#FFFFFF' }]}>PAID</Text>
+              {apiFees.filter(f => f.type === 'exam').map((f) => (
+                <View key={f.id} style={[styles.examCard, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
+                  <View style={styles.hostelHeader}>
+                    <Text style={[styles.hostelTitle, { color: colors.primary }]}>Exam Fees</Text>
+                    <View style={[styles.paidBadge, { backgroundColor: f.status === 'paid' ? (isDark ? 'rgba(16, 185, 129, 0.2)' : '#DCFCE7') : '#EF4444' }]}>
+                      <Text style={[styles.paidText, { color: f.status === 'paid' ? (isDark ? '#34D399' : '#059669') : '#FFFFFF' }]}>{f.status.toUpperCase()}</Text>
+                    </View>
+                  </View>
+                  <Text style={[styles.hostelAmount, { color: colors.textPrimary }]}>{formatCurrency(f.amount || 0)}</Text>
+                  <Text style={[styles.hostelSub, { color: colors.textSecondary }]}>Odd Sem 2024 (Reg)</Text>
                 </View>
-              </View>
-              <Text style={[styles.hostelAmount, { color: colors.textPrimary }]}>₹ 35,000</Text>
-              <Text style={[styles.hostelSub, { color: colors.textSecondary }]}>Himalaya Hostel - Room 302</Text>
-            </LinearGradient>
-
-            <View style={[styles.examCard, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
-              <View style={styles.hostelHeader}>
-                <Text style={[styles.hostelTitle, { color: colors.primary }]}>Exam Fees</Text>
-                <View style={[styles.paidBadge, { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.2)' : '#DCFCE7' }]}>
-                  <Text style={[styles.paidText, { color: isDark ? '#34D399' : '#059669' }]}>PAID</Text>
-                </View>
-              </View>
-              <Text style={[styles.hostelAmount, { color: colors.textPrimary }]}>₹ 2,500</Text>
-              <Text style={[styles.hostelSub, { color: colors.textSecondary }]}>Odd Sem 2024 (Reg)</Text>
+              ))}
             </View>
-
           </View>
-        </View>
-
-
+        )}
 
         {/* Quick Pay Integration */}
         <View style={styles.sectionContainer}>
@@ -254,11 +250,8 @@ const ERPFeesScreen = ({ navigation }) => {
                 </TouchableOpacity>
               ))}
             </View>
-
           </View>
-
         </View>
-
 
         {/* Recent Transactions */}
         <View style={styles.sectionContainer}>
@@ -269,45 +262,27 @@ const ERPFeesScreen = ({ navigation }) => {
             </TouchableOpacity>
           </View>
 
-
-
-          <View style={[styles.transCard, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
-            <View style={[styles.transIcon, { backgroundColor: isDark ? 'rgba(234, 88, 12, 0.15)' : '#FFF7ED' }]}>
-              <MaterialIcons name="receipt-long" size={24} color={colors.primary} />
+          {transactions.length === 0 ? (
+            <View style={{ padding: 24, alignItems: 'center', backgroundColor: colors.card, borderRadius: 16, borderColor: colors.border, borderWidth: 1 }}>
+              <Text style={{ color: colors.textSecondary, fontWeight: '600' }}>No transactions available</Text>
             </View>
-            <View style={styles.transInfo}>
-              <Text style={[styles.transName, { color: colors.textPrimary }]}>Hostel Admission Fee</Text>
-              <Text style={[styles.transId, { color: colors.textSecondary }]}>Transaction ID: #{APP_CONFIG.UNIVERSITY_ID_PREFIX}-982341 | 12 Jul 2024</Text>
-            </View>
-            <View style={styles.transRight}>
-              <Text style={[styles.transAmount, { color: colors.primary }]}>₹ 35,000</Text>
-              <Text style={[styles.transSuccess, { color: isDark ? '#34D399' : '#059669' }]}>SUCCESS</Text>
-            </View>
-            <TouchableOpacity style={[styles.transDownload, { backgroundColor: colors.background, borderColor: colors.border }]}>
-              <MaterialIcons name="download" size={16} color={colors.textSecondary} />
-            </TouchableOpacity>
-          </View>
-
-
-
-          <View style={[styles.transCard, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
-            <View style={[styles.transIcon, { backgroundColor: isDark ? 'rgba(148, 163, 184, 0.15)' : '#F1F5F9' }]}>
-              <MaterialIcons name="grade" size={24} color={colors.textSecondary} />
-            </View>
-            <View style={styles.transInfo}>
-              <Text style={[styles.transName, { color: colors.textPrimary }]}>Carry Over Exam Fee</Text>
-              <Text style={[styles.transId, { color: colors.textSecondary }]}>Transaction ID: #{APP_CONFIG.UNIVERSITY_ID_PREFIX}-982105 | 05 Jun 2024</Text>
-            </View>
-            <View style={styles.transRight}>
-              <Text style={[styles.transAmount, { color: colors.primary }]}>₹ 1,500</Text>
-              <Text style={[styles.transSuccess, { color: isDark ? '#34D399' : '#059669' }]}>SUCCESS</Text>
-            </View>
-            <TouchableOpacity style={[styles.transDownload, { backgroundColor: colors.background, borderColor: colors.border }]}>
-              <MaterialIcons name="download" size={16} color={colors.textSecondary} />
-            </TouchableOpacity>
-          </View>
-
-
+          ) : (
+            transactions.slice(0, 5).map((t) => (
+              <View key={t.id} style={[styles.transCard, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
+                <View style={[styles.transIcon, { backgroundColor: isDark ? 'rgba(234, 88, 12, 0.15)' : '#FFF7ED' }]}>
+                  <MaterialIcons name="receipt-long" size={24} color={colors.primary} />
+                </View>
+                <View style={styles.transInfo}>
+                  <Text style={[styles.transName, { color: colors.textPrimary }]}>{t.description || t.type || 'Transaction'}</Text>
+                  <Text style={[styles.transId, { color: colors.textSecondary }]}>Transaction ID: #{t.id ? t.id.slice(0, 8).toUpperCase() : 'N/A'} | {t.created_at ? new Date(t.created_at).toLocaleDateString() : 'N/A'}</Text>
+                </View>
+                <View style={styles.transRight}>
+                  <Text style={[styles.transAmount, { color: colors.primary }]}>{formatCurrency(t.amount || 0)}</Text>
+                  <Text style={[styles.transSuccess, { color: isDark ? '#34D399' : '#059669' }]}>{t.status ? t.status.toUpperCase() : 'SUCCESS'}</Text>
+                </View>
+              </View>
+            ))
+          )}
         </View>
 
         {/* University Footer */}

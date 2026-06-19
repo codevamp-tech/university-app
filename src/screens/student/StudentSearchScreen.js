@@ -1,73 +1,138 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-  View, Text, StyleSheet, TextInput, FlatList, TouchableOpacity, Image
+  View, Text, StyleSheet, TextInput, FlatList, TouchableOpacity, Image, Alert
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { STUDENTS_LIST } from '../../constants/data';
+import { useUser } from '../../context/UserContext';
+import { searchUsersAPI, followUserAPI } from '../../data/apiService';
+import { getAvatarUrl } from '../../utils/avatar';
+import { useTheme } from '../../hooks/useTheme';
 
 const StudentSearchScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
+  const { accessToken } = useUser();
+  const { colors, isDark } = useTheme();
   const [searchQuery, setSearchQuery] = useState('');
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(false);
 
-  const filteredStudents = STUDENTS_LIST.filter(student => 
-    student.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    student.rollNo.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  useEffect(() => {
+    const delayDebounceFn = setTimeout(async () => {
+      if (searchQuery.length >= 2) {
+        setLoading(true);
+        try {
+          const results = await searchUsersAPI(accessToken, searchQuery);
+          setUsers(results);
+        } catch(e) {
+          console.warn("Search error:", e);
+        } finally {
+          setLoading(false);
+        }
+      } else {
+        setUsers([]);
+      }
+    }, 500);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [searchQuery, accessToken]);
+
+  const handleFollow = async (userId) => {
+    try {
+      const res = await followUserAPI(accessToken, userId);
+      if (res) {
+        Alert.alert("Success", "Follow request sent!");
+      }
+    } catch (error) {
+      console.warn("Follow error:", error);
+      Alert.alert("Error", "Failed to send follow request.");
+    }
+  };
+
+  const handleProfileClick = async (item) => {
+    try {
+      // Mark profile as viewed and store viewed by (local simulation)
+      let viewsData = await AsyncStorage.getItem('@unicampus_profile_views');
+      let views = viewsData ? JSON.parse(viewsData) : [];
+      views.unshift({
+        viewer_id: user?.id || 'current_user',
+        viewer_name: user?.name || 'You',
+        viewed_profile_id: item.id,
+        timestamp: new Date().toISOString()
+      });
+      await AsyncStorage.setItem('@unicampus_profile_views', JSON.stringify(views.slice(0, 50)));
+    } catch(e) {
+      console.warn("Error saving profile view", e);
+    }
+    
+    // Navigate with full student data
+    navigation.navigate('OtherStudentProfile', { student: item });
+  };
 
   const renderStudent = ({ item }) => (
     <TouchableOpacity 
-      style={styles.studentCard}
-      onPress={() => navigation.navigate('OtherStudentProfile', { student: item })}
+      style={[styles.studentCard, { backgroundColor: colors.card, borderBottomColor: colors.border, borderBottomWidth: 1 }]}
+      onPress={() => handleProfileClick(item)}
     >
       <View style={styles.avatarPlaceholder}>
-        <Text style={styles.avatarText}>{item.name.charAt(0)}</Text>
+        <Image source={{ uri: item.avatar_url || getAvatarUrl(item.username) }} style={{ width: 50, height: 50, borderRadius: 25 }} />
       </View>
       <View style={styles.studentInfo}>
-        <Text style={styles.studentName}>{item.name}</Text>
-        <Text style={styles.studentCourse}>B.Tech Computer Science • {item.rollNo}</Text>
+        <Text style={[styles.studentName, { color: colors.textPrimary, fontSize: 16 }]}>{item.username}</Text>
+        <Text style={[styles.studentCourse, { color: colors.textSecondary, fontSize: 13, marginTop: 2 }]}>
+          {item.course || 'Student'} {item.branch ? `• ${item.branch}` : ''}
+        </Text>
+        <Text style={{ color: colors.textMuted, fontSize: 12, marginTop: 2 }}>
+          {item.year ? `Year ${item.year} ` : ''}• {item.followers || 0} followers
+        </Text>
       </View>
-      <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+      <TouchableOpacity 
+        style={{ backgroundColor: isDark ? colors.background : '#F3F4F6', paddingHorizontal: 14, paddingVertical: 6, borderRadius: 16, borderWidth: 1, borderColor: colors.border }}
+        onPress={() => handleFollow(item.id)}
+      >
+        <Text style={{ color: colors.primary, fontWeight: '700', fontSize: 12 }}>Connect</Text>
+      </TouchableOpacity>
     </TouchableOpacity>
   );
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      <View style={styles.header}>
+    <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
+      <View style={[styles.header, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color="#1F2937" />
+          <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Network Search</Text>
+        <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Network Search</Text>
         <View style={{ width: 40 }} />
       </View>
 
-      <View style={styles.searchContainer}>
-        <View style={styles.searchBar}>
-          <Ionicons name="search" size={20} color="#6B7280" />
+      <View style={[styles.searchContainer, { backgroundColor: colors.background }]}>
+        <View style={[styles.searchBar, { backgroundColor: isDark ? colors.card : '#F3F4F6' }]}>
+          <Ionicons name="search" size={20} color={colors.textMuted || "#6B7280"} />
           <TextInput
-            style={styles.searchInput}
+            style={[styles.searchInput, { color: colors.textPrimary }]}
             placeholder="Search students by name or roll no..."
-            placeholderTextColor="#9CA3AF"
+            placeholderTextColor={colors.textMuted || "#9CA3AF"}
             value={searchQuery}
             onChangeText={setSearchQuery}
           />
           {searchQuery.length > 0 && (
             <TouchableOpacity onPress={() => setSearchQuery('')}>
-              <Ionicons name="close-circle" size={20} color="#9CA3AF" />
+              <Ionicons name="close-circle" size={20} color={colors.textMuted || "#9CA3AF"} />
             </TouchableOpacity>
           )}
         </View>
       </View>
 
       <FlatList
-        data={filteredStudents}
+        data={users}
         keyExtractor={(item) => item.id}
         renderItem={renderStudent}
         contentContainerStyle={styles.listContent}
         ListEmptyComponent={
           <View style={styles.emptyState}>
-            <Ionicons name="search-outline" size={48} color="#D1D5DB" />
-            <Text style={styles.emptyStateText}>No students found</Text>
+            <Ionicons name="search-outline" size={48} color={colors.textMuted || "#D1D5DB"} />
+            <Text style={[styles.emptyStateText, { color: colors.textSecondary }]}>{loading ? "Searching..." : searchQuery.length < 2 ? "Type to search..." : "No students found"}</Text>
           </View>
         }
       />

@@ -1,165 +1,254 @@
-import React from 'react';
+import React, { useState, useCallback } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, SafeAreaView, Dimensions,
+  View, Text, StyleSheet, FlatList, TouchableOpacity, Image, Dimensions, ActivityIndicator, TextInput, Animated
 } from 'react-native';
 import { MaterialIcons, MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { listJournalAPI } from '../../../data/apiService';
+import { useUser } from '../../../context/UserContext';
 import { APP_CONFIG } from '../../../config/appConfig';
+import { useTheme } from '../../../hooks/useTheme';
 
 const { width } = Dimensions.get('window');
+const JournalSkeleton = () => {
+  const animValue = React.useRef(new Animated.Value(0.3)).current;
+
+  React.useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(animValue, { toValue: 0.7, duration: 800, useNativeDriver: true }),
+        Animated.timing(animValue, { toValue: 0.3, duration: 800, useNativeDriver: true }),
+      ])
+    ).start();
+  }, []);
+
+  return (
+    <View style={{ marginBottom: 24, paddingHorizontal: 16 }}>
+      <Animated.View style={{ width: 100, height: 24, backgroundColor: '#E5E7EB', borderRadius: 4, marginBottom: 12, opacity: animValue }} />
+      <View style={styles.photoCard}>
+        <Animated.View style={{ height: 200, backgroundColor: '#E5E7EB', borderTopLeftRadius: 20, borderTopRightRadius: 20, opacity: animValue }} />
+        <View style={styles.cardInfo}>
+          <Animated.View style={{ width: 80, height: 24, backgroundColor: '#E5E7EB', borderRadius: 12, marginBottom: 12, opacity: animValue }} />
+          <Animated.View style={{ width: '100%', height: 16, backgroundColor: '#E5E7EB', borderRadius: 4, marginBottom: 8, opacity: animValue }} />
+          <Animated.View style={{ width: '80%', height: 16, backgroundColor: '#E5E7EB', borderRadius: 4, marginBottom: 16, opacity: animValue }} />
+          <View style={styles.footerRow}>
+            <Animated.View style={{ width: 60, height: 16, backgroundColor: '#E5E7EB', borderRadius: 4, opacity: animValue }} />
+            <Animated.View style={{ width: 80, height: 16, backgroundColor: '#E5E7EB', borderRadius: 4, opacity: animValue }} />
+          </View>
+        </View>
+      </View>
+    </View>
+  );
+};
 
 const CampusJournalFeedScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
+  const { user } = useUser();
+  const { colors, isDark } = useTheme();
+  const [entries, setEntries] = React.useState([]);
+  const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
+
+  useFocusEffect(
+    useCallback(() => {
+      const loadEntries = async () => {
+        try {
+          const res = await listJournalAPI(user?.accessToken || await AsyncStorage.getItem('accessToken'));
+          if (res) {
+            // Map backend fields to frontend fields
+            const mapped = res.map(e => ({
+              ...e,
+              date: e.created_at,
+              images: e.image_urls || [],
+            }));
+            setEntries(mapped);
+          } else {
+            // Fallback to local storage if API fails or offline
+            const stored = await AsyncStorage.getItem('@unicampus_campus_journal');
+            if (stored) {
+              setEntries(JSON.parse(stored));
+            } else {
+              setEntries([]);
+            }
+          }
+        } catch (error) {
+          console.error('Failed to load journal entries', error);
+          const stored = await AsyncStorage.getItem('@unicampus_campus_journal');
+          if (stored) setEntries(JSON.parse(stored));
+        } finally {
+          setLoading(false);
+        }
+      };
+      loadEntries();
+    }, [])
+  );
+
+  const renderImages = (images) => {
+    if (!images || images.length === 0) return null;
+
+    if (images.length === 1) {
+      return (
+        <Image source={{ uri: images[0] }} style={styles.largeImg} />
+      );
+    }
+    if (images.length === 2) {
+      return (
+        <View style={styles.masonryGrid}>
+          <Image source={{ uri: images[0] }} style={styles.masonryLarge} />
+          <Image source={{ uri: images[1] }} style={styles.masonrySmall} />
+        </View>
+      );
+    }
+    // 3 or more images: Bento style
+    return (
+      <View style={styles.bentoGrid}>
+        <Image source={{ uri: images[0] }} style={styles.bentoMainImg} />
+        <View style={styles.bentoRightCol}>
+          <Image source={{ uri: images[1] }} style={styles.bentoSideImg} />
+          {images[2] ? (
+            <Image source={{ uri: images[2] }} style={[styles.bentoSideImg, { marginTop: 4 }]} />
+          ) : null}
+        </View>
+      </View>
+    );
+  };
+
+  const formatDate = (dateString) => {
+    const d = new Date(dateString);
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  };
+
+  const formatTime = (dateString) => {
+    const d = new Date(dateString);
+    return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  };
+
+  const filteredEntries = entries.filter((entry) => {
+    if (!searchQuery) return true;
+    const query = searchQuery.toLowerCase();
+    const textMatch = entry.text && entry.text.toLowerCase().includes(query);
+    const locMatch = entry.location && entry.location.toLowerCase().includes(query);
+    const moodMatch = entry.mood && entry.mood.toLowerCase().includes(query);
+    const tagMatch = entry.tags && entry.tags.some(t => t.toLowerCase().includes(query));
+    return textMatch || locMatch || moodMatch || tagMatch;
+  });
+
+
+  const renderItem = ({ item, index }) => {
+    const dateLabel = formatDate(item.date);
+    const showHeader = index === 0 || formatDate(filteredEntries[index - 1].date) !== dateLabel;
+
+    return (
+      <React.Fragment>
+        {showHeader && (
+          <View style={styles.sectionHeader}>
+            <Text style={[styles.sectionTitle, { color: colors.primary }]}>
+              {new Date(item.date).toDateString() === new Date().toDateString() ? 'Today' : dateLabel}
+            </Text>
+            <View style={[styles.sectionLine, { backgroundColor: isDark ? colors.border : '#e6e8ea' }]} />
+            <Text style={[styles.sectionDate, { color: colors.textSecondary }]}>{dateLabel}</Text>
+          </View>
+        )}
+
+        <TouchableOpacity 
+          style={[styles.photoCard, { backgroundColor: colors.card }]}
+          onPress={() => navigation.navigate('JournalDetail', { entry: item })}
+        >
+          {renderImages(item.images)}
+          
+          <View style={styles.cardInfo}>
+            <View style={styles.tagRow}>
+              <View style={[styles.tag, { backgroundColor: isDark ? colors.background : '#cbceff' }]}><Text style={[styles.tagText, { color: isDark ? colors.textPrimary : '#343d96' }]}>{item.mood}</Text></View>
+              {item.tags && item.tags.map((tag, i) => (
+                <View key={i} style={[styles.tag, { backgroundColor: isDark ? colors.background : '#E0F2FE' }]}>
+                  <Text style={[styles.tagText, { color: isDark ? colors.textPrimary : '#0369A1' }]}>#{tag}</Text>
+                </View>
+              ))}
+            </View>
+            {item.text ? (
+              <Text style={[styles.entryText, { color: colors.textPrimary }]}>{item.text}</Text>
+            ) : null}
+            <View style={styles.footerRow}>
+              <View style={styles.footerItem}>
+                <Ionicons name="time-outline" size={14} color="#6B7280" />
+                <Text style={styles.footerText}>{formatTime(item.date)}</Text>
+              </View>
+              <View style={styles.footerItem}>
+                <Ionicons name="location-outline" size={14} color="#6B7280" />
+                <Text style={styles.footerText}>{item.location || 'Campus'}</Text>
+              </View>
+            </View>
+          </View>
+        </TouchableOpacity>
+      </React.Fragment>
+    );
+  };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
+      <View style={[styles.header, { paddingTop: insets.top + 10, backgroundColor: isDark ? colors.card : 'rgba(255,255,255,0.8)' }]}>
         <View style={styles.headerLeft}>
           <TouchableOpacity onPress={() => navigation.navigate('StudentMain')} style={{ marginRight: 8 }}>
-            <Ionicons name="arrow-back" size={24} color="#111827" />
+            <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
           </TouchableOpacity>
           <Image
-            source={{ uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDJuOAM0oovCadUOqe7o0MWt9vcoFpRGEdgjO7cPgqqVCsYshnCKyK1lMVbi3anAJ2okLWbyQORuafp286VHHSmtcW_Kjr2pP7Y-kjpuZLR59HWmTuHI1z3dWxI4IqsD6Vmr0d8ltS0bvKm3_GjKfoLxcLCd5knrCCXAio2piHk6N_rc53DJvD2qsSaclvXAxF71x2DxB3NB6Pua1eWczGAgwW5AocHmyEKogYEdtzKw-2W-u3DWRJM3Ar2-Ga4MrAVntW_n5mD2P6U' }}
-            style={styles.profilePic}
+            source={{ uri: user?.avatar_url || (user?.gender === 'F' || user?.gender === 'Female' ? 'https://images.pexels.com/photos/733872/pexels-photo-733872.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=500' : 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=500') }}
+            style={[styles.profilePic, { borderColor: colors.primary }]}
           />
-          <Text style={styles.headerTitle}>Campus Journal</Text>
+          <Text style={[styles.headerTitle, { color: colors.primary }]}>Campus Journal</Text>
         </View>
         <View style={styles.headerRight}>
-          <TouchableOpacity style={styles.headerIconBtn}>
-            <MaterialIcons name="local-fire-department" size={24} color="#EA580C" />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.headerIconBtn}>
-            <Ionicons name="search" size={24} color="#111827" />
+          <TouchableOpacity style={[styles.headerIconBtn, { backgroundColor: colors.background }]} onPress={() => setIsSearching(!isSearching)}>
+            <Ionicons name={isSearching ? "close" : "search"} size={24} color={colors.textPrimary} />
           </TouchableOpacity>
         </View>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {/* Today Section */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Today</Text>
-          <View style={styles.sectionLine} />
-          <Text style={styles.sectionDate}>Oct 24</Text>
-        </View>
-
-        {/* Bento Media Card */}
-        <TouchableOpacity style={styles.bentoCard}>
-          <View style={styles.bentoGrid}>
-            <Image
-              source={{ uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuB_aOOLCUf67CFzbzeggK9YESFlLoCv2XJQeHYEpXD2OYDD21xFwiGKFTPSSjg4FKv6Mxf_-dxFzi9Ih53aXXOH5FTw65mKyMlNOUYgJj-mEsp-EVIfmaazaTv_ppLWklvx1rx5pmZexfaaXvdiyswWz4kx-isW3WAiztRxfyXZ7i_ikvlZAeyD3dicM_4sMA6IT4kP85IqvpdjoYZ3jLgkkZscVl7LnfuXmu69CZhjZpA-qAUF4JcbPieZadlLi23tvbrF6ic0HFKS' }}
-              style={styles.bentoMainImg}
-            />
-            <View style={styles.bentoRightCol}>
-              <Image
-                source={{ uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuACZwEylevcGTrV_i5OkjLQeUes7wCEjLUbGPuIeqHjGo6vUlNAz6AtqgbKZhMXzDxtubH2Mlp2LXBF2Dclb8pVtaTtZpSgTS_-kaib_SzFe8uROo9iEL6qemUJBX85Ax29Z6CtcpJlibKZ773vGOB1jYEIshGNnRhsn0_BnBtMKG8faxnHof9XRiJHN2PkPNUd_K65YoO2QFF60sGvdbX9fS1r9XvVBEjIvV0aUyPiqPMWaa6aETPLapvU6YQ1jNCgX0U6N53RTDGQ' }}
-                style={styles.bentoSideImg}
-              />
-              <Image
-                source={{ uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBrU3bstlFwet5JDOFkO3VRBimLyLTmhEXVsQMDTzv9nQGER3vnj7y0-p_ftgGDAiwnTySKWgfWsfI31So3qjozHfFOmT6BMEKg54u_R0KuKcYUjFrzqqWWARiRLsArJ6HjlXxQlrYuc11Ux4mE2mDa0ux4LS3aIIdn_pHVTdZofya1Vc3vdk6qkQjMF_cMZlupDpnxiVGVJ871huPojnd_pZYlrsbWiaVMGj1WyEdlJDzeXuapDx6eW7RQ-60C_ROgshJf2i2PPRed' }}
-                style={[styles.bentoSideImg, { marginTop: 4 }]}
-              />
-            </View>
-          </View>
-          <View style={styles.cardInfo}>
-            <View style={styles.tagRow}>
-              <View style={styles.tag}><Text style={styles.tagText}>#CampusLife</Text></View>
-              <View style={[styles.tag, { backgroundColor: '#8dedec' }]}><Text style={[styles.tagText, { color: '#004343' }]}>#MainLibrary</Text></View>
-            </View>
-            <Text style={styles.entryText}>
-              Spent the entire morning lost in the archives. The light hitting the central atrium in the Main Library today was something else. Managed to finish my research paper draft ahead of schedule.
-            </Text>
-            <View style={styles.footerRow}>
-              <View style={styles.footerItem}>
-                <Ionicons name="time-outline" size={14} color="#6B7280" />
-                <Text style={styles.footerText}>10:45 AM</Text>
-              </View>
-              <View style={styles.footerItem}>
-                <Ionicons name="location-outline" size={14} color="#6B7280" />
-                <Text style={styles.footerText}>{APP_CONFIG.UNIVERSITY_SHORT_NAME} Library</Text>
-              </View>
-            </View>
-          </View>
-        </TouchableOpacity>
-
-        {/* AI Reflection Card */}
-        <LinearGradient colors={['#EEF2FF', '#FFF7ED']} style={styles.aiCard} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
-          <View style={styles.aiIconCircle}>
-            <MaterialCommunityIcons name="auto-fix" size={24} color="#EA580C" />
-          </View>
-          <View style={styles.aiContent}>
-            <Text style={styles.aiTitle}>{APP_CONFIG.AI_ASSISTANT_NAME} Reflection</Text>
-            <Text style={styles.aiText}>
-              You've been extremely productive in the Library today! Your focused sessions are trending upwards. Why not reward yourself with a break at the cafeteria later?
-            </Text>
-          </View>
-        </LinearGradient>
-
-        {/* Single Large Photo Card */}
-        <TouchableOpacity style={styles.photoCard}>
-          <Image
-            source={{ uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBIEZ6c-gQtDKD3Le8787VA5bzuNSEmpSPXyMrs7el6CYguiq9W3hVvUtZmKwcxAmTtS7u664PHqTM876Av7oBAGNoLbziueHeWkgFG36JGqr2ntSDeABKjOJQPhcx8wt9aGutvoRB0uVOJwtc6EvWWO4UKvGxftuB8f0ZgWgxQ__3McU7Tt4BHkQdUagQatTkmks4cJpxoSNMbgYqYu8VIAESjQLiCL586b2LJjSPQduJ_D81bg-aG4ezr8OgTHBOAOPfRfnjga4pZ' }}
-            style={styles.largeImg}
+      {isSearching && (
+        <View style={[styles.searchContainer, { backgroundColor: colors.card }]}>
+          <Ionicons name="search" size={20} color={colors.textMuted || "#9CA3AF"} style={styles.searchIcon} />
+          <TextInput
+            style={[styles.searchInput, { color: colors.textPrimary }]}
+            placeholder="Search journals, tags, or locations..."
+            placeholderTextColor={colors.textMuted || "#9CA3AF"}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            autoFocus
           />
-          <View style={styles.cardInfo}>
-            <View style={styles.tagRow}>
-              <View style={styles.tag}><Text style={styles.tagText}>#CodeLife</Text></View>
-            </View>
-            <Text style={styles.entryText}>
-              Lab session was intense. Finally got the neural network to converge! 🚀 The engineering block has the best energy after 4 PM.
-            </Text>
-            <View style={styles.footerRow}>
-              <View style={styles.footerItem}>
-                <Ionicons name="time-outline" size={14} color="#6B7280" />
-                <Text style={styles.footerText}>4:30 PM</Text>
-              </View>
-              <View style={styles.footerItem}>
-                <Ionicons name="location-outline" size={14} color="#6B7280" />
-                <Text style={styles.footerText}>Block C, Lab 402</Text>
-              </View>
-            </View>
-          </View>
-        </TouchableOpacity>
-
-        {/* Yesterday Section */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Yesterday</Text>
-          <View style={styles.sectionLine} />
-          <Text style={styles.sectionDate}>Oct 23</Text>
         </View>
+      )}
 
-        {/* Masonry Card */}
-        <TouchableOpacity style={styles.photoCard}>
-          <View style={styles.masonryGrid}>
-            <Image
-              source={{ uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCQGm_Q57a13L5Gr3Z8v-20VNcCrWQ9N_F8k0C5zA0bNTwWrkWn30cVBukkNhnTfh9_kHumbcl72phYJqpLyQY6-bE7KZQNhCpLaugo-YimuYzFk4QsBkR7tesk3yMkLKA5M6fW4SOEmS_vx6GTHkADFMVTmL1xnW15i8j38ZjYN543_xcBSA5EoplH6hZDX3dRi87QzUzVlUwGg3VkbcfJdBjVzjAk8eCoNu6bD9J1jJzknjpuSO9Zv-QkKUeAJ6HzwvKTkHU4ihwn' }}
-              style={styles.masonryLarge}
-            />
-            <Image
-              source={{ uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAWZtTlHxNXtOam9x_p3sHc_eUzjrIRKfvuiVkKwo48TflFzx1pTg7tri8uNV5RDZwQyUYaOHpabUgzjqKgkOQWjNGAs3s3bIjZ1Zs9U0B5p_oOwZgxCX01B9NTQbXgHlbQ1zmZnW6Gn6IIke_Akp1ZqAcchkeUO_-_kAvb1a9J3iuiLC0sSjxaduJbSCBG323uDlPviCojgEVWqW9jfdToSCImNlbkN4AnZaYRnJwl4p6rSWPcKn3xJFDeTUXlgTy3xliK4lFshgYK' }}
-              style={styles.masonrySmall}
-            />
-          </View>
-          <View style={styles.cardInfo}>
-            <Text style={styles.entryText}>
-              Beautiful evening walk around the central courtyard. Caught up with the debate club team about the upcoming nationals.
-            </Text>
-            <View style={styles.footerRow}>
-              <View style={styles.footerItem}>
-                <Ionicons name="time-outline" size={14} color="#6B7280" />
-                <Text style={styles.footerText}>6:15 PM</Text>
-              </View>
-              <View style={styles.footerItem}>
-                <Ionicons name="location-outline" size={14} color="#6B7280" />
-                <Text style={styles.footerText}>Central Courtyard</Text>
-              </View>
-            </View>
-          </View>
-        </TouchableOpacity>
-
-        <View style={{ height: 120 }} />
-      </ScrollView>
+      {loading ? (
+        <View style={{ marginTop: 24 }}>
+          <JournalSkeleton />
+          <JournalSkeleton />
+          <JournalSkeleton />
+        </View>
+      ) : filteredEntries.length === 0 ? (
+        <View style={styles.emptyContainer}>
+          <MaterialCommunityIcons name="notebook-edit-outline" size={64} color="#D1D5DB" />
+          <Text style={styles.emptyText}>
+            {searchQuery ? "No entries found." : "Your journal is empty."}
+          </Text>
+          <Text style={styles.emptySubText}>
+            {searchQuery ? "Try a different search term." : "Tap the + button below to write your first reflection."}
+          </Text>
+        </View>
+      ) : (
+        <FlatList
+          data={filteredEntries}
+          keyExtractor={(item) => item.id.toString()}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          renderItem={renderItem}
+          ListFooterComponent={<View style={{ height: 120 }} />}
+        />
+      )}
 
       {/* FAB */}
       <TouchableOpacity 
@@ -215,6 +304,29 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: 16,
+    paddingHorizontal: 12,
+    borderRadius: 16,
+    height: 48,
+    marginBottom: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  searchIcon: {
+    marginRight: 8,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 16,
+    color: '#111827',
   },
   scrollContent: {
     paddingHorizontal: 16,
@@ -442,6 +554,25 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '800',
     color: '#FFFFFF',
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 60,
+    paddingHorizontal: 32,
+  },
+  emptyText: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#4B5563',
+    marginTop: 16,
+  },
+  emptySubText: {
+    fontSize: 14,
+    color: '#9CA3AF',
+    textAlign: 'center',
+    marginTop: 8,
+    lineHeight: 20,
   },
 });
 

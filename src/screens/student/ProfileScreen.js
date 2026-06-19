@@ -1,20 +1,31 @@
 import React from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Dimensions,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Dimensions, Alert, ActivityIndicator,
 } from 'react-native';
 import { Ionicons, MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as ImagePicker from 'expo-image-picker';
 import { APP_CONFIG } from '../../config/appConfig';
 import { useUser } from '../../context/UserContext';
 import { getPersonaBadge } from '../../data/aiEngine';
+import { uploadAvatarAPI, connectionStatsAPI } from '../../data/apiService';
+import { getAvatarUrl } from '../../utils/avatar';
+
 
 const { width } = Dimensions.get('window');
 
 const ProfileScreen = () => {
   const insets = useSafeAreaInsets();
-  const { user } = useUser();
-  
+  const { user, accessToken, updateAvatarUrl } = useUser();
+  const [stats, setStats] = React.useState({ followers: 0, following: 0, connections: 0 });
+
+  React.useEffect(() => {
+    if (accessToken) {
+      connectionStatsAPI(accessToken).then(res => setStats(res || { followers: 0, following: 0, connections: 0 }));
+    }
+  }, [accessToken]);
+
   if (!user) return null;
 
   const displayCerts = [
@@ -67,11 +78,46 @@ const ProfileScreen = () => {
       ];
 
   const isFemaleAvatar = user.gender === 'F' || user.gender === 'Female';
-  const avatarUrl = isFemaleAvatar
+  const avatarUrl = user.avatar_url || (isFemaleAvatar
     ? 'https://images.pexels.com/photos/733872/pexels-photo-733872.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=500'
-    : 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=500';
+    : 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=500');
+
+
+  const handlePickImage = async () => {
+    Alert.alert("Clicked!", "Button works!");
+    try {
+      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (permissionResult.granted === false) {
+        Alert.alert('Permission required', 'Permission to access camera roll is required!');
+        return;
+      }
+
+      const pickerResult = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.3,
+      });
+
+      if (!pickerResult.canceled && pickerResult.assets?.length > 0) {
+        setIsUploading(true);
+        const res = await uploadAvatarAPI(accessToken, pickerResult.assets[0].uri);
+        if (res.ok && res.json?.success) {
+          updateAvatarUrl(res.json.data.avatar_url);
+        } else {
+          Alert.alert('Upload Failed', 'Could not upload profile picture.');
+        }
+      }
+    } catch (e) {
+      console.warn("Error picking image:", e);
+      Alert.alert('Error', 'An error occurred while picking the image.');
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   return (
+
     <View style={[styles.container, { paddingTop: insets.top }]}>
       {/* TopAppBar */}
       <View style={styles.header}>
@@ -93,19 +139,29 @@ const ProfileScreen = () => {
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         {/* Asymmetric Profile Section */}
         <View style={styles.profileSection}>
-          <View style={styles.profileImageWrap}>
+          
+          <TouchableOpacity style={styles.profileImageWrap} onPress={handlePickImage} activeOpacity={0.8}>
             <Image 
               source={{ uri: avatarUrl }} 
               style={styles.profileImg} 
               resizeMode="cover"
             />
+            {isUploading && (
+              <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' }]}>
+                <ActivityIndicator size="large" color="#fff" />
+              </View>
+            )}
+            <View style={{ position: 'absolute', top: 10, right: 10, backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 15, padding: 6 }}>
+              <MaterialIcons name="edit" size={16} color="#FFF" />
+            </View>
             <LinearGradient colors={['transparent', 'rgba(0,0,0,0.8)']} style={styles.imgOverlay}>
+
               <View style={styles.pulseEliteBadge}>
                 <Text style={styles.pulseEliteText}>{getPersonaBadge(user.personaType).toUpperCase()}</Text>
               </View>
               <Text style={styles.profileName}>{user.name}</Text>
             </LinearGradient>
-          </View>
+          </TouchableOpacity>
           
           <View style={styles.profileInfoWrap}>
             <Text style={styles.profileMajor}>{user.course} {user.branch}</Text>
@@ -122,6 +178,16 @@ const ProfileScreen = () => {
               <View style={styles.infoCapsule}>
                 <Text style={styles.infoLabel}>VIBE</Text>
                 <Text style={[styles.infoValue, { color: '#006666' }]}>Innovator</Text>
+              </View>
+            </View>
+            <View style={[styles.infoCapsuleRow, { marginTop: 8 }]}>
+              <View style={styles.infoCapsule}>
+                <Text style={styles.infoLabel}>FOLLOWERS</Text>
+                <Text style={styles.infoValue}>{stats.followers}</Text>
+              </View>
+              <View style={styles.infoCapsule}>
+                <Text style={styles.infoLabel}>CONNECTIONS</Text>
+                <Text style={styles.infoValue}>{stats.connections}</Text>
               </View>
             </View>
           </View>

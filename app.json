@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "University Portal",
-    "slug": "university-portal",
+    "name": "UniCampus",
+    "slug": "unicampus",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -14,7 +14,18 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.university.portal"
+      "bundleIdentifier": "com.university.portal",
+      "entitlements": {
+        "com.apple.developer.healthkit": true,
+        "com.apple.developer.healthkit.background-delivery": true
+      },
+      "infoPlist": {
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": true
+        },
+        "NSHealthShareUsageDescription": "UniCampus reads your steps, active calories, sleep, and mindful sessions to display your daily fitness metrics.",
+        "NSHealthUpdateUsageDescription": "UniCampus saves your focus session duration to Apple Health."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -22,11 +33,42 @@
         "backgroundColor": "#F0F4FF"
       },
       "package": "com.university.portal",
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "permissions": [
+        "android.permission.health.READ_STEPS",
+        "android.permission.health.READ_ACTIVE_CALORIES_BURNED",
+        "android.permission.health.READ_SLEEP",
+        "android.permission.ACTIVITY_RECOGNITION"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
+    "plugins": [
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "The app accesses your photos to let you share them with your friends."
+        }
+      ],
+      [
+        "expo-health-connect",
+        {
+          "permissions": [
+            "READ_STEPS",
+            "READ_ACTIVE_CALORIES_BURNED",
+            "READ_SLEEP"
+          ]
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#ffffff"
+        }
+      ]
+    ],
     "extra": {
       "eas": {
         "projectId": "ab34e327-1caf-46d6-bc97-3bc1f48cca9d"
