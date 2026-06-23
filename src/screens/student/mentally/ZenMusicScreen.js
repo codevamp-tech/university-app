@@ -15,8 +15,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../../hooks/useTheme';
 import { APP_CONFIG } from '../../../config/appConfig';
-import { ActivityIndicator } from 'react-native';
-
+import { ActivityIndicator, PanResponder } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useFocusEffect } from '@react-navigation/native';
 
 const { width } = Dimensions.get('window');
 
@@ -30,6 +31,9 @@ const ZenMusicScreen = ({ navigation }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [position, setPosition] = useState(0);
   const [duration, setDuration] = useState(45 * 60 * 1000);
+  const [volume, setVolume] = useState(0.75);
+  const sliderWidthRef = React.useRef(0);
+  const [favorites, setFavorites] = useState([]);
   
   const [currentTrack, setCurrentTrack] = useState({
     title: 'Deep Meditation',
@@ -54,6 +58,11 @@ const ZenMusicScreen = ({ navigation }) => {
   };
 
   const playSound = async (track) => {
+    if (track.isPremium) {
+      Alert.alert('Premium Feature', `${track.title} is locked in this demo.`);
+      return;
+    }
+
     try {
       if (!Audio || !Audio.Sound) {
         Alert.alert('Native Module Required', 'Audio playback is not supported on this client yet.');
@@ -73,7 +82,7 @@ const ZenMusicScreen = ({ navigation }) => {
       // Create new sound without auto-play initially
       const { sound: newSound } = await Audio.Sound.createAsync(
         { uri: track.uri },
-        { shouldPlay: false },
+        { shouldPlay: false, volume: volume },
         onPlaybackStatusUpdate,
         false
       );
@@ -123,7 +132,6 @@ const ZenMusicScreen = ({ navigation }) => {
   const progressPercent = duration > 0 ? (position / duration) * 100 : 0;
 
   useEffect(() => {
-    // Configure audio session once
     const configureAudio = async () => {
       try {
         if (Audio && Audio.setAudioModeAsync) {
@@ -139,12 +147,120 @@ const ZenMusicScreen = ({ navigation }) => {
     };
     configureAudio();
 
+    const loadFavs = async () => {
+      try {
+        const stored = await AsyncStorage.getItem('zen_favorites');
+        if (stored) setFavorites(JSON.parse(stored));
+      } catch (e) {
+        console.warn('Load favs error:', e);
+      }
+    };
+    loadFavs();
+
     return () => {
       if (sound) {
         sound.unloadAsync().catch(e => console.warn('[ZenMusic] Cleanup unload error:', e));
       }
     };
   }, [sound]);
+
+  const toggleFavorite = async () => {
+    let newFavs;
+    if (favorites.includes(currentTrack.id)) {
+      newFavs = favorites.filter(id => id !== currentTrack.id);
+    } else {
+      newFavs = [...favorites, currentTrack.id];
+    }
+    setFavorites(newFavs);
+    try {
+      await AsyncStorage.setItem('zen_favorites', JSON.stringify(newFavs));
+    } catch (e) {
+      console.warn('Save fav error:', e);
+    }
+  };
+
+  const handleVolumeChange = async (newVol) => {
+    setVolume(newVol);
+    if (soundRef.current) {
+      try {
+        await soundRef.current.setVolumeAsync(newVol);
+      } catch (e) {
+        console.warn('Set volume error:', e);
+      }
+    }
+  };
+
+  const initialVolumeRef = React.useRef(0);
+
+  const volumePanResponder = React.useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onPanResponderGrant: (evt) => {
+        if (sliderWidthRef.current > 0) {
+          const startVol = Math.max(0, Math.min(1, evt.nativeEvent.locationX / sliderWidthRef.current));
+          initialVolumeRef.current = startVol;
+          handleVolumeChange(startVol);
+        }
+      },
+      onPanResponderMove: (evt, gestureState) => {
+        if (sliderWidthRef.current > 0) {
+          const deltaVol = gestureState.dx / sliderWidthRef.current;
+          const newVol = Math.max(0, Math.min(1, initialVolumeRef.current + deltaVol));
+          handleVolumeChange(newVol);
+        }
+      }
+    })
+  ).current;
+
+  const durationRef = React.useRef(duration);
+  const soundRef = React.useRef(sound);
+  const progressWidthRef = React.useRef(0);
+  const initialProgressRef = React.useRef(0);
+
+  useEffect(() => {
+    durationRef.current = duration;
+  }, [duration]);
+
+  useEffect(() => {
+    soundRef.current = sound;
+  }, [sound]);
+
+  const handleProgressGrant = async (evt) => {
+    if (progressWidthRef.current > 0 && soundRef.current && durationRef.current > 0) {
+      const x = evt.nativeEvent.locationX;
+      const percent = Math.max(0, Math.min(1, x / progressWidthRef.current));
+      initialProgressRef.current = percent;
+      const newPos = percent * durationRef.current;
+      setPosition(newPos);
+      try {
+        await soundRef.current.setPositionAsync(newPos);
+      } catch (e) {
+        console.warn('Seek error:', e);
+      }
+    }
+  };
+
+  const handleProgressMove = async (evt, gestureState) => {
+    if (progressWidthRef.current > 0 && soundRef.current && durationRef.current > 0) {
+      const deltaPercent = gestureState.dx / progressWidthRef.current;
+      const percent = Math.max(0, Math.min(1, initialProgressRef.current + deltaPercent));
+      const newPos = percent * durationRef.current;
+      setPosition(newPos);
+      try {
+        await soundRef.current.setPositionAsync(newPos);
+      } catch (e) {
+        console.warn('Seek error:', e);
+      }
+    }
+  };
+
+  const progressPanResponder = React.useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onPanResponderGrant: handleProgressGrant,
+      onPanResponderMove: handleProgressMove
+    })
+  ).current;
 
   useFocusEffect(
     React.useCallback(() => {
@@ -172,7 +288,8 @@ const ZenMusicScreen = ({ navigation }) => {
       icon: 'forest', 
       uri: 'https://res.cloudinary.com/ddlfjeqxs/video/upload/v1781803894/zen-music/vexrnpnay0eherxruarj.mp3',
       id: 'mossy_dawn',
-      image: 'https://images.unsplash.com/photo-1472214103451-9374bd1c798e?q=80&w=1000&auto=format&fit=crop'
+      image: 'https://images.unsplash.com/photo-1472214103451-9374bd1c798e?q=80&w=1000&auto=format&fit=crop',
+      isPremium: true
     },
     { 
       title: 'Whispering Pines', 
@@ -180,7 +297,8 @@ const ZenMusicScreen = ({ navigation }) => {
       icon: 'air', 
       uri: 'https://res.cloudinary.com/ddlfjeqxs/video/upload/v1781803938/zen-music/icqqup3tksnpefbq4fgc.mp3',
       id: 'whispering_pines',
-      image: 'https://images.unsplash.com/photo-1506126613408-eca07ce68773?q=80&w=1000&auto=format&fit=crop'
+      image: 'https://images.unsplash.com/photo-1506126613408-eca07ce68773?q=80&w=1000&auto=format&fit=crop',
+      isPremium: true
     },
   ];
 
@@ -190,14 +308,14 @@ const ZenMusicScreen = ({ navigation }) => {
       sub: 'Gentle relaxation', 
       uri: 'https://res.cloudinary.com/ddlfjeqxs/video/upload/v1781803929/zen-music/w4xmosw5xm5nzaidmupg.mp3',
       id: 'tideglass',
-      image: 'https://images.unsplash.com/photo-1511295742364-927d44ff6a38?q=80&w=1000&auto=format&fit=crop' 
+      image: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?q=80&w=1000&auto=format&fit=crop' 
     },
     { 
       title: 'Tideglass Drift', 
       sub: 'Deep ambient sleep', 
       uri: 'https://res.cloudinary.com/ddlfjeqxs/video/upload/v1781803912/zen-music/qxyow2rur1la6aw84ghq.mp3',
       id: 'tideglass_drift',
-      image: 'https://images.unsplash.com/photo-1434030216411-0b793f4b4173?q=80&w=1000&auto=format&fit=crop' 
+      image: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?q=80&w=1000&auto=format&fit=crop' 
     },
   ];
 
@@ -211,11 +329,6 @@ const ZenMusicScreen = ({ navigation }) => {
             <MaterialIcons name="arrow-back" size={24} color={colors.textPrimary} />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: colors.primary }]}>Wellness Hub</Text>
-        </View>
-        <View style={styles.headerRight}>
-          <TouchableOpacity style={styles.iconBtn}>
-            <MaterialIcons name="menu" size={24} color={colors.textSecondary} />
-          </TouchableOpacity>
         </View>
       </View>
 
@@ -251,14 +364,18 @@ const ZenMusicScreen = ({ navigation }) => {
                     {isLoading ? 'Buffering...' : (isPlaying ? 'Relieving Anxiety...' : 'Paused')}
                   </Text>
                 </View>
-                <TouchableOpacity onPress={() => Alert.alert('Added to Favorites', 'Track saved to library.')}>
-                  <MaterialIcons name="favorite" size={24} color={colors.primary} />
+                <TouchableOpacity onPress={toggleFavorite}>
+                  <MaterialIcons name={favorites.includes(currentTrack.id) ? "favorite" : "favorite-border"} size={24} color={colors.primary} />
                 </TouchableOpacity>
               </View>
 
 
               <View style={styles.progressContainer}>
-                <View style={[styles.progressBarBg, { backgroundColor: colors.border }]}>
+                <View 
+                  style={[styles.progressBarBg, { backgroundColor: colors.border }]}
+                  onLayout={(e) => { progressWidthRef.current = e.nativeEvent.layout.width; }}
+                  {...progressPanResponder.panHandlers}
+                >
                   <LinearGradient
                     colors={[colors.primary, colors.primaryDark]}
                     style={[styles.progressBarFill, { width: `${progressPercent}%` }]}
@@ -275,7 +392,6 @@ const ZenMusicScreen = ({ navigation }) => {
 
 
               <View style={styles.mainControls}>
-                <TouchableOpacity onPress={() => Alert.alert('Shuffle mode', 'Zen shuffle is active.')}><MaterialIcons name="shuffle" size={24} color={colors.textSecondary} /></TouchableOpacity>
                 <TouchableOpacity onPress={() => Alert.alert('Previous track', 'Moving to previous track.')}><MaterialIcons name="skip-previous" size={32} color={isDark ? '#818CF8' : '#4953AC'} /></TouchableOpacity>
                 <TouchableOpacity 
                   style={[styles.playBtnLarge, { backgroundColor: colors.primary, shadowColor: colors.primary }]}
@@ -288,15 +404,18 @@ const ZenMusicScreen = ({ navigation }) => {
                   )}
                 </TouchableOpacity>
                 <TouchableOpacity onPress={() => Alert.alert('Next track', 'Moving to next track.')}><MaterialIcons name="skip-next" size={32} color={isDark ? '#818CF8' : '#4953AC'} /></TouchableOpacity>
-                <TouchableOpacity onPress={() => Alert.alert('Repeat mode', 'Zen repeat is active.')}><MaterialIcons name="repeat" size={24} color={colors.textSecondary} /></TouchableOpacity>
               </View>
 
 
               <View style={styles.volumeContainer}>
                 <MaterialIcons name="volume-down" size={20} color={colors.textSecondary} />
-                <View style={[styles.volumeSliderBg, { backgroundColor: colors.border }]}>
-                  <View style={[styles.volumeSliderFill, { backgroundColor: isDark ? '#818CF8' : '#4953AC' }, { width: '75%' }]} />
-                  <View style={[styles.volumeThumb, { borderColor: isDark ? '#818CF8' : '#4953AC', backgroundColor: colors.card }, { left: '75%' }]} />
+                <View 
+                  style={[styles.volumeSliderBg, { backgroundColor: colors.border }]}
+                  onLayout={(e) => { sliderWidthRef.current = e.nativeEvent.layout.width; }}
+                  {...volumePanResponder.panHandlers}
+                >
+                  <View style={[styles.volumeSliderFill, { backgroundColor: isDark ? '#818CF8' : '#4953AC' }, { width: `${volume * 100}%` }]} pointerEvents="none" />
+                  <View style={[styles.volumeThumb, { borderColor: isDark ? '#818CF8' : '#4953AC', backgroundColor: colors.card }, { left: `${volume * 100}%` }]} pointerEvents="none" />
                 </View>
                 <MaterialIcons name="volume-up" size={20} color={colors.textSecondary} />
               </View>
@@ -354,7 +473,7 @@ const ZenMusicScreen = ({ navigation }) => {
               return (
                 <TouchableOpacity 
                   key={scene.title} 
-                  style={[styles.ambienceCard, isCurrent && { borderWidth: 2, borderColor: colors.primary }]}
+                  style={[styles.ambienceCard, isCurrent && { borderWidth: 2, borderColor: colors.primary }, scene.isPremium && { opacity: 0.7 }]}
                   onPress={() => playSound(scene)}
                 >
                   <Image source={{ uri: scene.image }} style={styles.ambienceImage} />
@@ -366,9 +485,15 @@ const ZenMusicScreen = ({ navigation }) => {
                     <Text style={styles.ambienceTitle}>{scene.title}</Text>
                     <Text style={styles.ambienceSub}>{scene.sub}</Text>
                   </View>
-                  <View style={styles.ambienceIconWrapper}>
-                    <MaterialIcons name={isCurrent && isPlaying ? "pause" : scene.icon} size={16} color="#FFFFFF" />
-                  </View>
+                  {scene.isPremium ? (
+                    <View style={styles.ambienceIconWrapper}>
+                      <MaterialIcons name="lock" size={16} color="#FFFFFF" />
+                    </View>
+                  ) : (
+                    <View style={styles.ambienceIconWrapper}>
+                      <MaterialIcons name={isCurrent && isPlaying ? "pause" : scene.icon} size={16} color="#FFFFFF" />
+                    </View>
+                  )}
                 </TouchableOpacity>
               );
             })}

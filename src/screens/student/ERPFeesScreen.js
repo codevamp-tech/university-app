@@ -37,9 +37,18 @@ const ERPFeesScreen = ({ navigation }) => {
   const idStr = user?.id || '';
   const idNum = parseInt(idStr.replace(/[^0-9]/g, '')) || 1;
 
+  const isMedical = user?.course?.replace(/\./g, '').toUpperCase().includes('MBBS') || user?.category?.toLowerCase() === 'medical';
+  const getPhaseRoman = (sem) => {
+    if (sem <= 2) return 'I';
+    if (sem <= 4) return 'II';
+    if (sem <= 6) return 'III';
+    return 'IV';
+  };
+
   // Find if fees are paid in API
   const tuitionPaid = apiFees.find(f => f.type === 'tuition')?.status === 'paid';
   const devPaid = apiFees.find(f => f.type === 'development')?.status === 'paid';
+  const isLocked = apiFees.some(f => f.status === 'locked');
 
   const outstandingDuesVal = fallbackPaid ? 0 : apiFees.filter(f => f.status !== 'paid').reduce((acc, f) => acc + (f.amount || 0), 0);
 
@@ -67,6 +76,13 @@ const ERPFeesScreen = ({ navigation }) => {
   }, [accessToken]);
 
   const handlePayNow = async () => {
+    if (isLocked) {
+      Alert.alert(
+        'Administrative Hold',
+        'Your fees payment portal is locked due to an administrative hold. Please contact the finance desk for resolution.'
+      );
+      return;
+    }
     if (outstandingDuesVal === 0) {
       Alert.alert('No Dues', 'You have no outstanding dues to pay.');
       return;
@@ -101,6 +117,61 @@ const ERPFeesScreen = ({ navigation }) => {
     ? (user.branch && !user.course.includes(user.branch) ? `${user.course} - ${user.branch}` : user.course)
     : 'B.Tech Computer Science Engineering';
 
+  const isDemoLocked = true;
+  if (isDemoLocked) {
+    return (
+      <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
+        {/* TopAppBar */}
+        <View style={[styles.header, { backgroundColor: colors.background, borderBottomColor: colors.border, borderBottomWidth: 1 }]}>
+          <View style={styles.headerLeft}>
+            <TouchableOpacity onPress={() => navigation.navigate('ERPHome')} style={[styles.backBtn, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
+              <MaterialIcons name="arrow-back" size={22} color={colors.textPrimary} />
+            </TouchableOpacity>
+            <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Fees & Payments</Text>
+          </View>
+        </View>
+
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 }}>
+          <View style={{
+            width: 90,
+            height: 90,
+            borderRadius: 45,
+            backgroundColor: isDark ? 'rgba(234, 88, 12, 0.15)' : '#FFF7ED',
+            justifyContent: 'center',
+            alignItems: 'center',
+            marginBottom: 24,
+            borderColor: colors.primary,
+            borderWidth: 2
+          }}>
+            <MaterialIcons name="lock" size={48} color={colors.primary} />
+          </View>
+          <Text style={{ fontSize: 24, fontWeight: '900', color: colors.textPrimary, textAlign: 'center', marginBottom: 12 }}>
+            Fees Portal Locked
+          </Text>
+          <Text style={{ fontSize: 14, color: colors.textSecondary, textAlign: 'center', lineHeight: 22, paddingHorizontal: 20, marginBottom: 32 }}>
+            The Fees & Payments module is currently locked in this demo space. Please contact the administration to request billing and payments clearance.
+          </Text>
+          <TouchableOpacity
+            style={{
+              backgroundColor: colors.primary,
+              paddingHorizontal: 28,
+              paddingVertical: 14,
+              borderRadius: 24,
+              shadowColor: colors.primary,
+              shadowOffset: { width: 0, height: 6 },
+              shadowOpacity: 0.25,
+              shadowRadius: 10,
+              elevation: 5
+            }}
+            onPress={() => navigation.navigate('ERPHome')}
+          >
+            <Text style={{ color: '#FFFFFF', fontWeight: '800', fontSize: 14 }}>Return to ERP Home</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
       {/* TopAppBar */}
@@ -119,6 +190,29 @@ const ERPFeesScreen = ({ navigation }) => {
 
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        {isLocked && (
+          <View style={{
+            marginHorizontal: 16,
+            marginTop: 12,
+            backgroundColor: '#FEF2F2',
+            borderColor: '#EF4444',
+            borderWidth: 1,
+            borderRadius: 12,
+            padding: 16,
+            flexDirection: 'row',
+            gap: 12,
+            alignItems: 'center'
+          }}>
+            <MaterialIcons name="error-outline" size={24} color="#EF4444" />
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: '#991B1B', fontWeight: '800', fontSize: 14 }}>ADMINISTRATIVE LOCK</Text>
+              <Text style={{ color: '#7F1D1D', fontSize: 12, marginTop: 2 }}>
+                Your fee account has been locked. Online payments are currently suspended. Please contact the finance desk.
+              </Text>
+            </View>
+          </View>
+        )}
+
         {/* Hero: Total Outstanding */}
         <View style={styles.sectionContainer}>
           <LinearGradient
@@ -130,16 +224,16 @@ const ERPFeesScreen = ({ navigation }) => {
 
             <Text style={[styles.heroLabel, { color: 'rgba(255,255,255,0.7)' }]}>OUTSTANDING DUES</Text>
             <Text style={styles.heroAmount}>{formatCurrency(outstandingDuesVal)}</Text>
-            <Text style={[styles.heroSub, { color: 'rgba(255,255,255,0.85)' }]}>{academicYearStr} | {displaySem} Semester</Text>
+            <Text style={[styles.heroSub, { color: 'rgba(255,255,255,0.85)' }]}>{academicYearStr} | {isMedical ? `Phase ${getPhaseRoman(semNum)}` : `${displaySem} Semester`}</Text>
             <View style={styles.heroBtns}>
               <TouchableOpacity 
-                style={[styles.payNowBtn, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#FFFFFF' }]}
+                style={[styles.payNowBtn, { backgroundColor: isLocked ? '#EF4444' : (isDark ? 'rgba(255,255,255,0.1)' : '#FFFFFF') }]}
                 onPress={handlePayNow}
-                disabled={loading}
+                disabled={loading || isLocked}
               >
-                <MaterialIcons name="payments" size={18} color={isDark ? '#FFFFFF' : '#EA580C'} />
-                <Text style={[styles.payNowText, { color: isDark ? '#FFFFFF' : '#EA580C' }]}>
-                  {loading ? 'Paying...' : 'Pay Now'}
+                <MaterialIcons name={isLocked ? "lock" : "payments"} size={18} color={isLocked ? "#FFFFFF" : (isDark ? '#FFFFFF' : '#EA580C')} />
+                <Text style={[styles.payNowText, { color: isLocked ? "#FFFFFF" : (isDark ? '#FFFFFF' : '#EA580C') }]}>
+                  {isLocked ? 'Locked' : (loading ? 'Paying...' : 'Pay Now')}
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.ledgerBtn}>
@@ -157,18 +251,26 @@ const ERPFeesScreen = ({ navigation }) => {
           <View style={[styles.feeCard, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
             <View style={styles.feeCardHeader}>
               <View>
-                <Text style={[styles.feeCardTitle, { color: colors.textPrimary }]}>{displaySem} Semester Fees</Text>
+                <Text style={[styles.feeCardTitle, { color: colors.textPrimary }]}>{isMedical ? `Phase ${getPhaseRoman(semNum)}` : `${displaySem} Semester`} Fees</Text>
                 <Text style={[styles.feeCardSub, { color: colors.textSecondary }]}>{courseTitle}</Text>
               </View>
               <View style={[
                 styles.pendingBadge, 
-                { backgroundColor: outstandingDuesVal === 0 ? (isDark ? 'rgba(52, 211, 153, 0.2)' : '#059669') : (isDark ? 'rgba(239, 68, 68, 0.2)' : '#F95630') }
+                { 
+                  backgroundColor: isLocked 
+                    ? (isDark ? 'rgba(239, 68, 68, 0.2)' : '#EF4444')
+                    : (outstandingDuesVal === 0 ? (isDark ? 'rgba(52, 211, 153, 0.2)' : '#059669') : (isDark ? 'rgba(239, 68, 68, 0.2)' : '#F95630')) 
+                }
               ]}>
                 <Text style={[
                   styles.pendingBadgeText, 
-                  { color: outstandingDuesVal === 0 ? (isDark ? '#34D399' : '#FFFFFF') : (isDark ? '#EF4444' : '#FFFFFF') }
+                  { 
+                    color: isLocked 
+                      ? '#FFFFFF' 
+                      : (outstandingDuesVal === 0 ? (isDark ? '#34D399' : '#FFFFFF') : (isDark ? '#EF4444' : '#FFFFFF')) 
+                  }
                 ]}>
-                  {outstandingDuesVal === 0 ? 'PAID' : 'PENDING'}
+                  {isLocked ? 'LOCKED' : (outstandingDuesVal === 0 ? 'PAID' : 'PENDING')}
                 </Text>
               </View>
             </View>

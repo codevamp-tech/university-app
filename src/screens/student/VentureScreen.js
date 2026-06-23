@@ -61,11 +61,12 @@ const VentureScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(true);
   const [matching, setMatching] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const scrollViewRef = React.useRef(null);
 
   // Form states
   const [vName, setVName] = useState('');
   const [vPitch, setVPitch] = useState('');
-  const [vCategory, setVCategory] = useState(user?.category || 'Tech');
+  const [vCategory, setVCategory] = useState('');
   const [vLookingFor, setVLookingFor] = useState('Developer, Marketing');
 
   // Student's own posted startups states
@@ -194,8 +195,13 @@ const VentureScreen = ({ navigation }) => {
       {/* TopAppBar */}
       <View style={[styles.header, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
         <View style={styles.headerLeft}>
-          <MaterialIcons name="school" size={26} color={colors.primary} />
-          <Text style={[styles.headerLogo, { color: colors.primary }]}>{APP_CONFIG.UNIVERSITY_NAME}</Text>
+          <LinearGradient
+            colors={isDark ? ['#9A3412', '#7C2D12'] : ['#EA580C', '#9A3412']}
+            style={styles.logoIconBg}
+          >
+            <MaterialIcons name="lightbulb" size={20} color="#FFFFFF" />
+          </LinearGradient>
+          <Text style={[styles.headerLogo, { color: colors.textPrimary }]}>{APP_CONFIG.UNIVERSITY_SHORT_NAME} Ventures</Text>
         </View>
 
         <View style={styles.headerRight}>
@@ -213,7 +219,7 @@ const VentureScreen = ({ navigation }) => {
         </View>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+      <ScrollView ref={scrollViewRef} contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         {/* Venture Launchpad Hero */}
         <View style={styles.heroSection}>
           <Image
@@ -229,10 +235,10 @@ const VentureScreen = ({ navigation }) => {
             </View>
             <Text style={styles.heroTitle}>Where Ideas {"\n"}<Text style={styles.heroTitleItalic}>Go Infinite.</Text></Text>
             <View style={styles.heroBtns}>
-              <TouchableOpacity style={styles.pitchBtn}>
+              <TouchableOpacity style={styles.pitchBtn} onPress={() => scrollViewRef.current?.scrollToEnd({ animated: true })}>
                 <Text style={[styles.pitchBtnText, { color: colors.primary }]}>Pitch Your Idea</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.exploreBtn, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.15)', borderColor: 'rgba(255,255,255,0.2)' }]}>
+              <TouchableOpacity style={[styles.exploreBtn, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.15)', borderColor: 'rgba(255,255,255,0.2)' }]} onPress={() => scrollViewRef.current?.scrollTo({ y: 550, animated: true })}>
                 <Text style={styles.exploreBtnText}>Explore Startups</Text>
               </TouchableOpacity>
             </View>
@@ -473,12 +479,24 @@ const styles = StyleSheet.create({
   headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 12,
+  },
+  logoIconBg: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#EA580C',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 3,
   },
   headerLogo: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: '900',
-    fontStyle: 'italic',
+    letterSpacing: -0.5,
   },
   headerRight: {
     flexDirection: 'row',

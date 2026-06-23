@@ -54,8 +54,9 @@ const GuidedMeditationScreen = ({ navigation, route }) => {
   }, []);
 
   const ambienceTracks = {
+    none: null,
     water: 'https://cdn.freesound.org/previews/177/177479_1038806-hq.mp3', // Rain/Water
-    nature: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-11.mp3',
+    nature: 'https://res.cloudinary.com/ddlfjeqxs/video/upload/v1782225245/Breath_of_the_Mountain_ujdaxl.mp3', // Breath of the Mountain Cloudinary
     night: 'https://cdn.freesound.org/previews/180/180050_1728127-hq.mp3', // Wind/Night
   };
 
@@ -425,6 +426,23 @@ const GuidedMeditationScreen = ({ navigation, route }) => {
                 </View>
 
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.ambienceScroll}>
+                  <TouchableOpacity 
+                    style={[
+                      styles.ambienceIconBg, 
+                      { 
+                        backgroundColor: selectedAmbience === 'none' 
+                          ? (isDark ? 'rgba(239, 68, 68, 0.35)' : 'rgba(239, 68, 68, 0.25)') 
+                          : (isDark ? 'rgba(239, 68, 68, 0.1)' : 'rgba(150, 0, 0, 0.05)'),
+                        borderColor: selectedAmbience === 'none' ? modeTheme.accent : 'transparent',
+                        borderWidth: selectedAmbience === 'none' ? 2 : 0 
+                      }
+                    ]}
+                    onPress={() => {
+                      setSelectedAmbience('none');
+                    }}
+                  >
+                    <MaterialCommunityIcons name="volume-off" size={24} color={isDark ? '#F87171' : '#B91C1C'} />
+                  </TouchableOpacity>
                   <TouchableOpacity 
                     style={[
                       styles.ambienceIconBg, 

@@ -6,7 +6,7 @@ import { Ionicons, MaterialIcons, MaterialCommunityIcons } from '@expo/vector-ic
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
-import { uploadAvatarAPI } from '../../data/apiService';
+import { uploadAvatarAPI, updateMyProfile } from '../../data/apiService';
 import { getAvatarUrl } from '../../utils/avatar';
 import { ActivityIndicator, Alert } from 'react-native';
 
@@ -14,6 +14,7 @@ import { useTheme } from '../../hooks/useTheme';
 import { APP_CONFIG } from '../../config/appConfig';
 import { useUser } from '../../context/UserContext';
 import { getCategoryLabel } from '../../data/aiEngine';
+import { getDisplayCourse, isMedicalStudent } from '../../utils/courseDisplay';
 
 
 const { width } = Dimensions.get('window');
@@ -21,8 +22,43 @@ const { width } = Dimensions.get('window');
 const TalentIdentityScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
-    const { user, accessToken, updateAvatarUrl } = useUser();
+  const { user, accessToken, updateAvatarUrl } = useUser();
   const [isUploading, setIsUploading] = React.useState(false);
+
+  const isMed = user ? isMedicalStudent(user) : false;
+
+  const defaultBio = isMed 
+    ? `Dedicated medical student in MBBS, passionate about clinical practice, community health, and patient care. Leading rotation reports at primary clinics and practicing diagnostic reasoning.` 
+    : `Passionate student deeply interested in technology, learning, and projects. Active member of campus groups, always looking to build and collaborate with like-minded peers!`;
+  const [userBio, setUserBio] = React.useState(user?.bio || defaultBio);
+
+  const handleGenerateBio = async () => {
+    Alert.alert(
+      'AI Bio Generator',
+      'Would you like to refine your about section with AI?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Generate with AI',
+          onPress: async () => {
+            const generated = isMed
+              ? `MBBS candidate deeply committed to clinical excellence and evidence-based patient care. Actively engaging in clinical rotations, pediatric diagnostics, and rural health screenings. Focused on medical ethics and advanced therapeutics.`
+              : `B.Tech candidate specializing in software systems and engineering logic. Experienced in full stack development, cloud services, and drone diagnostics. Passionate about building scalable applications and open-source tooling.`;
+            
+            setUserBio(generated);
+            if (accessToken) {
+              try {
+                await updateMyProfile(accessToken, { bio: generated });
+              } catch (err) {
+                console.warn("Failed to save bio on backend:", err);
+              }
+            }
+            Alert.alert('Bio Updated', 'Your bio has been generated and saved!');
+          }
+        }
+      ]
+    );
+  };
 
   if (!user) return null;
 
@@ -53,7 +89,7 @@ const TalentIdentityScreen = ({ navigation }) => {
     : [
         {
           id: 0,
-          name: user.course?.toLowerCase().includes('medicine') || user.course?.toLowerCase().includes('bpharma')
+          name: isMed
             ? 'Basic Pharmacology'
             : user.course?.toLowerCase().includes('mba') || user.course?.toLowerCase().includes('bba')
             ? 'Advanced Excel'
@@ -64,7 +100,7 @@ const TalentIdentityScreen = ({ navigation }) => {
         },
         {
           id: 1,
-          name: user.course?.toLowerCase().includes('medicine') || user.course?.toLowerCase().includes('bpharma')
+          name: isMed
             ? 'Clinical Trials & Ethics'
             : user.course?.toLowerCase().includes('mba') || user.course?.toLowerCase().includes('bba')
             ? 'Data Visualization with BI'
@@ -115,8 +151,13 @@ const TalentIdentityScreen = ({ navigation }) => {
       {/* TopAppBar */}
       <View style={[styles.header, { backgroundColor: colors.background, borderBottomColor: colors.border, borderBottomWidth: 1 }]}>
         <View style={styles.headerLeft}>
-          <MaterialIcons name="school" size={26} color={colors.primary} />
-          <Text style={[styles.headerLogo, { color: colors.textPrimary }]}>{APP_CONFIG.UNIVERSITY_NAME}</Text>
+          <LinearGradient
+            colors={isDark ? ['#9A3412', '#7C2D12'] : ['#EA580C', '#9A3412']}
+            style={styles.logoIconBg}
+          >
+            <MaterialIcons name="person" size={20} color="#FFFFFF" />
+          </LinearGradient>
+          <Text style={[styles.headerLogo, { color: colors.textPrimary }]}>{APP_CONFIG.UNIVERSITY_SHORT_NAME} Profile</Text>
         </View>
 
         <View style={styles.headerRight}>
@@ -169,8 +210,8 @@ const TalentIdentityScreen = ({ navigation }) => {
 
         {/* Major & Batch Info */}
         <View style={styles.basicInfo}>
-          <Text style={[styles.majorText, { color: colors.primary }]}>{user?.course || 'Course'} {user?.branch ? `- ${user?.branch}` : ''}</Text>
-          <Text style={[styles.batchSubText, { color: colors.textSecondary }]}>Year {user?.year || '1'} • {APP_CONFIG.CAMPUS_LOCATION}</Text>
+          <Text style={[styles.majorText, { color: colors.primary }]}>{getDisplayCourse(user)}</Text>
+          <Text style={[styles.batchSubText, { color: colors.textSecondary }]}>{APP_CONFIG.CAMPUS_LOCATION}</Text>
 
 
           {/* LinkedIn-style Connections */}
@@ -186,7 +227,7 @@ const TalentIdentityScreen = ({ navigation }) => {
           <View style={styles.capsuleRow}>
             <View style={[styles.capsule, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
               <Text style={styles.capsuleLabel}>CURRENT YEAR</Text>
-              <Text style={[styles.capsuleValue, { color: colors.textPrimary }]}>Year {user?.year || '1'}</Text>
+              <Text style={[styles.capsuleValue, { color: colors.textPrimary }]}>Year {user?.year || user?.current_year || (user?.semester ? Math.ceil(parseInt(user.semester) / 2) : '1')}</Text>
             </View>
             <View style={[styles.capsule, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
               <Text style={styles.capsuleLabel}>STUDENT ID</Text>
@@ -194,7 +235,9 @@ const TalentIdentityScreen = ({ navigation }) => {
             </View>
             <View style={[styles.capsule, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
               <Text style={styles.capsuleLabel}>VIBE CHECK</Text>
-              <Text style={[styles.capsuleValue, { color: isDark ? '#2DD4BF' : '#006666' }]}>Innovator</Text>
+              <Text style={[styles.capsuleValue, { color: isMed ? (isDark ? '#F87171' : '#B91C1C') : (isDark ? '#2DD4BF' : '#006666') }]}>
+                {isMed ? 'Clinician' : (user?.category?.toLowerCase().includes('management') ? 'Strategist' : (user?.category?.toLowerCase().includes('alliedhealth') ? 'Caregiver' : 'Innovator'))}
+              </Text>
             </View>
           </View>
 
@@ -204,15 +247,12 @@ const TalentIdentityScreen = ({ navigation }) => {
         <View style={[styles.aboutSection, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
           <View style={styles.aboutHeader}>
             <Text style={[styles.aboutTitle, { color: colors.textPrimary }]}>About</Text>
-            <TouchableOpacity style={[styles.editBioBtn, { backgroundColor: colors.border }]}>
+            <TouchableOpacity style={[styles.editBioBtn, { backgroundColor: colors.border }]} onPress={handleGenerateBio}>
               <MaterialIcons name="edit" size={18} color={colors.textSecondary} />
             </TouchableOpacity>
           </View>
           <Text style={[styles.aboutText, { color: colors.textSecondary }]}>
-
-            Passionate software engineering student deeply interested in Full Stack Development and AI.
-            Leading the SkyDrone project in the Venture Lab and actively organizing the {APP_CONFIG.UNIVERSITY_SHORT_NAME} Coding Club Hackathons.
-            Always looking to connect with like-minded innovators!
+            {userBio}
           </Text>
         </View>
 
@@ -267,7 +307,7 @@ const TalentIdentityScreen = ({ navigation }) => {
               <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>Social Impact Credits</Text>
               <Text style={[styles.cardSubSub, { color: colors.textSecondary }]}>Community Service & Volunteering</Text>
             </View>
-            <View style={[styles.scoreBadge, { backgroundColor: colors.primaryLight }]}><Text style={[styles.scoreText, { color: colors.primary }]}>420 pts</Text></View>
+            <View style={[styles.scoreBadge, { backgroundColor: colors.primaryLight }]}><Text style={[styles.scoreText, { color: colors.primary }]}>{user?.social_credits || ((user?.extracurricular?.length || 0) + (user?.leadership?.length || 0)) * 100 + 120} pts</Text></View>
           </View>
 
 
@@ -294,28 +334,46 @@ const TalentIdentityScreen = ({ navigation }) => {
         </View>
 
 
-        {/* Venture Lab (Black Card) */}
+        {/* Venture Lab (Black/Indigo Card) */}
         <View style={[styles.ventureLabCard, { borderColor: colors.border, borderWidth: 1 }]}>
-          <LinearGradient colors={isDark ? ['#111827', '#0F172A'] : ['#000000', '#1A1A1A']} style={styles.ventureInner}>
+          <LinearGradient 
+            colors={isMed 
+              ? (isDark ? ['#1E1B4B', '#311042'] : ['#F5F3FF', '#EDE9FE'])
+              : (isDark ? ['#111827', '#0F172A'] : ['#000000', '#1A1A1A'])} 
+            style={styles.ventureInner}
+          >
             <View style={styles.ventureHeader}>
-              <Text style={styles.ventureTopTitle}>Venture Lab</Text>
-              <View style={[styles.activeProjectBadge, { backgroundColor: isDark ? 'rgba(234, 88, 12, 0.2)' : 'rgba(254, 152, 50, 0.15)', borderColor: isDark ? 'rgba(234, 88, 12, 0.3)' : 'rgba(254, 152, 50, 0.3)' }]}>
-                <Text style={[styles.activeProjectText, { color: colors.primary }]}>ACTIVE PROJECT</Text>
+              <Text style={[styles.ventureTopTitle, { color: isMed ? (isDark ? '#C084FC' : '#6B21A8') : '#FFFFFF' }]}>
+                {isMed ? 'Clinical Research' : 'Venture Lab'}
+              </Text>
+              <View style={[
+                styles.activeProjectBadge, 
+                isMed 
+                  ? { backgroundColor: isDark ? 'rgba(168, 85, 247, 0.2)' : 'rgba(168, 85, 247, 0.1)', borderColor: isDark ? 'rgba(168, 85, 247, 0.3)' : 'rgba(168, 85, 247, 0.2)' }
+                  : { backgroundColor: isDark ? 'rgba(234, 88, 12, 0.2)' : 'rgba(254, 152, 50, 0.15)', borderColor: isDark ? 'rgba(234, 88, 12, 0.3)' : 'rgba(254, 152, 50, 0.3)' }
+              ]}>
+                <Text style={[styles.activeProjectText, { color: isMed ? (isDark ? '#C084FC' : '#6B21A8') : colors.primary }]}>
+                  {isMed ? 'ACTIVE ROTATION' : 'ACTIVE PROJECT'}
+                </Text>
               </View>
             </View>
 
-            <Text style={styles.ventureTitle}>SkyDrone Campus</Text>
-            <Text style={styles.ventureDesc}>
-              Leading a team of 5 to develop autonomous delivery drones for last-mile pharmaceutical logistics in rural regions.
+            <Text style={[styles.ventureTitle, { color: isMed ? colors.textPrimary : '#fe9832' }]}>
+              {isMed ? 'Rural Health Immersion' : 'SkyDrone Campus'}
+            </Text>
+            <Text style={[styles.ventureDesc, { color: isMed ? colors.textSecondary : '#dadddf' }]}>
+              {isMed 
+                ? 'Conducting community health screenings and analyzing pediatric immunization compliance at the local primary health center.'
+                : 'Leading a team of 5 to develop autonomous delivery drones for last-mile pharmaceutical logistics in rural regions.'}
             </Text>
             <View style={styles.ventureActions}>
-              <TouchableOpacity style={styles.vActionBtn}>
-                <Ionicons name="link-outline" size={14} color="#FFFFFF" />
-                <Text style={styles.vActionText}>Project Proofs</Text>
+              <TouchableOpacity style={[styles.vActionBtn, isMed && { backgroundColor: isDark ? '#6B21A8' : '#7C3AED' }]}>
+                <Ionicons name={isMed ? "journal-outline" : "link-outline"} size={14} color="#FFFFFF" />
+                <Text style={styles.vActionText}>{isMed ? 'Case Studies' : 'Project Proofs'}</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.vActionBtn}>
-                <MaterialCommunityIcons name="rocket-launch" size={14} color="#FFFFFF" />
-                <Text style={styles.vActionText}>Startup ID</Text>
+              <TouchableOpacity style={[styles.vActionBtn, isMed && { backgroundColor: isDark ? '#6B21A8' : '#7C3AED' }]}>
+                <MaterialCommunityIcons name={isMed ? "clipboard-check-outline" : "rocket-launch"} size={14} color="#FFFFFF" />
+                <Text style={styles.vActionText}>{isMed ? 'Logbook ID' : 'Startup ID'}</Text>
               </TouchableOpacity>
             </View>
           </LinearGradient>
@@ -368,12 +426,24 @@ const styles = StyleSheet.create({
   headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 12,
+  },
+  logoIconBg: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#EA580C',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 3,
   },
   headerLogo: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: '900',
-    fontStyle: 'italic',
+    letterSpacing: -0.5,
   },
 
   headerRight: {

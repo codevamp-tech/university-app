@@ -25,6 +25,8 @@ const ERPAttendanceScreen = ({ navigation }) => {
   const roman = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
   const semNum = parseInt(user?.semester) || 7;
   const displaySem = roman[semNum - 1] || 'VII';
+  const isMedical = user?.course?.toUpperCase().includes('MBBS') || user?.category?.toLowerCase() === 'medical';
+  const termLabel = isMedical ? 'Phase' : 'Semester';
 
   const academicSubjects = getAcademicSubjects(user || { course: 'B.Tech CSE' });
   const overallVal = user?.attendance || 85;
@@ -50,45 +52,25 @@ const ERPAttendanceScreen = ({ navigation }) => {
       try {
         const data = await getAttendance(accessToken);
         if (data && data.length > 0) {
-          const subjectsMap = {};
-          let totalPresent = 0;
-          let totalClasses = 0;
-
-          data.forEach(item => {
-            const code = item.subject_code;
-            if (!subjectsMap[code]) {
-              subjectsMap[code] = {
-                code,
-                name: item.subject_name || code,
-                attended: 0,
-                total: 0
-              };
-            }
-            subjectsMap[code].total++;
-            totalClasses++;
-            if (item.present) {
-              subjectsMap[code].attended++;
-              totalPresent++;
-            }
-          });
-
-          const subjects = Object.values(subjectsMap).map(sub => {
-            const percentage = sub.total > 0 ? Math.round((sub.attended / sub.total) * 100) : 0;
+          const subjects = data.map(item => {
+            const percentage = Math.round(item.attendance_pct || 0);
             const status = percentage >= 75 ? 'safe' : percentage >= 60 ? 'warning' : 'danger';
             return {
-              code: sub.code,
-              name: sub.name,
+              code: item.subject_code,
+              name: item.subject_name || item.subject_code,
               percentage,
               status
             };
           });
 
-          const overall = totalClasses > 0 ? Math.round((totalPresent / totalClasses) * 100) : 0;
+          const overall = subjects.length > 0 
+            ? Math.round(subjects.reduce((sum, s) => sum + s.percentage, 0) / subjects.length)
+            : 0;
 
           setApiAttendance({
-            overall,
-            totalClasses,
-            attendedClasses: totalPresent,
+            overall: user?.attendance || overall,
+            totalClasses: subjects.length * 30, // estimate for display
+            attendedClasses: Math.round((user?.attendance || overall) * 0.01 * (subjects.length * 30)),
             subjects
           });
         }
@@ -97,7 +79,7 @@ const ERPAttendanceScreen = ({ navigation }) => {
       }
     }
     loadAttendance();
-  }, [accessToken]);
+  }, [accessToken, user?.attendance]);
 
   const attendanceData = apiAttendance || {
     overall: overallVal,
@@ -125,16 +107,13 @@ const ERPAttendanceScreen = ({ navigation }) => {
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Attendance</Text>
         </View>
-        <TouchableOpacity style={styles.notifBtn}>
-          <MaterialIcons name="notifications-none" size={24} color={colors.primary} />
-        </TouchableOpacity>
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         {/* Hero Section */}
         <View style={styles.sectionContainer}>
           <Text style={[styles.heroTitle, { color: colors.textPrimary }]}>Attendance Insights</Text>
-          <Text style={[styles.heroSub, { color: colors.textSecondary }]}>Semester {displaySem} • {APP_CONFIG.UNIVERSITY_NAME}</Text>
+          <Text style={[styles.heroSub, { color: colors.textSecondary }]}>{termLabel} {displaySem} • {APP_CONFIG.UNIVERSITY_NAME}</Text>
         </View>
 
         {/* Overall Attendance Card */}
@@ -155,13 +134,17 @@ const ERPAttendanceScreen = ({ navigation }) => {
                 {attendanceData.overall}{attendanceData.overall !== '-' ? '%' : ''}
               </Text>
               <View style={styles.overallStats}>
-                <Text style={[styles.statValue, { color: isDark ? '#A5B4FC' : '#312E81' }]}>{attendanceData.attendedClasses}</Text>
-                <Text style={[styles.statLabel, { color: isDark ? 'rgba(165,180,252,0.7)' : 'rgba(49,46,129,0.7)' }]}>Attended</Text>
+                <View style={styles.statItem}>
+                  <Text style={[styles.statValue, { color: isDark ? '#A5B4FC' : '#312E81' }]}>{attendanceData.attendedClasses}</Text>
+                  <Text style={[styles.statLabel, { color: isDark ? 'rgba(165,180,252,0.7)' : 'rgba(49,46,129,0.7)' }]}>Attended</Text>
+                </View>
                 
                 <View style={styles.statDivider} />
                 
-                <Text style={[styles.statValue, { color: isDark ? '#A5B4FC' : '#312E81' }]}>{attendanceData.totalClasses}</Text>
-                <Text style={[styles.statLabel, { color: isDark ? 'rgba(165,180,252,0.7)' : 'rgba(49,46,129,0.7)' }]}>Total Classes</Text>
+                <View style={styles.statItem}>
+                  <Text style={[styles.statValue, { color: isDark ? '#A5B4FC' : '#312E81' }]}>{attendanceData.totalClasses}</Text>
+                  <Text style={[styles.statLabel, { color: isDark ? 'rgba(165,180,252,0.7)' : 'rgba(49,46,129,0.7)' }]}>Total</Text>
+                </View>
               </View>
             </View>
 
@@ -253,10 +236,11 @@ const styles = StyleSheet.create({
   overallLabel: { fontSize: 12, fontWeight: '700', letterSpacing: 1 },
   overallMain: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 20 },
   overallPercentage: { fontSize: 48, fontWeight: '800', lineHeight: 56 },
-  overallStats: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingBottom: 8 },
-  statValue: { fontSize: 20, fontWeight: '700' },
-  statLabel: { fontSize: 12, fontWeight: '500', marginLeft: -8 },
-  statDivider: { width: 1, height: 20, backgroundColor: 'rgba(0,0,0,0.1)', marginHorizontal: 4 },
+  overallStats: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingBottom: 4 },
+  statItem: { alignItems: 'center' },
+  statValue: { fontSize: 18, fontWeight: '800', lineHeight: 22 },
+  statLabel: { fontSize: 10, fontWeight: '600', marginTop: 2 },
+  statDivider: { width: 1, height: 28, backgroundColor: 'rgba(0,0,0,0.1)', marginHorizontal: 6 },
   progressBarBg: { height: 8, borderRadius: 4, overflow: 'hidden', marginBottom: 12 },
   progressBarFill: { height: '100%', borderRadius: 4 },
   progressHint: { fontSize: 12, fontWeight: '500' },

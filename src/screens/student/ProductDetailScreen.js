@@ -1,339 +1,348 @@
 import React from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Dimensions, Platform,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Dimensions, ActivityIndicator
 } from 'react-native';
-import { Ionicons, MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { APP_CONFIG } from '../../config/appConfig';
+import { useTheme } from '../../hooks/useTheme';
+import { useUser } from '../../context/UserContext';
+import { getPublicProfile } from '../../data/apiService';
+import { fetchStudentsFromSheet } from '../../data/googleSheetsService';
 
 const { width } = Dimensions.get('window');
 
 const ProductDetailScreen = ({ route, navigation }) => {
   const insets = useSafeAreaInsets();
-  const { item } = route.params || {
-    item: {
-      title: 'B.Tech 3rd Sem Books',
-      price: '₹650',
-      image: 'https://images.unsplash.com/photo-1512820790803-83ca734da794?q=80&w=2098&auto=format&fit=crop',
-      desc: 'Complete set of core subject books for B.Tech CS 3rd Semester. In excellent condition with no markings.',
-      badge: 'USED - GOOD',
-      seller: {
-        name: 'Rahul Verma',
-        year: '4th Year, CS',
-        avatar: 'https://randomuser.me/api/portraits/men/32.jpg'
+  const { colors, isDark } = useTheme();
+  const { user, accessToken } = useUser();
+  
+  const product = route.params?.product || {};
+  const seller = product.seller || {};
+
+  const [sellerProfile, setSellerProfile] = React.useState(null);
+  const [isLoadingSeller, setIsLoadingSeller] = React.useState(true);
+
+  React.useEffect(() => {
+    let isMounted = true;
+    const fetchSellerDetails = async () => {
+      if (!product.seller_id || !accessToken) {
+        setIsLoadingSeller(false);
+        return;
       }
-    }
+      try {
+        const dbProfile = await getPublicProfile(accessToken, product.seller_id);
+        if (dbProfile && isMounted) {
+          try {
+            const students = await fetchStudentsFromSheet();
+            const richStudent = students.find(s => s.id.toLowerCase() === dbProfile.username.toLowerCase());
+            if (richStudent) {
+              setSellerProfile({
+                user_id: product.seller_id,
+                username: richStudent.name,
+                rollno: dbProfile.rollno,
+                avatar_url: dbProfile.avatar_url || (richStudent.gender === 'F' || richStudent.gender === 'Female' 
+                  ? 'https://images.pexels.com/photos/733872/pexels-photo-733872.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=500'
+                  : 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=500'),
+                course: richStudent.course,
+                year: richStudent.year,
+              });
+            } else {
+              setSellerProfile({
+                user_id: product.seller_id,
+                username: dbProfile.username,
+                rollno: dbProfile.rollno,
+                avatar_url: dbProfile.avatar_url,
+                course: '',
+                year: dbProfile.current_year,
+              });
+            }
+          } catch (sheetError) {
+            setSellerProfile({
+              user_id: product.seller_id,
+              username: dbProfile.username,
+              rollno: dbProfile.rollno,
+              avatar_url: dbProfile.avatar_url,
+              course: '',
+              year: dbProfile.current_year,
+            });
+          }
+        }
+      } catch (err) {
+        console.warn('[ProductDetail] Error fetching seller public profile:', err);
+      } finally {
+        if (isMounted) setIsLoadingSeller(false);
+      }
+    };
+
+    fetchSellerDetails();
+    return () => { isMounted = false; };
+  }, [product.seller_id, accessToken]);
+
+  const isOwnListing = user && user.user_id === product.seller_id;
+
+  const handleRequestToBuy = () => {
+    if (isOwnListing) return;
+    const contactInfo = sellerProfile || seller;
+    navigation.navigate('DMConversation', { contact: contactInfo, source: 'marketplace' });
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {/* Product Image Section */}
+        
+        {/* Product Image Cover */}
         <View style={styles.imageContainer}>
-          <Image source={{ uri: item.image }} style={styles.mainImage} />
+          <Image 
+            source={{ uri: product.image_url || 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?q=80&w=2000' }} 
+            style={styles.coverImage} 
+          />
           
-          {/* Top Overlay Actions */}
-          <View style={[styles.headerOverlay, { paddingTop: insets.top + 10 }]}>
-            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.overlayBtn}>
-              <Ionicons name="arrow-back" size={24} color="#111827" />
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.overlayBtn}>
-              <Ionicons name="share-outline" size={24} color="#111827" />
-            </TouchableOpacity>
-          </View>
-
-          {/* Badge Overlay */}
-          <View style={styles.badgeOverlay}>
-            <Text style={styles.badgeText}>{item.badge || 'CAMPUS VERIFIED'}</Text>
-          </View>
+          <TouchableOpacity 
+            style={[styles.backBtnWrapper, { top: insets.top + 10 }]} 
+            onPress={() => navigation.goBack()}
+          >
+            <View style={styles.backBtnInner}>
+              <Ionicons name="chevron-back" size={24} color="#111827" />
+            </View>
+          </TouchableOpacity>
         </View>
 
-        {/* Product Content */}
-        <View style={styles.content}>
-          <View style={styles.priceRow}>
-            <Text style={styles.price}>{item.price}</Text>
-            <TouchableOpacity>
-              <Ionicons name="heart-outline" size={28} color="#EA580C" />
-            </TouchableOpacity>
-          </View>
-
-          <Text style={styles.title}>{item.title}</Text>
+        {/* Content Body */}
+        <View style={styles.contentBody}>
           
-          <View style={styles.tagsRow}>
-            <View style={styles.tag}><Text style={styles.tagText}>Academic</Text></View>
-            <View style={styles.tag}><Text style={styles.tagText}>Near Library</Text></View>
-            <View style={styles.tag}><Text style={styles.tagText}>Verified</Text></View>
+          {/* Header Info */}
+          <View style={styles.headerInfo}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+              <View style={[styles.badge, { backgroundColor: isDark ? 'rgba(234, 88, 12, 0.15)' : '#FFF7ED', marginBottom: 0 }]}>
+                <Text style={[styles.badgeText, { color: isDark ? colors.primary : '#EA580C' }]}>
+                  {product.category?.toUpperCase() || 'MISC'}
+                </Text>
+              </View>
+              {isOwnListing && (
+                <View style={[styles.ownListingBadge, { backgroundColor: colors.successLight }]}>
+                  <Text style={[styles.ownListingBadgeText, { color: colors.success }]}>
+                    YOUR LISTING
+                  </Text>
+                </View>
+              )}
+            </View>
+            <Text style={[styles.title, { color: colors.textPrimary }]}>{product.title}</Text>
+            <Text style={[styles.price, { color: colors.primary }]}>₹{product.price}</Text>
           </View>
 
-          <View style={styles.divider} />
-
-          <Text style={styles.sectionTitle}>Description</Text>
-          <Text style={styles.description}>
-            {item.desc || "No description provided for this item. Please contact the student seller for more details about the condition and pickup location."}
-          </Text>
-
-          <View style={styles.divider} />
-
-          {/* Seller Card */}
-          <Text style={styles.sectionTitle}>Student Seller</Text>
-          <View style={styles.sellerCard}>
+          {/* Seller Info */}
+          <View style={[styles.sellerCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <Image 
-              source={{ uri: item.seller?.avatar || 'https://randomuser.me/api/portraits/men/32.jpg' }} 
+              source={{ 
+                uri: sellerProfile?.avatar_url || seller.avatar_url || 'https://images.unsplash.com/photo-1527980965255-d3b416303d12?auto=format&fit=crop&w=150' 
+              }} 
               style={styles.sellerAvatar} 
             />
             <View style={styles.sellerInfo}>
-              <Text style={styles.sellerName}>{item.seller?.name || `${APP_CONFIG.UNIVERSITY_SHORT_NAME} Student`}</Text>
-              <Text style={styles.sellerYear}>{item.seller?.year || APP_CONFIG.UNIVERSITY_NAME}</Text>
+              <Text style={[styles.sellerName, { color: colors.textPrimary }]}>
+                {sellerProfile?.username || seller.username || 'Campus Seller'}
+              </Text>
+              <Text style={[styles.sellerRole, { color: colors.textSecondary }]}>
+                {sellerProfile?.course 
+                  ? `${sellerProfile.course} • Year ${sellerProfile.year}` 
+                  : sellerProfile?.year
+                  ? `Student Seller • Year ${sellerProfile.year}`
+                  : 'Student Seller'}
+              </Text>
             </View>
-            <TouchableOpacity style={styles.chatBtn}>
-              <Ionicons name="chatbubble-ellipses-outline" size={22} color="#FFFFFF" />
-            </TouchableOpacity>
+            {!isOwnListing && (
+              <TouchableOpacity 
+                style={[styles.chatIcon, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F3F4F6' }]}
+                onPress={handleRequestToBuy}
+              >
+                <Ionicons name="chatbubble-ellipses-outline" size={20} color={colors.textPrimary} />
+              </TouchableOpacity>
+            )}
           </View>
 
-          {/* Safety Tips */}
-          <View style={styles.safetyCard}>
-            <MaterialIcons name="security" size={20} color="#EA580C" />
-            <Text style={styles.safetyText}>
-              Meet the seller in an open campus area (Canteen, Library) for a safe exchange.
+          {/* Description */}
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Description</Text>
+            <Text style={[styles.description, { color: colors.textSecondary }]}>
+              {product.description || 'No description provided.'}
             </Text>
           </View>
+
+          <View style={{ height: 100 }} />
         </View>
 
-        <View style={{ height: 100 }} />
       </ScrollView>
 
-      {/* Bottom Action Bar */}
-      <View style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, 16) }]}>
-        <TouchableOpacity style={styles.addToCartBtn}>
-          <Text style={styles.addToCartText}>Add to Cart</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.buyNowBtn}>
-          <LinearGradient
-            colors={['#EA580C', '#C2410C']}
-            style={styles.buyNowGradient}
-          >
-            <Text style={styles.buyNowText}>Buy Now</Text>
-          </LinearGradient>
-        </TouchableOpacity>
-      </View>
+      {/* Footer CTA */}
+      {!isOwnListing && (
+        <View style={[styles.footer, { backgroundColor: colors.card, borderTopColor: colors.border, paddingBottom: insets.bottom || 20 }]}>
+          <TouchableOpacity style={styles.buyBtn} onPress={handleRequestToBuy} activeOpacity={0.8}>
+            <LinearGradient
+              colors={isDark ? ['#9A3412', '#78350F'] : ['#EA580C', '#C2410C']}
+              style={styles.buyBtnGradient}
+              start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+            >
+              <Text style={styles.buyBtnText}>Message Seller to Buy</Text>
+              <MaterialCommunityIcons name="chat-outline" size={20} color="#FFFFFF" style={{ marginLeft: 8 }} />
+            </LinearGradient>
+          </TouchableOpacity>
+        </View>
+      )}
+
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-  },
-  scrollContent: {
-    paddingBottom: 20,
-  },
+  container: { flex: 1 },
+  scrollContent: { paddingBottom: 0 },
   imageContainer: {
-    width: width,
-    height: width * 1.1,
-    backgroundColor: '#F3F4F6',
+    width: '100%',
+    height: width, // Square aspect ratio
+    position: 'relative',
   },
-  mainImage: {
+  coverImage: {
     width: '100%',
     height: '100%',
     resizeMode: 'cover',
   },
-  headerOverlay: {
+  backBtnWrapper: {
     position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
+    left: 20,
+    zIndex: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 4,
   },
-  overlayBtn: {
+  backBtnInner: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: 'rgba(255,255,255,0.9)',
+    backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
   },
-  badgeOverlay: {
-    position: 'absolute',
-    bottom: 20,
-    left: 20,
-    backgroundColor: '#FFFFFF',
+  contentBody: {
+    padding: 24,
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    marginTop: -30,
+    backgroundColor: 'transparent',
+  },
+  headerInfo: {
+    marginBottom: 24,
+  },
+  badge: {
+    alignSelf: 'flex-start',
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+    borderRadius: 16,
+    marginBottom: 12,
   },
   badgeText: {
     fontSize: 10,
     fontWeight: '900',
-    color: '#111827',
     letterSpacing: 1,
   },
-  content: {
-    padding: 24,
-    backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 32,
-    borderTopRightRadius: 32,
-    marginTop: -32,
+  ownListingBadge: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
   },
-  priceRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+  ownListingBadgeText: {
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 1,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: '900',
+    lineHeight: 32,
     marginBottom: 8,
   },
   price: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: '900',
-    color: '#111827',
-  },
-  title: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: '#111827',
-    lineHeight: 28,
-  },
-  tagsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginTop: 16,
-  },
-  tag: {
-    backgroundColor: '#F3F4F6',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
-  },
-  tagText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#6B7280',
-  },
-  divider: {
-    height: 1,
-    backgroundColor: '#F3F4F6',
-    marginVertical: 24,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '900',
-    color: '#111827',
-    marginBottom: 12,
-  },
-  description: {
-    fontSize: 15,
-    color: '#4B5563',
-    lineHeight: 24,
   },
   sellerCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F9FAFB',
     padding: 16,
-    borderRadius: 24,
+    borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#F3F4F6',
+    marginBottom: 32,
   },
   sellerAvatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    marginRight: 16,
   },
   sellerInfo: {
     flex: 1,
-    marginLeft: 16,
   },
   sellerName: {
     fontSize: 16,
     fontWeight: '800',
-    color: '#111827',
   },
-  sellerYear: {
+  sellerRole: {
     fontSize: 13,
-    color: '#6B7280',
     marginTop: 2,
   },
-  chatBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    backgroundColor: '#EA580C',
+  chatIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  safetyCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFF7ED',
-    padding: 16,
-    borderRadius: 20,
-    marginTop: 24,
-    gap: 12,
-    borderWidth: 1,
-    borderColor: '#FFEDD5',
+  section: {
+    marginBottom: 24,
   },
-  safetyText: {
-    flex: 1,
-    fontSize: 12,
-    color: '#9A3412',
-    lineHeight: 18,
-    fontWeight: '600',
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    marginBottom: 12,
   },
-  bottomBar: {
+  description: {
+    fontSize: 15,
+    lineHeight: 24,
+  },
+  footer: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: '#FFFFFF',
-    flexDirection: 'row',
-    paddingHorizontal: 20,
     paddingTop: 16,
+    paddingHorizontal: 24,
     borderTopWidth: 1,
-    borderTopColor: '#F3F4F6',
-    gap: 12,
   },
-  addToCartBtn: {
-    flex: 1,
-    height: 56,
-    borderRadius: 18,
-    backgroundColor: '#F3F4F6',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  addToCartText: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#111827',
-  },
-  buyNowBtn: {
-    flex: 1.5,
-    height: 56,
-    borderRadius: 18,
+  buyBtn: {
+    width: '100%',
+    borderRadius: 20,
     overflow: 'hidden',
+    shadowColor: '#EA580C',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 8,
   },
-  buyNowGradient: {
-    flex: 1,
+  buyBtnGradient: {
+    flexDirection: 'row',
+    height: 56,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  buyNowText: {
+  buyBtnText: {
+    color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '900',
-    color: '#FFFFFF',
-  },
+  }
 });
 
 export default ProductDetailScreen;

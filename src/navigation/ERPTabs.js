@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, Platform, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, Platform, TouchableOpacity, Alert } from 'react-native';
 import { createBottomTabNavigator, BottomTabBar } from '@react-navigation/bottom-tabs';
 import { MaterialIcons } from '@expo/vector-icons';
 
@@ -26,6 +26,7 @@ const CustomTabBar = ({ state, descriptors, navigation }) => {
 
           let iconName;
           let label;
+          const isLockedTab = route.name === 'ERPFeesTab' || route.name === 'ERPDocumentsTab';
 
           if (route.name === 'ERPHome') {
             iconName = 'home';
@@ -34,18 +35,28 @@ const CustomTabBar = ({ state, descriptors, navigation }) => {
             iconName = 'grade';
             label = 'Results';
           } else if (route.name === 'ERPFeesTab') {
-            iconName = 'payments';
+            iconName = 'lock';
             label = 'Fees';
           } else if (route.name === 'ERPDocumentsTab') {
-            iconName = 'folder-shared';
+            iconName = 'lock';
+            label = 'Documents';
           } else if (route.name === 'ERPAttendanceTab') {
             iconName = 'fact-check';
             label = 'Attendance';
           }
 
-          const color = isFocused ? colors.primary : colors.textMuted;
+          const color = isLockedTab ? (isDark ? '#4B5563' : '#9CA3AF') : (isFocused ? colors.primary : colors.textMuted);
 
           const onPress = () => {
+            if (route.name === 'ERPFeesTab') {
+              Alert.alert('🔒 Premium Feature', 'Fees & Payments module is locked in this demo. Contact admin to unlock.');
+              return;
+            }
+            if (route.name === 'ERPDocumentsTab') {
+              Alert.alert('🔒 Premium Feature', 'Document Vault is locked in this demo. Contact admin to unlock.');
+              return;
+            }
+
             const event = navigation.emit({
               type: 'tabPress',
               target: route.key,

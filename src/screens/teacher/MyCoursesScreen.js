@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -7,15 +7,46 @@ import {
   TouchableOpacity,
   Dimensions,
   Image,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Colors } from '../../constants/colors';
+import { useUser } from '../../context/UserContext';
+import { getFacultyTimetable } from '../../data/apiService';
 
-const { width } = Dimensions.get('window');
+const MEDICAL_COURSES = [
+  {
+    id: 1,
+    title: 'Pediatrics Theory',
+    code: 'PE-401',
+    students: 64,
+    lectures: 'Tue, Wed, Thu',
+    progress: 45,
+    icon: 'baby-outline',
+  },
+  {
+    id: 2,
+    title: 'Clinical Posting - Pediatrics',
+    code: 'PE-402',
+    students: 16,
+    lectures: 'Mon, Wed, Fri',
+    progress: 30,
+    icon: 'hospital-building',
+  },
+  {
+    id: 3,
+    title: 'Pediatrics Practical',
+    code: 'PE-403',
+    students: 64,
+    lectures: 'Sat',
+    progress: 50,
+    icon: 'medical-bag',
+  },
+];
 
-const COURSES = [
+const CSE_COURSES = [
   {
     id: 1,
     title: 'Advanced Data Structures',
@@ -47,6 +78,70 @@ const COURSES = [
 
 const MyCoursesScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
+  const { user, accessToken } = useUser();
+  const [timetable, setTimetable] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const isMedical = 
+    user?.department?.toUpperCase().includes('PAEDIATRICS') || 
+    user?.department?.toUpperCase().includes('PEDIATRICS') ||
+    user?.department?.toUpperCase().includes('PHYSIOLOGY') || 
+    user?.department?.toUpperCase().includes('ANATOMY') || 
+    user?.department?.toUpperCase().includes('MEDICAL') ||
+    user?.department?.toUpperCase().includes('DOCTORS');
+
+  const defaultCourses = isMedical ? MEDICAL_COURSES : CSE_COURSES;
+
+  const loadData = useCallback(async () => {
+    if (!accessToken) { setLoading(false); return; }
+    setLoading(true);
+    try {
+      const ttData = await getFacultyTimetable(accessToken);
+      setTimetable(Array.isArray(ttData) ? ttData : []);
+    } catch (e) {
+      console.warn('[MyCoursesScreen] load error:', e);
+    } finally {
+      setLoading(false);
+    }
+  }, [accessToken]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  // Generate dynamic courses list from synced timetable if available
+  const subjectSet = new Set();
+  const dynamicCourses = [];
+  timetable.forEach((item, idx) => {
+    if (item.subject_name && !subjectSet.has(item.subject_name)) {
+      subjectSet.add(item.subject_name);
+      
+      let icon = 'book-open-outline';
+      if (isMedical) {
+        if (item.subject_name.toUpperCase().includes('POSTING')) icon = 'hospital-building';
+        else if (item.subject_name.toUpperCase().includes('PRACTICAL')) icon = 'medical-bag';
+        else icon = 'baby-outline';
+      } else {
+        if (item.subject_name.toUpperCase().includes('DATA')) icon = 'code-brackets';
+        else if (item.subject_name.toUpperCase().includes('DATABASE')) icon = 'database';
+        else icon = 'brain';
+      }
+
+      dynamicCourses.push({
+        id: item.tt_cd || (idx + 1),
+        title: item.subject_name,
+        code: item.subject_code || (isMedical ? `PE-${301 + idx}` : `CS-${301 + idx}`),
+        students: isMedical ? 64 : 54,
+        lectures: item.lecture_type || 'Lecture',
+        progress: isMedical ? 45 : 75,
+        icon: icon,
+      });
+    }
+  });
+
+  const coursesToShow = dynamicCourses.length > 0 ? dynamicCourses : defaultCourses;
+  const activeCoursesCount = coursesToShow.length;
+  const totalStudentsCount = coursesToShow.reduce((acc, c) => acc + c.students, 0);
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -72,55 +167,62 @@ const MyCoursesScreen = ({ navigation }) => {
           >
             <View style={styles.statItem}>
               <Text style={styles.statLabel}>Active Courses</Text>
-              <Text style={styles.statValue}>3</Text>
+              <Text style={styles.statValue}>{loading ? '...' : activeCoursesCount}</Text>
             </View>
             <View style={styles.statDivider} />
             <View style={styles.statItem}>
               <Text style={styles.statLabel}>Total Students</Text>
-              <Text style={styles.statValue}>156</Text>
+              <Text style={styles.statValue}>{loading ? '...' : totalStudentsCount}</Text>
             </View>
           </LinearGradient>
         </View>
 
         {/* Course List */}
         <Text style={styles.sectionTitle}>Current Semester</Text>
-        {COURSES.map((course) => (
-          <TouchableOpacity 
-            key={course.id} 
-            style={styles.courseCard}
-            activeOpacity={0.8}
-            onPress={() => navigation.navigate('CourseManagement', { courseId: course.id })}
-          >
-            <View style={styles.courseIconContainer}>
-              <MaterialCommunityIcons name={course.icon} size={28} color={Colors.primary} />
-            </View>
-            <View style={styles.courseDetails}>
-              <View style={styles.courseHeader}>
-                <Text style={styles.courseCode}>{course.code}</Text>
-                <View style={styles.studentsBadge}>
-                  <Ionicons name="people" size={12} color={Colors.primary} />
-                  <Text style={styles.studentsCount}>{course.students}</Text>
+        {loading ? (
+          <View style={{ padding: 20, alignItems: 'center' }}>
+            <ActivityIndicator color={Colors.primary} />
+            <Text style={{ marginTop: 8, color: Colors.textSecondary }}>Loading courses...</Text>
+          </View>
+        ) : (
+          coursesToShow.map((course) => (
+            <TouchableOpacity 
+              key={course.id} 
+              style={styles.courseCard}
+              activeOpacity={0.8}
+              onPress={() => navigation.navigate('CourseManagement', { courseId: course.id })}
+            >
+              <View style={styles.courseIconContainer}>
+                <MaterialCommunityIcons name={course.icon} size={28} color={Colors.primary} />
+              </View>
+              <View style={styles.courseDetails}>
+                <View style={styles.courseHeader}>
+                  <Text style={styles.courseCode}>{course.code}</Text>
+                  <View style={styles.studentsBadge}>
+                    <Ionicons name="people" size={12} color={Colors.primary} />
+                    <Text style={styles.studentsCount}>{course.students}</Text>
+                  </View>
+                </View>
+                <Text style={styles.courseTitle}>{course.title}</Text>
+                <View style={styles.lectureInfo}>
+                  <Ionicons name="time-outline" size={14} color={Colors.textMuted} />
+                  <Text style={styles.lectureText}>{course.lectures}</Text>
+                </View>
+                
+                {/* Progress Bar */}
+                <View style={styles.progressContainer}>
+                  <View style={styles.progressHeader}>
+                    <Text style={styles.progressLabel}>Course Completion</Text>
+                    <Text style={styles.progressValue}>{course.progress}%</Text>
+                  </View>
+                  <View style={styles.progressBarBg}>
+                    <View style={[styles.progressBarFill, { width: `${course.progress}%` }]} />
+                  </View>
                 </View>
               </View>
-              <Text style={styles.courseTitle}>{course.title}</Text>
-              <View style={styles.lectureInfo}>
-                <Ionicons name="time-outline" size={14} color={Colors.textMuted} />
-                <Text style={styles.lectureText}>{course.lectures}</Text>
-              </View>
-              
-              {/* Progress Bar */}
-              <View style={styles.progressContainer}>
-                <View style={styles.progressHeader}>
-                  <Text style={styles.progressLabel}>Course Completion</Text>
-                  <Text style={styles.progressValue}>{course.progress}%</Text>
-                </View>
-                <View style={styles.progressBarBg}>
-                  <View style={[styles.progressBarFill, { width: `${course.progress}%` }]} />
-                </View>
-              </View>
-            </View>
-          </TouchableOpacity>
-        ))}
+            </TouchableOpacity>
+          ))
+        )}
         
         <View style={{ height: 40 }} />
       </ScrollView>

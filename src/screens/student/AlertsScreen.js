@@ -6,15 +6,12 @@ import { Ionicons, MaterialIcons, MaterialCommunityIcons } from '@expo/vector-ic
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { APP_CONFIG } from '../../config/appConfig';
-import { NOTIFICATIONS } from '../../constants/data';
 import { useTheme } from '../../hooks/useTheme';
 import { useUser } from '../../context/UserContext';
-import { getAlerts, markAllAlertsRead } from '../../data/apiService';
-
-
+import { getAlerts, markAllAlertsRead, markAlertRead } from '../../data/apiService';
 
 const { width } = Dimensions.get('window');
-const TABS = ['All Updates', 'Grades', 'Deadlines'];
+const TABS = ['All Updates', 'Social', 'Marketplace', 'Announcements'];
 
 const AlertsScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
@@ -41,27 +38,127 @@ const AlertsScreen = ({ navigation }) => {
     setApiAlerts(prev => prev.map(a => ({ ...a, is_read: true })));
   };
 
-  // Merge: API alerts on top, static fallback below (de-duplicated by id)
-  const allNotifs = [
-    ...apiAlerts.map(a => ({
+  const handleAlertTap = async (notif) => {
+    // Mark as read optimistically
+    if (notif.isNew && accessToken) {
+      markAlertRead(accessToken, notif.id).catch(() => {});
+      setApiAlerts(prev => prev.map(a => a.id === notif.id ? { ...a, is_read: true } : a));
+    }
+    navigateAlert(notif);
+  };
+
+  const navigateAlert = (notif) => {
+    const raw = notif.raw || {};
+    const type = notif.type;
+    const subType = notif.subType;
+
+    if (type === 'social') {
+      // Like / comment / reaction / repost → Community tab
+      if (subType === 'like' || subType === 'comment' || subType === 'reaction' || subType === 'repost') {
+        navigation.navigate('Community');
+        return;
+      }
+      // DM / message → Chat screen, then open DM conversation
+      if (subType === 'dm' || subType === 'message') {
+        const senderId = raw.sender_id || raw.from_user_id || null;
+        const senderUsername = raw.sender_username || raw.sender?.username || null;
+        const senderAvatar = raw.sender_avatar || raw.sender?.avatar_url || null;
+        if (senderId) {
+          navigation.navigate('Chat');
+          setTimeout(() => {
+            navigation.navigate('DMConversation', {
+              contact: {
+                user_id: senderId,
+                username: senderUsername || senderId,
+                avatar_url: senderAvatar || null,
+              },
+              source: 'social',
+            });
+          }, 350);
+        } else {
+          navigation.navigate('Chat');
+        }
+        return;
+      }
+      // Generic social (follow, mention, etc.) → Community tab
+      navigation.navigate('Community');
+      return;
+    }
+
+    if (type === 'marketplace') {
+      // Marketplace enquiry / message → DMConversation with marketplace source
+      const senderId = raw.sender_id || raw.from_user_id || null;
+      const senderUsername = raw.sender_username || raw.sender?.username || null;
+      const senderAvatar = raw.sender_avatar || raw.sender?.avatar_url || null;
+      if (senderId) {
+        navigation.navigate('Chat');
+        setTimeout(() => {
+          navigation.navigate('DMConversation', {
+            contact: {
+              user_id: senderId,
+              username: senderUsername || senderId,
+              avatar_url: senderAvatar || null,
+              is_marketplace: true,
+            },
+            source: 'marketplace',
+          });
+        }, 350);
+      } else {
+        navigation.navigate('Marketplace');
+      }
+      return;
+    }
+
+    // Announcements, grade, deadline → no deep-link action needed
+  };
+
+  // Dynamic mapping — infer sub-type from title/body for smart routing
+  const allNotifs = apiAlerts.map(a => {
+    let icon = 'notifications-outline';
+    let color = a.urgency === 'high' ? '#EF4444' : a.urgency === 'medium' ? '#F59E0B' : colors.primary;
+
+    if (a.type === 'social') { icon = 'people-outline'; color = '#8B5CF6'; }
+    if (a.type === 'marketplace') { icon = 'storefront-outline'; color = '#10B981'; }
+    if (a.type === 'announcement') { icon = 'megaphone-outline'; color = '#F59E0B'; }
+    if (a.type === 'grade') { icon = 'school-outline'; color = colors.primary; }
+    if (a.type === 'deadline') { icon = 'time-outline'; color = '#EF4444'; }
+
+    // Infer sub-type if the API doesn't provide one
+    const titleLower = (a.title || '').toLowerCase();
+    const bodyLower  = (a.body || a.message || '').toLowerCase();
+    let subType = a.sub_type || a.subType || '';
+    if (!subType) {
+      if (titleLower.includes('liked') || bodyLower.includes('liked') || titleLower.includes('reacted')) subType = 'like';
+      else if (titleLower.includes('comment')) subType = 'comment';
+      else if (titleLower.includes('repost')) subType = 'repost';
+      else if (titleLower.includes('sent you a message') || bodyLower.includes('sent you a message') || titleLower.includes('messaged you')) subType = 'message';
+      else if (titleLower.includes('dm ') || bodyLower.includes('direct message')) subType = 'dm';
+      else if (titleLower.includes('follow') || titleLower.includes('connection')) subType = 'follow';
+      else if (a.type === 'marketplace') subType = 'message';
+    }
+
+    return {
       id: a.id,
-      title: a.title,
+      title: a.title || '',
       description: a.body || a.message || '',
       time: a.created_at ? new Date(a.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : 'Now',
-      icon: 'notifications-outline',
-      color: a.urgency === 'high' ? '#EF4444' : a.urgency === 'medium' ? '#F59E0B' : colors.primary,
+      icon,
+      color,
       isNew: !a.is_read,
       type: a.type || 'announcement',
+      subType,
+      raw: a,
       fromAPI: true,
-    })),
-    ...NOTIFICATIONS,
-  ];
+    };
+  });
 
   const filteredNotifs = activeTab === 'All Updates'
     ? allNotifs
-    : activeTab === 'Grades'
-      ? allNotifs.filter(n => n.type === 'grade')
-      : allNotifs.filter(n => n.type === 'deadline');
+    : activeTab === 'Social'
+      ? allNotifs.filter(n => n.type === 'social')
+      : activeTab === 'Marketplace'
+      ? allNotifs.filter(n => n.type === 'marketplace')
+      : allNotifs.filter(n => n.type === 'announcement');
 
   return (
     <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
@@ -74,7 +171,7 @@ const AlertsScreen = ({ navigation }) => {
           >
             <MaterialIcons name="notifications" size={20} color="#FFFFFF" />
           </LinearGradient>
-          <Text style={[styles.headerLogo, { color: colors.textPrimary }]}>{APP_CONFIG.UNIVERSITY_NAME}</Text>
+          <Text style={[styles.headerLogo, { color: colors.textPrimary }]}>{APP_CONFIG.UNIVERSITY_SHORT_NAME} Alerts</Text>
         </View>
         <TouchableOpacity
           style={[styles.markAllButton, { backgroundColor: isDark ? colors.card : '#FFFFFF', borderColor: colors.border, borderWidth: 1 }]}
@@ -90,54 +187,9 @@ const AlertsScreen = ({ navigation }) => {
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
       >
-        {/* Urgent Alert Card - Redesigned with Gradient */}
-        <View style={styles.urgentCardWrap}>
-          <LinearGradient
-            colors={isDark ? ['#1E1B4B', '#111827'] : ['#FFFFFF', '#FFF7ED']}
-            style={[styles.urgentCard, { borderColor: colors.border }]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-          >
-
-            <View style={styles.urgentHeader}>
-              <View style={styles.urgentIconWrapper}>
-                <LinearGradient colors={[colors.primary, colors.primaryDark]} style={styles.urgentIconBg}>
-                  <Ionicons name="alert-circle" size={28} color="#FFFFFF" />
-                </LinearGradient>
-              </View>
-              <LinearGradient colors={isDark ? ['#7C2D12', '#431407'] : ['#FFEDD5', '#FED7AA']} style={styles.dueBadge}>
-                <Text style={[styles.dueBadgeText, { color: isDark ? '#FFEDD5' : '#9A3412' }]}>DUE IN 2H</Text>
-              </LinearGradient>
-
-            </View>
-
-            <Text style={[styles.urgentTitle, { color: colors.textPrimary }]}>Physics II: Lab Report</Text>
-            <Text style={[styles.urgentDesc, { color: colors.textSecondary }]}>Submission window closing soon. Ensure all variables are correctly documented.</Text>
-
-
-            <View style={styles.urgentFooter}>
-              <View style={styles.avatarStack}>
-                <LinearGradient colors={['#8B5CF6', '#6D28D9']} style={[styles.avatar, { borderColor: isDark ? colors.border : '#FFFFFF' }]}>
-                  <Text style={styles.avatarText}>JD</Text>
-                </LinearGradient>
-                <LinearGradient colors={[colors.primary, colors.primaryDark]} style={[styles.avatar, styles.avatarOverlap, { borderColor: isDark ? colors.border : '#FFFFFF' }]}>
-                  <Text style={styles.avatarText}>MK</Text>
-                </LinearGradient>
-                <Text style={[styles.avatarCount, { color: colors.textSecondary }]}>+2</Text>
-              </View>
-
-              <TouchableOpacity style={styles.reviewBtn}>
-                <LinearGradient colors={isDark ? ['#312E81', '#1E1B4B'] : ['#1F2937', '#111827']} style={styles.reviewBtnGradient}>
-                  <Text style={styles.reviewBtnText}>Review Now →</Text>
-                </LinearGradient>
-              </TouchableOpacity>
-            </View>
-          </LinearGradient>
-        </View>
-
-
         {/* Filter Tabs - Dashboard Style */}
         <View style={styles.tabsContainer}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingBottom: 8 }}>
           {TABS.map((tab) => (
             <TouchableOpacity
               key={tab}
@@ -156,6 +208,7 @@ const AlertsScreen = ({ navigation }) => {
           ))}
 
 
+          </ScrollView>
         </View>
 
         {/* Notification Items */}
@@ -174,32 +227,53 @@ const AlertsScreen = ({ navigation }) => {
                 </View>
               </View>
             ))
+          ) : filteredNotifs.length === 0 ? (
+            <View style={{ padding: 40, alignItems: 'center' }}>
+              <MaterialIcons name="notifications-none" size={48} color={colors.textMuted} style={{ marginBottom: 16 }} />
+              <Text style={{ color: colors.textSecondary, fontSize: 16, fontWeight: '600' }}>No {activeTab === 'All Updates' ? '' : activeTab.toLowerCase() + ' '}updates yet</Text>
+            </View>
           ) : (
             filteredNotifs.map((notif, index) => (
-              <LinearGradient
-                key={notif.id}
-                colors={[colors.card, colors.card]}
-                style={[styles.notifCard, { borderColor: notif.isNew ? colors.primary + '40' : colors.border }, index === filteredNotifs.length - 1 && styles.lastNotifCard]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 0, y: 1 }}
-              >
-                <View style={[styles.notifIcon, { backgroundColor: notif.color + '15' }]}>
-                  <Ionicons name={notif.icon} size={22} color={notif.color} />
-                  {notif.isNew && <View style={[styles.newDot, { borderColor: colors.card }]} />}
-                </View>
-                <View style={styles.notifContent}>
-                  <View style={styles.notifHeader}>
-                    <Text style={[styles.notifTitle, { color: colors.textPrimary }]} numberOfLines={1}>{notif.title}</Text>
-                    <Text style={[styles.notifTime, { color: colors.textSecondary }]}>{notif.time}</Text>
+              <TouchableOpacity key={notif.id} onPress={() => handleAlertTap(notif)}>
+                <LinearGradient
+                  colors={[colors.card, colors.card]}
+                  style={[styles.notifCard, { borderColor: notif.isNew ? colors.primary + '40' : colors.border }, index === filteredNotifs.length - 1 && styles.lastNotifCard]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 0, y: 1 }}
+                >
+                  <View style={[styles.notifIcon, { backgroundColor: notif.color + '15' }]}>
+                    <Ionicons name={notif.icon} size={22} color={notif.color} />
+                    {notif.isNew && <View style={[styles.newDot, { borderColor: colors.card }]} />}
                   </View>
-                  <Text style={[styles.notifDesc, { color: colors.textSecondary }]} numberOfLines={2}>{notif.description}</Text>
-                  {notif.link && (
-                    <TouchableOpacity>
-                      <Text style={[styles.notifLink, { color: colors.primary }]}>{notif.link} →</Text>
-                    </TouchableOpacity>
-                  )}
-                </View>
-              </LinearGradient>
+                  <View style={styles.notifContent}>
+                    <View style={styles.notifHeader}>
+                      <Text style={[styles.notifTitle, { color: colors.textPrimary }]} numberOfLines={1}>{notif.title}</Text>
+                      <Text style={[styles.notifTime, { color: colors.textSecondary }]}>{notif.time}</Text>
+                    </View>
+                    <Text style={[styles.notifDesc, { color: colors.textSecondary }]} numberOfLines={2}>{notif.description}</Text>
+                    {/* Tap hint for actionable alerts */}
+                    {(notif.type === 'social' || notif.type === 'marketplace') && (
+                      <View style={styles.tapHint}>
+                        <Ionicons
+                          name={
+                            notif.type === 'marketplace' ? 'chatbubble-ellipses-outline' :
+                            (notif.subType === 'like' || notif.subType === 'comment' || notif.subType === 'reaction') ? 'open-outline' :
+                            'chatbubble-outline'
+                          }
+                          size={11}
+                          color={notif.color}
+                        />
+                        <Text style={[styles.tapHintText, { color: notif.color }]}>
+                          {notif.type === 'marketplace' ? 'Open chat →' :
+                           (notif.subType === 'like' || notif.subType === 'comment' || notif.subType === 'reaction') ? 'View post →' :
+                           (notif.subType === 'dm' || notif.subType === 'message') ? 'Open message →' :
+                           'View →'}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                </LinearGradient>
+              </TouchableOpacity>
             ))
           )}
         </View>
@@ -374,12 +448,12 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   tabWrapper: {
-    flex: 1,
     borderRadius: 40,
     overflow: 'hidden',
   },
   tab: {
     paddingVertical: 12,
+    paddingHorizontal: 20,
     alignItems: 'center',
     borderRadius: 40,
   },
@@ -456,9 +530,18 @@ const styles = StyleSheet.create({
   notifDesc: {
     fontSize: 13,
     lineHeight: 19,
-    marginBottom: 6,
+    marginBottom: 4,
   },
-
+  tapHint: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 4,
+  },
+  tapHintText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
   notifLink: {
     fontSize: 13,
     fontWeight: '700',

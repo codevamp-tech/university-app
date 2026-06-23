@@ -11,6 +11,7 @@ import { useUser } from '../../context/UserContext';
 import { getPersonaBadge } from '../../data/aiEngine';
 import { uploadAvatarAPI, connectionStatsAPI } from '../../data/apiService';
 import { getAvatarUrl } from '../../utils/avatar';
+import { isMedicalStudent, getDisplayCourse } from '../../utils/courseDisplay';
 
 
 const { width } = Dimensions.get('window');
@@ -19,6 +20,9 @@ const ProfileScreen = () => {
   const insets = useSafeAreaInsets();
   const { user, accessToken, updateAvatarUrl } = useUser();
   const [stats, setStats] = React.useState({ followers: 0, following: 0, connections: 0 });
+  const [isUploading, setIsUploading] = React.useState(false);
+
+  const isMed = user ? isMedicalStudent(user) : false;
 
   React.useEffect(() => {
     if (accessToken) {
@@ -55,7 +59,7 @@ const ProfileScreen = () => {
     : [
         {
           id: 0,
-          name: user.course?.toLowerCase().includes('medicine') || user.course?.toLowerCase().includes('bpharma')
+          name: isMed
             ? 'Basic Pharmacology'
             : user.course?.toLowerCase().includes('mba') || user.course?.toLowerCase().includes('bba')
             ? 'Advanced Excel'
@@ -66,7 +70,7 @@ const ProfileScreen = () => {
         },
         {
           id: 1,
-          name: user.course?.toLowerCase().includes('medicine') || user.course?.toLowerCase().includes('bpharma')
+          name: isMed
             ? 'Clinical Trials & Ethics'
             : user.course?.toLowerCase().includes('mba') || user.course?.toLowerCase().includes('bba')
             ? 'Data Visualization with BI'
@@ -164,22 +168,31 @@ const ProfileScreen = () => {
           </TouchableOpacity>
           
           <View style={styles.profileInfoWrap}>
-            <Text style={styles.profileMajor}>{user.course} {user.branch}</Text>
-            <Text style={styles.profileSub}>Year {user.year} • {APP_CONFIG.UNIVERSITY_NAME}</Text>
-            <View style={styles.infoCapsuleRow}>
-              <View style={styles.infoCapsule}>
-                <Text style={styles.infoLabel}>SEM</Text>
-                <Text style={styles.infoValue}>S{user.semester}</Text>
-              </View>
-              <View style={styles.infoCapsule}>
-                <Text style={styles.infoLabel}>ID</Text>
-                <Text style={styles.infoValue}>{user.id}</Text>
-              </View>
-              <View style={styles.infoCapsule}>
-                <Text style={styles.infoLabel}>VIBE</Text>
-                <Text style={[styles.infoValue, { color: '#006666' }]}>Innovator</Text>
-              </View>
-            </View>
+            <Text style={styles.profileMajor}>{getDisplayCourse ? getDisplayCourse(user) : `${user.course} ${user.branch}`}</Text>
+            {(() => {
+              const currentYear = user?.year || user?.current_year || (user?.semester ? Math.ceil(parseInt(user.semester) / 2) : '1');
+              const vibeCheck = isMed ? 'Clinician' : (user?.category?.toLowerCase().includes('management') ? 'Strategist' : (user?.category?.toLowerCase().includes('alliedhealth') ? 'Caregiver' : 'Innovator'));
+              const vibeColor = isMed ? '#B91C1C' : '#006666';
+              return (
+                <>
+                  <Text style={styles.profileSub}>Year {currentYear} • {APP_CONFIG.UNIVERSITY_NAME}</Text>
+                  <View style={styles.infoCapsuleRow}>
+                    <View style={styles.infoCapsule}>
+                      <Text style={styles.infoLabel}>SEM</Text>
+                      <Text style={styles.infoValue}>S{user.semester}</Text>
+                    </View>
+                    <View style={styles.infoCapsule}>
+                      <Text style={styles.infoLabel}>ID</Text>
+                      <Text style={styles.infoValue}>{user.id}</Text>
+                    </View>
+                    <View style={styles.infoCapsule}>
+                      <Text style={styles.infoLabel}>VIBE</Text>
+                      <Text style={[styles.infoValue, { color: vibeColor }]}>{vibeCheck}</Text>
+                    </View>
+                  </View>
+                </>
+              );
+            })()}
             <View style={[styles.infoCapsuleRow, { marginTop: 8 }]}>
               <View style={styles.infoCapsule}>
                 <Text style={styles.infoLabel}>FOLLOWERS</Text>
@@ -253,7 +266,7 @@ const ProfileScreen = () => {
               </View>
               <View style={styles.scoreBadge}>
                 <Text style={styles.scoreText}>
-                  {((user.extracurricular?.length || 0) + (user.leadership?.length || 0)) * 100} pts
+                  {user.social_credits || ((user.extracurricular?.length || 0) + (user.leadership?.length || 0)) * 100 + 120} pts
                 </Text>
               </View>
             </View>
@@ -292,16 +305,31 @@ const ProfileScreen = () => {
           </View>
 
           <View style={styles.ventureCard}>
-            <LinearGradient colors={['#1A1A2E', '#2c2f30']} style={styles.ventureGradient}>
+            <LinearGradient 
+              colors={isMed ? ['#1e1b4b', '#311042'] : ['#1A1A2E', '#2c2f30']} 
+              style={styles.ventureGradient}
+            >
               <View style={styles.proofHeader}>
-                <Text style={styles.proofTitleWhite}>Venture Lab</Text>
-                <View style={styles.activeLabel}><Text style={styles.activeText}>ACTIVE</Text></View>
+                <Text style={styles.proofTitleWhite}>{isMed ? 'Clinical Rotation' : 'Venture Lab'}</Text>
+                <View style={[styles.activeLabel, isMed && { borderColor: 'rgba(168, 85, 247, 0.4)', backgroundColor: 'rgba(168, 85, 247, 0.2)' }]}><Text style={[styles.activeText, isMed && { color: '#C084FC' }]}>ACTIVE</Text></View>
               </View>
-              <Text style={styles.ventureName}>{user.course.includes('Computer') ? 'SkyDrone Campus' : 'HealthTech Innovators'}</Text>
-              <Text style={styles.ventureDesc}>Leading a team of 5 to develop autonomous solutions in {user.course}.</Text>
+              <Text style={styles.ventureName}>
+                {isMed ? 'Rural Health Immersion' : (user.course.includes('Computer') ? 'SkyDrone Campus' : 'HealthTech Innovators')}
+              </Text>
+              <Text style={styles.ventureDesc}>
+                {isMed 
+                  ? 'Conducting community health screenings and analyzing pediatric immunization compliance.'
+                  : `Leading a team of 5 to develop autonomous solutions in ${user.course}.`}
+              </Text>
               <View style={styles.ventureActions}>
-                <TouchableOpacity style={styles.vBtn}><MaterialIcons name="link" size={14} color="#FFFFFF" /><Text style={styles.vBtnText}>Proofs</Text></TouchableOpacity>
-                <TouchableOpacity style={styles.vBtn}><MaterialIcons name="rocket-launch" size={14} color="#FFFFFF" /><Text style={styles.vBtnText}>Startup ID</Text></TouchableOpacity>
+                <TouchableOpacity style={styles.vBtn}>
+                  <MaterialIcons name={isMed ? "journal" : "link"} size={14} color="#FFFFFF" />
+                  <Text style={styles.vBtnText}>{isMed ? 'Case Studies' : 'Proofs'}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.vBtn}>
+                  <MaterialIcons name={isMed ? "assignment-turned-in" : "rocket-launch"} size={14} color="#FFFFFF" />
+                  <Text style={styles.vBtnText}>{isMed ? 'Logbook ID' : 'Startup ID'}</Text>
+                </TouchableOpacity>
               </View>
             </LinearGradient>
           </View>

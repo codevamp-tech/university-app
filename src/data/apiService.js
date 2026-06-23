@@ -61,15 +61,16 @@ function unwrap(result, fallback = null) {
  * If user doesn't exist (404), auto-registers them first.
  * Returns { access_token, refresh_token } or null on failure.
  */
-export async function loginWithRollNumber(rollNumber) {
+export async function loginWithRollNumber(rollNumber, password) {
   const username = rollNumber.trim();
+  const passwordToSend = password || DEFAULT_PASSWORD;
 
   // 1. Try login
   const loginRes = await apiCall('/api/v1/auth/login', {
     method: 'POST',
     body: JSON.stringify({
       username,
-      password: DEFAULT_PASSWORD,
+      password: passwordToSend,
       tenant_id: TENANT_ID,
     }),
   });
@@ -83,7 +84,7 @@ export async function loginWithRollNumber(rollNumber) {
     method: 'POST',
     body: JSON.stringify({
       username,
-      password: DEFAULT_PASSWORD,
+      password: passwordToSend,
       tenant_id: TENANT_ID,
       rollno: username,
       department_id: DEPT_ID,
@@ -97,7 +98,7 @@ export async function loginWithRollNumber(rollNumber) {
       method: 'POST',
       body: JSON.stringify({
         username,
-        password: DEFAULT_PASSWORD,
+        password: passwordToSend,
         tenant_id: TENANT_ID,
       }),
     });
@@ -146,6 +147,17 @@ export async function resetPasswordAPI(username, tenant_id) {
  */
 export async function getMyProfile(token) {
   const res = await apiCall('/api/v1/users/me', {
+    headers: authHeaders(token),
+  });
+  return unwrap(res);
+}
+
+/**
+ * GET /api/v1/users/:userId/public
+ * Returns the public API profile of another user
+ */
+export async function getPublicProfile(token, userId) {
+  const res = await apiCall(`/api/v1/users/${userId}/public`, {
     headers: authHeaders(token),
   });
   return unwrap(res);
@@ -275,20 +287,72 @@ export async function getOutpass(token, outpassId) {
  * Returns { id, balance, currency }
  */
 export async function getWalletBalance(token) {
-  const res = await apiCall('/api/v1/wallet/balance', {
-    headers: authHeaders(token),
-  });
-  return unwrap(res, { balance: 0, currency: 'INR' });
+  let realWallet = { balance: 0, currency: 'INR' };
+  try {
+    const res = await apiCall('/api/v1/wallet/balance', {
+      headers: authHeaders(token),
+    });
+    realWallet = unwrap(res, { balance: 0, currency: 'INR' });
+  } catch (e) {}
+
+  try {
+    const deductionsStr = await AsyncStorage.getItem('@mock_wallet_deductions');
+    const deductions = deductionsStr ? parseFloat(deductionsStr) : 0;
+    
+    // If backend balance is 0, provide a mock base of 2500 so they can test purchases
+    let baseBalance = realWallet.balance > 0 ? realWallet.balance : 2500;
+    
+    return { ...realWallet, balance: Math.max(0, baseBalance - deductions) };
+  } catch (e) {
+    return realWallet;
+  }
 }
 
 /**
  * GET /api/v1/wallet/transactions?skip=0&limit=20
  */
 export async function getTransactions(token, skip = 0, limit = 20) {
-  const res = await apiCall(`/api/v1/wallet/transactions?skip=${skip}&limit=${limit}`, {
-    headers: authHeaders(token),
-  });
-  return unwrap(res, []);
+  let realTxns = [];
+  try {
+    const res = await apiCall(`/api/v1/wallet/transactions?skip=${skip}&limit=${limit}`, {
+      headers: authHeaders(token),
+    });
+    realTxns = unwrap(res, []);
+  } catch (e) {}
+
+  try {
+    const txnsStr = await AsyncStorage.getItem('@mock_wallet_txns');
+    const mockTxns = txnsStr ? JSON.parse(txnsStr) : [];
+    return [...mockTxns, ...realTxns];
+  } catch(e) {
+    return realTxns;
+  }
+}
+
+/**
+ * MOCK: Process a wallet purchase locally
+ */
+export async function processWalletPurchaseMock(token, amount, title) {
+  try {
+    const deductionsStr = await AsyncStorage.getItem('@mock_wallet_deductions');
+    const deductions = deductionsStr ? parseFloat(deductionsStr) : 0;
+    await AsyncStorage.setItem('@mock_wallet_deductions', (deductions + amount).toString());
+
+    const txnsStr = await AsyncStorage.getItem('@mock_wallet_txns');
+    const txns = txnsStr ? JSON.parse(txnsStr) : [];
+    txns.unshift({
+      id: 'mock_tx_' + Date.now(),
+      type: 'debit',
+      amount: amount,
+      title: `Purchase: ${title || 'Item'}`,
+      description: 'Marketplace Purchase',
+      created_at: new Date().toISOString()
+    });
+    await AsyncStorage.setItem('@mock_wallet_txns', JSON.stringify(txns));
+    return true;
+  } catch (e) {
+    throw new Error('Failed to process wallet purchase locally');
+  }
 }
 
 /**
@@ -510,12 +574,42 @@ export async function repostPost(token, postId, content = null) {
  * GET /api/v1/shop/listings?category=&skip=0&limit=20
  */
 export async function getShopListings(token, category = null, skip = 0, limit = 20) {
-  const params = new URLSearchParams({ skip, limit });
+  const params = new URLSearchParams({ skip, limit, t: Date.now() });
   if (category) params.set('category', category);
+  
   const res = await apiCall(`/api/v1/shop/listings?${params}`, {
     headers: authHeaders(token),
   });
-  return unwrap(res, []);
+  let listings = unwrap(res, []);
+  
+  // Inject mock seller if missing, so Chat Demo works!
+  return listings.map(l => ({
+    ...l,
+    seller: l.seller || {
+      user_id: 'mock_seller_123',
+      username: 'CampusSeller',
+      avatar_url: 'https://images.unsplash.com/photo-1527980965255-d3b416303d12?auto=format&fit=crop&w=150',
+      status: 'online'
+    }
+  }));
+}
+
+/**
+ * POST /api/v1/shop/listings
+ */
+export async function createShopListingAPI(token, data) {
+  const res = await apiCall('/api/v1/shop/listings', {
+    method: 'POST',
+    headers: authHeaders(token),
+    body: JSON.stringify({
+      title: data.title,
+      description: data.description,
+      price: parseFloat(data.price),
+      category: data.category || 'other',
+      image_url: data.image_url || null,
+    }),
+  });
+  return unwrap(res);
 }
 
 /**
@@ -534,7 +628,8 @@ export async function createOrder(token, listingId, quantity = 1) {
  * GET /api/v1/shop/gigs
  */
 export async function getShopGigs(token) {
-  const res = await apiCall('/api/v1/shop/gigs', {
+  const params = new URLSearchParams({ t: Date.now() });
+  const res = await apiCall(`/api/v1/shop/gigs?${params}`, {
     headers: authHeaders(token),
   });
   return unwrap(res, []);
@@ -544,10 +639,29 @@ export async function getShopGigs(token) {
  * GET /api/v1/shop/requests
  */
 export async function getShopRequests(token) {
-  const res = await apiCall('/api/v1/shop/requests', {
+  const params = new URLSearchParams({ t: Date.now() });
+  const res = await apiCall(`/api/v1/shop/requests?${params}`, {
     headers: authHeaders(token),
   });
   return unwrap(res, []);
+}
+
+export async function createShopGigAPI(token, data) {
+  const res = await apiCall('/api/v1/shop/gigs', {
+    method: 'POST',
+    headers: authHeaders(token),
+    body: JSON.stringify(data),
+  });
+  return unwrap(res);
+}
+
+export async function createShopRequestAPI(token, data) {
+  const res = await apiCall('/api/v1/shop/requests', {
+    method: 'POST',
+    headers: authHeaders(token),
+    body: JSON.stringify(data),
+  });
+  return unwrap(res);
 }
 
 // ─── Venture ─────────────────────────────────────────────────────────────────
@@ -732,6 +846,45 @@ export async function uploadAvatarAPI(token, imageUri) {
   console.log("Avatar upload status:", res.status);
   console.log("Avatar upload response:", json);
   return { ok: res.ok, status: res.status, json };
+}
+
+/**
+ * GET /api/v1/social/stories
+ */
+export async function getStoriesAPI(token) {
+  const res = await apiCall('/api/v1/social/stories', {
+    method: 'GET',
+    headers: authHeaders(token),
+  });
+  return unwrap(res);
+}
+
+/**
+ * POST /api/v1/social/stories
+ */
+export async function createStoryAPI(token, { image_url, caption }) {
+  const res = await apiCall('/api/v1/social/stories', {
+    method: 'POST',
+    headers: authHeaders(token),
+    body: JSON.stringify({ image_url, caption }),
+  });
+  return unwrap(res);
+}
+
+export async function viewStoryAPI(token, storyId) {
+  const res = await apiCall(`/api/v1/social/stories/${storyId}/view`, {
+    method: 'POST',
+    headers: authHeaders(token),
+  });
+  return unwrap(res);
+}
+
+export async function likeStoryAPI(token, storyId) {
+  const res = await apiCall(`/api/v1/social/stories/${storyId}/like`, {
+    method: 'POST',
+    headers: authHeaders(token),
+  });
+  return unwrap(res);
 }
 
 /**
@@ -931,54 +1084,23 @@ export async function getDMContactsAPI(token) {
     const res = await apiCall('/api/v1/chat/dms', {
       headers: authHeaders(token),
     });
-    const contacts = unwrap(res, []);
-    if (contacts.length > 0) return contacts;
+    return unwrap(res, []);
   } catch(e) {
-    console.warn("getDMContactsAPI failed, returning mock contacts");
+    console.warn('[Chat] getDMContactsAPI failed:', e?.message);
+    return [];
   }
-  
-  return [
-    {
-      user_id: 'mock_student_1',
-      username: 'Priya Sharma',
-      avatar_url: 'https://images.pexels.com/photos/733872/pexels-photo-733872.jpeg?auto=compress&cs=tinysrgb&w=150',
-      last_message: 'Hey, are you going to the hackathon?',
-    },
-    {
-      user_id: 'mock_student_2',
-      username: 'Rohan Gupta',
-      avatar_url: 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=150',
-      last_message: 'Can you share the notes for OS?',
-    }
-  ];
 }
 
-export async function getDMHistoryAPI(token, userId, limit = 50) {
+export async function getDMHistoryAPI(token, userId, limit = 50, source = 'social') {
   try {
-    const res = await apiCall(`/api/v1/chat/dms/${userId}/history?limit=${limit}`, {
+    const res = await apiCall(`/api/v1/chat/dms/${userId}/history?limit=${limit}&source=${source}`, {
       headers: authHeaders(token),
     });
-    const history = unwrap(res, []);
-    if (history && history.length > 0) return history;
+    return unwrap(res, []);
   } catch(e) {
-    console.warn("getDMHistoryAPI failed, returning mock history");
+    console.warn('[Chat] getDMHistoryAPI failed:', e?.message);
+    return [];
   }
-  
-  const isPriya = userId === 'mock_student_1';
-  return [
-    {
-      _id: 'mock_msg_2',
-      text: isPriya ? 'Hey, are you going to the hackathon?' : 'Can you share the notes for OS?',
-      createdAt: new Date().toISOString(),
-      user: {
-        _id: userId,
-        name: isPriya ? 'Priya Sharma' : 'Rohan Gupta',
-        avatar: isPriya 
-          ? 'https://images.pexels.com/photos/733872/pexels-photo-733872.jpeg?auto=compress&cs=tinysrgb&w=150' 
-          : 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=150',
-      },
-    }
-  ];
 }
 
 export async function registerPushTokenAPI(token, expoPushToken, platform) {
@@ -986,6 +1108,185 @@ export async function registerPushTokenAPI(token, expoPushToken, platform) {
     method: 'POST',
     headers: authHeaders(token),
     body: JSON.stringify({ token: expoPushToken, platform }),
+  });
+  return unwrap(res, null);
+}
+
+// ─── Admin & Warden Endpoints ───────────────────────────────────────────────
+
+export async function getWardenPendingOutpasses(token) {
+  const res = await apiCall('/api/v1/erp/outpass/pending', {
+    headers: authHeaders(token),
+  });
+  return unwrap(res, []);
+}
+
+export async function getWardenAllOutpasses(token) {
+  const res = await apiCall('/api/v1/erp/outpass', {
+    headers: authHeaders(token),
+  });
+  return unwrap(res, []);
+}
+
+export async function actionWardenOutpass(token, outpassId, status) {
+  const res = await apiCall(`/api/v1/erp/outpass/${outpassId}`, {
+    method: 'PATCH',
+    headers: authHeaders(token),
+    body: JSON.stringify({ status }),
+  });
+  return unwrap(res);
+}
+
+export async function getPendingStartups(token) {
+  const res = await apiCall('/api/v1/venture/startups/pending', {
+    headers: authHeaders(token),
+  });
+  return unwrap(res, []);
+}
+
+export async function reviewStartup(token, startupId, status, notes) {
+  const res = await apiCall(`/api/v1/venture/startups/${startupId}/review`, {
+    method: 'POST',
+    headers: authHeaders(token),
+    body: JSON.stringify({ status, notes }),
+  });
+  return unwrap(res);
+}
+
+export async function getMentalHealthAnalytics(token) {
+  const res = await apiCall('/api/v1/admin/analytics/mental-health', {
+    headers: authHeaders(token),
+  });
+  return unwrap(res, { mood_distribution: {}, at_risk_students: [] });
+}
+
+export async function getAdminOverviewStats(token) {
+  const res = await apiCall('/api/v1/admin/analytics/overview', {
+    headers: authHeaders(token),
+  });
+  return unwrap(res, { total_students: 0, pending_outpasses: 0, pending_ventures: 0, active_grievances: 0 });
+}
+
+export async function getSuperAdminAnalytics(token) {
+  const res = await apiCall('/api/v1/admin/analytics/superadmin', {
+    headers: authHeaders(token),
+  });
+  return unwrap(res, {});
+}
+
+export async function getSuperAdminDrilldown(token, category) {
+  const res = await apiCall(`/api/v1/admin/analytics/drilldown?category=${category}`, {
+    headers: authHeaders(token),
+  });
+  return unwrap(res, []);
+}
+
+export async function createBroadcastAPI(token, payload) {
+  const res = await apiCall('/api/v1/alerts/broadcast', {
+    method: 'POST',
+    headers: authHeaders(token),
+    body: JSON.stringify(payload),
+  });
+  return unwrap(res);
+}
+
+export async function getBroadcastStatsAPI(token) {
+  const res = await apiCall('/api/v1/alerts/broadcast/stats', {
+    headers: authHeaders(token),
+  });
+  return unwrap(res, { total_sent: 0, recent: [] });
+}
+
+export async function updateGrievanceStatusAPI(token, grievanceId, status) {
+  const res = await apiCall(`/api/v1/grievance/${grievanceId}`, {
+    method: 'PATCH',
+    headers: authHeaders(token),
+    body: JSON.stringify({ status }),
+  });
+  return unwrap(res);
+}
+
+export async function getDepartmentsAPI(token) {
+  const res = await apiCall('/api/v1/admin/departments', {
+    headers: authHeaders(token),
+  });
+  return unwrap(res, []);
+}
+
+// ─── Faculty (Teacher) ─────────────────────────────────────────────────────────
+
+/**
+ * POST /api/v1/faculty/login
+ * Authenticate a faculty member via SRMS ERP employee ID & password.
+ * Returns { access_token, refresh_token, faculty: { emp_id, name, ... } }
+ */
+export async function loginFacultyWithEmpId(empId, password) {
+  const res = await apiCall('/api/v1/faculty/login', {
+    method: 'POST',
+    body: JSON.stringify({
+      emp_id: empId.trim(),
+      password,
+      tenant_id: TENANT_ID,
+    }),
+  });
+  if (res.ok && res.json?.success) {
+    return res.json.data; // { access_token, refresh_token, faculty: {...} }
+  }
+  return null;
+}
+
+/**
+ * GET /api/v1/faculty/me
+ * Returns the logged-in faculty's profile from the DB.
+ */
+export async function getFacultyProfile(token) {
+  const res = await apiCall('/api/v1/faculty/me', {
+    headers: authHeaders(token),
+  });
+  return unwrap(res, null);
+}
+
+/**
+ * GET /api/v1/faculty/timetable
+ * Returns synced timetable for this faculty.
+ */
+export async function getFacultyTimetable(token) {
+  const res = await apiCall('/api/v1/faculty/timetable', {
+    headers: authHeaders(token),
+  });
+  return unwrap(res, []);
+}
+
+/**
+ * GET /api/v1/faculty/topics
+ * Returns topics taught by this faculty.
+ */
+export async function getFacultyTopics(token) {
+  const res = await apiCall('/api/v1/faculty/topics', {
+    headers: authHeaders(token),
+  });
+  return unwrap(res, []);
+}
+
+/**
+ * GET /api/v1/faculty/attendance
+ * Returns faculty punch history records.
+ */
+export async function getFacultyAttendance(token) {
+  const res = await apiCall('/api/v1/faculty/attendance', {
+    headers: authHeaders(token),
+  });
+  return unwrap(res, []);
+}
+
+/**
+ * POST /api/v1/faculty/sync
+ * Manually trigger synchronization of faculty data from ERP.
+ */
+export async function syncFacultyData(token) {
+  const res = await apiCall('/api/v1/faculty/sync', {
+    method: 'POST',
+    headers: authHeaders(token),
   });
   return unwrap(res, null);
 }

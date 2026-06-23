@@ -1,6 +1,6 @@
 import React from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ImageBackground, Dimensions, Alert
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ImageBackground, Dimensions, Alert, Modal, TouchableWithoutFeedback, DeviceEventEmitter
 } from 'react-native';
 import { Ionicons, MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -8,64 +8,162 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../hooks/useTheme';
 import { APP_CONFIG } from '../../config/appConfig';
 import { useUser } from '../../context/UserContext';
-import { getShopListings, createOrder, getShopGigs, getShopRequests } from '../../data/apiService';
+import { useFocusEffect } from '@react-navigation/native';
+import { getShopListings, createOrder, getShopGigs, getShopRequests, getWalletBalance, processWalletPurchaseMock } from '../../data/apiService';
 
 const { width } = Dimensions.get('window');
 
 const MarketplaceScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
-  const { accessToken } = useUser();
-  
-  const [cartCount, setCartCount] = React.useState(0);
+  const { user, accessToken } = useUser();
+  const avatarUrl = user?.avatar_url || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=1000&auto=format&fit=crop';
+
+  const defaultListings = [
+    {
+      id: 'mock_lst_1',
+      title: 'Stethoscope (Littmann Classic III)',
+      description: 'Excellent condition Littmann stethoscope, used for 1 year in clinical postings. Special plum tube.',
+      price: 4500,
+      category: 'medical',
+      image_url: 'https://images.unsplash.com/photo-1576091160550-2173dba999ef?q=80&w=600'
+    },
+    {
+      id: 'mock_lst_2',
+      title: "Gray's Anatomy for Students",
+      description: 'South Asia Edition. Minor highlights on anatomy diagrams, otherwise brand new condition.',
+      price: 1200,
+      category: 'books',
+      image_url: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?q=80&w=600'
+    },
+    {
+      id: 'mock_lst_3',
+      title: 'iPad Air (4th Gen) 64GB',
+      description: 'Perfect for taking clinical notes and viewing medical slides. Includes Apple Pencil 2 clone.',
+      price: 24000,
+      category: 'electronics',
+      image_url: 'https://images.unsplash.com/photo-1544244015-0df4b3ffc6b0?q=80&w=600'
+    },
+    {
+      id: 'mock_lst_4',
+      title: 'Lab Coat & scrubs (Medium)',
+      description: 'Pure white cotton lab coat with university crest patch and sky blue scrubs.',
+      price: 500,
+      category: 'gear',
+      image_url: 'https://images.unsplash.com/photo-1584515979956-d9f6e5d09982?q=80&w=600'
+    }
+  ];
+
+  const defaultGigs = [
+    {
+      id: 'mock_gig_1',
+      title: 'Differential Diagnosis Tutoring',
+      description: 'Providing 1-on-1 tutoring sessions for second year students preparing for pathology and microbiology exams.',
+      price: 250,
+      category: 'education',
+      image_url: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=600'
+    },
+    {
+      id: 'mock_gig_2',
+      title: 'Clinical Case Study Writing',
+      description: 'Help with formatting and structuring medical case reports for PubMed journal submissions.',
+      price: 350,
+      category: 'research',
+      image_url: 'https://images.unsplash.com/photo-1455390582262-044cdead277a?q=80&w=600'
+    }
+  ];
+
+  const defaultRequests = [
+    {
+      id: 'mock_req_1',
+      title: 'Need Biochemistry Lab Notes',
+      reward: 150,
+      price: 150,
+      category: 'request',
+      description: 'Looking for detailed handwritten notes for Unit 3 (Enzyme Kinetics) biochemistry.'
+    },
+    {
+      id: 'mock_req_2',
+      title: 'Urgent: Ward Duty Swap',
+      reward: 300,
+      price: 300,
+      category: 'request',
+      description: 'Need someone to cover my pediatric ward posting on Thursday evening (5 PM - 8 PM).'
+    }
+  ];
+
   const [apiListings, setApiListings] = React.useState([]);
   const [apiGigs, setApiGigs] = React.useState([]);
   const [apiRequests, setApiRequests] = React.useState([]);
+  const [walletBalance, setWalletBalance] = React.useState(0);
+  const [isFabMenuVisible, setIsFabMenuVisible] = React.useState(false);
 
   const loadMarketplaceData = React.useCallback(async () => {
     if (!accessToken) return;
     try {
       const data = await getShopListings(accessToken);
-      if (data) setApiListings(data);
+      if (data && data.length > 0) {
+        setApiListings(data.filter(l => l.category !== 'gig' && l.category !== 'request'));
+      } else {
+        setApiListings(defaultListings);
+      }
     } catch (err) {
       console.warn('[MarketplaceScreen] Error fetching listings:', err);
+      setApiListings(defaultListings);
     }
     try {
       const gigs = await getShopGigs(accessToken);
-      if (gigs) setApiGigs(gigs);
+      if (gigs && gigs.length > 0) {
+        setApiGigs(gigs);
+      } else {
+        setApiGigs(defaultGigs);
+      }
     } catch (err) {
       console.warn('[MarketplaceScreen] Error fetching gigs:', err);
+      setApiGigs(defaultGigs);
     }
     try {
       const reqs = await getShopRequests(accessToken);
-      if (reqs) setApiRequests(reqs);
+      if (reqs && reqs.length > 0) {
+        setApiRequests(reqs);
+      } else {
+        setApiRequests(defaultRequests);
+      }
     } catch (err) {
       console.warn('[MarketplaceScreen] Error fetching requests:', err);
+      setApiRequests(defaultRequests);
     }
   }, [accessToken]);
 
-  React.useEffect(() => {
-    loadMarketplaceData();
-  }, [loadMarketplaceData]);
+  useFocusEffect(
+    React.useCallback(() => {
+      loadMarketplaceData();
 
-  const handleBuyItem = async (listingId, price) => {
-    try {
+      // Load wallet
       if (accessToken) {
-        await createOrder(accessToken, listingId, 1);
-        Alert.alert('Order Placed', `Successfully placed order for ${price}. Your wallet will be debited.`);
-      } else {
-        Alert.alert('Success', 'Item added to cart (Simulation).');
+        getWalletBalance(accessToken)
+          .then(w => setWalletBalance(w.balance))
+          .catch(() => { });
       }
-      setCartCount(prev => prev + 1);
-    } catch (err) {
-      Alert.alert('Order Failed', err.message || 'An error occurred.');
-    }
-  };
+    }, [loadMarketplaceData, accessToken])
+  );
 
-
-  const addToCart = () => {
-    setCartCount(prev => prev + 1);
-  };
+  React.useEffect(() => {
+    const subProduct = DeviceEventEmitter.addListener('newProductAdded', (item) => {
+      setApiListings(prev => [item, ...prev]);
+    });
+    const subGig = DeviceEventEmitter.addListener('newGigAdded', (item) => {
+      setApiGigs(prev => [item, ...prev]);
+    });
+    const subReq = DeviceEventEmitter.addListener('newRequestAdded', (item) => {
+      setApiRequests(prev => [item, ...prev]);
+    });
+    return () => {
+      subProduct.remove();
+      subGig.remove();
+      subReq.remove();
+    };
+  }, []);
 
   return (
     <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
@@ -76,33 +174,25 @@ const MarketplaceScreen = ({ navigation }) => {
       <View style={[styles.header, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
 
         <View style={styles.headerLeft}>
-          <Image
-            source={{ uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuC6mmtjUA28NY_AB8YFu2Ri2e3lSkRbJCYpAbrgwHHzzLntRM9rNTLFJIT-pf3fW5gQ-_hRX8LB8ZDdqw5ls_d4bA10oIXuBlKp8kv7onee50cVXADdy7BPVn6kAg4Co9Gbp6XiTx5yITLttWLtkQQag4sVTILELHpLT0_-WAXmJWUVCHpSfhFuYmROstnRxdO_T4ym_KOCd8CmJm60WORR2yoPF8RiqYCiJsTUrQcbumydveuPeijNqG_991IufFMlU7g1DbJ3nqtG' }}
-            style={[styles.avatarTiny, { borderColor: colors.border, borderWidth: 1 }]}
-          />
+          <LinearGradient
+            colors={isDark ? ['#9A3412', '#7C2D12'] : ['#EA580C', '#9A3412']}
+            style={styles.logoIconBg}
+          >
+            <MaterialIcons name="storefront" size={20} color="#FFFFFF" />
+          </LinearGradient>
           <Text style={[styles.headerLogo, { color: colors.textPrimary }]}>{APP_CONFIG.UNIVERSITY_SHORT_NAME} Hub</Text>
         </View>
 
         <View style={styles.headerRight}>
-          <TouchableOpacity 
-            style={[styles.cartIconBtn, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1, borderRadius: 12, width: 40, height: 40, justifyContent: 'center', alignItems: 'center' }]}
-            onPress={() => navigation.navigate('Cart')}
-          >
-            <MaterialIcons name="shopping-cart" size={22} color={colors.textPrimary} />
-
-            {cartCount > 0 && (
-              <View style={[styles.cartBadge, { borderColor: colors.card }]}>
-                <Text style={styles.cartBadgeText}>{cartCount}</Text>
-              </View>
-
-            )}
-          </TouchableOpacity>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.creditPill, { borderColor: colors.border, backgroundColor: isDark ? 'rgba(234, 88, 12, 0.1)' : '#FFF7ED' }]}
-            onPress={() => navigation.navigate('MainWallet')}
+            onPress={() => Alert.alert('Premium Feature', 'Wallet and credits are locked in this demo.')}
           >
+            <MaterialIcons name="lock" size={12} color={isDark ? colors.primary : '#9A3412'} style={{ marginRight: 2 }} />
             <MaterialCommunityIcons name="wallet-outline" size={16} color={isDark ? colors.primary : '#9A3412'} />
-            <Text style={[styles.creditText, { color: isDark ? colors.primary : '#9A3412' }]}>₹1,250</Text>
+            <Text style={[styles.creditText, { color: isDark ? colors.primary : '#9A3412' }]}>
+              ₹{Number(walletBalance).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+            </Text>
           </TouchableOpacity>
 
 
@@ -131,7 +221,8 @@ const MarketplaceScreen = ({ navigation }) => {
               </LinearGradient>
             </ImageBackground>
           </View>
-        </View>        {/* Quick Requests - Redesigned to match screen.png */}
+        </View>
+        {/* Quick Requests - Redesigned to match screen.png */}
         <View style={styles.sectionContainer}>
           <View style={styles.sectionHeader}>
             <View>
@@ -224,7 +315,7 @@ const MarketplaceScreen = ({ navigation }) => {
                 <TouchableOpacity
                   key={item.id}
                   style={[styles.itemCard, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}
-                  onPress={() => handleBuyItem(item.id, `₹${item.price}`)}
+                  onPress={() => navigation.navigate('ProductDetail', { product: item })}
                 >
                   <View style={styles.itemImgBox}>
                     <Image source={{ uri: item.image_url || 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?q=80&w=2000' }} style={styles.itemImg} />
@@ -253,13 +344,78 @@ const MarketplaceScreen = ({ navigation }) => {
 
       {/* Sell FAB */}
       <TouchableOpacity
-        style={[styles.fab, { backgroundColor: colors.primary, shadowColor: colors.primary }]}
+        style={[
+          styles.fab,
+          {
+            backgroundColor: colors.primary,
+            shadowColor: colors.primary,
+            bottom: 120 + (insets.bottom || 0)
+          }
+        ]}
         activeOpacity={0.9}
-        onPress={() => {}}
+        onPress={() => setIsFabMenuVisible(true)}
       >
         <MaterialIcons name="add" size={24} color="#FFFFFF" />
-        <Text style={styles.fabText}>Sell Item</Text>
+        <Text style={styles.fabText}>Post</Text>
       </TouchableOpacity>
+
+      {/* FAB Menu Modal */}
+      <Modal
+        visible={isFabMenuVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setIsFabMenuVisible(false)}
+      >
+        <TouchableWithoutFeedback onPress={() => setIsFabMenuVisible(false)}>
+          <View style={styles.modalOverlay}>
+            <TouchableWithoutFeedback>
+              <View style={[styles.modalContent, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>Create New Post</Text>
+
+                <TouchableOpacity
+                  style={[styles.modalOption, { borderBottomColor: colors.border }]}
+                  onPress={() => { setIsFabMenuVisible(false); navigation.navigate('AddProduct'); }}
+                >
+                  <MaterialIcons name="shopping-bag" size={24} color={colors.primary} />
+                  <View style={styles.modalOptionTextContainer}>
+                    <Text style={[styles.modalOptionTitle, { color: colors.textPrimary }]}>Sell an Item</Text>
+                    <Text style={[styles.modalOptionDesc, { color: colors.textSecondary }]}>List a product for sale</Text>
+                  </View>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.modalOption, { borderBottomColor: colors.border }]}
+                  onPress={() => { setIsFabMenuVisible(false); navigation.navigate('AddGig'); }}
+                >
+                  <MaterialIcons name="work" size={24} color={colors.primary} />
+                  <View style={styles.modalOptionTextContainer}>
+                    <Text style={[styles.modalOptionTitle, { color: colors.textPrimary }]}>Offer a Gig</Text>
+                    <Text style={[styles.modalOptionDesc, { color: colors.textSecondary }]}>Offer your services or coaching</Text>
+                  </View>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.modalOption}
+                  onPress={() => { setIsFabMenuVisible(false); navigation.navigate('AddRequest'); }}
+                >
+                  <MaterialIcons name="live-help" size={24} color={colors.primary} />
+                  <View style={styles.modalOptionTextContainer}>
+                    <Text style={[styles.modalOptionTitle, { color: colors.textPrimary }]}>Post a Request</Text>
+                    <Text style={[styles.modalOptionDesc, { color: colors.textSecondary }]}>Ask for something you need</Text>
+                  </View>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.modalCancelBtn, { backgroundColor: colors.background }]}
+                  onPress={() => setIsFabMenuVisible(false)}
+                >
+                  <Text style={[styles.modalCancelText, { color: colors.textPrimary }]}>Cancel</Text>
+                </TouchableOpacity>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
     </View>
   );
 };
@@ -268,7 +424,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -282,11 +437,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
   },
+  logoIconBg: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#EA580C',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 3,
+  },
   headerLogo: {
     fontSize: 18,
     fontWeight: '900',
   },
-
   avatarTiny: {
     width: 36,
     height: 36,
@@ -305,7 +471,6 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     fontSize: 12,
   },
-
   headerRight: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -399,12 +564,15 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '900',
   },
-
+  viewAllBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   viewAllText: {
     fontSize: 12,
     fontWeight: '800',
+    marginRight: 4,
   },
-
   hScroll: {
     gap: 16,
     paddingRight: 16,
@@ -450,12 +618,10 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     height: 44,
   },
-
   quickDivider: {
     height: 1,
     marginBottom: 16,
   },
-
   quickFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -466,7 +632,6 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: 1,
   },
-
   quickReward: {
     fontSize: 18,
     fontWeight: '900',
@@ -494,24 +659,9 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     elevation: 3,
   },
-
   gigImg: {
     width: '100%',
     height: 180,
-  },
-  gigPopularBadge: {
-    position: 'absolute',
-    top: 16,
-    left: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-  },
-
-  gigPopularText: {
-    color: '#FFFFFF',
-    fontSize: 10,
-    fontWeight: '800',
   },
   gigContent: {
     padding: 24,
@@ -520,55 +670,28 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '900',
   },
-
   gigDesc: {
     fontSize: 14,
     lineHeight: 20,
     marginTop: 8,
   },
-
-  gigAuthorRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    marginTop: 20,
-    paddingBottom: 20,
-    borderBottomWidth: 1,
-  },
-
-  gigAuthorImg: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-  },
-  gigAuthorName: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: '#111827',
-  },
-  gigAuthorSub: {
-    fontSize: 11,
-    marginTop: 2,
-  },
-
   gigFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginTop: 20,
+    paddingTop: 20,
+    borderTopWidth: 1,
   },
   gigPrice: {
     fontSize: 24,
     fontWeight: '900',
-    color: '#9A3412',
   },
   gigPriceSub: {
     fontSize: 14,
-    color: '#6B7280',
     fontWeight: '600',
   },
   bookGigBtn: {
-    backgroundColor: '#78350F',
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 24,
@@ -577,44 +700,6 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontWeight: '800',
     fontSize: 14,
-  },
-  gigCardSmall: {
-    borderRadius: 24,
-    overflow: 'hidden',
-    marginTop: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.03,
-    shadowRadius: 10,
-    elevation: 2,
-  },
-
-  gigImgSmall: {
-    width: '100%',
-    height: 120,
-  },
-  gigContentSmall: {
-    padding: 16,
-  },
-  gigTitleSmall: {
-    fontSize: 16,
-    fontWeight: '800',
-  },
-
-  gigFooterSmall: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  gigAuthorSmall: {
-    fontSize: 12,
-  },
-
-  gigPriceSmall: {
-    fontSize: 16,
-    fontWeight: '900',
-    color: '#9A3412',
   },
   bazaarGrid: {
     flexDirection: 'row',
@@ -633,7 +718,6 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     elevation: 2,
   },
-
   itemImgBox: {
     width: '100%',
     height: 140,
@@ -654,7 +738,6 @@ const styles = StyleSheet.create({
   itemBadgeText: {
     fontSize: 8,
     fontWeight: '900',
-    color: '#111827',
   },
   itemContent: {
     padding: 12,
@@ -662,13 +745,11 @@ const styles = StyleSheet.create({
   itemTitle: {
     fontSize: 13,
     fontWeight: '800',
-    color: '#111827',
   },
   itemDesc: {
     fontSize: 11,
     marginTop: 4,
   },
-
   itemFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -679,29 +760,70 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '900',
   },
-
   fab: {
     position: 'absolute',
-    bottom: 30,
+    bottom: 110,
     right: 20,
-    width: 130,
-    height: 52,
-    borderRadius: 26,
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+    borderRadius: 32,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.25,
     shadowRadius: 10,
     elevation: 8,
   },
   fabText: {
-    color: '#FFFFFF',
-    fontWeight: '800',
+    color: '#FFF',
     fontSize: 15,
+    fontWeight: '700',
+    marginLeft: 6,
   },
-
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
+    borderTopWidth: 1,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  modalOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 16,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  modalOptionTextContainer: {
+    marginLeft: 16,
+  },
+  modalOptionTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  modalOptionDesc: {
+    fontSize: 13,
+    marginTop: 4,
+  },
+  modalCancelBtn: {
+    marginTop: 20,
+    padding: 16,
+    borderRadius: 16,
+    alignItems: 'center',
+  },
+  modalCancelText: {
+    fontSize: 16,
+    fontWeight: '700',
+  }
 });
 
 export default MarketplaceScreen;

@@ -1,7 +1,7 @@
 import React, { createContext, useState, useContext } from 'react';
 import { Alert } from 'react-native';
 import { fetchStudentsFromSheet } from '../data/googleSheetsService';
-import { loginWithRollNumber, logoutAPI } from '../data/apiService';
+import { loginWithRollNumber, logoutAPI, getMyProfile, updateMyProfile, loginFacultyWithEmpId, getFacultyProfile } from '../data/apiService';
 
 export const UserContext = createContext();
 
@@ -12,68 +12,144 @@ export const UserProvider = ({ children }) => {
   /**
    * Login flow:
    * 1. Authenticate with the API → get access_token
-   * 2. Fetch profile data from Google Sheet (name, course, cgpa, skills, etc.)
-   * 3. Merge both into user context
+   * 2. Fetch database profile (stores custom updates like avatar_url, bio)
+   * 3. Fetch profile data from Google Sheet (name, course, cgpa, skills, etc.)
+   * 4. Merge both into user context
    *
    * Fallback: if API is down, fall back to sheet-only login (no token).
    */
-  const login = async (loginId, role) => {
+  const login = async (loginId, password, role) => {
+    const queryId = loginId.trim();
+
+    // ── Faculty Login (Teacher role) ─────────────────────────────────────────
     if (role === 'teacher') {
-      setUser({ role: 'teacher', email: loginId });
-      return true;
+      try {
+        const facultyData = await loginFacultyWithEmpId(queryId, password);
+        if (facultyData?.access_token) {
+          setAccessToken(facultyData.access_token);
+
+          // Fetch full DB profile too
+          let dbProfile = null;
+          try {
+            dbProfile = await getFacultyProfile(facultyData.access_token);
+          } catch (_) {}
+
+          const fac = facultyData.faculty || {};
+          const u = {
+            role: 'teacher',
+            emp_id: fac.emp_id || queryId,
+            name: dbProfile?.name || fac.name || 'Faculty Member',
+            department: dbProfile?.department || fac.department || 'Medical Faculty',
+            email: dbProfile?.email || fac.email || null,
+            mobile: dbProfile?.mobile || null,
+            user_id: fac.user_id || null,
+            usr_id: fac.usr_id || null,
+            avatar_url: dbProfile?.avatar_url || fac.avatar_url || null,
+            accessToken: facultyData.access_token,
+          };
+          setUser(u);
+          return u;
+        }
+      } catch (err) {
+        console.warn('[UserContext] Faculty API login failed:', err.message);
+      }
+
+      // Fallback for offline/demo
+      const u = { role: 'teacher', email: queryId, name: 'Faculty Member' };
+      setUser(u);
+      return u;
     }
 
-    const queryId = loginId.trim().toLowerCase();
+    // ── Student / Admin Login ────────────────────────────────────────────────
+    const usernameForApi = queryId.toLowerCase();
 
-    // ── Step 1: Authenticate via API ────────────────────────────────────────
+    // Step 1: Authenticate via API
     let tokenData = null;
     try {
-      tokenData = await loginWithRollNumber(queryId);
+      tokenData = await loginWithRollNumber(usernameForApi, password);
     } catch (err) {
-      console.warn('[UserContext] API login error, falling back to sheet:', err.message);
+      console.warn('[UserContext] API login error, falling back to mocks:', err.message);
     }
 
     if (tokenData?.access_token) {
       setAccessToken(tokenData.access_token);
+
+      // Fetch DB profile since we have a valid token
+      let dbProfile = null;
+      try {
+        dbProfile = await getMyProfile(tokenData.access_token);
+      } catch (err) {
+        console.warn('[UserContext] DB profile fetch error:', err.message);
+      }
+
+      const {
+        id: dbUserId,
+        cgpa: dbCgpa,
+        rollno: dbRollNo,
+        batch_year: dbBatchYear,
+        department_id: dbDeptId,
+        role: dbRole,
+        current_year: dbCurrentYear,
+        ...dbProfileRest
+      } = dbProfile || {};
+
+      const u = {
+        id: usernameForApi,
+        name: dbProfileRest.full_name || usernameForApi,
+        role: dbRole || role,
+        user_id: dbUserId || null,
+        cgpa: dbCgpa || 0,
+        attendance: dbProfileRest.attendance || 0,
+        currentSkills: dbProfileRest.current_skills || [],
+        certsDone: dbProfileRest.certificates_done || [],
+        certsInProgress: dbProfileRest.certificates_in_progress || [],
+        semester: dbProfileRest.semester || null,
+        sgpaHistory: dbProfileRest.sgpa_history || [],
+        current_year: dbCurrentYear || null,
+        year: dbCurrentYear || null,
+        rollno: dbRollNo || null,
+        batch_year: dbBatchYear || null,
+        department_id: dbDeptId || null,
+        ...dbProfileRest,
+      };
+
+      setUser(u);
+      return u;
     }
 
-    // ── Step 2: Get rich profile from Google Sheet ───────────────────────────
+    // ── Fallback to Offline Mock data ────────────────────────────────────────
+    if (role === 'admin') {
+      const u = { role: 'super_admin', email: loginId, name: 'System Admin', id: 'admin' };
+      setUser(u);
+      return u;
+    }
+
+    // Student fallback to Google Sheets
     try {
       const students = await fetchStudentsFromSheet();
 
       const found = students.find(s =>
-        (s.id    && s.id.toLowerCase()    === queryId) ||
-        (s.email && s.email.toLowerCase() === queryId) ||
-        (s.id    && s.id.toLowerCase()    === queryId.split('@')[0])
+        (s.id    && s.id.toLowerCase()    === usernameForApi) ||
+        (s.email && s.email.toLowerCase() === usernameForApi) ||
+        (s.id    && s.id.toLowerCase()    === usernameForApi.split('@')[0])
       );
 
       if (found) {
-        setUser({
+        const u = {
           ...found,
           role: 'student',
-          // API token stored at context level — screens access it via useUser()
-        });
-        return true;
-      }
-
-      // Student not in sheet but authenticated via API
-      if (tokenData?.access_token) {
-        setUser({ id: queryId, name: queryId, role: 'student' });
-        return true;
+        };
+        setUser(u);
+        return u;
       }
 
       Alert.alert(
         'Login Failed',
-        `Roll number not found: ${loginId}\nCheck the spreadsheet or ask your administrator.`
+        `Roll number not found: ${loginId}\nPlease check your credentials or contact administrator.`
       );
       return false;
 
     } catch (sheetError) {
-      // Sheet unreachable — if API token exists, allow login with minimal profile
-      if (tokenData?.access_token) {
-        setUser({ id: queryId, name: queryId, role: 'student' });
-        return true;
-      }
       Alert.alert('Connection Error', sheetError.message);
       return false;
     }
@@ -107,16 +183,22 @@ export const UserProvider = ({ children }) => {
   };
 
 
-  const updateAvatarUrl = (newUrl) => {
+  const updateAvatarUrl = async (newUrl) => {
     setUser(prevUser => {
       if (!prevUser) return null;
       return { ...prevUser, avatar_url: newUrl };
     });
+    if (accessToken) {
+      try {
+        await updateMyProfile(accessToken, { avatar_url: newUrl });
+      } catch (err) {
+        console.warn('[UserContext] Failed to update avatar in DB:', err.message);
+      }
+    }
   };
 
   return (
     <UserContext.Provider value={{ user, accessToken, login, logout, updateSkillScore, updateAvatarUrl }}>
-
       {children}
     </UserContext.Provider>
   );

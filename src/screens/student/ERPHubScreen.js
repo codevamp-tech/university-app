@@ -6,12 +6,13 @@ import { createOutpass, getAlerts } from '../../data/apiService';
 
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, Image,
-  Dimensions, Animated, Modal, StatusBar, TextInput, Platform,
+  Dimensions, Animated, Modal, StatusBar, TextInput, Platform, Alert,
 } from 'react-native';
 import { MaterialIcons, MaterialCommunityIcons, Feather, Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { APP_CONFIG } from '../../config/appConfig';
+import { getDisplayCourse } from '../../utils/courseDisplay';
 
 const { width } = Dimensions.get('window');
 
@@ -19,6 +20,7 @@ const ERPHubScreen = ({ navigation }) => {
   const { user, accessToken } = useUser();
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
+  const isMedical = user?.course?.replace(/\./g, '').toUpperCase().includes('MBBS') || user?.category?.toLowerCase() === 'medical';
 
   const [alerts, setAlerts] = useState([]);
 
@@ -97,15 +99,7 @@ const ERPHubScreen = ({ navigation }) => {
             <Text style={[styles.headerSub, { color: colors.textSecondary }]}>{APP_CONFIG.UNIVERSITY_NAME}</Text>
           </View>
         </View>
-        <View style={styles.headerRight}>
-          <TouchableOpacity style={[styles.headerIconBtn, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
-            <MaterialIcons name="notifications-none" size={22} color={colors.primary} />
-            <View style={[styles.notifDot, { borderColor: colors.card }]} />
-          </TouchableOpacity>
-          <TouchableOpacity onPress={openDrawer} style={[styles.headerIconBtn, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
-            <Feather name="menu" size={20} color={colors.textPrimary} />
-          </TouchableOpacity>
-        </View>
+        <View style={styles.headerRight} />
       </View>
 
 
@@ -136,17 +130,26 @@ const ERPHubScreen = ({ navigation }) => {
               const roman = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
               const displaySem = user?.semester ? (roman[user.semester - 1] || user.semester) : 'VII';
               const displayCgpa = user?.cgpa ? user.cgpa.toFixed(2) : '8.42';
-              const displayBranch = user?.branch 
+              const displayBranch = user?.branch && user.branch !== '-'
                 ? user.branch.split(' ').map(w => w[0]).join('').toUpperCase().substring(0, 4)
+                : user?.course && user.course.replace(/\./g, '').toUpperCase().includes('MBBS')
+                ? 'MBBS'
                 : user?.course 
                 ? user.course.split(' ').map(w => w[0]).join('').toUpperCase().substring(0, 4)
                 : 'CSE';
 
+              const getPhaseRoman = (sem) => {
+                if (sem <= 2) return 'I';
+                if (sem <= 4) return 'II';
+                if (sem <= 6) return 'III';
+                return 'IV';
+              };
+
               return (
                 <View style={[styles.heroStats, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.12)' }]}>
                   <View style={styles.heroStatItem}>
-                    <Text style={styles.heroStatValue}>{displaySem}</Text>
-                    <Text style={styles.heroStatLabel}>SEMESTER</Text>
+                    <Text style={styles.heroStatValue}>{isMedical ? getPhaseRoman(user?.semester || 3) : displaySem}</Text>
+                    <Text style={styles.heroStatLabel}>{isMedical ? 'PHASE' : 'SEMESTER'}</Text>
                   </View>
                   <View style={[styles.heroStatDivider, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.2)' }]} />
                   <View style={styles.heroStatItem}>
@@ -156,7 +159,7 @@ const ERPHubScreen = ({ navigation }) => {
                   <View style={[styles.heroStatDivider, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.2)' }]} />
                   <View style={styles.heroStatItem}>
                     <Text style={styles.heroStatValue}>{displayBranch}</Text>
-                    <Text style={styles.heroStatLabel}>BRANCH</Text>
+                    <Text style={styles.heroStatLabel}>{isMedical ? 'COURSE' : 'BRANCH'}</Text>
                   </View>
                 </View>
               );
@@ -268,31 +271,27 @@ const ERPHubScreen = ({ navigation }) => {
             </View>
           </TouchableOpacity>
 
-          {/* Fees */}
+          {/* Fees — LOCKED */}
           <TouchableOpacity
-            style={[styles.essentialCard, { backgroundColor: colors.card, borderColor: colors.border }]}
-            onPress={() => navigation.navigate('ERPFeesTab')}
+            style={[styles.essentialCard, { backgroundColor: colors.card, borderColor: colors.border, opacity: 0.6 }]}
+            onPress={() => Alert.alert('🔒 Premium Feature', 'Fees & Payments module is locked in this demo. Contact admin to unlock.')}
             activeOpacity={0.85}
           >
 
             <LinearGradient colors={isDark ? ['#7C2D12', '#9A3412'] : ['#FFF7ED', '#FFEDD5']} style={styles.essentialIconBg}>
-              <MaterialIcons name="payments" size={22} color={isDark ? '#FB923C' : '#EA580C'} />
+              <MaterialIcons name="lock" size={22} color={isDark ? '#FB923C' : '#EA580C'} />
             </LinearGradient>
             <View style={styles.essentialContent}>
               <Text style={[styles.essentialCardTitle, { color: colors.textPrimary }]}>Fees & Payments</Text>
-              {(() => {
-                const roman = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
-                const displaySem = user?.semester ? (roman[user.semester - 1] || user.semester) : 'VII';
-                return (
-                  <Text style={[styles.essentialCardDesc, { color: colors.textSecondary }]}>Semester {displaySem} Tuition Fee installment pending.</Text>
-                );
-              })()}
+              <Text style={[styles.essentialCardDesc, { color: colors.textSecondary }]}>
+                This module is locked in the current demo.
+              </Text>
 
               <View style={styles.essentialFooter}>
                 <View style={[styles.dueBadge, { backgroundColor: isDark ? 'rgba(239, 68, 68, 0.2)' : '#FEE2E2' }]}>
-                  <Text style={[styles.dueText, { color: '#EF4444' }]}>DUE: 15 OCT</Text>
+                  <Text style={[styles.dueText, { color: '#EF4444' }]}>LOCKED</Text>
                 </View>
-                <MaterialIcons name="chevron-right" size={20} color={colors.textMuted} />
+                <MaterialIcons name="lock-outline" size={18} color={colors.textMuted} />
               </View>
 
             </View>
@@ -312,8 +311,16 @@ const ERPHubScreen = ({ navigation }) => {
               {(() => {
                 const roman = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
                 const displayPrevSem = user?.semester && user.semester > 1 ? (roman[user.semester - 2] || (user.semester - 1)) : 'VI';
+                const getPhaseRoman = (sem) => {
+                  if (sem <= 2) return 'I';
+                  if (sem <= 4) return 'II';
+                  if (sem <= 6) return 'III';
+                  return 'IV';
+                };
                 return (
-                  <Text style={[styles.essentialCardDesc, { color: colors.textSecondary }]}>Semester {displayPrevSem} Marksheet is now available for download.</Text>
+                  <Text style={[styles.essentialCardDesc, { color: colors.textSecondary }]}>
+                    {isMedical ? `Phase ${getPhaseRoman(user?.semester && user.semester > 2 ? user.semester - 2 : 1)}` : `Semester ${displayPrevSem}`} Marksheet is now available for download.
+                  </Text>
                 );
               })()}
 
@@ -327,24 +334,24 @@ const ERPHubScreen = ({ navigation }) => {
             </View>
           </TouchableOpacity>
 
-          {/* Documents */}
+          {/* Documents — LOCKED */}
           <TouchableOpacity
-            style={[styles.essentialCard, { backgroundColor: colors.card, borderColor: colors.border }]}
-            onPress={() => navigation.navigate('ERPDocumentsTab')}
+            style={[styles.essentialCard, { backgroundColor: colors.card, borderColor: colors.border, opacity: 0.6 }]}
+            onPress={() => Alert.alert('🔒 Premium Feature', 'Document Vault is locked in this demo. Contact admin to unlock.')}
             activeOpacity={0.85}
           >
             <LinearGradient colors={isDark ? ['#064E3B', '#047857'] : ['#ECFDF5', '#DCFCE7']} style={styles.essentialIconBg}>
-              <MaterialIcons name="folder-shared" size={22} color={isDark ? '#34D399' : '#059669'} />
+              <MaterialIcons name="lock" size={22} color={isDark ? '#34D399' : '#059669'} />
             </LinearGradient>
             <View style={styles.essentialContent}>
               <Text style={[styles.essentialCardTitle, { color: colors.textPrimary }]}>Documents</Text>
-              <Text style={[styles.essentialCardDesc, { color: colors.textSecondary }]}>Bona fide certificate & Library NOC records.</Text>
+              <Text style={[styles.essentialCardDesc, { color: colors.textSecondary }]}>This module is locked in the current demo.</Text>
 
               <View style={styles.essentialFooter}>
-                <View style={[styles.dueBadge, { backgroundColor: isDark ? 'rgba(52, 211, 153, 0.2)' : '#ECFDF5' }]}>
-                  <Text style={[styles.dueText, { color: isDark ? '#34D399' : '#059669' }]}>3 NEW FILES</Text>
+                <View style={[styles.dueBadge, { backgroundColor: isDark ? 'rgba(239, 68, 68, 0.2)' : '#FEE2E2' }]}>
+                  <Text style={[styles.dueText, { color: '#EF4444' }]}>LOCKED</Text>
                 </View>
-                <MaterialIcons name="chevron-right" size={20} color={colors.textMuted} />
+                <MaterialIcons name="lock-outline" size={18} color={colors.textMuted} />
               </View>
 
             </View>
@@ -449,12 +456,24 @@ const ERPHubScreen = ({ navigation }) => {
               />
               <View style={styles.lcStudentInfo}>
                 <Text style={styles.lcStudentName}>{user?.name || 'Aryan Kumar'}</Text>
-                <Text style={styles.lcStudentDept}>{user?.course ? `${user.course} ${user.branch ? '- ' + user.branch : ''}` : 'B.Tech Computer Science & Engineering'}</Text>
+                <Text style={styles.lcStudentDept}>
+                  {user?.course 
+                    ? (isMedical ? user.course : `${user.course} ${user.branch ? '- ' + user.branch : ''}`) 
+                    : 'B.Tech Computer Science & Engineering'}
+                </Text>
                 {(() => {
                   const roman = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
                   const displaySem = user?.semester ? (roman[user.semester - 1] || user.semester) : 'VII';
+                  const getPhaseRoman = (sem) => {
+                    if (sem <= 2) return 'I';
+                    if (sem <= 4) return 'II';
+                    if (sem <= 6) return 'III';
+                    return 'IV';
+                  };
                   return (
-                    <Text style={styles.lcStudentSem}>Semester {displaySem}  •  Section A</Text>
+                    <Text style={styles.lcStudentSem}>
+                      {isMedical ? `Phase ${getPhaseRoman(user?.semester || 3)}` : `Semester ${displaySem}`}  •  Section A
+                    </Text>
                   );
                 })()}
                 <View style={styles.lcIdRow}>
@@ -729,18 +748,7 @@ const ERPHubScreen = ({ navigation }) => {
                   style={styles.drawerAvatar}
                 />
                 <Text style={styles.drawerName}>{user?.name || 'Aryan Kumar'}</Text>
-                {(() => {
-                  const roman = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
-                  const displaySem = user?.semester ? (roman[user.semester - 1] || user.semester) : 'VII';
-                  const displayBranch = user?.branch 
-                    ? user.branch.split(' ').map(w => w[0]).join('').toUpperCase().substring(0, 4)
-                    : user?.course 
-                    ? user.course.split(' ').map(w => w[0]).join('').toUpperCase().substring(0, 4)
-                    : 'CSE';
-                  return (
-                    <Text style={styles.drawerRole}>{user?.course ? user.course.split(' ')[0] : 'B.Tech'} {displayBranch} - Sem {displaySem}</Text>
-                  );
-                })()}
+                <Text style={styles.drawerRole}>{getDisplayCourse(user)}</Text>
                 <Text style={styles.drawerId}>ID: {user?.id || `${APP_CONFIG.UNIVERSITY_ID_PREFIX}2024001`}</Text>
               </LinearGradient>
 

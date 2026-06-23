@@ -1,12 +1,13 @@
 import React from 'react';
 import { getAvatarUrl } from "../../utils/avatar";
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Dimensions, Platform, Modal, Switch, TextInput, Alert
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Dimensions, Platform, Modal, Switch, TextInput, Alert, ActivityIndicator
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as ImagePicker from 'expo-image-picker';
 
 import { useTheme } from '../../hooks/useTheme';
 import { APP_CONFIG } from '../../config/appConfig';
@@ -17,14 +18,110 @@ import { useHealthMetrics } from '../../hooks/useHealthMetrics';
 import { generateAIInsight, generateRoadmap, computeSkillGap, generateDynamicRoadmap, fetchDynamicLLMInsight } from '../../data/aiEngine';
 import { updateStudentSheet } from '../../data/googleSheetsService';
 import { booksData } from '../student/library/LibraryMainScreen';
-import { listGrievancesAPI, resetPasswordAPI } from '../../data/apiService';
+import { listGrievancesAPI, resetPasswordAPI, uploadAvatarAPI } from '../../data/apiService';
+import { getDisplayCourse, isMedicalStudent } from '../../utils/courseDisplay';
 
 const { width } = Dimensions.get('window');
 
 const DashboardScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const { colors, isDark, toggleTheme } = useTheme();
-  const { user, logout, accessToken } = useUser();
+  const { user, logout, accessToken, updateAvatarUrl } = useUser();
+
+  // ─── First-time Profile Image Setup Modal State ──────────────────────────────
+  const [showAvatarSetup, setShowAvatarSetup] = React.useState(false);
+  const [selectedAvatarUri, setSelectedAvatarUri] = React.useState(null);
+  const [isUploadingAvatar, setIsUploadingAvatar] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!user || user.role !== 'student') return;
+
+    // Check if the user does not have an avatar
+    if (!user.avatar_url) {
+      const checkPrompted = async () => {
+        try {
+          const key = `@avatar_setup_prompted_${user.id}`;
+          const prompted = await AsyncStorage.getItem(key);
+          if (!prompted) {
+            setShowAvatarSetup(true);
+          }
+        } catch (e) {
+          console.warn('[Dashboard] Error checking avatar setup flag:', e);
+        }
+      };
+      checkPrompted();
+    }
+  }, [user]);
+
+  const handlePickAvatar = async () => {
+    try {
+      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (permissionResult.granted === false) {
+        Alert.alert('Permission required', 'Permission to access camera roll is required!');
+        return;
+      }
+
+      const pickerResult = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.5,
+      });
+
+      if (!pickerResult.canceled && pickerResult.assets?.length > 0) {
+        setSelectedAvatarUri(pickerResult.assets[0].uri);
+      }
+    } catch (e) {
+      console.warn("Error picking avatar image:", e);
+      Alert.alert('Error', 'An error occurred while picking the image.');
+    }
+  };
+
+  const handleSaveAvatar = async () => {
+    if (!selectedAvatarUri) {
+      Alert.alert('No Image selected', 'Please choose an image to upload.');
+      return;
+    }
+    if (!accessToken) {
+      Alert.alert('Auth Error', 'No access token available. Please log in again.');
+      return;
+    }
+
+    setIsUploadingAvatar(true);
+    try {
+      const res = await uploadAvatarAPI(accessToken, selectedAvatarUri);
+      if (res.ok && res.json?.success) {
+        const secureUrl = res.json.data.avatar_url;
+        await updateAvatarUrl(secureUrl);
+        
+        // Mark prompted
+        const key = `@avatar_setup_prompted_${user.id}`;
+        await AsyncStorage.setItem(key, 'true');
+        
+        setShowAvatarSetup(false);
+        Alert.alert('Success', 'Profile photo updated successfully!');
+      } else {
+        Alert.alert('Upload Failed', 'Could not upload profile picture. Please try again.');
+      }
+    } catch (e) {
+      console.warn("Error uploading avatar:", e);
+      Alert.alert('Error', 'An error occurred while saving your photo.');
+    } finally {
+      setIsUploadingAvatar(false);
+    }
+  };
+
+  const handleSkipAvatar = async () => {
+    if (user?.id) {
+      try {
+        const key = `@avatar_setup_prompted_${user.id}`;
+        await AsyncStorage.setItem(key, 'true');
+      } catch (e) {
+        console.warn('[Dashboard] Failed to store skip flag:', e);
+      }
+    }
+    setShowAvatarSetup(false);
+  };
 
   // ─── Live Health Metrics ────────────────────────────────────────────────────
   const { metrics, goals } = useHealthMetrics();
@@ -105,7 +202,7 @@ const DashboardScreen = ({ navigation }) => {
   const [outpassForm, setOutpassForm] = React.useState({ reason: '', duration: '2 Hours' });
   const [interestsInput, setInterestsInput] = React.useState('');
   const [activeInterests, setActiveInterests] = React.useState('');
-  
+
   const [roadmapData, setRoadmapData] = React.useState(null);
   const [isGeneratingRoadmap, setIsGeneratingRoadmap] = React.useState(false);
   const [pathwayRetriesLeft, setPathwayRetriesLeft] = React.useState(1);
@@ -126,7 +223,7 @@ const DashboardScreen = ({ navigation }) => {
             await AsyncStorage.setItem(key, freshInsight);
           }
         }
-      } catch(e) {
+      } catch (e) {
         setCachedInsight(generateAIInsight(user));
       }
     };
@@ -159,7 +256,7 @@ const DashboardScreen = ({ navigation }) => {
 
   React.useEffect(() => {
     if (!user) return;
-    
+
     if (!activeInterests) {
       setRoadmapData(generateRoadmap(user, ''));
       return;
@@ -167,7 +264,7 @@ const DashboardScreen = ({ navigation }) => {
 
     let isMounted = true;
     setIsGeneratingRoadmap(true);
-    
+
     generateDynamicRoadmap(user, activeInterests)
       .then(data => {
         if (isMounted) {
@@ -285,7 +382,7 @@ const DashboardScreen = ({ navigation }) => {
               }}
             >
               <MaterialCommunityIcons name="cog-outline" size={20} color={colors.textSecondary} />
-              <Text style={[styles.menuItemText, { color: colors.textPrimary }]}>Setting</Text>
+              <Text style={[styles.menuItemText, { color: colors.textPrimary }]}>Settings</Text>
 
             </TouchableOpacity>
 
@@ -375,6 +472,75 @@ const DashboardScreen = ({ navigation }) => {
         </View>
       </Modal>
 
+      {/* First-Time Profile Image Setup Modal */}
+      <Modal
+        visible={showAvatarSetup}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={handleSkipAvatar}
+      >
+        <View style={styles.avatarModalOverlay}>
+          <View style={[styles.avatarModalContent, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <Text style={[styles.avatarModalTitle, { color: colors.textPrimary }]}>
+              Welcome to UniCampus!
+            </Text>
+            <Text style={[styles.avatarModalSubtitle, { color: colors.textSecondary }]}>
+              Let's personalize your profile. Upload a profile photo so your peers and faculty can recognize you.
+            </Text>
+
+            <TouchableOpacity 
+              activeOpacity={0.8} 
+              onPress={handlePickAvatar} 
+              style={[styles.avatarPreviewContainer, { borderColor: colors.primary }]}
+            >
+              <Image 
+                source={{ uri: selectedAvatarUri || avatarUrl }} 
+                style={styles.avatarPreviewImage} 
+              />
+              <View style={[styles.avatarCameraBadge, { backgroundColor: colors.primary }]}>
+                <MaterialCommunityIcons name="camera" size={20} color="#FFF" />
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={[styles.avatarSelectBtn, { borderColor: colors.primary }]} 
+              onPress={handlePickAvatar}
+            >
+              <Text style={[styles.avatarSelectBtnText, { color: colors.primary }]}>
+                {selectedAvatarUri ? 'Change Photo' : 'Select Photo'}
+              </Text>
+            </TouchableOpacity>
+
+            <View style={styles.avatarActionsContainer}>
+              <TouchableOpacity 
+                style={[
+                  styles.avatarSaveBtn, 
+                  { backgroundColor: selectedAvatarUri ? colors.primary : colors.border }
+                ]} 
+                onPress={handleSaveAvatar}
+                disabled={!selectedAvatarUri || isUploadingAvatar}
+              >
+                {isUploadingAvatar ? (
+                  <ActivityIndicator size="small" color="#FFF" />
+                ) : (
+                  <Text style={styles.avatarSaveBtnText}>Save & Continue</Text>
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={styles.avatarSkipBtn} 
+                onPress={handleSkipAvatar}
+                disabled={isUploadingAvatar}
+              >
+                <Text style={[styles.avatarSkipBtnText, { color: colors.textSecondary }]}>
+                  Skip for now
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       {/* Gate Pass QR Modal */}
       <Modal
         visible={showQRModal}
@@ -385,29 +551,29 @@ const DashboardScreen = ({ navigation }) => {
         <View style={styles.qrModalOverlay}>
           <View style={[styles.qrContainer, { backgroundColor: colors.card }]}>
             <View style={styles.qrHeader}>
-               <Text style={[styles.qrTitle, { color: colors.textPrimary }]}>Exit Gate Pass</Text>
-               <TouchableOpacity onPress={() => setShowQRModal(false)}>
-                 <MaterialIcons name="close" size={24} color={colors.textPrimary} />
-               </TouchableOpacity>
+              <Text style={[styles.qrTitle, { color: colors.textPrimary }]}>Exit Gate Pass</Text>
+              <TouchableOpacity onPress={() => setShowQRModal(false)}>
+                <MaterialIcons name="close" size={24} color={colors.textPrimary} />
+              </TouchableOpacity>
             </View>
-            
+
             <View style={styles.qrWrapper}>
-               <MaterialCommunityIcons name="qrcode" size={200} color={isDark ? '#FFF' : '#111827'} />
-               <View style={styles.qrStatusBadge}>
-                 <Text style={styles.qrStatusText}>VALID UNTIL 10:30 PM</Text>
-               </View>
+              <MaterialCommunityIcons name="qrcode" size={200} color={isDark ? '#FFF' : '#111827'} />
+              <View style={styles.qrStatusBadge}>
+                <Text style={styles.qrStatusText}>VALID UNTIL 10:30 PM</Text>
+              </View>
             </View>
 
             <View style={styles.qrInfo}>
-               <Text style={[styles.qrInfoName, { color: colors.textPrimary }]}>{user?.name || 'Student'}</Text>
-               <Text style={[styles.qrInfoSub, { color: colors.textSecondary }]}>{user?.course || 'Room 402'}</Text>
+              <Text style={[styles.qrInfoName, { color: colors.textPrimary }]}>{user?.name || 'Student'}</Text>
+              <Text style={[styles.qrInfoSub, { color: colors.textSecondary }]}>{user?.course || 'Room 402'}</Text>
             </View>
 
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[styles.qrDownloadBtn, { backgroundColor: colors.primary }]}
               onPress={() => setShowQRModal(false)}
             >
-               <Text style={styles.qrDownloadText}>DONE</Text>
+              <Text style={styles.qrDownloadText}>DONE</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -423,42 +589,42 @@ const DashboardScreen = ({ navigation }) => {
         <View style={styles.requestModalOverlay}>
           <View style={[styles.requestContainer, { backgroundColor: colors.card }]}>
             <View style={styles.qrHeader}>
-               <Text style={[styles.qrTitle, { color: colors.textPrimary }]}>Apply for Outpass</Text>
-               <TouchableOpacity onPress={() => setShowRequestModal(false)}>
-                 <MaterialIcons name="close" size={24} color={colors.textPrimary} />
-               </TouchableOpacity>
+              <Text style={[styles.qrTitle, { color: colors.textPrimary }]}>Apply for Outpass</Text>
+              <TouchableOpacity onPress={() => setShowRequestModal(false)}>
+                <MaterialIcons name="close" size={24} color={colors.textPrimary} />
+              </TouchableOpacity>
             </View>
 
             <View style={styles.formGroup}>
-               <Text style={[styles.formLabel, { color: colors.textSecondary }]}>REASON FOR EXIT</Text>
-               <TextInput 
-                 style={[styles.formInput, { backgroundColor: isDark ? '#1F2937' : '#F9FAFB', color: colors.textPrimary, borderColor: colors.border }]}
-                 placeholder="e.g., Grocery shopping, Visiting family..."
-                 placeholderTextColor={colors.textMuted}
-                 value={outpassForm.reason}
-                 onChangeText={(text) => setOutpassForm({...outpassForm, reason: text})}
-               />
+              <Text style={[styles.formLabel, { color: colors.textSecondary }]}>REASON FOR EXIT</Text>
+              <TextInput
+                style={[styles.formInput, { backgroundColor: isDark ? '#1F2937' : '#F9FAFB', color: colors.textPrimary, borderColor: colors.border }]}
+                placeholder="e.g., Grocery shopping, Visiting family..."
+                placeholderTextColor={colors.textMuted}
+                value={outpassForm.reason}
+                onChangeText={(text) => setOutpassForm({ ...outpassForm, reason: text })}
+              />
             </View>
 
             <View style={styles.formGroup}>
-               <Text style={[styles.formLabel, { color: colors.textSecondary }]}>DURATION</Text>
-               <View style={styles.durationRow}>
-                 {['2 Hours', '4 Hours', 'Full Day', 'Overnight'].map((d) => (
-                   <TouchableOpacity 
-                     key={d} 
-                     style={[
-                       styles.durationBtn, 
-                       { backgroundColor: outpassForm.duration === d ? colors.primary : isDark ? '#1F2937' : '#F1F5F9' }
-                     ]}
-                     onPress={() => setOutpassForm({...outpassForm, duration: d})}
-                   >
-                     <Text style={[styles.durationBtnText, { color: outpassForm.duration === d ? '#FFF' : colors.textPrimary }]}>{d}</Text>
-                   </TouchableOpacity>
-                 ))}
-               </View>
+              <Text style={[styles.formLabel, { color: colors.textSecondary }]}>DURATION</Text>
+              <View style={styles.durationRow}>
+                {['2 Hours', '4 Hours', 'Full Day', 'Overnight'].map((d) => (
+                  <TouchableOpacity
+                    key={d}
+                    style={[
+                      styles.durationBtn,
+                      { backgroundColor: outpassForm.duration === d ? colors.primary : isDark ? '#1F2937' : '#F1F5F9' }
+                    ]}
+                    onPress={() => setOutpassForm({ ...outpassForm, duration: d })}
+                  >
+                    <Text style={[styles.durationBtnText, { color: outpassForm.duration === d ? '#FFF' : colors.textPrimary }]}>{d}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
             </View>
 
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[styles.submitBtn, { backgroundColor: colors.primary }]}
               onPress={() => {
                 if (!outpassForm.reason) return;
@@ -470,7 +636,7 @@ const DashboardScreen = ({ navigation }) => {
                 }, 3000);
               }}
             >
-               <Text style={styles.submitBtnText}>SEND TO WARDEN</Text>
+              <Text style={styles.submitBtnText}>SEND TO WARDEN</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -490,7 +656,7 @@ const DashboardScreen = ({ navigation }) => {
             <View style={styles.userCardTop}>
               <View>
                 <Text style={[styles.welcomeTitle, { color: colors.textPrimary }]}>Hello, {user?.name?.split(' ')[0] || 'Student'}</Text>
-                <Text style={[styles.welcomeSub, { color: colors.textSecondary }]}>{user?.course} {user?.branch ? `• ${user?.branch}` : ''}</Text>
+                <Text style={[styles.welcomeSub, { color: colors.textSecondary }]}>{getDisplayCourse(user)}</Text>
 
               </View>
               <MaterialCommunityIcons name="star-shooting-outline" size={32} color={colors.primary} style={{ opacity: 0.2 }} />
@@ -499,24 +665,26 @@ const DashboardScreen = ({ navigation }) => {
 
             {/* Stats Row */}
             <View style={styles.statsRow}>
-              <LinearGradient 
-                colors={isDark ? ['rgba(234, 88, 12, 0.2)', 'rgba(234, 88, 12, 0.1)'] : ['#FFF7ED', '#FFEDD5']} 
+              <LinearGradient
+                colors={isDark ? ['rgba(234, 88, 12, 0.2)', 'rgba(234, 88, 12, 0.1)'] : ['#FFF7ED', '#FFEDD5']}
                 style={[styles.statPillOrange, { borderColor: isDark ? 'rgba(234, 88, 12, 0.3)' : '#FFEDD5' }]}
               >
                 <Text style={[styles.statValueOrange, { color: isDark ? '#FB923C' : '#9A3412' }]}>{user?.cgpa || '0.0'}</Text>
                 <Text style={[styles.statLabelOrange, { color: isDark ? '#FB923C' : '#9A3412' }]}>ACADEMIC CGPA</Text>
               </LinearGradient>
-              <LinearGradient 
-                colors={isDark ? ['rgba(67, 56, 202, 0.2)', 'rgba(67, 56, 202, 0.1)'] : ['#EEF2FF', '#E0E7FF']} 
+              <LinearGradient
+                colors={isDark ? ['rgba(67, 56, 202, 0.2)', 'rgba(67, 56, 202, 0.1)'] : ['#EEF2FF', '#E0E7FF']}
                 style={[styles.statPillPurple, { borderColor: isDark ? 'rgba(67, 56, 202, 0.3)' : '#E0E7FF' }]}
               >
-                <Text style={[styles.statValuePurple, { color: isDark ? '#818CF8' : '#3730A3' }]}>850</Text>
+                <Text style={[styles.statValuePurple, { color: isDark ? '#818CF8' : '#3730A3' }]}>
+                  {user?.social_credits || ((user?.extracurricular?.length || 0) + (user?.leadership?.length || 0)) * 100 + 120}
+                </Text>
                 <Text style={[styles.statLabelPurple, { color: isDark ? '#818CF8' : '#3730A3' }]}>SOCIAL CREDITS</Text>
               </LinearGradient>
             </View>
 
-            <LinearGradient 
-              colors={isDark ? ['rgba(16, 185, 129, 0.15)', 'rgba(16, 185, 129, 0.05)'] : ['#ECFDF5', '#D1FAE5']} 
+            <LinearGradient
+              colors={isDark ? ['rgba(16, 185, 129, 0.15)', 'rgba(16, 185, 129, 0.05)'] : ['#ECFDF5', '#D1FAE5']}
               style={[styles.aiSuggestionBox, { borderColor: isDark ? 'rgba(16, 185, 129, 0.3)' : '#A7F3D0' }]}
             >
               <View style={[styles.aiIconCircle, { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.2)' : 'rgba(6,95,70,0.1)' }]}>
@@ -528,7 +696,7 @@ const DashboardScreen = ({ navigation }) => {
             </LinearGradient>
 
             {/* Premium Fitness Bar */}
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[styles.fitnessCard, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}
               onPress={() => navigation.navigate('FitnessDetail')}
               activeOpacity={0.8}
@@ -571,8 +739,8 @@ const DashboardScreen = ({ navigation }) => {
                   <View style={[styles.fitnessHDivider, { backgroundColor: colors.border }]} />
                   <View style={styles.fitnessRow}>
                     <View style={styles.fitnessItem}>
-                      <Text style={[styles.fitnessVal, { color: colors.textPrimary }]}>{metrics.focusMinutes}</Text>
-                      <Text style={[styles.fitnessLabel, { color: colors.textSecondary }]}>FOCUS</Text>
+                      <Text style={[styles.fitnessVal, { color: colors.textPrimary }]}>{Math.round((metrics.calories / Math.max(1, goals.calories)) * 100)}%</Text>
+                      <Text style={[styles.fitnessLabel, { color: colors.textSecondary }]}>MOVE GOAL</Text>
                     </View>
                     <View style={styles.fitnessItem}>
                       <Text style={[styles.fitnessVal, { color: colors.textPrimary }]}>{metrics.sleepHours}</Text>
@@ -588,37 +756,39 @@ const DashboardScreen = ({ navigation }) => {
         {isHostelMode && (
           <View style={styles.sectionContainer}>
             <View style={styles.hostelHeaderRow}>
-               <View>
-                 <Text style={[styles.moduleTitle, { color: colors.textSecondary }]}>Hostel Connect</Text>
-                 <Text style={[styles.sectionSub, { color: colors.textSecondary }]}>Home away from home • Room 402</Text>
-               </View>
-               <TouchableOpacity 
-                 style={[
-                   styles.gatePassBtn, 
-                   { backgroundColor: gatePassStatus === 'pending' ? '#FEF3C7' : gatePassStatus === 'approved' ? '#ECFDF5' : isDark ? 'rgba(16, 185, 129, 0.1)' : '#ECFDF5' }
-                 ]}
-                 onPress={() => {
-                   if (gatePassStatus === 'idle') {
-                     setShowRequestModal(true);
-                   } else if (gatePassStatus === 'approved') {
-                     setShowQRModal(true);
-                   }
-                 }}
-               >
-                 <MaterialCommunityIcons 
-                   name={gatePassStatus === 'pending' ? 'clock-outline' : gatePassStatus === 'approved' ? 'check-circle-outline' : 'qrcode-scan'} 
-                   size={20} 
-                   color={gatePassStatus === 'pending' ? '#D97706' : '#10B981'} 
-                 />
-                 <Text style={[styles.gatePassText, { color: gatePassStatus === 'pending' ? '#D97706' : '#10B981' }]}>
-                   {gatePassStatus === 'pending' ? 'WAITING...' : gatePassStatus === 'approved' ? 'VIEW PASS' : 'REQUEST PASS'}
-                 </Text>
-               </TouchableOpacity>
+              <View>
+                <Text style={[styles.moduleTitle, { color: colors.textSecondary }]}>Hostel Connect</Text>
+                <Text style={[styles.sectionSub, { color: colors.textSecondary }]}>
+                  Home away from home{user?.room_number ? ` • Room ${user.room_number}` : ''}
+                </Text>
+              </View>
+              <TouchableOpacity
+                style={[
+                  styles.gatePassBtn,
+                  { backgroundColor: gatePassStatus === 'pending' ? '#FEF3C7' : gatePassStatus === 'approved' ? '#ECFDF5' : isDark ? 'rgba(16, 185, 129, 0.1)' : '#ECFDF5' }
+                ]}
+                onPress={() => {
+                  if (gatePassStatus === 'idle') {
+                    setShowRequestModal(true);
+                  } else if (gatePassStatus === 'approved') {
+                    setShowQRModal(true);
+                  }
+                }}
+              >
+                <MaterialCommunityIcons
+                  name={gatePassStatus === 'pending' ? 'clock-outline' : gatePassStatus === 'approved' ? 'check-circle-outline' : 'qrcode-scan'}
+                  size={20}
+                  color={gatePassStatus === 'pending' ? '#D97706' : '#10B981'}
+                />
+                <Text style={[styles.gatePassText, { color: gatePassStatus === 'pending' ? '#D97706' : '#10B981' }]}>
+                  {gatePassStatus === 'pending' ? 'WAITING...' : gatePassStatus === 'approved' ? 'VIEW PASS' : 'REQUEST PASS'}
+                </Text>
+              </TouchableOpacity>
             </View>
 
             <View style={styles.hostelGrid}>
               {/* Mess Menu */}
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={[styles.hostelCard, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}
                 onPress={() => navigation.navigate('HostelMess')}
               >
@@ -633,16 +803,20 @@ const DashboardScreen = ({ navigation }) => {
               </TouchableOpacity>
 
               {/* Laundry Status */}
-              <View style={[styles.hostelCard, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
+              <TouchableOpacity
+                style={[styles.hostelCard, { backgroundColor: isDark ? colors.card : '#FFFFFF', opacity: 0.7 }]}
+                onPress={() => Alert.alert('Premium Feature', 'Live Laundry Status is locked in this demo.')}
+                activeOpacity={0.8}
+              >
                 <View style={[styles.hostelIconCircle, { backgroundColor: '#E0E7FF' }]}>
                   <MaterialCommunityIcons name="washing-machine" size={20} color="#4338CA" />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.hostelCardTitle, { color: colors.textPrimary }]}>Laundry Status</Text>
-                  <Text style={[styles.hostelCardSub, { color: colors.textSecondary }]}>3/5 Washers Available</Text>
+                  <Text style={[styles.hostelCardSub, { color: colors.textSecondary }]}>Locked in Demo</Text>
                 </View>
-                <View style={styles.statusDot} />
-              </View>
+                <MaterialIcons name="lock" size={16} color={colors.textMuted} />
+              </TouchableOpacity>
 
             </View>
           </View>
@@ -728,10 +902,10 @@ const DashboardScreen = ({ navigation }) => {
                     { backgroundColor: activeMood === mood.id ? '#EA580C' : isDark ? '#1F2937' : '#F1F5F9' }
                   ]}
                 >
-                  <MaterialCommunityIcons 
-                    name={mood.icon} 
-                    size={28} 
-                    color={activeMood === mood.id ? '#FFFFFF' : isDark ? '#94A3B8' : '#64748B'} 
+                  <MaterialCommunityIcons
+                    name={mood.icon}
+                    size={28}
+                    color={activeMood === mood.id ? '#FFFFFF' : isDark ? '#94A3B8' : '#64748B'}
                   />
                 </TouchableOpacity>
               ))}
@@ -751,7 +925,7 @@ const DashboardScreen = ({ navigation }) => {
               </Text>
 
               <TouchableOpacity onPress={() => navigation.navigate('MentallyMain')}>
-                  <Text style={[styles.mentallyAction, { color: isDark ? '#818CF8' : '#4338CA' }]}>TALK TO MENTALLY</Text>
+                <Text style={[styles.mentallyAction, { color: isDark ? '#818CF8' : '#4338CA' }]}>TALK TO MENTALLY</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -771,8 +945,8 @@ const DashboardScreen = ({ navigation }) => {
 
           <View style={styles.libraryGrid}>
             {featuredBooks.map((book) => (
-              <TouchableOpacity 
-                key={book.id} 
+              <TouchableOpacity
+                key={book.id}
                 style={[styles.libraryBookCard, { opacity: 0.5 }]}
                 onPress={() => Alert.alert('Premium Feature', 'This feature is locked in the free trial.')}
               >
@@ -797,8 +971,8 @@ const DashboardScreen = ({ navigation }) => {
         {/* Career Hub Grid */}
         <View style={styles.careerGrid}>
           {/* Resume Builder */}
-          <LinearGradient 
-            colors={isDark ? [colors.card, colors.background] : ['#ffffff', '#fffaf0']} 
+          <LinearGradient
+            colors={isDark ? [colors.card, colors.background] : ['#ffffff', '#fffaf0']}
             style={[styles.resumeCard, { borderColor: colors.border }]}
           >
             <View style={[styles.resumeIcon, { backgroundColor: isDark ? colors.background : '#FFF7ED' }]}>
@@ -806,12 +980,12 @@ const DashboardScreen = ({ navigation }) => {
             </View>
             <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>AI Resume Builder</Text>
             <Text style={[styles.cardDesc, { color: colors.textSecondary, marginBottom: 8 }]}>Smart tailoring based on your 8.9 CGPA and technical skills in {APP_CONFIG.UNIVERSITY_SHORT_NAME} labs.</Text>
-            <View style={{flexDirection: 'row', alignItems: 'center', marginBottom: 12, backgroundColor: isDark ? 'rgba(139, 92, 246, 0.1)' : '#EDE9FE', alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6}}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12, backgroundColor: isDark ? 'rgba(139, 92, 246, 0.1)' : '#EDE9FE', alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 }}>
               <MaterialCommunityIcons name="clock-outline" size={14} color={isDark ? '#A78BFA' : '#6D28D9'} />
-              <Text style={{fontSize: 10, fontWeight: '700', color: isDark ? '#A78BFA' : '#6D28D9', marginLeft: 4}}>GENERATES ONCE A WEEK</Text>
+              <Text style={{ fontSize: 10, fontWeight: '700', color: isDark ? '#A78BFA' : '#6D28D9', marginLeft: 4 }}>GENERATES ONCE A WEEK</Text>
             </View>
 
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[styles.resumeBtn, { backgroundColor: isDark ? colors.primary : '#111827' }]}
               onPress={() => navigation.navigate('ResumeBuilder')}
             >
@@ -869,10 +1043,10 @@ const DashboardScreen = ({ navigation }) => {
             <Text style={[styles.skillGapTitle, { color: colors.textPrimary }]}>Skill Gap Analysis</Text>
             {user && (() => {
               const gapData = computeSkillGap(user);
-              const targetGoal = user.course?.toLowerCase().includes('medicine') || user.course?.toLowerCase().includes('mbbs') 
+              const targetGoal = user.course?.toLowerCase().includes('medicine') || user.course?.toLowerCase().includes('mbbs')
                 ? 'NEET-PG' : user.course?.toLowerCase().includes('computer') || user.course?.toLowerCase().includes('cse')
-                ? 'FAANG' : 'Top Placements';
-                
+                  ? 'FAANG' : 'Top Placements';
+
               let missingItems = [
                 ...gapData.academicMissingSkills.map(skill => ({ name: skill, isAcademic: true, isMissing: true })),
                 ...gapData.industryMissingSkills.map(skill => ({ name: skill, isAcademic: false, isMissing: true }))
@@ -898,7 +1072,7 @@ const DashboardScreen = ({ navigation }) => {
               return (
                 <>
                   <Text style={[styles.skillGapDesc, { color: colors.textSecondary }]}>What's missing for {targetGoal}?</Text>
-                  
+
                   {/* Category Split Metrics */}
                   <View style={{ flexDirection: 'row', gap: 12, marginTop: 12, marginBottom: 16 }}>
                     <View style={{ flex: 1, padding: 12, borderRadius: 16, backgroundColor: isDark ? 'rgba(59,130,246,0.1)' : '#EFF6FF', borderWidth: 1, borderColor: isDark ? 'rgba(59,130,246,0.2)' : '#DBEAFE' }}>
@@ -974,7 +1148,7 @@ const DashboardScreen = ({ navigation }) => {
               );
             })()}
             <View style={styles.skillGapActions}>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.giveTestBtn}
                 onPress={() => navigation.navigate('SkillGapTest')}
               >
@@ -984,7 +1158,7 @@ const DashboardScreen = ({ navigation }) => {
                 </LinearGradient>
               </TouchableOpacity>
 
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={[styles.analyzeBtn, { borderColor: colors.border }]}
                 onPress={() => navigation.navigate('DeepDiveAnalysis')}
               >
@@ -998,7 +1172,7 @@ const DashboardScreen = ({ navigation }) => {
         <View style={styles.sectionContainer}>
           <View style={styles.roadmapHeader}>
             <Text style={[styles.roadmapTitle, { color: colors.textPrimary }]}>{roadmapData ? `Suggested ${roadmapData.label}` : 'Suggested Career Roadmap'}</Text>
-            
+
             {roadmapData && roadmapData.target ? (
               <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 6, backgroundColor: isDark ? '#451A03' : '#FEF3C7', alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: '#F59E0B' }}>
                 <MaterialCommunityIcons name="briefcase-check" size={16} color={isDark ? '#FCD34D' : '#D97706'} />
@@ -1022,7 +1196,7 @@ const DashboardScreen = ({ navigation }) => {
                   const isDone = step.status === 'done';
                   const isCurrent = step.status === 'current';
                   const dotColors = isCurrent ? ['#EA580C', '#9A3412'] : isDone ? ['#10B981', '#059669'] : ['#9CA3AF', '#6B7280'];
-                  const cardColors = isDark 
+                  const cardColors = isDark
                     ? (isCurrent ? ['#7C2D12', '#EA580C'] : isDone ? ['#064E3B', '#10B981'] : ['#1F2937', '#374151'])
                     : (isCurrent ? ['#FFF7ED', '#FFEDD5'] : isDone ? ['#F0FDF4', '#DCFCE7'] : ['#F3F4F6', '#E5E7EB']);
 
@@ -1032,8 +1206,8 @@ const DashboardScreen = ({ navigation }) => {
                         <LinearGradient colors={dotColors} style={[styles.timelineDot, isCurrent && styles.timelineDotActive, { borderColor: isDark && isCurrent ? colors.primaryLight : isCurrent ? '#FED7AA' : 'transparent' }]} />
                         {index < roadmapData.steps.length - 1 && <View style={[styles.timelineLine, { backgroundColor: colors.border }]} />}
                       </View>
-                      <LinearGradient 
-                        colors={cardColors} 
+                      <LinearGradient
+                        colors={cardColors}
                         style={[styles.timelineCard, isCurrent && styles.timelineCardActive, { borderColor: isDark && isCurrent ? colors.primary : isCurrent ? '#EA580C' : colors.border, borderWidth: 1 }]}
                       >
                         {isCurrent && (
@@ -1043,7 +1217,7 @@ const DashboardScreen = ({ navigation }) => {
                         )}
                         <Text style={[styles.timelineYear, { color: isDark && isCurrent ? '#FED7AA' : colors.textSecondary }]}>PHASE {step.n}</Text>
                         <Text style={[styles.timelineCardTitle, { color: isDark && isCurrent ? '#FFFFFF' : colors.textPrimary }]}>{step.title}</Text>
-                        
+
                         <Text style={{ fontSize: 12, color: isDark && isCurrent ? '#FFFFFF' : (isCurrent ? '#4B5563' : colors.textSecondary), marginTop: 4 }}>{step.desc}</Text>
                       </LinearGradient>
                     </View>
@@ -1056,8 +1230,8 @@ const DashboardScreen = ({ navigation }) => {
                     <View style={styles.timelineDotWrapper}>
                       <LinearGradient colors={['#F59E0B', '#D97706']} style={[styles.timelineDot, styles.timelineDotActive, { borderColor: isDark ? '#FEF3C7' : '#FEF3C7' }]} />
                     </View>
-                    <LinearGradient 
-                      colors={isDark ? ['#451A03', '#78350F'] : ['#FEF3C7', '#FDE68A']} 
+                    <LinearGradient
+                      colors={isDark ? ['#451A03', '#78350F'] : ['#FEF3C7', '#FDE68A']}
                       style={[styles.timelineCard, { borderColor: '#F59E0B', borderWidth: 1 }]}
                     >
                       <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
@@ -1079,17 +1253,19 @@ const DashboardScreen = ({ navigation }) => {
                 Refine Your Pathway
               </Text>
               <Text style={{ fontSize: 12, color: colors.textSecondary, marginBottom: 12 }}>
-                Tell us your specific interests (e.g., AI, Robotics, Cardiology) and our AI will adapt your roadmap.
+                {isMedicalStudent(user)
+                  ? 'Tell us your clinical interests (e.g., Cardiology, Pediatrics, Neurology) and our AI will adapt your roadmap.'
+                  : 'Tell us your specific interests (e.g., AI, Robotics, Web Dev) and our AI will adapt your roadmap.'}
               </Text>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                 <TextInput
                   style={{ flex: 1, backgroundColor: isDark ? colors.background : '#F3F4F6', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10, color: colors.textPrimary, fontSize: 14 }}
-                  placeholder="E.g. Machine Learning, NLP..."
+                  placeholder={isMedicalStudent(user) ? 'E.g. Pediatrics, Cardiology, Surgery...' : 'E.g. Machine Learning, NLP...'}
                   placeholderTextColor={colors.textSecondary}
                   value={interestsInput}
                   onChangeText={setInterestsInput}
                 />
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={{ backgroundColor: pathwayRetriesLeft > 0 ? colors.primary : colors.textMuted, paddingHorizontal: 16, paddingVertical: 12, borderRadius: 10, flexDirection: 'row', alignItems: 'center', gap: 6 }}
                   disabled={pathwayRetriesLeft === 0}
                   onPress={async () => {
@@ -1205,8 +1381,8 @@ const DashboardScreen = ({ navigation }) => {
                   </View>
                 </View>
                 <View style={styles.lockBadge}>
-                   <MaterialIcons name="lock" size={10} color="#FFFFFF" />
-                   <Text style={styles.lockBadgeText}>LOCKED</Text>
+                  <MaterialIcons name="lock" size={10} color="#FFFFFF" />
+                  <Text style={styles.lockBadgeText}>LOCKED</Text>
                 </View>
               </TouchableOpacity>
             ))}
@@ -1307,9 +1483,9 @@ const DashboardScreen = ({ navigation }) => {
                           </Text>
                           {attachmentUrl && (
                             <View style={{ marginTop: 8, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                              <Image 
-                                source={{ uri: attachmentUrl }} 
-                                style={{ width: 80, height: 50, borderRadius: 8, borderWidth: 1, borderColor: colors.border }} 
+                              <Image
+                                source={{ uri: attachmentUrl }}
+                                style={{ width: 80, height: 50, borderRadius: 8, borderWidth: 1, borderColor: colors.border }}
                                 resizeMode="cover"
                               />
                               <View>
@@ -1345,6 +1521,104 @@ const DashboardScreen = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
+  // ─── First-time Avatar Setup Modal Styles ─────────────────────────────────
+  avatarModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  avatarModalContent: {
+    width: '100%',
+    maxWidth: 340,
+    borderRadius: 28,
+    padding: 24,
+    alignItems: 'center',
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.25,
+    shadowRadius: 15,
+    elevation: 10,
+  },
+  avatarModalTitle: {
+    fontSize: 22,
+    fontWeight: '900',
+    textAlign: 'center',
+    marginBottom: 10,
+    letterSpacing: -0.5,
+  },
+  avatarModalSubtitle: {
+    fontSize: 14,
+    textAlign: 'center',
+    marginBottom: 24,
+    lineHeight: 20,
+  },
+  avatarPreviewContainer: {
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    borderWidth: 3,
+    padding: 3,
+    marginBottom: 16,
+    position: 'relative',
+  },
+  avatarPreviewImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 65,
+  },
+  avatarCameraBadge: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 3,
+    borderColor: '#FFF',
+  },
+  avatarSelectBtn: {
+    borderWidth: 1.5,
+    borderRadius: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    marginBottom: 24,
+  },
+  avatarSelectBtnText: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  avatarActionsContainer: {
+    width: '100%',
+    gap: 12,
+  },
+  avatarSaveBtn: {
+    width: '100%',
+    paddingVertical: 14,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarSaveBtnText: {
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  avatarSkipBtn: {
+    width: '100%',
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarSkipBtnText: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+
   container: {
     flex: 1,
   },

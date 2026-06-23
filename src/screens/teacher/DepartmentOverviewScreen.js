@@ -6,6 +6,7 @@ import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { DEPT_STREAMS } from '../../constants/data';
+import { useUser } from '../../context/UserContext';
 
 const FACULTY_ACTIVITIES = [
   { id: '1', name: 'Dr. Ananya Ray', action: 'Published 2 new assignments for 3rd Year AI course.', time: '10 mins ago', color: '#EA580C' },
@@ -13,13 +14,56 @@ const FACULTY_ACTIVITIES = [
   { id: '3', name: 'Sarah Jenkins (TA)', action: 'Uploaded Lab Manual v2.1 to Student Portal.', time: '2 hours ago', color: '#10B981' },
 ];
 
+const MEDICAL_FACULTY_ACTIVITIES = [
+  { id: '1', name: 'Dr. Sandhya Chauhan', action: 'Published clinical case study on Neonatal Jaundice.', time: '10 mins ago', color: '#EA580C' },
+  { id: '2', name: 'Dr. Vikram Singh', action: 'Marked bedside posting attendance for MBBS Phase III.', time: '45 mins ago', color: '#F59E0B' },
+  { id: '3', name: 'Dr. Sarah Jenkins (SR)', action: 'Uploaded Pediatric OSCE exam guidelines to Portal.', time: '2 hours ago', color: '#10B981' },
+];
+
 const DEPT_ALERTS = [
   { id: '1', type: 'SYLLABUS LAG', desc: 'CSE-C Data Structures lagging by 2 units.', color: '#F59E0B', icon: 'book-outline' },
   { id: '2', type: 'EXTREME ABSENCES', desc: '15 students from CSE-B absent for 3 days.', color: '#EF4444', icon: 'alert-circle-outline' },
 ];
 
+const MEDICAL_DEPT_ALERTS = [
+  { id: '1', type: 'CLINICAL POSTING LAG', desc: 'Pediatrics-A Ward postings lagging by 3 sessions.', color: '#F59E0B', icon: 'book-outline' },
+  { id: '2', type: 'EXTREME ABSENCES', desc: '12 students from Physiology-B absent for 3 days.', color: '#EF4444', icon: 'alert-circle-outline' },
+];
+
+const MEDICAL_DEPT_STREAMS = [
+  { id: '1', year: '1st Professional', status: 'STABLE', statusColor: '#22C55E', sections: [{ name: 'Physiology-A', attendance: '95%' }, { name: 'Anatomy-B', attendance: '92%' }] },
+  { id: '2', year: '2nd Professional', status: 'STABLE', statusColor: '#22C55E', sections: [{ name: 'Pathology-A', attendance: '88%' }, { name: 'Microbiology-B', attendance: '87%' }] },
+  { id: '3', year: 'Phase III (Part I)', status: 'CRITICAL', statusColor: '#EF4444', sections: [{ name: 'Pediatrics-A', attendance: '74%', alert: true }, { name: 'FMT-B', attendance: '88%' }], alert: 'Attendance alert sent to Dr. Chauhan' },
+  { id: '4', year: 'Phase III (Part II)', status: 'STABLE', statusColor: '#22C55E', sections: [{ name: 'Medicine-A', attendance: '91%' }, { name: 'Surgery-B', attendance: '93%' }] },
+];
+
 const DepartmentOverviewScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
+  const { user } = useUser();
+
+  const isMedical = 
+    user?.department?.toUpperCase().includes('PAEDIATRICS') || 
+    user?.department?.toUpperCase().includes('PEDIATRICS') ||
+    user?.department?.toUpperCase().includes('PHYSIOLOGY') || 
+    user?.department?.toUpperCase().includes('ANATOMY') || 
+    user?.department?.toUpperCase().includes('MEDICAL') ||
+    user?.department?.toUpperCase().includes('DOCTORS');
+
+  const departmentName = user?.department || 'Computer Science & Engineering';
+  const displayDept = departmentName.toUpperCase();
+  const pageBadgeText = isMedical ? 'MEDICAL DEPARTMENT' : `${displayDept} DEPARTMENT`;
+  const pageTitle = departmentName;
+  const pageSubtitle = isMedical ? 'MBBS Program • 2023-24' : 'B.Tech Program • 2023-24';
+
+  const totalStudents = isMedical ? '640' : '1,248';
+  const facultyCount = isMedical ? '32' : '42';
+  const avgAttendance = isMedical ? '85.6%' : '88.4%';
+  const attendanceSub = isMedical ? 'Needs attention in Phase II' : 'Needs attention in 2nd Year';
+  const facultySub = isMedical ? '12 MD/MS holders' : '8 Ph.D holders';
+
+  const streamsToShow = isMedical ? MEDICAL_DEPT_STREAMS : DEPT_STREAMS;
+  const alertsToShow = isMedical ? MEDICAL_DEPT_ALERTS : DEPT_ALERTS;
+  const activitiesToShow = isMedical ? MEDICAL_FACULTY_ACTIVITIES : FACULTY_ACTIVITIES;
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -37,15 +81,7 @@ const DepartmentOverviewScreen = ({ navigation }) => {
           </LinearGradient>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Dept. Overview</Text>
-        <TouchableOpacity style={styles.bellBtn}>
-          <LinearGradient
-            colors={['#FFFFFF', '#F9FAFB']}
-            style={styles.bellGradient}
-          >
-            <Ionicons name="notifications-outline" size={20} color="#EA580C" />
-            <View style={styles.bellBadge} />
-          </LinearGradient>
-        </TouchableOpacity>
+        <View style={{ width: 40 }} />
       </LinearGradient>
 
       <ScrollView
@@ -58,10 +94,10 @@ const DepartmentOverviewScreen = ({ navigation }) => {
             colors={['#FFF7ED', '#FFEDD5']}
             style={styles.pageBadge}
           >
-            <Text style={styles.pageBadgeText}>CSE DEPARTMENT</Text>
+            <Text style={styles.pageBadgeText}>{pageBadgeText}</Text>
           </LinearGradient>
-          <Text style={styles.pageTitle}>Computer Science & Engineering</Text>
-          <Text style={styles.pageSubtitle}>B.Tech Program • 2023-24</Text>
+          <Text style={styles.pageTitle}>{pageTitle}</Text>
+          <Text style={styles.pageSubtitle}>{pageSubtitle}</Text>
           <TouchableOpacity style={styles.reportBtn} activeOpacity={0.85}>
             <LinearGradient
               colors={['#EA580C', '#9A3412']}
@@ -86,7 +122,7 @@ const DepartmentOverviewScreen = ({ navigation }) => {
               <Ionicons name="people-outline" size={22} color="#EA580C" />
             </LinearGradient>
             <Text style={styles.statLabel}>TOTAL STUDENTS</Text>
-            <Text style={styles.statValue}>1,248</Text>
+            <Text style={styles.statValue}>{totalStudents}</Text>
             <Text style={styles.statSub}>+12 from last semester</Text>
           </LinearGradient>
 
@@ -101,8 +137,8 @@ const DepartmentOverviewScreen = ({ navigation }) => {
               <Ionicons name="person-outline" size={22} color="#F59E0B" />
             </LinearGradient>
             <Text style={styles.statLabel}>FACULTY COUNT</Text>
-            <Text style={styles.statValue}>42</Text>
-            <Text style={styles.statSub}>8 Ph.D holders</Text>
+            <Text style={styles.statValue}>{facultyCount}</Text>
+            <Text style={styles.statSub}>{facultySub}</Text>
           </LinearGradient>
 
           <LinearGradient
@@ -116,8 +152,8 @@ const DepartmentOverviewScreen = ({ navigation }) => {
               <Ionicons name="bar-chart-outline" size={22} color="#EF4444" />
             </LinearGradient>
             <Text style={styles.statLabel}>AVG. ATTENDANCE</Text>
-            <Text style={styles.statValue}>88.4%</Text>
-            <Text style={styles.statSub}>Needs attention in 2nd Year</Text>
+            <Text style={styles.statValue}>{avgAttendance}</Text>
+            <Text style={styles.statSub}>{attendanceSub}</Text>
           </LinearGradient>
         </View>
 
@@ -129,7 +165,7 @@ const DepartmentOverviewScreen = ({ navigation }) => {
           </TouchableOpacity>
         </View>
 
-        {DEPT_STREAMS.map((stream) => (
+        {streamsToShow.map((stream) => (
           <LinearGradient
             key={stream.id}
             colors={['#FFFFFF', '#F9FAFB']}
@@ -150,7 +186,7 @@ const DepartmentOverviewScreen = ({ navigation }) => {
                 <Text style={styles.sectionName}>{sec.name}</Text>
                 <View style={styles.sectionStats}>
                   <Text style={[styles.sectionAtt, sec.alert && styles.sectionAttAlert]}>
-                    {sec.attendance}% Attd.
+                    {sec.attendance.replace('%', '')}% Attd.
                   </Text>
                   {sec.alert && (
                     <Ionicons name="alert-circle" size={14} color="#EF4444" />
@@ -180,7 +216,7 @@ const DepartmentOverviewScreen = ({ navigation }) => {
             <Text style={styles.alertsTitle}>Department Alerts</Text>
           </View>
 
-          {DEPT_ALERTS.map((alert) => (
+          {alertsToShow.map((alert) => (
             <LinearGradient
               key={alert.id}
               colors={['#FFFFFF', '#F9FAFB']}
@@ -203,7 +239,7 @@ const DepartmentOverviewScreen = ({ navigation }) => {
         {/* Faculty Activities */}
         <Text style={styles.sectionTitle}>Recent Activity</Text>
 
-        {FACULTY_ACTIVITIES.map((fa) => (
+        {activitiesToShow.map((fa) => (
           <LinearGradient
             key={fa.id}
             colors={['#FFFFFF', '#F9FAFB']}

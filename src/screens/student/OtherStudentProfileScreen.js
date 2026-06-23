@@ -9,7 +9,7 @@ import { APP_CONFIG } from '../../config/appConfig';
 import { followUserAPI } from '../../data/apiService';
 import { getAvatarUrl } from '../../utils/avatar';
 import { useTheme } from '../../hooks/useTheme';
-
+import { useUser } from '../../context/UserContext';
 const OtherStudentProfileScreen = ({ route, navigation }) => {
   const insets = useSafeAreaInsets();
   const { student } = route.params || {};
@@ -31,7 +31,14 @@ const OtherStudentProfileScreen = ({ route, navigation }) => {
   };
 
   const handleMessage = () => {
-    navigation.navigate('Chat', { contactName: student?.name });
+    navigation.navigate('DMConversation', {
+      contact: {
+        user_id: student?.id,
+        username: student?.name,
+        avatar_url: student?.avatar_url,
+      },
+      source: 'social',
+    });
   };
 
   if (!student) return null;

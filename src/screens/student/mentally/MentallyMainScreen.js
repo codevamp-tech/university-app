@@ -18,6 +18,7 @@ import { useTheme } from '../../../hooks/useTheme';
 import { APP_CONFIG } from '../../../config/appConfig';
 import { useUser } from '../../../context/UserContext';
 import { listMoodEntriesAPI, listFocusSessionsAPI } from '../../../data/apiService';
+import { useHealthMetrics } from '../../../hooks/useHealthMetrics';
 
 
 const { width } = Dimensions.get('window');
@@ -26,6 +27,7 @@ const MentallyMainScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
   const { user } = useUser();
+  const { metrics, goals } = useHealthMetrics();
 
   const [moodValues, setMoodValues] = useState([0, 0, 0, 0, 0, 0, 0]);
   const [dayLabels, setDayLabels] = useState(['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']);
@@ -156,9 +158,6 @@ const MentallyMainScreen = ({ navigation }) => {
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: colors.primary }]}>{APP_CONFIG.UNIVERSITY_SHORT_NAME} Mentally</Text>
         </View>
-        <TouchableOpacity style={styles.settingsBtn}>
-          <MaterialIcons name="settings" size={24} color={colors.textSecondary} />
-        </TouchableOpacity>
       </View>
 
 
@@ -347,14 +346,14 @@ const MentallyMainScreen = ({ navigation }) => {
               {/* Stats Grid */}
               <View style={styles.modalStatsGrid}>
                 <View style={[styles.statBox, { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#F9FAFB' }]}>
-                  <MaterialCommunityIcons name="timer-outline" size={24} color="#8B4B00" />
-                  <Text style={[styles.statNum, { color: colors.textPrimary }]}>{focusStats.minutes} mins</Text>
-                  <Text style={[styles.statLbl, { color: colors.textSecondary }]}>Focus Time</Text>
+                  <MaterialCommunityIcons name="run-fast" size={24} color="#8B4B00" />
+                  <Text style={[styles.statNum, { color: colors.textPrimary }]}>{Math.round((metrics.calories / Math.max(1, goals.calories)) * 100)}%</Text>
+                  <Text style={[styles.statLbl, { color: colors.textSecondary }]}>Move Goal</Text>
                 </View>
                 <View style={[styles.statBox, { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#F9FAFB' }]}>
-                  <MaterialCommunityIcons name="brain" size={24} color="#006666" />
-                  <Text style={[styles.statNum, { color: colors.textPrimary }]}>{focusStats.count}</Text>
-                  <Text style={[styles.statLbl, { color: colors.textSecondary }]}>Focus Sessions</Text>
+                  <MaterialCommunityIcons name="fire" size={24} color="#006666" />
+                  <Text style={[styles.statNum, { color: colors.textPrimary }]}>{metrics.calories} kcal</Text>
+                  <Text style={[styles.statLbl, { color: colors.textSecondary }]}>Calories Burned</Text>
                 </View>
                 <View style={[styles.statBox, { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#F9FAFB' }]}>
                   <MaterialCommunityIcons name="notebook-outline" size={24} color="#4953AC" />

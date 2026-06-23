@@ -11,10 +11,16 @@ import StudentTabs from './StudentTabs';
 import TeacherTabs from './TeacherTabs';
 import GuestTabs from './GuestTabs';
 import JournalTabs from './JournalTabs';
+import AdminTabs from './AdminTabs';
 import GuestOnboardingScreen from '../screens/guest/GuestOnboardingScreen';
 import MainWalletScreen from '../screens/student/MainWalletScreen';
 import CartScreen from '../screens/student/CartScreen';
 import ProductDetailScreen from '../screens/student/ProductDetailScreen';
+
+// Standalone Admin Screens
+import AdminBroadcastCenterScreen from '../screens/admin/AdminBroadcastCenterScreen';
+import AdminMentalHealthInsightsScreen from '../screens/admin/AdminMentalHealthInsightsScreen';
+import SuperAdminDrilldownScreen from '../screens/admin/SuperAdminDrilldownScreen';
 
 // Campus Food Ordering
 import CampusBitesMenuScreen from '../screens/student/CampusBitesMenuScreen';
@@ -29,6 +35,9 @@ import HelpCenterScreen from '../screens/student/HelpCenterScreen';
 import PrivacyScreen from '../screens/student/PrivacyScreen';
 import SmartCampusScreen from '../screens/student/SmartCampusScreen';
 import MarketplaceScreen from '../screens/student/MarketplaceScreen';
+import AddProductScreen from '../screens/student/AddProductScreen';
+import AddGigScreen from '../screens/student/AddGigScreen';
+import AddRequestScreen from '../screens/student/AddRequestScreen';
 import TheHustleScreen from '../screens/student/TheHustleScreen';
 import ERPTabs from './ERPTabs';
 import ChatScreen from '../screens/student/ChatScreen';
@@ -80,6 +89,7 @@ import FacultyDirectoryScreen from '../screens/teacher/FacultyDirectoryScreen';
 import TeacherSettingsScreen from '../screens/teacher/TeacherSettingsScreen';
 import TeacherHelpCenterScreen from '../screens/teacher/TeacherHelpCenterScreen';
 import TeacherPrivacyScreen from '../screens/teacher/TeacherPrivacyScreen';
+import TeacherAlertsScreen from '../screens/teacher/TeacherAlertsScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -97,6 +107,12 @@ const AppNavigator = () => {
       {/* Student Main */}
       <Stack.Screen name="StudentMain" component={StudentTabs} options={{ animation: 'fade' }} />
 
+      {/* Admin Main */}
+      <Stack.Screen name="AdminMain" component={AdminTabs} options={{ animation: 'fade' }} />
+      <Stack.Screen name="AdminBroadcastCenter" component={AdminBroadcastCenterScreen} options={{ animation: 'slide_from_bottom' }} />
+      <Stack.Screen name="AdminMentalHealthInsights" component={AdminMentalHealthInsightsScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="SuperAdminDrilldown" component={SuperAdminDrilldownScreen} options={{ animation: 'slide_from_right' }} />
+
       {/* Guest Flow */}
       <Stack.Screen name="GuestOnboarding" component={GuestOnboardingScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="GuestMain" component={GuestTabs} options={{ animation: 'fade' }} />
@@ -111,6 +127,9 @@ const AppNavigator = () => {
       {/* New Student Module Screens */}
       <Stack.Screen name="SmartCampus" component={SmartCampusScreen} options={{ animation: 'fade' }} />
       <Stack.Screen name="Marketplace" component={MarketplaceScreen} options={{ animation: 'fade' }} />
+      <Stack.Screen name="AddProduct" component={AddProductScreen} options={{ presentation: 'modal' }} />
+      <Stack.Screen name="AddGig" component={AddGigScreen} options={{ presentation: 'modal' }} />
+      <Stack.Screen name="AddRequest" component={AddRequestScreen} options={{ presentation: 'modal' }} />
       <Stack.Screen name="SuggestWithAI" component={SuggestWithAIScreen} options={{ animation: 'slide_from_bottom' }} />
       <Stack.Screen name="MainWallet" component={MainWalletScreen} options={{ animation: 'slide_from_bottom' }} />
       <Stack.Screen name="Cart" component={CartScreen} options={{ animation: 'slide_from_right' }} />
@@ -179,6 +198,7 @@ const AppNavigator = () => {
       <Stack.Screen name="TeacherSettings" component={TeacherSettingsScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="TeacherHelp" component={TeacherHelpCenterScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="TeacherPrivacy" component={TeacherPrivacyScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="TeacherAlerts" component={TeacherAlertsScreen} options={{ animation: 'slide_from_right' }} />
     </Stack.Navigator>
   );
 };

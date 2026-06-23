@@ -1,20 +1,109 @@
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator,
 } from 'react-native';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { CURRICULUM } from '../../constants/data';
+import { CURRICULUM as DEFAULT_CURRICULUM } from '../../constants/data';
+import { useUser } from '../../context/UserContext';
+import { getFacultyTimetable } from '../../data/apiService';
 
-const STUDENTS_ROSTER = [
-  { id: '1', name: 'Aravind Sharma', roll: 'Roll No: 102' },
-  { id: '2', name: 'Meera Patel', roll: 'Roll No: 108' },
-  { id: '3', name: 'Rohan Verma', roll: 'Roll No: 115' },
+const MEDICAL_CURRICULUM = [
+  { 
+    id: '1', 
+    code: 'PE-TH', 
+    name: 'Pediatrics Theory', 
+    description: 'Growth & development, neonatology, infectious diseases, and pediatric emergencies.', 
+    faculty: 'Dr. Sandhya Chauhan', 
+    role: 'Professor of Pediatrics', 
+    progress: 45, 
+    type: 'CORE SUBJECT', 
+    color: '#EA580C' 
+  },
+  { 
+    id: '2', 
+    code: 'PE-CL', 
+    name: 'Clinical Posting - Pediatrics', 
+    description: 'Bedside case presentation, clinical history taking, and physical examination of neonates.', 
+    faculty: 'Dr. Sandhya Chauhan', 
+    role: 'Clinical Instructor', 
+    progress: 30, 
+    type: 'CLINICAL POSTING', 
+    color: '#10B981' 
+  },
+  { 
+    id: '3', 
+    code: 'PE-PR', 
+    name: 'Pediatrics Practical', 
+    description: 'OSCE prep, infant feeding assessment, immunization schedules, and emergency care procedures.', 
+    faculty: 'Dr. Sandhya Chauhan', 
+    role: 'Practical Lead', 
+    progress: 50, 
+    type: 'PRACTICAL', 
+    color: '#7C3AED' 
+  }
 ];
 
 const CourseManagementScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
+  const { user, accessToken } = useUser();
+  const [timetable, setTimetable] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const isMedical = 
+    user?.department?.toUpperCase().includes('PAEDIATRICS') || 
+    user?.department?.toUpperCase().includes('PEDIATRICS') ||
+    user?.department?.toUpperCase().includes('PHYSIOLOGY') || 
+    user?.department?.toUpperCase().includes('ANATOMY') || 
+    user?.department?.toUpperCase().includes('MEDICAL') ||
+    user?.department?.toUpperCase().includes('DOCTORS');
+
+  const loadData = useCallback(async () => {
+    if (!accessToken) { setLoading(false); return; }
+    setLoading(true);
+    try {
+      const ttData = await getFacultyTimetable(accessToken);
+      setTimetable(Array.isArray(ttData) ? ttData : []);
+    } catch (e) {
+      console.warn('[CourseManagementScreen] load error:', e);
+    } finally {
+      setLoading(false);
+    }
+  }, [accessToken]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  // Generate dynamic curriculum from timetable if available
+  const subjectSet = new Set();
+  const dynamicCurriculum = [];
+  timetable.forEach((item, idx) => {
+    if (item.subject_name && !subjectSet.has(item.subject_name)) {
+      subjectSet.add(item.subject_name);
+      
+      const colors = ['#EA580C', '#10B981', '#7C3AED', '#F59E0B', '#3B82F6'];
+      const color = colors[idx % colors.length];
+      
+      dynamicCurriculum.push({
+        id: String(item.tt_cd || idx + 1),
+        code: item.subject_code || (isMedical ? 'PE' : 'CS'),
+        name: item.subject_name,
+        description: item.topic_name || (isMedical ? 'ERP Synced medical lectures and clinical postings.' : 'Core curriculum lectures.'),
+        faculty: user?.name || 'Faculty Member',
+        role: user?.department || 'Faculty Department',
+        progress: isMedical ? 45 : 75,
+        type: item.lecture_type || 'CORE SUBJECT',
+        color: color,
+      });
+    }
+  });
+
+  const curriculumToShow = dynamicCurriculum.length > 0 ? dynamicCurriculum : (isMedical ? MEDICAL_CURRICULUM : DEFAULT_CURRICULUM);
+  const courseBadge = isMedical ? 'MBBS PROGRAM' : 'B.TECH CSE';
+  const courseTitle = isMedical ? 'Phase III • Section A' : '3rd Year • Section A';
+  const enrolledCount = isMedical ? '160 enrolled' : '64 enrolled';
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -32,15 +121,7 @@ const CourseManagementScreen = ({ navigation }) => {
           </LinearGradient>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Course Management</Text>
-        <TouchableOpacity style={styles.bellBtn}>
-          <LinearGradient
-            colors={['#FFFFFF', '#F9FAFB']}
-            style={styles.bellGradient}
-          >
-            <Ionicons name="notifications-outline" size={20} color="#EA580C" />
-            <View style={styles.bellBadge} />
-          </LinearGradient>
-        </TouchableOpacity>
+        <View style={{ width: 40 }} />
       </LinearGradient>
 
       <ScrollView
@@ -54,88 +135,13 @@ const CourseManagementScreen = ({ navigation }) => {
               colors={['#FFF7ED', '#FFEDD5']}
               style={styles.courseBadge}
             >
-              <Text style={styles.courseBadgeText}>B.TECH CSE</Text>
+              <Text style={styles.courseBadgeText}>{courseBadge}</Text>
             </LinearGradient>
           </View>
-          <Text style={styles.courseTitle}>3rd Year • Section A</Text>
+          <Text style={styles.courseTitle}>{courseTitle}</Text>
           <Text style={styles.courseSubtitle}>Academic Session 2023-24</Text>
-          <View style={styles.headerActions}>
-            <TouchableOpacity style={styles.secondaryBtn} activeOpacity={0.85}>
-              <Ionicons name="document-text-outline" size={16} color="#EA580C" />
-              <Text style={styles.secondaryBtnText}>Report</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.primaryBtn} activeOpacity={0.85}>
-              <LinearGradient
-                colors={['#EA580C', '#9A3412']}
-                style={styles.primaryBtnGradient}
-              >
-                <Ionicons name="people-outline" size={16} color="#FFFFFF" />
-                <Text style={styles.primaryBtnText}>Manage Batch</Text>
-              </LinearGradient>
-            </TouchableOpacity>
-          </View>
         </View>
 
-        {/* Section Attendance */}
-        <LinearGradient
-          colors={['#FFFFFF', '#F9FAFB']}
-          style={styles.attendanceCard}
-        >
-          <View style={styles.attHeader}>
-            <Text style={styles.attTitle}>Section Attendance</Text>
-            <View style={styles.liveBadge}>
-              <View style={styles.liveDot} />
-              <Text style={styles.liveText}>LIVE</Text>
-            </View>
-          </View>
-          <Text style={styles.attPercent}>87.4%</Text>
-          <Text style={styles.attDesc}>Average daily presence this semester</Text>
-          <View style={styles.progressBarBg}>
-            <LinearGradient
-              colors={['#EA580C', '#F97316']}
-              style={[styles.progressBarFill, { width: '87.4%' }]}
-            />
-          </View>
-        </LinearGradient>
-
-        {/* Student Roster */}
-        <View style={styles.rosterHeader}>
-          <Text style={styles.sectionTitle}>Student Roster</Text>
-          <Text style={styles.enrolledCount}>64 enrolled</Text>
-        </View>
-
-        <LinearGradient
-          colors={['#FFFFFF', '#F9FAFB']}
-          style={styles.rosterCard}
-        >
-          {STUDENTS_ROSTER.map((s, i) => (
-            <TouchableOpacity
-              key={s.id}
-              style={[
-                styles.rosterRow,
-                i < STUDENTS_ROSTER.length - 1 && styles.rosterBorder,
-              ]}
-              activeOpacity={0.7}
-            >
-              <LinearGradient
-                colors={['#FFF7ED', '#FFEDD5']}
-                style={styles.rosterAvatar}
-              >
-                <Text style={styles.rosterAvatarText}>
-                  {s.name.charAt(0)}{s.name.split(' ')[1]?.charAt(0) || ''}
-                </Text>
-              </LinearGradient>
-              <View style={styles.rosterInfo}>
-                <Text style={styles.rosterName}>{s.name}</Text>
-                <Text style={styles.rosterRoll}>{s.roll}</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={16} color="#D1D5DB" />
-            </TouchableOpacity>
-          ))}
-          <TouchableOpacity style={styles.viewAllBtn} activeOpacity={0.7}>
-            <Text style={styles.viewAllText}>View Full Directory →</Text>
-          </TouchableOpacity>
-        </LinearGradient>
 
         {/* Curriculum Oversight */}
         <View style={styles.curriculumHeader}>
@@ -150,74 +156,75 @@ const CourseManagementScreen = ({ navigation }) => {
           </View>
         </View>
 
-        {CURRICULUM.map((course) => (
-          <LinearGradient
-            key={course.id}
-            colors={['#FFFFFF', '#F9FAFB']}
-            style={styles.currCard}
-          >
-            <View style={styles.currHeader}>
-              <LinearGradient
-                colors={[course.color + '12', course.color + '08']}
-                style={styles.currIcon}
-              >
-                <Ionicons name="book-outline" size={20} color={course.color} />
-              </LinearGradient>
-              <LinearGradient
-                colors={[course.color + '12', course.color + '08']}
-                style={styles.currTypeBadge}
-              >
-                <Text style={[styles.currTypeText, { color: course.color }]}>{course.type}</Text>
-              </LinearGradient>
-            </View>
-
-            <Text style={styles.currName}>{course.name}</Text>
-            <Text style={styles.currDesc}>{course.description}</Text>
-
-            <View style={styles.facultySection}>
-              <Text style={styles.facultyLabel}>FACULTY ASSIGNED</Text>
-              <View style={styles.facultyInfo}>
+        {loading ? (
+          <View style={{ padding: 20, alignItems: 'center' }}>
+            <ActivityIndicator color="#EA580C" />
+          </View>
+        ) : curriculumToShow.length === 0 ? (
+          <View style={styles.emptyCard}>
+            <Ionicons name="book-outline" size={48} color="#D1D5DB" style={{ marginBottom: 12 }} />
+            <Text style={styles.emptyText}>No Syllabus Found</Text>
+            <Text style={styles.emptySub}>Please pull-to-refresh on your Attendance tab or login again to sync from SRMS ERP.</Text>
+          </View>
+        ) : (
+          curriculumToShow.map((course) => (
+            <LinearGradient
+              key={course.id}
+              colors={['#FFFFFF', '#F9FAFB']}
+              style={styles.currCard}
+            >
+              <View style={styles.currHeader}>
                 <LinearGradient
-                  colors={['#EA580C', '#9A3412']}
-                  style={styles.facultyAvatar}
+                  colors={[course.color + '12', course.color + '08']}
+                  style={styles.currIcon}
                 >
-                  <Text style={styles.facultyAvatarText}>
-                    {course.faculty.charAt(0)}
-                  </Text>
+                  <Ionicons name="book-outline" size={20} color={course.color} />
                 </LinearGradient>
-                <View>
-                  <Text style={styles.facultyName}>{course.faculty}</Text>
-                  <Text style={styles.facultyRole}>{course.role}</Text>
+                <LinearGradient
+                  colors={[course.color + '12', course.color + '08']}
+                  style={styles.currTypeBadge}
+                >
+                  <Text style={[styles.currTypeText, { color: course.color }]}>{course.type}</Text>
+                </LinearGradient>
+              </View>
+
+              <Text style={styles.currName}>{course.name}</Text>
+              <Text style={styles.currDesc}>{course.description}</Text>
+
+              <View style={styles.facultySection}>
+                <Text style={styles.facultyLabel}>FACULTY ASSIGNED</Text>
+                <View style={styles.facultyInfo}>
+                  <LinearGradient
+                    colors={['#EA580C', '#9A3412']}
+                    style={styles.facultyAvatar}
+                  >
+                    <Text style={styles.facultyAvatarText}>
+                      {course.faculty.charAt(0)}
+                    </Text>
+                  </LinearGradient>
+                  <View>
+                    <Text style={styles.facultyName}>{course.faculty}</Text>
+                    <Text style={styles.facultyRole}>{course.role}</Text>
+                  </View>
                 </View>
               </View>
-            </View>
 
-            <View style={styles.progressSection}>
-              <View style={styles.progressHeader}>
-                <Text style={styles.progressLabel}>Syllabus Progress</Text>
-                <Text style={[styles.progressPercent, { color: course.color }]}>{course.progress}%</Text>
+              <View style={styles.progressSection}>
+                <View style={styles.progressHeader}>
+                  <Text style={styles.progressLabel}>Syllabus Progress</Text>
+                  <Text style={[styles.progressPercent, { color: course.color }]}>{course.progress}%</Text>
+                </View>
+                <View style={styles.progressBarBg}>
+                  <LinearGradient
+                    colors={[course.color, course.color + 'CC']}
+                    style={[styles.progressBarFill, { width: `${course.progress}%` }]}
+                  />
+                </View>
               </View>
-              <View style={styles.progressBarBg}>
-                <LinearGradient
-                  colors={[course.color, course.color + 'CC']}
-                  style={[styles.progressBarFill, { width: `${course.progress}%` }]}
-                />
-              </View>
-            </View>
-          </LinearGradient>
-        ))}
+            </LinearGradient>
+          ))
+        )}
 
-        {/* Add Subject Button */}
-        <TouchableOpacity style={styles.addSubjectBtn} activeOpacity={0.7}>
-          <LinearGradient
-            colors={['#FFF7ED', '#FFEDD5']}
-            style={styles.addIcon}
-          >
-            <Ionicons name="add" size={24} color="#EA580C" />
-          </LinearGradient>
-          <Text style={styles.addSubjectTitle}>Assign New Subject</Text>
-          <Text style={styles.addSubjectDesc}>Configure elective or minor courses</Text>
-        </TouchableOpacity>
 
         <View style={{ height: 40 }} />
       </ScrollView>
@@ -455,65 +462,26 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     fontWeight: '600',
   },
-  rosterCard: {
+  emptyCard: {
+    backgroundColor: '#FFFFFF',
     borderRadius: 24,
+    padding: 32,
+    alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#FFFFFF',
-    overflow: 'hidden',
+    borderColor: '#E5E7EB',
     marginBottom: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.04,
-    shadowRadius: 12,
-    elevation: 4,
   },
-  rosterRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 14,
-    gap: 12,
-  },
-  rosterBorder: {
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
-  },
-  rosterAvatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  rosterAvatarText: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#EA580C',
-  },
-  rosterInfo: {
-    flex: 1,
-  },
-  rosterName: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 2,
-    letterSpacing: -0.2,
-  },
-  rosterRoll: {
-    fontSize: 11,
-    color: '#6B7280',
-    fontWeight: '500',
-  },
-  viewAllBtn: {
-    alignItems: 'center',
-    paddingVertical: 14,
-    borderTopWidth: 1,
-    borderTopColor: '#F3F4F6',
-  },
-  viewAllText: {
-    fontSize: 13,
+  emptyText: {
+    fontSize: 16,
     fontWeight: '800',
-    color: '#EA580C',
+    color: '#4B5563',
+    marginBottom: 4,
+  },
+  emptySub: {
+    fontSize: 12,
+    color: '#9CA3AF',
+    textAlign: 'center',
+    lineHeight: 18,
   },
   curriculumHeader: {
     flexDirection: 'row',

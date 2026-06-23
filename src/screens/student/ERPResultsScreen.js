@@ -24,6 +24,18 @@ const ERPResultsScreen = ({ navigation }) => {
   const userSem = user?.semester || 7;
   const sgpaHistory = user?.sgpaHistory || [8.5, 8.2, 7.9, 8.1, 8.3, 8.25];
 
+  const isMedical = user?.course?.toUpperCase().includes('MBBS') || user?.category?.toLowerCase() === 'medical';
+  const termLabel = isMedical ? 'Phase' : 'Semester';
+
+  const getDisplayTerm = (semKey) => {
+    if (!isMedical) return semKey;
+    if (semKey === 'I' || semKey === 'II') return 'I';
+    if (semKey === 'III' || semKey === 'IV') return 'II';
+    if (semKey === 'V' || semKey === 'VI') return 'III';
+    if (semKey === 'VII') return 'IV';
+    return semKey;
+  };
+
   // Dynamically expand to the current semester
   const currentSemRoman = roman[userSem - 1] || 'VII';
   const [expandedSem, setExpandedSem] = useState(currentSemRoman);
@@ -122,12 +134,12 @@ const ERPResultsScreen = ({ navigation }) => {
     loadResults();
   }, [accessToken, userSem]);
 
-  const semesterData = apiSemesterData || {};
+  const semesterData = (apiSemesterData && Object.keys(apiSemesterData).length > 0) ? apiSemesterData : fallbackSemesterData;
 
   // Calculate total credits
   const totalCredits = 180;
-  const completedCredits = apiSemesterData ? Math.max(userSem - 1, 1) * 22 : 0;
-  const creditsPct = Math.round((completedCredits / totalCredits) * 100);
+  const completedCredits = semesterData ? Object.keys(semesterData).length * 22 : 0;
+  const creditsPct = Math.min(Math.round((completedCredits / totalCredits) * 100), 100);
 
 
   return (
@@ -140,9 +152,6 @@ const ERPResultsScreen = ({ navigation }) => {
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Academics</Text>
         </View>
-        <TouchableOpacity style={styles.notifBtn}>
-          <MaterialIcons name="notifications-none" size={24} color={colors.primary} />
-        </TouchableOpacity>
       </View>
 
 
@@ -150,8 +159,17 @@ const ERPResultsScreen = ({ navigation }) => {
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         {/* Hero */}
         <View style={styles.sectionContainer}>
-          <Text style={[styles.heroTitle, { color: colors.textPrimary }]}>Semester Results</Text>
-          <Text style={[styles.heroSub, { color: colors.textSecondary }]}>{user?.course || 'B.Tech CSE'} • Semester {currentSemRoman}</Text>
+          <Text style={[styles.heroTitle, { color: colors.textPrimary }]}>{isMedical ? 'Results' : `${termLabel} Results`}</Text>
+          {(() => {
+            const yearNum = Math.ceil(userSem / 2);
+            const YEAR_ORDINALS = ['1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th', '9th', '10th'];
+            const yearOrdinal = YEAR_ORDINALS[yearNum - 1] || `${yearNum}th`;
+            return (
+              <Text style={[styles.heroSub, { color: colors.textSecondary }]}>
+                {isMedical ? `MBBS ${yearOrdinal} year` : `${user?.course || 'B.Tech CSE'} • Semester ${currentSemRoman}`}
+              </Text>
+            );
+          })()}
           <TouchableOpacity style={[styles.downloadBtn, { backgroundColor: isDark ? colors.card : '#FFFFFF', borderColor: colors.border, borderWidth: 1 }]}>
             <MaterialIcons name="download" size={18} color={isDark ? '#818CF8' : '#4338CA'} />
             <Text style={[styles.downloadBtnText, { color: isDark ? '#818CF8' : '#4338CA' }]}>Download Provisional Marksheet</Text>
@@ -221,6 +239,7 @@ const ERPResultsScreen = ({ navigation }) => {
             Object.entries(semesterData).map(([sem, data]) => {
               const isExpanded = expandedSem === sem;
               const isActive = sem === currentSemRoman;
+              const displayTermName = getDisplayTerm(sem);
               return (
                 <View key={sem}>
                   <TouchableOpacity
@@ -237,10 +256,10 @@ const ERPResultsScreen = ({ navigation }) => {
                         { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F3F4F6' },
                         isActive && { backgroundColor: isDark ? 'rgba(234, 88, 12, 0.2)' : '#FFEDD5' }
                       ]}>
-                        <Text style={[styles.semCircleText, { color: colors.textSecondary }, isActive && { color: colors.primary }]}>{sem}</Text>
+                        <Text style={[styles.semCircleText, { color: colors.textSecondary }, isActive && { color: colors.primary }]}>{displayTermName}</Text>
                       </View>
                       <View>
-                        <Text style={[styles.semName, { color: colors.textPrimary }]}>Semester {sem}</Text>
+                        <Text style={[styles.semName, { color: colors.textPrimary }]}>{termLabel} {displayTermName}</Text>
                         <Text style={[styles.semLabel, { color: colors.textSecondary }]}>{data.label}</Text>
                       </View>
                     </View>
@@ -287,7 +306,7 @@ const ERPResultsScreen = ({ navigation }) => {
             <TouchableOpacity style={styles.showAllBtn}>
               <MaterialIcons name="history" size={20} color={colors.primary} />
               <Text style={[styles.showAllText, { color: colors.primary }]}>
-                Show All Semesters (I - {userSem > 1 ? (roman[userSem - 2] || (userSem - 1)) : 'I'})
+                Show All {termLabel}s (I - {isMedical ? getDisplayTerm(roman[userSem - 2] || 'I') : (userSem > 1 ? (roman[userSem - 2] || (userSem - 1)) : 'I')})
               </Text>
             </TouchableOpacity>
           )}

@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, Alert, Modal, TextInput
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../hooks/useTheme';
+import { useUser } from '../../context/UserContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 
 
@@ -36,8 +38,45 @@ const SettingItem = ({ icon, label, type, value, onToggle, onPress, colors }) =>
 const SettingsScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const { colors, isDark, toggleTheme } = useTheme();
-  const [notifications, setNotifications] = useState(true);
-  const [examAlerts, setExamAlerts] = useState(true);
+  const { user } = useUser();
+
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [oldPassword, setOldPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+
+  const handleChangePassword = async () => {
+    if (!oldPassword || !newPassword || !confirmPassword) {
+      Alert.alert('Error', 'Please fill all fields.');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      Alert.alert('Error', 'New passwords do not match.');
+      return;
+    }
+    
+    try {
+      const username = user?.username || user?.roll_number;
+      if (!username) throw new Error('User identifier not found.');
+
+      const key = `password_${username}`;
+      const savedPassword = await AsyncStorage.getItem(key);
+      
+      if (savedPassword && savedPassword !== oldPassword) {
+        Alert.alert('Error', 'Incorrect old password.');
+        return;
+      }
+
+      await AsyncStorage.setItem(key, newPassword);
+      Alert.alert('Success', 'Password updated successfully. You can now login with your new password.');
+      setShowPasswordModal(false);
+      setOldPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (e) {
+      Alert.alert('Error', 'Failed to update password.');
+    }
+  };
 
 
   return (
@@ -54,29 +93,6 @@ const SettingsScreen = ({ navigation }) => {
 
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>NOTIFICATIONS</Text>
-          <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <SettingItem 
-              icon="notifications-outline" 
-              label="Push Notifications" 
-              type="switch" 
-              value={notifications} 
-              onToggle={setNotifications} 
-              colors={colors}
-            />
-            <View style={[styles.divider, { backgroundColor: colors.border }]} />
-            <SettingItem 
-              icon="alarm-outline" 
-              label="Exam & Deadlines Alerts" 
-              type="switch" 
-              value={examAlerts} 
-              onToggle={setExamAlerts} 
-              colors={colors}
-            />
-          </View>
-        </View>
-
 
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>APPEARANCE</Text>
@@ -89,13 +105,6 @@ const SettingsScreen = ({ navigation }) => {
               onToggle={toggleTheme} 
               colors={colors}
             />
-            <View style={[styles.divider, { backgroundColor: colors.border }]} />
-            <SettingItem 
-              icon="text-outline" 
-              label="Text Size" 
-              type="link" 
-              colors={colors}
-            />
           </View>
         </View>
 
@@ -106,17 +115,11 @@ const SettingsScreen = ({ navigation }) => {
             <SettingItem 
               icon="lock-closed-outline" 
               label="Change Password" 
-              type="link" 
+              type="link"
+              onPress={() => setShowPasswordModal(true)}
               colors={colors}
             />
-            <View style={[styles.divider, { backgroundColor: colors.border }]} />
-            <SettingItem 
-              icon="finger-print-outline" 
-              label="Biometric Login" 
-              type="switch" 
-              value={false} 
-              colors={colors}
-            />
+
           </View>
         </View>
 
@@ -137,21 +140,57 @@ const SettingsScreen = ({ navigation }) => {
         </View>
 
 
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>DANGER ZONE</Text>
-          <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <SettingItem 
-              icon="trash-outline" 
-              label="Delete Account" 
-              type="danger" 
-              colors={colors}
-            />
-          </View>
-        </View>
-
 
         <View style={{ height: 40 }} />
       </ScrollView>
+
+      {/* Change Password Modal */}
+      <Modal visible={showPasswordModal} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
+            <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>Change Password</Text>
+            
+            <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Old Password</Text>
+            <TextInput
+              style={[styles.input, { color: colors.textPrimary, borderColor: colors.border }]}
+              value={oldPassword}
+              onChangeText={setOldPassword}
+              secureTextEntry
+              placeholder="Enter current password"
+              placeholderTextColor={colors.textMuted}
+            />
+            
+            <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>New Password</Text>
+            <TextInput
+              style={[styles.input, { color: colors.textPrimary, borderColor: colors.border }]}
+              value={newPassword}
+              onChangeText={setNewPassword}
+              secureTextEntry
+              placeholder="Enter new password"
+              placeholderTextColor={colors.textMuted}
+            />
+
+            <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Confirm Password</Text>
+            <TextInput
+              style={[styles.input, { color: colors.textPrimary, borderColor: colors.border }]}
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+              secureTextEntry
+              placeholder="Confirm new password"
+              placeholderTextColor={colors.textMuted}
+            />
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity style={styles.modalBtnCancel} onPress={() => setShowPasswordModal(false)}>
+                <Text style={styles.modalBtnTextCancel}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.modalBtnSubmit} onPress={handleChangePassword}>
+                <Text style={styles.modalBtnTextSubmit}>Update Password</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -224,7 +263,60 @@ const styles = StyleSheet.create({
     height: 1,
     marginLeft: 66,
   },
-
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    borderRadius: 20,
+    padding: 24,
+    width: '100%',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    marginBottom: 20,
+  },
+  inputLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  input: {
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 16,
+    fontSize: 16,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 12,
+    marginTop: 8,
+  },
+  modalBtnCancel: {
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    backgroundColor: '#F3F4F6',
+  },
+  modalBtnTextCancel: {
+    color: '#4B5563',
+    fontWeight: '600',
+  },
+  modalBtnSubmit: {
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    backgroundColor: '#EA580C',
+  },
+  modalBtnTextSubmit: {
+    color: '#FFFFFF',
+    fontWeight: '600',
+  },
 });
 
 export default SettingsScreen;

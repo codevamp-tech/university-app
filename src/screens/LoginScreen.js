@@ -11,20 +11,44 @@ import {
   Alert,
   Image,
   Modal,
+  ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { APP_CONFIG } from '../config/appConfig';
 import { useUser } from '../context/UserContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const LOADING_MESSAGES = [
+  "Connecting to university ERP...",
+  "Preparing the workspace for you...",
+  "Synchronising grades & attendance...",
+  "Personalising the experience for you...",
+  "Get ready for the magic...",
+];
 
 const LoginScreen = ({ navigation }) => {
   const [loginId, setLoginId] = useState('');
   const [securityKey, setSecurityKey] = useState('');
   const [role, setRole] = useState('student');
   const [loading, setLoading] = useState(false);
+  const [currentMessageIdx, setCurrentMessageIdx] = useState(0);
   const insets = useSafeAreaInsets();
   const { login } = useUser();
+
+  React.useEffect(() => {
+    let interval;
+    if (loading) {
+      setCurrentMessageIdx(0);
+      interval = setInterval(() => {
+        setCurrentMessageIdx((prev) => (prev + 1) % LOADING_MESSAGES.length);
+      }, 2500);
+    } else {
+      clearInterval(interval);
+    }
+    return () => clearInterval(interval);
+  }, [loading]);
 
   const handleLogin = async () => {
     if (!loginId || !securityKey) {
@@ -32,12 +56,32 @@ const LoginScreen = ({ navigation }) => {
       return;
     }
     setLoading(true);
-    const success = await login(loginId, role);
+
+    try {
+      const username = loginId.trim().toLowerCase();
+      const savedPassword = await AsyncStorage.getItem(`password_${username}`);
+      
+      // If a password was set via Change Password, verify it locally
+      if (savedPassword && savedPassword !== securityKey) {
+        Alert.alert('Login Failed', 'Incorrect security key.');
+        setLoading(false);
+        return;
+      }
+      
+      // If not overridden, the default API behavior continues normally below
+    } catch (e) {
+      console.warn('Password check failed:', e);
+    }
+
+    const success = await login(loginId, securityKey, role);
     setLoading(false);
     
     if (success) {
-      if (role === 'teacher') {
+      const userRole = success.role;
+      if (userRole === 'teacher') {
         navigation.replace('TeacherMain');
+      } else if (userRole === 'admin' || userRole === 'super_admin' || userRole === 'warden') {
+        navigation.replace('AdminMain');
       } else {
         navigation.replace('StudentMain');
       }
@@ -56,6 +100,31 @@ const LoginScreen = ({ navigation }) => {
       end={{ x: 1, y: 1 }}
       style={{ flex: 1 }}
     >
+      {/* Full-Screen Premium Immersive Loader Modal */}
+      <Modal
+        visible={loading}
+        transparent={true}
+        animationType="fade"
+      >
+        <View style={styles.loaderOverlay}>
+          <LinearGradient
+            colors={['#FB923C', '#EA580C']}
+            style={styles.loaderContent}
+          >
+            <ActivityIndicator size="large" color="#FFFFFF" style={{ marginBottom: 24 }} />
+            
+            {/* Carousel message */}
+            <View style={styles.messageContainer}>
+              <Text style={styles.loaderMessage}>
+                {LOADING_MESSAGES[currentMessageIdx]}
+              </Text>
+            </View>
+
+            <Text style={styles.loaderSub}>Please wait, configuring your dashboard</Text>
+          </LinearGradient>
+        </View>
+      </Modal>
+
       <KeyboardAvoidingView
         style={[styles.container, { paddingTop: insets.top }]}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -90,25 +159,37 @@ const LoginScreen = ({ navigation }) => {
               >
                 <Text style={[styles.roleText, role === 'teacher' && styles.roleTextActive]}>Faculty</Text>
               </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.roleBtn, role === 'admin' && styles.roleBtnActive]}
+                onPress={() => setRole('admin')}
+              >
+                <Text style={[styles.roleText, role === 'admin' && styles.roleTextActive]}>Admin</Text>
+              </TouchableOpacity>
             </View>
 
             {/* Roll Number or Academic Email Field */}
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>
-                {role === 'student' ? 'STUDENT ROLL NUMBER' : 'ACADEMIC EMAIL'}
+                {role === 'student'
+                  ? 'STUDENT ROLL NUMBER'
+                  : role === 'admin'
+                  ? 'ADMIN/WARDEN USERNAME'
+                  : 'EMPLOYEE ID'}
               </Text>
               <TextInput
                 style={styles.input}
                 placeholder={
                   role === 'student'
                     ? 'e.g., 2400140140005'
-                    : `name@${APP_CONFIG.STUDENT_EMAIL_DOMAIN}`
+                    : role === 'admin'
+                    ? 'e.g., admin or satishkumar'
+                    : 'e.g., D/11/048'
                 }
                 placeholderTextColor="#9CA3AF"
                 value={loginId}
                 onChangeText={setLoginId}
                 autoCapitalize="none"
-                keyboardType={role === 'student' ? 'numeric' : 'email-address'}
+                keyboardType={role === 'student' ? 'numeric' : 'default'}
               />
             </View>
 
@@ -400,6 +481,44 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontWeight: '600',
     fontSize: 14,
+  },
+  loaderOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loaderContent: {
+    width: '85%',
+    borderRadius: 24,
+    padding: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.25,
+    shadowRadius: 15,
+    elevation: 10,
+  },
+  messageContainer: {
+    height: 60,
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: '100%',
+  },
+  loaderMessage: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    textAlign: 'center',
+    lineHeight: 24,
+  },
+  loaderSub: {
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.8)',
+    marginTop: 16,
+    letterSpacing: 0.5,
+    fontWeight: '500',
   },
 });
 

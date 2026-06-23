@@ -4,10 +4,12 @@ import {
 } from 'react-native';
 import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import { useTheme } from '../../hooks/useTheme';
 import { useUser } from '../../context/UserContext';
 import { fetchStudentsFromSheet } from '../../data/googleSheetsService';
 import { LeaderboardPageSkeleton } from '../../components/SkeletonLoader';
+import { getDisplayCourse } from '../../utils/courseDisplay';
 
 const { width } = Dimensions.get('window');
 
@@ -19,25 +21,27 @@ const TheHustleScreen = ({ navigation }) => {
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    let active = true;
-    const loadData = async () => {
-      try {
-        const list = await fetchStudentsFromSheet();
-        if (active) {
-          setStudents(list);
+  useFocusEffect(
+    React.useCallback(() => {
+      let active = true;
+      const loadData = async () => {
+        try {
+          const list = await fetchStudentsFromSheet();
+          if (active) {
+            setStudents(list);
+          }
+        } catch (err) {
+          console.warn('Leaderboard loading failed:', err);
+        } finally {
+          if (active) {
+            setLoading(false);
+          }
         }
-      } catch (err) {
-        console.warn('Leaderboard loading failed:', err);
-      } finally {
-        if (active) {
-          setLoading(false);
-        }
-      }
-    };
-    loadData();
-    return () => { active = false; };
-  }, []);
+      };
+      loadData();
+      return () => { active = false; };
+    }, [])
+  );
 
   // Compute leaderboard scores
   const computedLeaderboard = students.map(s => {
@@ -64,12 +68,26 @@ const TheHustleScreen = ({ navigation }) => {
 
     const totalScore = (certCount * 500) + (extraCount * 500) + (leadCount * 1000) + academicScore + ambassadorBonus;
 
+    // Robust check if this student record matches the logged-in user
+    const isMe = !!(user && (
+      (s.id && user.id && s.id.toString().trim().toLowerCase() === user.id.toString().trim().toLowerCase()) ||
+      (s.id && user.username && s.id.toString().trim().toLowerCase() === user.username.toString().trim().toLowerCase()) ||
+      (s.id && user.rollno && s.id.toString().trim().toLowerCase() === user.rollno.toString().trim().toLowerCase()) ||
+      (s.email && user.email && s.email.trim().toLowerCase() === user.email.trim().toLowerCase()) ||
+      (s.name && user.name && s.name.trim().toLowerCase() === user.name.trim().toLowerCase())
+    ));
+
     // Determine avatar
-    const isFemaleAvatar = s.gender === 'F' || s.gender === 'Female';
-    const hash = s.name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % 99;
-    const avatar = isFemaleAvatar
-      ? `https://randomuser.me/api/portraits/women/${hash}.jpg`
-      : `https://randomuser.me/api/portraits/men/${hash}.jpg`;
+    let avatar;
+    if (isMe && user.avatar_url) {
+      avatar = user.avatar_url;
+    } else {
+      const isFemaleAvatar = s.gender === 'F' || s.gender === 'Female';
+      const hash = s.name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % 99;
+      avatar = isFemaleAvatar
+        ? `https://randomuser.me/api/portraits/women/${hash}.jpg`
+        : `https://randomuser.me/api/portraits/men/${hash}.jpg`;
+    }
 
     return {
       id: s.id,
@@ -78,7 +96,7 @@ const TheHustleScreen = ({ navigation }) => {
       certCount,
       leadCount,
       extraCount,
-      isMe: user && s.id === user.id,
+      isMe,
       avatar,
       course: s.course,
       branch: s.branch,
@@ -102,9 +120,9 @@ const TheHustleScreen = ({ navigation }) => {
     leadCount: 1,
     extraCount: 2,
     certCount: 2,
-    avatar: user.gender === 'F' || user.gender === 'Female'
+    avatar: user.avatar_url || (user.gender === 'F' || user.gender === 'Female'
       ? `https://randomuser.me/api/portraits/women/${user.name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % 99}.jpg`
-      : `https://randomuser.me/api/portraits/men/${user.name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % 99}.jpg`,
+      : `https://randomuser.me/api/portraits/men/${user.name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % 99}.jpg`),
   } : {
     id: 'mock',
     name: 'Student',
@@ -236,7 +254,7 @@ const TheHustleScreen = ({ navigation }) => {
             <Text style={[styles.sectionTitle, { color: colors.textPrimary, marginBottom: 0 }]}>Monthly Leaderboard</Text>
             <TouchableOpacity style={[styles.filterBtn, { backgroundColor: colors.border }]}>
               <Text style={[styles.filterText, { color: colors.textSecondary }]}>
-                {user?.course ? `${user.course} ${user.branch || ''}` : 'B.Tech CS'}
+                {getDisplayCourse(user) || 'B.Tech CS'}
               </Text>
               <MaterialIcons name="keyboard-arrow-down" size={16} color={colors.textSecondary} />
             </TouchableOpacity>
@@ -258,7 +276,7 @@ const TheHustleScreen = ({ navigation }) => {
                       {item.name} {item.isMe && '(You)'}
                     </Text>
                     <Text style={{ fontSize: 10, color: colors.textSecondary || '#6B7280' }} numberOfLines={1}>
-                      {item.course || ''} {item.branch || ''}
+                      {getDisplayCourse({ course: item.course, branch: item.branch }) || ''}
                     </Text>
                   </View>
                 </View>
@@ -286,7 +304,7 @@ const TheHustleScreen = ({ navigation }) => {
                         {myRecord.name} (You)
                       </Text>
                       <Text style={{ fontSize: 10, color: colors.textSecondary || '#6B7280' }} numberOfLines={1}>
-                        {user?.course || ''} {user?.branch || ''}
+                        {getDisplayCourse(user) || ''}
                       </Text>
                     </View>
                   </View>

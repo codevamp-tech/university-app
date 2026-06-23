@@ -2,14 +2,14 @@ import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, Image,
   Animated, Pressable, Dimensions, Platform, Alert,
+  FlatList, TextInput, KeyboardAvoidingView,
 } from 'react-native';
-import { GiftedChat, Bubble, InputToolbar, Send, Avatar } from 'react-native-gifted-chat';
 import { Ionicons, MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { APP_CONFIG } from '../../config/appConfig';
 import { useUser } from '../../context/UserContext';
-import { useChatSocket } from '../../hooks/useChatSocket';
+import { useChatSocketContext } from '../../context/ChatSocketContext';
 import {
   getChatChannelsAPI,
   getChannelHistoryAPI,
@@ -17,6 +17,7 @@ import {
 } from '../../data/apiService';
 import { getAvatarUrl } from '../../utils/avatar';
 import { useTheme } from '../../hooks/useTheme';
+import { fetchStudentsFromSheet } from '../../data/googleSheetsService';
 
 const { width } = Dimensions.get('window');
 const DRAWER_WIDTH = width * 0.78;
@@ -46,20 +47,42 @@ const ChatScreen = ({ navigation }) => {
     sendChannelMessage,
     joinChannel,
     loadChannelHistory,
-  } = useChatSocket();
+    lastError,
+    clearError,
+  } = useChatSocketContext();
 
   // ── Fetch channels & DM contacts ──────────────────────────────────────────
   useEffect(() => {
     const load = async () => {
       try {
-        const [chs, dms] = await Promise.all([
+        const [chs, dms, students] = await Promise.all([
           getChatChannelsAPI(accessToken),
           getDMContactsAPI(accessToken),
+          fetchStudentsFromSheet().catch(() => []),
         ]);
-        if (chs?.length) setChannels(chs);
-        if (dms?.length) setDmContacts(dms);
+        if (chs?.length) {
+          setChannels(chs);
+          // Auto-switch activeChannel to the real channel matching the current slug
+          // (default channels have id: null, so we upgrade to the real API channel)
+          setActiveChannel(prev => {
+            if (prev?.id) return prev; // already has a real ID
+            const matchBySlug = chs.find(c => c.slug === prev?.slug);
+            return matchBySlug || chs[0];
+          });
+        }
+        if (dms?.length) {
+          // Enrich DM contacts with real name from Google Sheets if username is a roll number
+          const enrichedDms = dms.map(dm => {
+            const richStudent = students.find(s => s.id.toLowerCase() === dm.username.toLowerCase());
+            return {
+              ...dm,
+              username: richStudent ? richStudent.name : dm.username,
+            };
+          });
+          setDmContacts(enrichedDms);
+        }
       } catch (e) {
-        // Network error: keep defaults
+        console.warn('[ChatScreen] load error', e);
       }
     };
     if (accessToken) load();
@@ -87,67 +110,79 @@ const ChatScreen = ({ navigation }) => {
   const drawerTranslateX = slideAnim.interpolate({ inputRange: [0, 1], outputRange: [-DRAWER_WIDTH, 0] });
   const overlayOpacity = slideAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 1] });
 
+  const flatListRef = useRef(null);
+
+  // ── Show server errors ──────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (lastError) {
+      Alert.alert('Message Failed', lastError);
+      clearError();
+    }
+  }, [lastError]);
+
   // ── Send message ──────────────────────────────────────────────────────────
-  const onSend = useCallback((msgs = []) => {
-    const text = msgs[0]?.text?.trim();
-    if (!text || !activeChannel?.id) return;
-    const sent = sendChannelMessage(activeChannel.id, text);
-    if (!sent) Alert.alert('Not connected', 'Reconnecting to server...');
-  }, [activeChannel, sendChannelMessage]);
+  const handleSend = useCallback(() => {
+    const textVal = inputText.trim();
+    if (!textVal || !activeChannel?.id) return;
+    sendChannelMessage(activeChannel.id, textVal, {
+      id: user?.id,
+      username: user?.username,
+      avatar_url: user?.avatar_url,
+    });
+    setInputText('');
+  }, [inputText, activeChannel, sendChannelMessage, user]);
 
   // Current channel messages from socket
   const messages = (activeChannel?.id ? channelMessages[activeChannel.id] : []) || [];
 
-  // GiftedChat user object
-  const giftedUser = {
-    _id: user?.id || 'me',
-    name: user?.username || 'You',
-    avatar: user?.avatar_url || getAvatarUrl(user?.username || 'me'),
+  const socialDMs = dmContacts.filter(dm => !dm.is_marketplace);
+  const marketplaceDMs = dmContacts.filter(dm => dm.is_marketplace);
+
+  // Scroll to latest when messages update
+  useEffect(() => {
+    if (messages.length > 0) {
+      setTimeout(() => flatListRef.current?.scrollToOffset({ offset: 0, animated: true }), 100);
+    }
+  }, [messages.length]);
+
+  const renderMessage = ({ item }) => {
+    const isMe = item.user?._id === user?.user_id || 
+                 item.user?._id === user?.id || 
+                 item.user?.user_id === user?.user_id || 
+                 item.user?.user_id === user?.id;
+    return (
+      <View style={[styles.msgRow, isMe ? styles.msgRowRight : styles.msgRowLeft]}>
+        {!isMe && (
+          <Image
+            source={{ uri: item.user?.avatar || getAvatarUrl(item.user?._id || 'u') }}
+            style={styles.msgAvatar}
+          />
+        )}
+        <View style={[
+          styles.bubble,
+          isMe
+            ? [styles.bubbleRight, { backgroundColor: colors.primary }]
+            : [styles.bubbleLeft, { backgroundColor: isDark ? colors.card : '#F3F4F6' }]
+        ]}>
+          {!isMe && (
+            <Text style={[styles.bubbleSender, { color: colors.primary }]}>{item.user?.name || 'Student'}</Text>
+          )}
+          <Text style={[styles.bubbleText, { color: isMe ? '#FFFFFF' : colors.textPrimary }]}>{item.text}</Text>
+          <Text style={[styles.bubbleTime, { color: isMe ? 'rgba(255,255,255,0.6)' : colors.textSecondary }]}>
+            {item.createdAt ? new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+          </Text>
+        </View>
+      </View>
+    );
   };
 
-  // ── Renders ───────────────────────────────────────────────────────────────
-  const renderBubble = (props) => (
-    <Bubble
-      {...props}
-      wrapperStyle={{
-        right: { backgroundColor: colors.primary, borderRadius: 18, borderTopRightRadius: 4 },
-        left:  { backgroundColor: isDark ? colors.card : '#F3F4F6', borderRadius: 18, borderTopLeftRadius: 4 },
-      }}
-      textStyle={{
-        right: { color: '#FFFFFF', fontSize: 15, lineHeight: 22 },
-        left:  { color: colors.textPrimary, fontSize: 15, lineHeight: 22 },
-      }}
-    />
-  );
-
-  const renderInputToolbar = (props) => (
-    <InputToolbar
-      {...props}
-      containerStyle={[styles.inputToolbar, { backgroundColor: colors.card, borderTopColor: colors.border }]}
-      primaryStyle={{ alignItems: 'center' }}
-    />
-  );
-
-  const renderSend = (props) => (
-    <Send {...props} containerStyle={styles.sendContainer}>
-      <View style={[styles.sendBtn, { backgroundColor: colors.primary }]}>
-        <MaterialIcons name="send" size={18} color="#FFFFFF" />
-      </View>
-    </Send>
-  );
-
-  const renderAvatar = (props) => (
-    <Avatar
-      {...props}
-      imageStyle={{ left: { width: 36, height: 36, borderRadius: 18 } }}
-    />
-  );
-
   return (
-    <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
-      {/* ── Main Content ── */}
-      <Animated.View style={[styles.mainContent]}>
-
+    <KeyboardAvoidingView
+      style={[styles.container, { backgroundColor: colors.background }]}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={0}
+    >
+      <View style={{ paddingTop: insets.top, backgroundColor: colors.background }}>
         {/* Header */}
         <View style={[styles.header, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
           <View style={styles.headerLeft}>
@@ -160,7 +195,6 @@ const ChatScreen = ({ navigation }) => {
             <Text style={[styles.headerLogo, { color: colors.textPrimary }]}>{APP_CONFIG.UNIVERSITY_SHORT_NAME} Channels</Text>
           </View>
           <View style={styles.headerRight}>
-            {/* Connection status dot */}
             <View style={[styles.connDot, { backgroundColor: connected ? '#10B981' : '#EF4444' }]} />
             <TouchableOpacity onPress={() => navigation.navigate('StudentSearch')}>
               <Ionicons name="search" size={24} color={colors.textMuted || "#6B7280"} />
@@ -170,11 +204,7 @@ const ChatScreen = ({ navigation }) => {
 
         {/* Active Channel Bar */}
         <View style={[styles.activeChannelBar, { backgroundColor: isDark ? colors.background : '#FAFAFA', borderBottomColor: colors.border }]}>
-          <MaterialCommunityIcons
-            name={activeChannel?.icon || 'lightning-bolt'}
-            size={20}
-            color={colors.primary}
-          />
+          <MaterialCommunityIcons name={activeChannel?.icon || 'lightning-bolt'} size={20} color={colors.primary} />
           <View style={{ flex: 1 }}>
             <Text style={[styles.activeChannelName, { color: colors.textPrimary }]}>{activeChannel?.name || 'Campus Pulse'}</Text>
             <Text style={styles.activeChannelDesc} numberOfLines={1}>{activeChannel?.desc || ''}</Text>
@@ -183,26 +213,57 @@ const ChatScreen = ({ navigation }) => {
             {onlineUsers.length} online
           </Text>
         </View>
+      </View>
 
-        {/* GiftedChat */}
-        <GiftedChat
-          messages={messages}
-          onSend={onSend}
-          user={giftedUser}
-          renderBubble={renderBubble}
-          renderInputToolbar={renderInputToolbar}
-          renderSend={renderSend}
-          renderAvatar={renderAvatar}
-          alwaysShowSend
-          scrollToBottom
-          scrollToBottomStyle={styles.scrollToBottom}
+      {/* Messages */}
+      <FlatList
+        ref={flatListRef}
+        data={messages}
+        keyExtractor={(item) => item._id?.toString() || Math.random().toString()}
+        renderItem={renderMessage}
+        inverted
+        contentContainerStyle={{ padding: 12 }}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="interactive"
+        ListEmptyComponent={
+          <View style={{ alignItems: 'center', paddingTop: 60 }}>
+            <MaterialCommunityIcons name="chat-outline" size={48} color={colors.textSecondary} />
+            <Text style={{ color: colors.textSecondary, marginTop: 12, fontSize: 14 }}>No messages yet. Say hi! 👋</Text>
+          </View>
+        }
+      />
+
+      {/* Input Bar */}
+      <View style={[
+        styles.inputBar,
+        { backgroundColor: colors.card, borderTopColor: colors.border, paddingBottom: Math.max(insets.bottom, 12) }
+      ]}>
+        <TextInput
+          style={[
+            styles.textInput,
+            { backgroundColor: isDark ? colors.background : '#F3F4F6', color: colors.textPrimary }
+          ]}
+          value={inputText}
+          onChangeText={setInputText}
           placeholder={`Message #${activeChannel?.slug || 'campus-pulse'}`}
-          keyboardShouldPersistTaps="handled"
-          bottomOffset={Platform.OS === 'ios' ? insets.bottom : 0}
-          messagesContainerStyle={{ paddingBottom: 8 }}
-          listViewProps={{ showsVerticalScrollIndicator: false }}
+          placeholderTextColor={colors.textSecondary}
+          multiline
+          maxLength={1000}
+          returnKeyType="default"
+          blurOnSubmit={false}
+          autoCorrect={true}
+          autoCapitalize="sentences"
         />
-      </Animated.View>
+        <TouchableOpacity
+          style={[styles.sendBtn, { backgroundColor: inputText.trim() ? colors.primary : (isDark ? '#374151' : '#E5E7EB') }]}
+          onPress={handleSend}
+          disabled={!inputText.trim()}
+          activeOpacity={0.8}
+        >
+          <MaterialIcons name="send" size={20} color={inputText.trim() ? '#FFFFFF' : (isDark ? '#6B7280' : '#9CA3AF')} />
+        </TouchableOpacity>
+      </View>
 
       {/* ── Backdrop Overlay ── */}
       {isDrawerOpen && (
@@ -212,7 +273,9 @@ const ChatScreen = ({ navigation }) => {
       )}
 
       {/* ── Side Drawer ── */}
-      <Animated.View style={[styles.drawer, { transform: [{ translateX: drawerTranslateX }], backgroundColor: colors.card }]}>
+      <Animated.View
+        pointerEvents={isDrawerOpen ? 'auto' : 'none'}
+        style={[styles.drawer, { transform: [{ translateX: drawerTranslateX }], backgroundColor: colors.card }]}>
         <View style={[styles.drawerHeader, { paddingTop: insets.top + 16, borderBottomColor: colors.border }]}>
           <LinearGradient colors={isDark ? [colors.primary, '#6D28D9'] : ['#EA580C', '#9A3412']} style={styles.drawerLogoIcon}>
             <MaterialCommunityIcons name="school" size={24} color="#FFFFFF" />
@@ -269,12 +332,12 @@ const ChatScreen = ({ navigation }) => {
 
           {/* Direct Messages */}
           <Text style={styles.drawerSectionTitle}>DIRECT MESSAGES</Text>
-          {dmContacts.length === 0 && (
+          {socialDMs.length === 0 && (
             <Text style={{ fontSize: 13, color: '#9CA3AF', paddingHorizontal: 12, paddingBottom: 8 }}>
               Connect with students to start DMing 👋
             </Text>
           )}
-          {dmContacts.map((dm) => {
+          {socialDMs.map((dm) => {
             const isOnline = onlineUsers.includes(dm.user_id);
             return (
               <TouchableOpacity
@@ -282,7 +345,44 @@ const ChatScreen = ({ navigation }) => {
                 style={styles.dmItem}
                 onPress={() => {
                   toggleDrawer();
-                  navigation.navigate('DMConversation', { contact: dm });
+                  navigation.navigate('DMConversation', { contact: dm, source: 'social' });
+                }}
+              >
+                <View style={styles.dmAvatarWrap}>
+                  <Image source={{ uri: dm.avatar_url || getAvatarUrl(dm.user_id) }} style={styles.dmAvatar} />
+                  <View style={[styles.statusDot, { backgroundColor: isOnline ? '#10B981' : '#D1D5DB' }]} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.dmName, { color: colors.textPrimary }]}>{dm.username || 'Student'}</Text>
+                  {dm.last_message && (
+                    <Text style={styles.dmLastMsg} numberOfLines={1}>{dm.last_message}</Text>
+                  )}
+                </View>
+                <Text style={{ fontSize: 10, color: isOnline ? '#10B981' : '#9CA3AF', fontWeight: '700' }}>
+                  {isOnline ? 'Online' : 'Offline'}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+
+          <View style={[styles.drawerDivider, { backgroundColor: colors.border }]} />
+
+          {/* Marketplace Messages */}
+          <Text style={styles.drawerSectionTitle}>MARKETPLACE MESSAGES</Text>
+          {marketplaceDMs.length === 0 && (
+            <Text style={{ fontSize: 13, color: '#9CA3AF', paddingHorizontal: 12, paddingBottom: 8 }}>
+              No marketplace messages yet 🛒
+            </Text>
+          )}
+          {marketplaceDMs.map((dm) => {
+            const isOnline = onlineUsers.includes(dm.user_id);
+            return (
+              <TouchableOpacity
+                key={dm.user_id}
+                style={styles.dmItem}
+                onPress={() => {
+                  toggleDrawer();
+                  navigation.navigate('DMConversation', { contact: dm, source: 'marketplace' });
                 }}
               >
                 <View style={styles.dmAvatarWrap}>
@@ -313,14 +413,13 @@ const ChatScreen = ({ navigation }) => {
             <Text style={[styles.footerText, { color: colors.textSecondary }]}>Notifications</Text>
           </TouchableOpacity>
         </View>
-      </Animated.View>
-    </View>
+    </Animated.View>
+    </KeyboardAvoidingView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FFFFFF' },
-  mainContent: { flex: 1 },
+  container: { flex: 1 },
   header: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     paddingHorizontal: 16, paddingVertical: 12,
@@ -339,21 +438,52 @@ const styles = StyleSheet.create({
   },
   activeChannelName: { fontSize: 15, fontWeight: '800', color: '#1F2937' },
   activeChannelDesc: { fontSize: 11, color: '#9CA3AF', fontWeight: '500', marginTop: 1 },
-  inputToolbar: {
-    backgroundColor: '#FFFFFF',
-    borderTopWidth: 1, borderTopColor: '#F3F4F6',
-    paddingHorizontal: 8, paddingVertical: 6,
-    borderRadius: 24,
-    marginHorizontal: 8,
-    marginBottom: 4,
+  inputBar: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    paddingHorizontal: 12,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    gap: 8,
   },
-  sendContainer: { justifyContent: 'center', alignItems: 'center', paddingRight: 4 },
+  textInput: {
+    flex: 1,
+    minHeight: 42,
+    maxHeight: 120,
+    borderRadius: 21,
+    paddingHorizontal: 16,
+    paddingTop: 11,
+    paddingBottom: 11,
+    fontSize: 15,
+  },
   sendBtn: {
-    width: 36, height: 36, borderRadius: 18,
-    backgroundColor: '#EA580C',
-    justifyContent: 'center', alignItems: 'center',
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  scrollToBottom: { backgroundColor: '#EA580C', borderRadius: 20 },
+  // Messages
+  msgRow: {
+    flexDirection: 'row',
+    marginBottom: 12,
+    alignItems: 'flex-end',
+    maxWidth: '82%',
+  },
+  msgRowLeft: { alignSelf: 'flex-start' },
+  msgRowRight: { alignSelf: 'flex-end', flexDirection: 'row-reverse' },
+  msgAvatar: { width: 28, height: 28, borderRadius: 14, marginRight: 6 },
+  bubble: {
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 20,
+    maxWidth: '100%',
+  },
+  bubbleLeft: { borderTopLeftRadius: 4 },
+  bubbleRight: { borderTopRightRadius: 4 },
+  bubbleSender: { fontSize: 11, fontWeight: '700', marginBottom: 3 },
+  bubbleText: { fontSize: 15, lineHeight: 22 },
+  bubbleTime: { fontSize: 10, marginTop: 4, textAlign: 'right' },
   overlay: {
     position: 'absolute', inset: 0,
     backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 99,

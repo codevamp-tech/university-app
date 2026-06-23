@@ -7,6 +7,7 @@ import * as Notifications from 'expo-notifications';
 import AppNavigator from './src/navigation/AppNavigator';
 import { ThemeProvider, ThemeContext } from './src/context/ThemeContext';
 import { UserProvider, useUser } from './src/context/UserContext';
+import { ChatSocketProvider } from './src/context/ChatSocketContext';
 import { registerPushTokenAPI } from './src/data/apiService';
 
 // Set notification handler globally
@@ -62,8 +63,10 @@ export default function App() {
     <SafeAreaProvider>
       <ThemeProvider>
         <UserProvider>
-          <PushSetup />
-          <AppContent />
+          <ChatSocketProvider>
+            <PushSetup />
+            <AppContent />
+          </ChatSocketProvider>
         </UserProvider>
       </ThemeProvider>
     </SafeAreaProvider>

@@ -1,24 +1,15 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../constants/colors';
 
 // Teacher Screens
 import TeacherDashboardScreen from '../screens/teacher/TeacherDashboardScreen';
 import CourseManagementScreen from '../screens/teacher/CourseManagementScreen';
-import DepartmentOverviewScreen from '../screens/teacher/DepartmentOverviewScreen';
+import TeacherAttendanceScreen from '../screens/teacher/TeacherAttendanceScreen';
 import TeacherProfileScreen from '../screens/teacher/TeacherProfileScreen';
 
 const Tab = createBottomTabNavigator();
-const Stack = createNativeStackNavigator();
-
-const AcademicStack = () => (
-  <Stack.Navigator screenOptions={{ headerShown: false }}>
-    <Stack.Screen name="CourseManagement" component={CourseManagementScreen} />
-    <Stack.Screen name="DepartmentOverview" component={DepartmentOverviewScreen} />
-  </Stack.Navigator>
-);
 
 const TeacherTabs = () => {
   return (
@@ -48,8 +39,8 @@ const TeacherTabs = () => {
         tabBarIcon: ({ focused, color }) => {
           const icons = {
             Home: focused ? 'home' : 'home-outline',
-            Academic: focused ? 'school' : 'school-outline',
-            Reports: focused ? 'bar-chart' : 'bar-chart-outline',
+            Syllabus: focused ? 'book' : 'book-outline',
+            Attendance: focused ? 'finger-print' : 'finger-print-outline',
             Profile: focused ? 'person' : 'person-outline',
           };
           return <Ionicons name={icons[route.name]} size={22} color={color} />;
@@ -57,8 +48,8 @@ const TeacherTabs = () => {
       })}
     >
       <Tab.Screen name="Home" component={TeacherDashboardScreen} />
-      <Tab.Screen name="Academic" component={AcademicStack} />
-      <Tab.Screen name="Reports" component={DepartmentOverviewScreen} />
+      <Tab.Screen name="Syllabus" component={CourseManagementScreen} />
+      <Tab.Screen name="Attendance" component={TeacherAttendanceScreen} />
       <Tab.Screen name="Profile" component={TeacherProfileScreen} />
     </Tab.Navigator>
   );

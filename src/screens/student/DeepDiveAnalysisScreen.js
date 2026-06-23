@@ -24,6 +24,13 @@ const DeepDiveAnalysisScreen = ({ navigation }) => {
   const [activeSkill, setActiveSkill] = useState(null);
   const [learningPath, setLearningPath] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [viewedSkills, setViewedSkills] = useState({});
+
+  React.useEffect(() => {
+    AsyncStorage.getItem('@viewed_syllabus_gaps').then(val => {
+      if (val) setViewedSkills(JSON.parse(val));
+    });
+  }, []);
 
   const handleExplorePath = async (skillName) => {
     setActiveSkill(skillName);
@@ -39,6 +46,10 @@ const DeepDiveAnalysisScreen = ({ navigation }) => {
         await AsyncStorage.setItem(cacheKey, JSON.stringify(path));
         setLearningPath(path);
       }
+      
+      const updated = { ...viewedSkills, [skillName]: true };
+      setViewedSkills(updated);
+      await AsyncStorage.setItem('@viewed_syllabus_gaps', JSON.stringify(updated));
     } catch (err) {
       console.error(err);
     } finally {
@@ -173,16 +184,25 @@ const DeepDiveAnalysisScreen = ({ navigation }) => {
                 </View>
               </View>
 
-              {isMissing && (
-                <TouchableOpacity 
-                  style={[styles.learnBtn, { borderColor: '#EA580C' }]}
-                  onPress={() => handleExplorePath(skill)}
-                >
-                  <Text style={[styles.learnBtnText, { color: '#EA580C' }]}>
-                    {activeTab === 'academic' ? 'Explore Syllabus Guide' : 'Explore Learning Path'}
-                  </Text>
-                </TouchableOpacity>
-              )}
+              {isMissing && (() => {
+                const isViewed = viewedSkills[skill];
+                const btnBorderColor = isViewed ? '#10B981' : '#EA580C';
+                const btnTextColor = isViewed ? '#10B981' : '#EA580C';
+                const btnText = isViewed 
+                  ? 'View'
+                  : (activeTab === 'academic' ? 'Explore Syllabus Guide' : 'Explore Learning Path');
+
+                return (
+                  <TouchableOpacity 
+                    style={[styles.learnBtn, { borderColor: btnBorderColor }]}
+                    onPress={() => handleExplorePath(skill)}
+                  >
+                    <Text style={[styles.learnBtnText, { color: btnTextColor }]}>
+                      {btnText}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })()}
             </View>
           );
         })}

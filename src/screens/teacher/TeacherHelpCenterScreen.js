@@ -60,11 +60,15 @@ const TeacherHelpCenterScreen = ({ navigation }) => {
 
         {/* Contact Grid */}
         <View style={styles.contactGrid}>
-          <TouchableOpacity style={styles.contactCard}>
+          <TouchableOpacity 
+            style={styles.contactCard} 
+            onPress={() => navigation.navigate('RaiseIssue')}
+            activeOpacity={0.8}
+          >
             <View style={styles.contactIcon}>
               <Ionicons name="chatbubbles-outline" size={24} color={Colors.primary} />
             </View>
-            <Text style={styles.contactLabel}>Live Chat</Text>
+            <Text style={styles.contactLabel}>Raise Issue</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.contactCard}>
             <View style={styles.contactIcon}>

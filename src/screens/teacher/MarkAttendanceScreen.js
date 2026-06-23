@@ -7,10 +7,34 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../../constants/colors';
 import { STUDENTS_LIST } from '../../constants/data';
 import { APP_CONFIG } from '../../config/appConfig';
+import { useUser } from '../../context/UserContext';
 
-const MarkAttendanceScreen = ({ navigation }) => {
+const MEDICAL_STUDENTS_LIST = [
+  { id: '1', rollNo: 'MBBS2021001', name: 'Aravind Sharma', status: null },
+  { id: '2', rollNo: 'MBBS2021002', name: 'Meera Patel', status: 'absent' },
+  { id: '3', rollNo: 'MBBS2021003', name: 'Rohan Verma', status: 'present' },
+  { id: '4', rollNo: 'MBBS2021004', name: 'Aditi Rao', status: 'absent' },
+  { id: '5', rollNo: 'MBBS2021005', name: 'Karan Malhotra', status: null },
+  { id: '6', rollNo: 'MBBS2021006', name: 'Neha Gupta', status: 'present' },
+  { id: '7', rollNo: 'MBBS2021007', name: 'Siddharth Sen', status: null },
+  { id: '8', rollNo: 'MBBS2021008', name: 'Pooja Hegde', status: 'present' },
+];
+
+const MarkAttendanceScreen = ({ navigation, route }) => {
   const insets = useSafeAreaInsets();
-  const [students, setStudents] = useState(STUDENTS_LIST);
+  const { user } = useUser();
+  const { subjectName } = route.params || {};
+
+  const isMedical = 
+    user?.department?.toUpperCase().includes('PAEDIATRICS') || 
+    user?.department?.toUpperCase().includes('PEDIATRICS') ||
+    user?.department?.toUpperCase().includes('PHYSIOLOGY') || 
+    user?.department?.toUpperCase().includes('ANATOMY') || 
+    user?.department?.toUpperCase().includes('MEDICAL') ||
+    user?.department?.toUpperCase().includes('DOCTORS');
+
+  const defaultStudents = isMedical ? MEDICAL_STUDENTS_LIST : STUDENTS_LIST;
+  const [students, setStudents] = useState(defaultStudents);
   const [search, setSearch] = useState('');
   const [activeFilter, setActiveFilter] = useState('All');
 
@@ -39,6 +63,10 @@ const MarkAttendanceScreen = ({ navigation }) => {
     ]);
   };
 
+  const displaySubject = subjectName || (isMedical ? 'Pediatrics Theory' : 'AI & ML');
+  const displayClass = isMedical ? 'MBBS Phase III' : 'B.Tech CSE - 3rd Year';
+  const displaySection = 'Sec A';
+
   return (
     <View style={[styles.container, { paddingBottom: insets.bottom }]}>
       {/* Header */}
@@ -49,17 +77,15 @@ const MarkAttendanceScreen = ({ navigation }) => {
         <View style={styles.headerCenter}>
           <Text style={styles.headerName}>{APP_CONFIG.UNIVERSITY_NAME}</Text>
         </View>
-        <TouchableOpacity style={styles.bellBtn}>
-          <Ionicons name="notifications-outline" size={20} color={Colors.primary} />
-        </TouchableOpacity>
+        <View style={{ width: 36 }} />
       </View>
 
       {/* Session Info */}
       <View style={styles.sessionInfo}>
         <Text style={styles.sessionTag}>SESSION IN PROGRESS</Text>
-        <Text style={styles.sessionTitle}>Attendance: AI & ML</Text>
+        <Text style={styles.sessionTitle}>Attendance: {displaySubject}</Text>
         <Text style={styles.sessionClass}>
-          B.Tech CSE - 3rd Year • <Text style={styles.sessionSection}>Sec A</Text>
+          {displayClass} • <Text style={styles.sessionSection}>{displaySection}</Text>
         </Text>
       </View>
 

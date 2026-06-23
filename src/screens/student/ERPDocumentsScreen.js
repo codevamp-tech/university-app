@@ -19,6 +19,7 @@ const ERPDocumentsScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
   const [apiDocs, setApiDocs] = React.useState([]);
+  const [isLocked, setIsLocked] = React.useState(false);
 
   const yearNum = parseInt(user?.year) || 4;
   const startYear = 2026 - yearNum;
@@ -34,8 +35,9 @@ const ERPDocumentsScreen = ({ navigation }) => {
       if (!accessToken) return;
       try {
         const data = await getDocuments(accessToken);
-        if (data && data.documents) {
-          setApiDocs(data.documents);
+        if (data) {
+          setApiDocs(data.documents || []);
+          setIsLocked(!!data.locked);
         }
       } catch (err) {
         console.warn('[DocumentsScreen] Error loading documents:', err);
@@ -44,6 +46,61 @@ const ERPDocumentsScreen = ({ navigation }) => {
     loadDocs();
   }, [accessToken]);
 
+
+  const isDemoLocked = true;
+  if (isDemoLocked) {
+    return (
+      <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
+        {/* TopAppBar */}
+        <View style={[styles.header, { backgroundColor: colors.background, borderBottomColor: colors.border, borderBottomWidth: 1 }]}>
+          <View style={styles.headerLeft}>
+            <TouchableOpacity onPress={() => navigation.navigate('ERPHome')} style={[styles.backBtn, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
+              <MaterialIcons name="arrow-back" size={22} color={colors.textPrimary} />
+            </TouchableOpacity>
+            <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Document Vault</Text>
+          </View>
+        </View>
+
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 }}>
+          <View style={{
+            width: 90,
+            height: 90,
+            borderRadius: 45,
+            backgroundColor: isDark ? 'rgba(234, 88, 12, 0.15)' : '#FFF7ED',
+            justifyContent: 'center',
+            alignItems: 'center',
+            marginBottom: 24,
+            borderColor: colors.primary,
+            borderWidth: 2
+          }}>
+            <MaterialIcons name="lock" size={48} color={colors.primary} />
+          </View>
+          <Text style={{ fontSize: 24, fontWeight: '900', color: colors.textPrimary, textAlign: 'center', marginBottom: 12 }}>
+            Document Vault Locked
+          </Text>
+          <Text style={{ fontSize: 14, color: colors.textSecondary, textAlign: 'center', lineHeight: 22, paddingHorizontal: 20, marginBottom: 32 }}>
+            The Document Vault is currently locked in this demo space. Please contact the administrator to request credentials access clearance.
+          </Text>
+          <TouchableOpacity
+            style={{
+              backgroundColor: colors.primary,
+              paddingHorizontal: 28,
+              paddingVertical: 14,
+              borderRadius: 24,
+              shadowColor: colors.primary,
+              shadowOffset: { width: 0, height: 6 },
+              shadowOpacity: 0.25,
+              shadowRadius: 10,
+              elevation: 5
+            }}
+            onPress={() => navigation.navigate('ERPHome')}
+          >
+            <Text style={{ color: '#FFFFFF', fontWeight: '800', fontSize: 14 }}>Return to ERP Home</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
@@ -63,6 +120,29 @@ const ERPDocumentsScreen = ({ navigation }) => {
 
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        {isLocked && (
+          <View style={{
+            marginHorizontal: 16,
+            marginTop: 12,
+            backgroundColor: '#FEF2F2',
+            borderColor: '#EF4444',
+            borderWidth: 1,
+            borderRadius: 12,
+            padding: 16,
+            flexDirection: 'row',
+            gap: 12,
+            alignItems: 'center'
+          }}>
+            <MaterialIcons name="lock-outline" size={24} color="#EF4444" />
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: '#991B1B', fontWeight: '800', fontSize: 14 }}>ADMINISTRATIVE HOLD</Text>
+              <Text style={{ color: '#7F1D1D', fontSize: 12, marginTop: 2 }}>
+                Document access is temporarily locked due to outstanding administrative clearance.
+              </Text>
+            </View>
+          </View>
+        )}
+
         {/* Hero */}
         <View style={styles.sectionContainer}>
           <LinearGradient
@@ -211,14 +291,25 @@ const ERPDocumentsScreen = ({ navigation }) => {
                   </View>
                   <Text style={[styles.docTitle, { color: colors.textPrimary }]}>{doc.title}</Text>
                   <Text style={[styles.docDesc, { color: colors.textSecondary }]}>{doc.desc}</Text>
-                  <View style={[styles.statusBadge, { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.2)' : '#D1FAE5' }]}>
-                    <Text style={[styles.statusText, { color: isDark ? '#34D399' : '#065F46' }]}>Verified</Text>
+                  <View style={[styles.statusBadge, { backgroundColor: isLocked ? (isDark ? 'rgba(239, 68, 68, 0.2)' : '#FEE2E2') : (isDark ? 'rgba(16, 185, 129, 0.2)' : '#D1FAE5') }]}>
+                    <Text style={[styles.statusText, { color: isLocked ? '#EF4444' : (isDark ? '#34D399' : '#065F46') }]}>
+                      {isLocked ? 'Locked' : 'Verified'}
+                    </Text>
                   </View>
                   <View style={[styles.docFooter, { borderTopColor: colors.border }]}>
-                    <TouchableOpacity style={styles.docFooterBtn} onPress={() => Alert.alert('Download Started', `${doc.title} is downloading...`)}>
-                      <Text style={[styles.docFooterBtnText, { color: colors.primary }]}>Download PDF</Text>
+                    <TouchableOpacity 
+                      style={styles.docFooterBtn} 
+                      onPress={() => {
+                        if (isLocked) {
+                          Alert.alert('Access Locked', 'This document is locked due to outstanding administrative clearance.');
+                        } else {
+                          Alert.alert('Download Started', `${doc.title} is downloading...`);
+                        }
+                      }}
+                    >
+                      <Text style={[styles.docFooterBtnText, { color: isLocked ? colors.textSecondary : colors.primary }]}>Download PDF</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity style={styles.docFooterBtn}>
+                    <TouchableOpacity style={styles.docFooterBtn} disabled={isLocked}>
                       <Text style={[styles.docFooterBtnText, { color: colors.textSecondary }]}>History</Text>
                     </TouchableOpacity>
                   </View>
