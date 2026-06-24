@@ -1,4 +1,5 @@
 import { APP_CONFIG } from '../config/appConfig';
+import { aiChatCompletionAPI } from './apiService';
 
 // ─── Category Detection ───────────────────────────────────────────────────────
 export function detectCategory(course = '') {
@@ -1026,9 +1027,9 @@ export function generateRoadmap(student, interests = '') {
 }
 
 // ─── Groq LLM Dynamic Roadmap Generation ──────────────────────────────────────
-export async function generateDynamicRoadmap(student, interests) {
-  if (!APP_CONFIG.GROQ_API_KEY) {
-    console.warn("No GROQ_API_KEY provided. Falling back to static roadmap.");
+export async function generateDynamicRoadmap(student, interests, accessToken) {
+  if (!accessToken) {
+    console.warn("No accessToken provided. Falling back to static roadmap.");
     return generateRoadmap(student, interests);
   }
 
@@ -1063,25 +1064,17 @@ Make earlier steps "done" or "current" based roughly on the fact they are in Yea
 `;
 
   try {
-    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${APP_CONFIG.GROQ_API_KEY}`
-      },
-      body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
-        messages: [
-          { role: 'user', content: prompt }
-        ],
-        temperature: 0.7,
-        response_format: { type: "json_object" }
-      })
+    const data = await aiChatCompletionAPI(accessToken, {
+      model: 'llama-3.3-70b-versatile',
+      messages: [
+        { role: 'user', content: prompt }
+      ],
+      temperature: 0.7,
+      response_format: { type: "json_object" }
     });
 
-    const data = await response.json();
-    if (data.error) {
-      console.error("Groq API Error:", data.error);
+    if (!data) {
+      console.error("Groq API Error: empty response data");
       return generateRoadmap(student, interests);
     }
 
@@ -1142,9 +1135,9 @@ export function generateDepartmentInsights(students) {
 }
 
 // ─── Groq LLM Dynamic Learning Path Generation ────────────────────────────────────
-export async function generateLearningPath(student, skillName) {
-  if (!APP_CONFIG.GROQ_API_KEY) {
-    console.warn("No GROQ_API_KEY provided. Falling back to static learning path.");
+export async function generateLearningPath(student, skillName, accessToken) {
+  if (!accessToken) {
+    console.warn("No accessToken provided. Falling back to static learning path.");
     return generateStaticLearningPath(skillName);
   }
 
@@ -1185,25 +1178,17 @@ Use this exact JSON structure:
 `;
 
   try {
-    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${APP_CONFIG.GROQ_API_KEY}`
-      },
-      body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
-        messages: [
-          { role: 'user', content: prompt }
-        ],
-        temperature: 0.7,
-        response_format: { type: "json_object" }
-      })
+    const data = await aiChatCompletionAPI(accessToken, {
+      model: 'llama-3.3-70b-versatile',
+      messages: [
+        { role: 'user', content: prompt }
+      ],
+      temperature: 0.7,
+      response_format: { type: "json_object" }
     });
 
-    const data = await response.json();
-    if (data.error) {
-      console.error("Groq API Error in generateLearningPath:", data.error);
+    if (!data) {
+      console.error("Groq API Error in generateLearningPath: empty response data");
       return generateStaticLearningPath(skillName);
     }
 
@@ -1461,11 +1446,11 @@ export function generateStaticLearningPath(skillName) {
 }
 
 // ─── Groq LLM Dynamic AI Insight ──────────────────────────────────────────────
-export async function fetchDynamicLLMInsight(student) {
+export async function fetchDynamicLLMInsight(student, accessToken) {
   // Use the static insight as a base context for the LLM
   const baseInsight = generateAIInsight(student);
   
-  if (!APP_CONFIG.GROQ_API_KEY) {
+  if (!accessToken) {
     return baseInsight;
   }
 
@@ -1483,21 +1468,13 @@ Do not use markdown. Just return the text. Be inspiring but professional.
 `;
 
   try {
-    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${APP_CONFIG.GROQ_API_KEY}`
-      },
-      body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
-        messages: [{ role: 'user', content: prompt }],
-        temperature: 0.7
-      })
+    const data = await aiChatCompletionAPI(accessToken, {
+      model: 'llama-3.3-70b-versatile',
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.7
     });
 
-    const data = await response.json();
-    if (data.error) return baseInsight;
+    if (!data) return baseInsight;
     
     return data.choices[0].message.content.trim();
   } catch (error) {
@@ -1507,9 +1484,9 @@ Do not use markdown. Just return the text. Be inspiring but professional.
 }
 
 // ─── Groq LLM ATS Resume Builder ──────────────────────────────────────────────
-export async function generateATSResume(student) {
-  if (!APP_CONFIG.GROQ_API_KEY) {
-    throw new Error("GROQ_API_KEY is missing. Cannot generate resume.");
+export async function generateATSResume(student, accessToken) {
+  if (!accessToken) {
+    throw new Error("accessToken is missing. Cannot generate resume.");
   }
 
   const cat = resolveCategory(student);
@@ -1575,22 +1552,14 @@ Guidelines for Education:
 `;
 
   try {
-    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${APP_CONFIG.GROQ_API_KEY}`
-      },
-      body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
-        messages: [{ role: 'user', content: prompt }],
-        temperature: 0.6,
-        response_format: { type: "json_object" }
-      })
+    const data = await aiChatCompletionAPI(accessToken, {
+      model: 'llama-3.3-70b-versatile',
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.6,
+      response_format: { type: "json_object" }
     });
 
-    const data = await response.json();
-    if (data.error) throw new Error(data.error.message || "Groq API Error");
+    if (!data) throw new Error("Groq API Error: empty response data");
 
     let textResponse = data.choices[0].message.content;
     textResponse = textResponse.replace(/```json/g, '').replace(/```/g, '').trim();

@@ -269,7 +269,7 @@ const DashboardScreen = ({ navigation }) => {
         if (cached) {
           setCachedInsight(cached);
         } else {
-          const freshInsight = await fetchDynamicLLMInsight(user);
+          const freshInsight = await fetchDynamicLLMInsight(user, accessToken);
           if (freshInsight) {
             setCachedInsight(freshInsight);
             await AsyncStorage.setItem(key, freshInsight);
@@ -280,7 +280,7 @@ const DashboardScreen = ({ navigation }) => {
       }
     };
     loadInsight();
-  }, [user]);
+  }, [user, accessToken]);
 
   const loadPathwayRetries = React.useCallback(async () => {
     try {
@@ -317,7 +317,7 @@ const DashboardScreen = ({ navigation }) => {
     let isMounted = true;
     setIsGeneratingRoadmap(true);
 
-    generateDynamicRoadmap(user, activeInterests)
+    generateDynamicRoadmap(user, activeInterests, accessToken)
       .then(data => {
         if (isMounted) {
           setRoadmapData(data);

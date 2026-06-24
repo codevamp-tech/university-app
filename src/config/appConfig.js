@@ -22,9 +22,6 @@ export const APP_CONFIG = {
   CONTACT_EMAIL: 'support@quantumuniversity.edu.in',
   PRIMARY_COLOR: '#EA580C',
 
-  // ─── Loaded from .env — see .env.example for setup instructions ────────────
-  GROQ_API_KEY: process.env.EXPO_PUBLIC_GROQ_API_KEY,
-
   // ─── UniCampus Backend API ───────────────────────────────────────────────
   API_BASE_URL: process.env.EXPO_PUBLIC_API_BASE_URL || 'http://54.198.177.105:8000',
   TENANT_ID:    process.env.EXPO_PUBLIC_TENANT_ID    || 'd3b07384-d113-4956-a5db-e0e457e51c89',

@@ -1353,3 +1353,16 @@ export async function syncFacultyData(token) {
   });
   return unwrap(res, null);
 }
+
+/**
+ * POST /api/v1/ai/chat
+ * Generates completions using the secure backend Groq proxy (supporting key rotation & failover).
+ */
+export async function aiChatCompletionAPI(token, payload) {
+  const res = await apiCall('/api/v1/ai/chat', {
+    method: 'POST',
+    headers: authHeaders(token),
+    body: JSON.stringify(payload),
+  });
+  return unwrap(res, null);
+}

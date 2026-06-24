@@ -15,7 +15,7 @@ const { width } = Dimensions.get('window');
 const ResumeBuilderScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
-  const { user } = useUser();
+  const { user, accessToken } = useUser();
   const isMed = user && (user.course?.toLowerCase().includes('mbbs') || user.course?.toLowerCase().includes('medicine') || user.category?.toLowerCase().includes('medical'));
 
   const [resumeData, setResumeData] = useState(null);
@@ -77,7 +77,7 @@ const ResumeBuilderScreen = ({ navigation }) => {
       }
 
       setIsGenerating(true);
-      const freshResume = await generateATSResume(user);
+      const freshResume = await generateATSResume(user, accessToken);
       if (freshResume) {
         setResumeData(freshResume);
         await AsyncStorage.setItem(`@ats_resume_${user.id}`, JSON.stringify(freshResume));

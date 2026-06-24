@@ -17,7 +17,7 @@ const DeepDiveAnalysisScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
 
-  const { user } = useUser();
+  const { user, accessToken } = useUser();
   const isMed = user && (user.course?.toLowerCase().includes('mbbs') || user.course?.toLowerCase().includes('medicine') || user.category?.toLowerCase().includes('medical'));
   const gapData = user ? computeSkillGap(user) : { matchPct: 0, missingSkills: [], expectedSkills: [], academicExpectedSkills: [], academicMissingSkills: [], academicMatchPct: 0, industryExpectedSkills: [], industryMissingSkills: [], industryMatchPct: 0 };
 
@@ -43,7 +43,7 @@ const DeepDiveAnalysisScreen = ({ navigation }) => {
       if (cached) {
         setLearningPath(JSON.parse(cached));
       } else {
-        const path = await generateLearningPath(user, skillName);
+        const path = await generateLearningPath(user, skillName, accessToken);
         await AsyncStorage.setItem(cacheKey, JSON.stringify(path));
         setLearningPath(path);
       }
