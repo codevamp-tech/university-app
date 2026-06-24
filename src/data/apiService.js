@@ -2,7 +2,7 @@
  * apiService.js
  * ─────────────
  * Central service layer for all UniCampus API calls.
- * Base URL: http://54.174.185.143:8000
+ * Base URL: http://54.198.177.105:8000
  *
  * Auth flow:
  *   1. POST /api/v1/auth/login  → { access_token, refresh_token }

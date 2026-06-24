@@ -1,4 +1,4 @@
-const API_BASE = 'http://54.174.185.143:8000';
+const API_BASE = 'http://54.198.177.105:8000';
 const TENANT_ID = 'd3b07384-d113-4956-a5db-e0e457e51c89';
 const PASSWORD = '1234@Uni';
 const username = '2200030010'; // typical roll number
