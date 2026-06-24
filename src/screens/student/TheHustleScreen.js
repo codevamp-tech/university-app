@@ -9,6 +9,7 @@ import { useTheme } from '../../hooks/useTheme';
 import { useUser } from '../../context/UserContext';
 import { getAllStudents } from '../../data/apiService';
 import { LeaderboardPageSkeleton } from '../../components/SkeletonLoader';
+import { getAvatarUrl } from '../../utils/avatar';
 import { getDisplayCourse } from '../../utils/courseDisplay';
 
 const { width } = Dimensions.get('window');
