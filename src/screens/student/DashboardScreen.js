@@ -18,7 +18,7 @@ import { useHealthMetrics } from '../../hooks/useHealthMetrics';
 import { generateAIInsight, generateRoadmap, computeSkillGap, generateDynamicRoadmap, fetchDynamicLLMInsight } from '../../data/aiEngine';
 
 import { booksData } from '../student/library/LibraryMainScreen';
-import { listGrievancesAPI, resetPasswordAPI, uploadAvatarAPI } from '../../data/apiService';
+import { listGrievancesAPI, uploadAvatarAPI } from '../../data/apiService';
 import { getDisplayCourse, isMedicalStudent } from '../../utils/courseDisplay';
 
 const { width } = Dimensions.get('window');
@@ -244,9 +244,7 @@ const DashboardScreen = ({ navigation }) => {
   const isMed = user && (isMedicalStudent(user) || (user.course || '').toLowerCase().includes('mbbs') || (user.category || '').toLowerCase().includes('medical'));
   const [activeMood, setActiveMood] = React.useState(2);
   const [showProfileMenu, setShowProfileMenu] = React.useState(false);
-  const [showResetModal, setShowResetModal] = React.useState(false);
-  const [resetUsername, setResetUsername] = React.useState('');
-  const [resetting, setResetting] = React.useState(false);
+
   const [isHostelMode, setIsHostelMode] = React.useState(false);
   const [gatePassStatus, setGatePassStatus] = React.useState('idle'); // idle, pending, approved
   const [showQRModal, setShowQRModal] = React.useState(false);
@@ -341,23 +339,6 @@ const DashboardScreen = ({ navigation }) => {
     navigation.replace('Login');
   };
 
-  const handleResetPassword = async () => {
-    if (!resetUsername) {
-      Alert.alert('Missing Info', 'Please enter your roll number to reset your password.');
-      return;
-    }
-    setResetting(true);
-    try {
-      await resetPasswordAPI(resetUsername, user?.tenant_id || "123e4567-e89b-12d3-a456-426614174000");
-      Alert.alert('Reset Successful', 'A password reset link has been sent to your registered academic email.');
-      setShowResetModal(false);
-      setResetUsername('');
-    } catch (error) {
-      Alert.alert('Reset Failed', error.message || 'Could not process reset password request.');
-    } finally {
-      setResetting(false);
-    }
-  };
 
   return (
     <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
@@ -435,16 +416,7 @@ const DashboardScreen = ({ navigation }) => {
 
             </TouchableOpacity>
 
-            <TouchableOpacity
-              style={styles.menuItem}
-              onPress={() => {
-                setShowProfileMenu(false);
-                setShowResetModal(true);
-              }}
-            >
-              <MaterialCommunityIcons name="lock-reset" size={20} color={colors.textSecondary} />
-              <Text style={[styles.menuItemText, { color: colors.textPrimary }]}>Reset Password</Text>
-            </TouchableOpacity>
+
 
             <View style={styles.menuItem}>
               <View style={styles.menuItemLeft}>
@@ -488,38 +460,7 @@ const DashboardScreen = ({ navigation }) => {
         </TouchableOpacity>
       </Modal>
 
-      {/* Forgot Password Modal */}
-      <Modal
-        visible={showResetModal}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={() => setShowResetModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
-            <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>Reset Password</Text>
-            <Text style={[styles.modalSubtitle, { color: colors.textSecondary }]}>
-              Enter your roll number to receive password reset instructions.
-            </Text>
-            <TextInput
-              style={[styles.modalInput, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F3F4F6', color: colors.textPrimary }]}
-              placeholder="Roll Number"
-              placeholderTextColor={colors.textSecondary}
-              value={resetUsername}
-              onChangeText={setResetUsername}
-              autoCapitalize="none"
-            />
-            <View style={styles.modalActions}>
-              <TouchableOpacity style={styles.modalBtnCancel} onPress={() => setShowResetModal(false)}>
-                <Text style={styles.modalBtnTextCancel}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.modalBtnSubmit} onPress={handleResetPassword} disabled={resetting}>
-                <Text style={styles.modalBtnTextSubmit}>{resetting ? 'Sending...' : 'Send Reset Link'}</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+
 
       {/* First-Time Profile Image Setup Modal */}
       <Modal
