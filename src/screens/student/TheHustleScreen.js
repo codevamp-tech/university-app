@@ -7,7 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { useTheme } from '../../hooks/useTheme';
 import { useUser } from '../../context/UserContext';
-import { fetchStudentsFromSheet } from '../../data/googleSheetsService';
+import { getAllStudents } from '../../data/apiService';
 import { LeaderboardPageSkeleton } from '../../components/SkeletonLoader';
 import { getDisplayCourse } from '../../utils/courseDisplay';
 
@@ -16,7 +16,7 @@ const { width } = Dimensions.get('window');
 const TheHustleScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
-  const { user } = useUser();
+  const { user, accessToken } = useUser();
 
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -26,9 +26,25 @@ const TheHustleScreen = ({ navigation }) => {
       let active = true;
       const loadData = async () => {
         try {
-          const list = await fetchStudentsFromSheet();
-          if (active) {
-            setStudents(list);
+          if (accessToken) {
+            const list = await getAllStudents(accessToken);
+            if (active) {
+              const mapped = list.map(s => ({
+                id: s.rollno || s.username || s.id,
+                name: s.full_name || s.username || 'Student',
+                course: s.course,
+                branch: s.branch,
+                cgpa: s.cgpa || 0,
+                attendance: s.attendance || 0,
+                certsDone: s.certificates_done || [],
+                certsInProgress: s.certificates_in_progress || [],
+                leadership: [],
+                extracurricular: [],
+                gender: 'M',
+                avatar_url: s.avatar_url,
+              }));
+              setStudents(mapped);
+            }
           }
         } catch (err) {
           console.warn('Leaderboard loading failed:', err);
@@ -40,7 +56,7 @@ const TheHustleScreen = ({ navigation }) => {
       };
       loadData();
       return () => { active = false; };
-    }, [])
+    }, [accessToken])
   );
 
   // Compute leaderboard scores
@@ -78,15 +94,13 @@ const TheHustleScreen = ({ navigation }) => {
     ));
 
     // Determine avatar
-    let avatar;
-    if (isMe && user.avatar_url) {
-      avatar = user.avatar_url;
-    } else {
-      const isFemaleAvatar = s.gender === 'F' || s.gender === 'Female';
-      const hash = s.name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % 99;
-      avatar = isFemaleAvatar
-        ? `https://randomuser.me/api/portraits/women/${hash}.jpg`
-        : `https://randomuser.me/api/portraits/men/${hash}.jpg`;
+    let avatar = s.avatar_url;
+    if (!avatar) {
+      if (isMe && user.avatar_url) {
+        avatar = user.avatar_url;
+      } else {
+        avatar = getAvatarUrl(s.name);
+      }
     }
 
     return {
@@ -120,9 +134,7 @@ const TheHustleScreen = ({ navigation }) => {
     leadCount: 1,
     extraCount: 2,
     certCount: 2,
-    avatar: user.avatar_url || (user.gender === 'F' || user.gender === 'Female'
-      ? `https://randomuser.me/api/portraits/women/${user.name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % 99}.jpg`
-      : `https://randomuser.me/api/portraits/men/${user.name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % 99}.jpg`),
+    avatar: getAvatarUrl(user.avatar_url || user.name),
   } : {
     id: 'mock',
     name: 'Student',
@@ -131,7 +143,7 @@ const TheHustleScreen = ({ navigation }) => {
     leadCount: 1,
     extraCount: 2,
     certCount: 2,
-    avatar: 'https://randomuser.me/api/portraits/men/1.jpg',
+    avatar: getAvatarUrl('Student'),
   });
 
   const myRank = myRecord.rank;

@@ -10,6 +10,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { uploadAvatarAPI, createJournalAPI, listJournalAPI } from '../../../data/apiService';
 import { useUser } from '../../../context/UserContext';
 import { APP_CONFIG } from '../../../config/appConfig';
+import { getAvatarUrl } from '../../../utils/avatar';
 
 const { width } = Dimensions.get('window');
 
@@ -155,7 +156,7 @@ const CampusJournalReflectScreen = ({ navigation }) => {
         </TouchableOpacity>
         <View style={styles.headerTitleContainer}>
           <Image
-            source={{ uri: user?.avatar_url || (user?.gender === 'F' || user?.gender === 'Female' ? 'https://images.pexels.com/photos/733872/pexels-photo-733872.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=500' : 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=500') }}
+            source={{ uri: getAvatarUrl(user?.avatar_url || user?.name) }}
             style={styles.headerProfile}
           />
           <Text style={styles.headerTitle}>New Journal Entry</Text>

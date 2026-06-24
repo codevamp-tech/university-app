@@ -12,7 +12,7 @@ import { useTheme } from '../../hooks/useTheme';
 
 const StudentSearchScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
-  const { accessToken } = useUser();
+  const { accessToken, user } = useUser();
   const { colors, isDark } = useTheme();
   const [searchQuery, setSearchQuery] = useState('');
   const [users, setUsers] = useState([]);
@@ -43,6 +43,7 @@ const StudentSearchScreen = ({ navigation }) => {
       const res = await followUserAPI(accessToken, userId);
       if (res) {
         Alert.alert("Success", "Follow request sent!");
+        setUsers(prev => prev.map(u => u.id === userId ? { ...u, connection_status: 'Pending' } : u));
       }
     } catch (error) {
       console.warn("Follow error:", error);
@@ -79,7 +80,7 @@ const StudentSearchScreen = ({ navigation }) => {
         <Image source={{ uri: getAvatarUrl(item.avatar_url || item.username) }} style={{ width: 50, height: 50, borderRadius: 25 }} />
       </View>
       <View style={styles.studentInfo}>
-        <Text style={[styles.studentName, { color: colors.textPrimary, fontSize: 16 }]}>{item.username}</Text>
+        <Text style={[styles.studentName, { color: colors.textPrimary, fontSize: 16 }]}>{item.name || item.username}</Text>
         <Text style={[styles.studentCourse, { color: colors.textSecondary, fontSize: 13, marginTop: 2 }]}>
           {item.course || 'Student'} {item.branch ? `• ${item.branch}` : ''}
         </Text>
@@ -88,10 +89,20 @@ const StudentSearchScreen = ({ navigation }) => {
         </Text>
       </View>
       <TouchableOpacity 
-        style={{ backgroundColor: isDark ? colors.background : '#F3F4F6', paddingHorizontal: 14, paddingVertical: 6, borderRadius: 16, borderWidth: 1, borderColor: colors.border }}
+        style={{ 
+          backgroundColor: item.connection_status === 'Pending' || item.connection_status === 'Connected' ? colors.border : (isDark ? colors.background : '#F3F4F6'), 
+          paddingHorizontal: 14, 
+          paddingVertical: 6, 
+          borderRadius: 16, 
+          borderWidth: 1, 
+          borderColor: colors.border 
+        }}
+        disabled={item.connection_status === 'Pending' || item.connection_status === 'Connected'}
         onPress={() => handleFollow(item.id)}
       >
-        <Text style={{ color: colors.primary, fontWeight: '700', fontSize: 12 }}>Connect</Text>
+        <Text style={{ color: item.connection_status === 'Pending' || item.connection_status === 'Connected' ? colors.textSecondary : colors.primary, fontWeight: '700', fontSize: 12 }}>
+          {item.connection_status === 'Pending' ? 'Pending' : item.connection_status === 'Connected' ? 'Connected' : 'Connect'}
+        </Text>
       </TouchableOpacity>
     </TouchableOpacity>
   );

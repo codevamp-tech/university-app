@@ -16,7 +16,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../../hooks/useTheme';
 import { APP_CONFIG } from '../../../config/appConfig';
 import { useUser } from '../../../context/UserContext';
-import { listMoodEntriesAPI, createMoodEntryAPI } from '../../../data/apiService';
+import { listMoodEntriesAPI, createMoodEntryAPI, uploadAvatarAPI } from '../../../data/apiService';
+import * as ImagePicker from 'expo-image-picker';
 
 const { width } = Dimensions.get('window');
 
@@ -50,17 +51,40 @@ const MoodJournalScreen = ({ navigation }) => {
   const [activeMood, setActiveMood] = useState('Inspired');
   const [journalText, setJournalText] = useState('');
   const [logs, setLogs] = useState([]);
+  const [selectedImage, setSelectedImage] = useState(null);
+
+  const loadLogs = async () => {
+    if (!user?.accessToken) return;
+    try {
+      const data = await listMoodEntriesAPI(user.accessToken);
+      setLogs(data);
+    } catch (e) {
+      console.warn('Failed to load mood logs:', e);
+    }
+  };
+
+  const handlePickImage = async () => {
+    try {
+      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (permissionResult.granted === false) {
+        Alert.alert("Permission Required", "You need to allow access to your photos to attach an image.");
+        return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        quality: 0.8,
+      });
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        setSelectedImage(result.assets[0].uri);
+      }
+    } catch (err) {
+      console.warn("Error picking image:", err);
+      Alert.alert("Error", "Failed to select image.");
+    }
+  };
 
   useEffect(() => {
-    const loadLogs = async () => {
-      if (!user?.accessToken) return;
-      try {
-        const data = await listMoodEntriesAPI(user.accessToken);
-        setLogs(data);
-      } catch (e) {
-        console.warn('Failed to load mood logs:', e);
-      }
-    };
     loadLogs();
   }, [user?.accessToken]);
 
@@ -125,27 +149,6 @@ const MoodJournalScreen = ({ navigation }) => {
               ))}
             </View>
           </View>
-
-          {/* AI Emotional Insight */}
-          <LinearGradient
-            colors={[colors.primary, colors.primaryDark]}
-            style={styles.aiInsightCard}
-          >
-            <View style={styles.aiHeader}>
-              <MaterialIcons name="auto-awesome" size={14} color="#FFFFFF" />
-              <Text style={styles.aiLabel}>AI EMOTIONAL INSIGHTS</Text>
-            </View>
-            <Text style={styles.aiText}>
-              "Your week shows a steady climb in academic focus. Remember to breathe between B.Tech labs. You're doing great!"
-            </Text>
-            <MaterialCommunityIcons
-              name="cog-outline"
-              size={120}
-              color="rgba(255,255,255,0.1)"
-              style={styles.aiDecorIcon}
-            />
-          </LinearGradient>
-
         </View>
 
         {/* Thought Prompt Section */}
@@ -161,11 +164,29 @@ const MoodJournalScreen = ({ navigation }) => {
             value={journalText}
             onChangeText={setJournalText}
           />
+          {selectedImage && (
+            <View style={{ position: 'relative', marginBottom: 16 }}>
+              <Image source={{ uri: selectedImage }} style={{ width: '100%', height: 150, borderRadius: 16 }} />
+              <TouchableOpacity 
+                style={{ 
+                  position: 'absolute', 
+                  top: 8, 
+                  right: 8, 
+                  backgroundColor: 'rgba(0,0,0,0.6)', 
+                  borderRadius: 16, 
+                  padding: 4 
+                }}
+                onPress={() => setSelectedImage(null)}
+              >
+                <MaterialIcons name="close" size={20} color="#FFF" />
+              </TouchableOpacity>
+            </View>
+          )}
           <View style={styles.inputFooter}>
             <View style={styles.attachmentIcons}>
               <TouchableOpacity 
                 style={[styles.attachBtn, { backgroundColor: isDark ? colors.background : '#F5F6F7' }]}
-                onPress={() => Alert.alert('Premium feature', 'Unlock image attachments in mood journal.')}
+                onPress={handlePickImage}
               >
                 <MaterialIcons name="image" size={20} color={isDark ? '#818CF8' : '#4953AC'} />
               </TouchableOpacity>
@@ -184,37 +205,37 @@ const MoodJournalScreen = ({ navigation }) => {
                   return;
                 }
                 
-                const moodEmojis = {
-                  Calm: '😌',
-                  Inspired: '✨',
-                  Tired: '😴',
-                  Pensive: '🤔',
-                };
-                const moodBgs = {
-                  Calm: 'rgba(0, 102, 102, 0.1)',
-                  Inspired: 'rgba(139, 75, 0, 0.1)',
-                  Tired: 'rgba(73, 83, 172, 0.1)',
-                  Pensive: 'rgba(89, 92, 93, 0.1)',
-                };
                 const moodValues = {
-                  Calm: 4, // out of 5
+                  Calm: 4,
                   Inspired: 5,
                   Tired: 2,
                   Pensive: 3,
                 };
                 
                 try {
-                  const newEntry = await createMoodEntryAPI(user.accessToken, {
+                  let uploadedImageUrl = null;
+                  if (selectedImage) {
+                    const uploadRes = await uploadAvatarAPI(user.accessToken, selectedImage);
+                    if (uploadRes.ok && uploadRes.json?.success) {
+                      uploadedImageUrl = uploadRes.json.data.avatar_url;
+                    } else {
+                      throw new Error(uploadRes.json?.message || "Failed to upload image to Cloudinary");
+                    }
+                  }
+
+                  await createMoodEntryAPI(user.accessToken, {
                     mood: activeMood,
                     intensity: moodValues[activeMood] || 3,
                     notes: journalText,
+                    image_url: uploadedImageUrl
                   });
-                  setLogs([newEntry, ...logs]);
+                  await loadLogs();
                   Alert.alert('Journal Logged! 📝', 'Your mood has been logged successfully.');
                   setJournalText('');
+                  setSelectedImage(null);
                   navigation.goBack();
                 } catch (e) {
-                  Alert.alert('Error', 'Failed to save mood entry.');
+                  Alert.alert('Error', e.message || 'Failed to save mood entry.');
                 }
               }}
             >
@@ -273,6 +294,13 @@ const MoodJournalScreen = ({ navigation }) => {
                   <Text style={[styles.logDesc, { color: colors.textSecondary }]} numberOfLines={2}>
                     {log.notes}
                   </Text>
+                  {log.image_url && (
+                    <Image 
+                      source={{ uri: log.image_url }} 
+                      style={{ width: '100%', height: 120, borderRadius: 12, marginTop: 8 }} 
+                      resizeMode="cover"
+                    />
+                  )}
                 </View>
               </TouchableOpacity>
               );

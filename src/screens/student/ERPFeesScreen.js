@@ -117,7 +117,7 @@ const ERPFeesScreen = ({ navigation }) => {
     ? (user.branch && !user.course.includes(user.branch) ? `${user.course} - ${user.branch}` : user.course)
     : 'B.Tech Computer Science Engineering';
 
-  const isDemoLocked = true;
+  const isDemoLocked = isLocked;
   if (isDemoLocked) {
     return (
       <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>

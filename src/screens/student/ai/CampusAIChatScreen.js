@@ -13,6 +13,7 @@ import {
   Dimensions,
   Animated,
   SafeAreaView,
+  Alert,
 } from 'react-native';
 import { Ionicons, MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -21,6 +22,13 @@ import { APP_CONFIG } from '../../../config/appConfig';
 const { width } = Dimensions.get('window');
 
 const CampusAIChatScreen = ({ navigation, route }) => {
+  const handleFeatureLockAlert = () => {
+    Alert.alert(
+      'Premium Feature',
+      'This feature is locked in the free trial.'
+    );
+  };
+
   const initialQuery = route.params?.initialQuery || '';
   const [messages, setMessages] = useState([]);
   const [inputText, setInputText] = useState('');
@@ -266,8 +274,13 @@ const CampusAIChatScreen = ({ navigation, route }) => {
       <View style={styles.quickActions}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, gap: 8 }}>
           {['Exam schedule', 'Fee status', 'Upcoming deadlines'].map((item, idx) => (
-            <TouchableOpacity key={idx} style={styles.actionChip} onPress={() => handleSend(item)}>
-              <Text style={styles.actionChipText}>{item}</Text>
+            <TouchableOpacity 
+              key={idx} 
+              style={[styles.actionChip, { opacity: 0.6, backgroundColor: '#E5E7EB', flexDirection: 'row', alignItems: 'center', gap: 6 }]} 
+              onPress={handleFeatureLockAlert}
+            >
+              <Ionicons name="lock-closed" size={14} color="#9CA3AF" />
+              <Text style={[styles.actionChipText, { color: '#9CA3AF' }]}>{item}</Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
@@ -275,27 +288,30 @@ const CampusAIChatScreen = ({ navigation, route }) => {
 
       {/* Input Section */}
       <SafeAreaView style={styles.inputArea}>
-        <View style={styles.inputInner}>
-          <TouchableOpacity style={styles.iconBtn}>
-            <Ionicons name="attach" size={22} color="#6B7280" />
-          </TouchableOpacity>
+        <TouchableOpacity 
+          activeOpacity={0.8}
+          style={[styles.inputInner, { opacity: 0.6 }]} 
+          onPress={handleFeatureLockAlert}
+        >
+          <View style={styles.iconBtn}>
+            <Ionicons name="lock-closed" size={22} color="#9CA3AF" />
+          </View>
           <TextInput
-            style={styles.input}
-            placeholder={`Ask ${APP_CONFIG.UNIVERSITY_SHORT_NAME} anything...`}
+            style={[styles.input, { color: '#9CA3AF', backgroundColor: '#E5E7EB' }]}
+            placeholder="AI Chatbot is locked in trial..."
             placeholderTextColor="#9CA3AF"
-            value={inputText}
-            onChangeText={setInputText}
-            onSubmitEditing={() => handleSend()}
+            value=""
+            editable={false}
           />
-          <TouchableOpacity style={styles.iconBtn}>
-            <Ionicons name="mic-outline" size={22} color="#6B7280" />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.sendBtn} onPress={() => handleSend()}>
-            <LinearGradient colors={['#EA580C', '#9A3412']} style={styles.sendBtnGradient}>
-              <Ionicons name="search" size={18} color="#FFFFFF" />
+          <View style={styles.iconBtn}>
+            <Ionicons name="mic-outline" size={22} color="#9CA3AF" />
+          </View>
+          <View style={styles.sendBtn}>
+            <LinearGradient colors={['#9CA3AF', '#4B5563']} style={styles.sendBtnGradient}>
+              <Ionicons name="lock-closed-outline" size={18} color="#FFFFFF" />
             </LinearGradient>
-          </TouchableOpacity>
-        </View>
+          </View>
+        </TouchableOpacity>
       </SafeAreaView>
     </KeyboardAvoidingView>
   );

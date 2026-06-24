@@ -8,8 +8,9 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../hooks/useTheme';
 import { APP_CONFIG } from '../../config/appConfig';
 import { useUser } from '../../context/UserContext';
-import { getStartups, createStartup, submitPitch, triggerCofounderMatch } from '../../data/apiService';
+import { getStartups, createStartup, submitPitch, triggerCofounderMatch, uploadDocumentAPI } from '../../data/apiService';
 import { getAvatarUrl } from '../../utils/avatar';
+import * as DocumentPicker from 'expo-document-picker';
 
 const { width } = Dimensions.get('window');
 
@@ -74,6 +75,29 @@ const VentureScreen = ({ navigation }) => {
   // Student's own posted startups states
   const [myStartups, setMyStartups] = useState([]);
   const [myLoading, setMyLoading] = useState(false);
+
+  const [proposalFile, setProposalFile] = useState(null);
+
+  const handlePickDocument = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: 'application/pdf',
+        copyToCacheDirectory: true,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const pickedFile = result.assets[0];
+        setProposalFile({
+          uri: pickedFile.uri,
+          name: pickedFile.name,
+          size: pickedFile.size,
+        });
+      }
+    } catch (err) {
+      console.warn('Error picking document:', err);
+      Alert.alert('Error', 'Failed to select document.');
+    }
+  };
 
   const getStageLabel = (stage) => {
     if (isMed) {
@@ -174,9 +198,17 @@ const VentureScreen = ({ navigation }) => {
 
       const newVenture = await createStartup(accessToken, payload);
       
-      // 2. Submit the pitch deck
+      // 2. Upload and submit the pitch deck
       if (newVenture && newVenture.id) {
-        const deckUrl = `https://university.edu/decks/${encodeURIComponent(vName.trim().replace(/\s+/g, '_'))}_deck.pdf`;
+        let deckUrl = `https://university.edu/decks/${encodeURIComponent(vName.trim().replace(/\s+/g, '_'))}_deck.pdf`;
+        if (proposalFile) {
+          const uploadRes = await uploadDocumentAPI(accessToken, proposalFile.uri, proposalFile.name);
+          if (uploadRes.ok && uploadRes.json?.success) {
+            deckUrl = uploadRes.json.data.document_url;
+          } else {
+            throw new Error(uploadRes.json?.message || "Failed to upload document to Cloudinary");
+          }
+        }
         await submitPitch(accessToken, {
           venture_id: newVenture.id,
           deck_url: deckUrl
@@ -190,6 +222,7 @@ const VentureScreen = ({ navigation }) => {
       // Reset form fields
       setVName('');
       setVPitch('');
+      setProposalFile(null);
       
       // Refresh list
       fetchAllStartups();
@@ -276,14 +309,34 @@ const VentureScreen = ({ navigation }) => {
               </View>
             </View>
             <TouchableOpacity 
-              style={styles.startMatchBtn}
-              onPress={handleCoFounderMatch}
-              disabled={matching}
+              style={[
+                styles.startMatchBtn,
+                isMed && {
+                  opacity: 0.85,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 6,
+                }
+              ]}
+              onPress={() => {
+                if (isMed) {
+                  Alert.alert('Premium Feature', 'This feature is locked in the free trial.');
+                } else {
+                  handleCoFounderMatch();
+                }
+              }}
+              disabled={!isMed && matching}
             >
               {matching ? (
                 <ActivityIndicator size="small" color={isDark ? '#E0E7FF' : (isMed ? '#BE123C' : '#4338CA')} />
               ) : (
-                <Text style={[styles.startMatchBtnText, { color: isDark ? '#E0E7FF' : (isMed ? '#BE123C' : '#4338CA') }]}>{isMed ? 'Start Collaborating' : 'Start Matching'}</Text>
+                <>
+                  {isMed && <MaterialIcons name="lock" size={14} color={isDark ? '#E0E7FF' : '#BE123C'} />}
+                  <Text style={[styles.startMatchBtnText, { color: isDark ? '#E0E7FF' : (isMed ? '#BE123C' : '#4338CA') }]}>
+                    {isMed ? 'Start Collaborating' : 'Start Matching'}
+                  </Text>
+                </>
               )}
             </TouchableOpacity>
           </View>
@@ -451,9 +504,33 @@ const VentureScreen = ({ navigation }) => {
             />
           </View>
 
-          <TouchableOpacity style={[styles.uploadArea, { borderColor: colors.border, backgroundColor: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)' }]}>
-            <MaterialIcons name="upload-file" size={24} color={colors.textSecondary} />
-            <Text style={[styles.uploadText, { color: colors.textSecondary }]}>{isMed ? 'UPLOAD RESEARCH PROPOSAL / HYPOTHESIS (PDF)' : 'UPLOAD PITCH DECK (PDF)'}</Text>
+          <TouchableOpacity 
+            style={[
+              styles.uploadArea, 
+              { 
+                borderColor: proposalFile ? colors.primary : colors.border, 
+                backgroundColor: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)' 
+              }
+            ]}
+            onPress={handlePickDocument}
+          >
+            <MaterialIcons name={proposalFile ? "check-circle" : "upload-file"} size={24} color={proposalFile ? colors.primary : colors.textSecondary} />
+            <Text style={[styles.uploadText, { color: proposalFile ? colors.primary : colors.textSecondary }]}>
+              {proposalFile 
+                ? `${proposalFile.name} (${(proposalFile.size / (1024 * 1024)).toFixed(2)} MB)`
+                : (isMed ? 'UPLOAD RESEARCH PROPOSAL / HYPOTHESIS (PDF)' : 'UPLOAD PITCH DECK (PDF)')}
+            </Text>
+            {proposalFile && (
+              <TouchableOpacity 
+                style={{ marginTop: 8 }} 
+                onPress={(e) => {
+                  e.stopPropagation();
+                  setProposalFile(null);
+                }}
+              >
+                <Text style={{ color: '#EF4444', fontWeight: '800', fontSize: 11 }}>REMOVE FILE</Text>
+              </TouchableOpacity>
+            )}
           </TouchableOpacity>
 
           <TouchableOpacity 

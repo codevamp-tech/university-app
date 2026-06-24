@@ -47,7 +47,7 @@ const ERPDocumentsScreen = ({ navigation }) => {
   }, [accessToken]);
 
 
-  const isDemoLocked = true;
+  const isDemoLocked = isLocked;
   if (isDemoLocked) {
     return (
       <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>

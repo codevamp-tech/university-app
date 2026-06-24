@@ -1,12 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, Image
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ActivityIndicator
 } from 'react-native';
 import { Ionicons, MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { APP_CONFIG } from '../../config/appConfig';
-import { followUserAPI } from '../../data/apiService';
+import { followUserAPI, getPublicProfile, connectionStatsAPI } from '../../data/apiService';
 import { getAvatarUrl } from '../../utils/avatar';
 import { useTheme } from '../../hooks/useTheme';
 import { useUser } from '../../context/UserContext';
@@ -17,6 +17,40 @@ const OtherStudentProfileScreen = ({ route, navigation }) => {
   const { colors, isDark } = useTheme();
   const [connectionStatus, setConnectionStatus] = useState('Connect'); // 'Connect', 'Pending', 'Connected'
 
+  const [profile, setProfile] = useState(null);
+  const [stats, setStats] = useState({ followers: 0, following: 0, connections: 0 });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let isMounted = true;
+    async function loadData() {
+      if (!student?.id || !accessToken) {
+        setLoading(false);
+        return;
+      }
+      try {
+        const [profData, statsData] = await Promise.all([
+          getPublicProfile(accessToken, student.id),
+          connectionStatsAPI(accessToken, student.id)
+        ]);
+        if (isMounted) {
+          if (profData) {
+            setProfile(profData);
+            if (profData.connection_status) {
+              setConnectionStatus(profData.connection_status);
+            }
+          }
+          if (statsData) setStats(statsData);
+        }
+      } catch (err) {
+        console.warn('Error loading public profile data:', err);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    }
+    loadData();
+    return () => { isMounted = false; };
+  }, [student?.id, accessToken]);
 
   const handleConnect = async () => {
     if (connectionStatus === 'Connect' && student?.id) {
@@ -43,6 +77,18 @@ const OtherStudentProfileScreen = ({ route, navigation }) => {
 
   if (!student) return null;
 
+  if (loading) {
+    return (
+      <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background, justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    );
+  }
+
+  const courseTitle = profile?.course 
+    ? (profile.branch ? `${profile.course} ${profile.branch}` : profile.course)
+    : (student?.course || 'Student');
+
   return (
     <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
       <View style={[styles.header, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
@@ -60,26 +106,26 @@ const OtherStudentProfileScreen = ({ route, navigation }) => {
         <View style={styles.profileHeroSection}>
           <View style={styles.profileHeroCard}>
             <LinearGradient colors={['#4953ac', '#8b2fc9']} style={styles.heroImgPlaceholder}>
-              <Image source={{ uri: getAvatarUrl(student.avatar_url || student.name) }} style={{ width: '100%', height: '100%', opacity: 0.6 }} />            </LinearGradient>
+              <Image source={{ uri: getAvatarUrl(profile?.avatar_url || student.avatar_url || student.name) }} style={{ width: '100%', height: '100%', opacity: 0.6 }} />            </LinearGradient>
             <LinearGradient colors={['transparent', 'rgba(0,0,0,0.85)']} style={styles.heroOverlay}>
-              <Text style={styles.heroName}>{student.name}</Text>
+              <Text style={styles.heroName}>{profile?.full_name || student.name}</Text>
             </LinearGradient>
           </View>
         </View>
 
         {/* Major & Batch Info */}
         <View style={styles.basicInfo}>
-          <Text style={[styles.majorText, { color: colors.primary }]}>B.Tech Computer Science Engineering</Text>
-          <Text style={[styles.batchSubText, { color: colors.textSecondary }]}>Batch of 2025 • {student.rollNo}</Text>
+          <Text style={[styles.majorText, { color: colors.primary }]}>{courseTitle}</Text>
+          <Text style={[styles.batchSubText, { color: colors.textSecondary }]}>Batch of {profile?.batch_year || '2025'} • {profile?.rollno || student.rollNo}</Text>
           
           <View style={styles.capsuleRow}>
             <View style={[styles.capsule, { backgroundColor: colors.card, borderColor: colors.border }]}>
               <Text style={styles.capsuleLabel}>FOLLOWERS</Text>
-              <Text style={[styles.capsuleValue, { color: colors.textPrimary }]}>{student.followers || '1'}</Text>
+              <Text style={[styles.capsuleValue, { color: colors.textPrimary }]}>{stats.followers}</Text>
             </View>
             <View style={[styles.capsule, { backgroundColor: colors.card, borderColor: colors.border }]}>
               <Text style={styles.capsuleLabel}>CONNECTIONS</Text>
-              <Text style={[styles.capsuleValue, { color: colors.textPrimary }]}>{student.connections || '0'}</Text>
+              <Text style={[styles.capsuleValue, { color: colors.textPrimary }]}>{stats.connections}</Text>
             </View>
           </View>
 
@@ -117,8 +163,7 @@ const OtherStudentProfileScreen = ({ route, navigation }) => {
         <View style={[styles.sectionCard, { backgroundColor: colors.card }]}>
           <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>About</Text>
           <Text style={[styles.bioText, { color: colors.textSecondary }]}>
-            Passionate software engineering student deeply interested in Full Stack Development and AI. 
-            Actively participating in hackathons and leading the {APP_CONFIG.UNIVERSITY_SHORT_NAME} Coding Club. Let's connect and build something awesome together!
+            {profile?.bio || 'No biography details provided.'}
           </Text>
         </View>
 
@@ -126,12 +171,18 @@ const OtherStudentProfileScreen = ({ route, navigation }) => {
         <View style={[styles.sectionCard, { backgroundColor: colors.card }]}>
           <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>Top Skills</Text>
           <View style={styles.skillsRow}>
-            <View style={[styles.skillBadge, { backgroundColor: isDark ? colors.background : '#F3F4F6', borderColor: colors.border }]}><Text style={[styles.skillText, { color: colors.textPrimary }]}>React Native</Text></View>
-            <View style={[styles.skillBadge, { backgroundColor: isDark ? colors.background : '#F3F4F6', borderColor: colors.border }]}><Text style={[styles.skillText, { color: colors.textPrimary }]}>Node.js</Text></View>
-            <View style={[styles.skillBadge, { backgroundColor: isDark ? colors.background : '#F3F4F6', borderColor: colors.border }]}><Text style={[styles.skillText, { color: colors.textPrimary }]}>Cloud Computing</Text></View>
-            <View style={[styles.skillBadge, { backgroundColor: isDark ? colors.background : '#F3F4F6', borderColor: colors.border }]}><Text style={[styles.skillText, { color: colors.textPrimary }]}>Leadership</Text></View>
+            {profile?.current_skills && profile.current_skills.length > 0 ? (
+              profile.current_skills.map((skill, idx) => (
+                <View key={idx} style={[styles.skillBadge, { backgroundColor: isDark ? colors.background : '#F3F4F6', borderColor: colors.border }]}>
+                  <Text style={[styles.skillText, { color: colors.textPrimary }]}>{skill}</Text>
+                </View>
+              ))
+            ) : (
+              <Text style={{ color: colors.textSecondary, fontSize: 13 }}>No skills listed yet.</Text>
+            )}
           </View>
         </View>
+
 
         <View style={{ height: 100 }} />
       </ScrollView>

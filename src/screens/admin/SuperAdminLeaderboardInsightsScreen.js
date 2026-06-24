@@ -12,8 +12,7 @@ import {
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../../hooks/useTheme';
 import { useUser } from '../../context/UserContext';
-import { getSuperAdminAnalytics } from '../../data/apiService';
-import { fetchStudentsFromSheet } from '../../data/googleSheetsService';
+import { getSuperAdminAnalytics, getAllStudents } from '../../data/apiService';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SkeletonBlock } from '../../components/SkeletonLoader';
 
@@ -30,10 +29,26 @@ const SuperAdminLeaderboardInsightsScreen = () => {
       if (accessToken) {
         const [stats, list] = await Promise.all([
           getSuperAdminAnalytics(accessToken),
-          fetchStudentsFromSheet()
+          getAllStudents(accessToken)
         ]);
         if (stats) setData(stats);
-        if (list) setStudents(list);
+        if (list) {
+          const mapped = list.map(s => ({
+            id: s.rollno || s.username || s.id,
+            name: s.full_name || s.username || 'Student',
+            course: s.course,
+            branch: s.branch,
+            cgpa: s.cgpa || 0,
+            attendance: s.attendance || 0,
+            certsDone: s.certificates_done || [],
+            certsInProgress: s.certificates_in_progress || [],
+            leadership: [],
+            extracurricular: [],
+            gender: 'M',
+            avatar_url: s.avatar_url,
+          }));
+          setStudents(mapped);
+        }
       }
     } catch (err) {
       console.warn('[LeaderboardInsights] Fetch error:', err);
@@ -90,11 +105,14 @@ const SuperAdminLeaderboardInsightsScreen = () => {
     const ambassadorBonus = hasAmbassador ? 5000 : 0;
     const totalScore = (certCount * 500) + (extraCount * 500) + (leadCount * 1000) + academicScore + ambassadorBonus;
 
-    const isFemaleAvatar = s.gender === 'F' || s.gender === 'Female';
-    const hash = s.name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % 99;
-    const avatar = isFemaleAvatar
-      ? `https://randomuser.me/api/portraits/women/${hash}.jpg`
-      : `https://randomuser.me/api/portraits/men/${hash}.jpg`;
+    let avatar = s.avatar_url;
+    if (!avatar) {
+      const isFemaleAvatar = s.gender === 'F' || s.gender === 'Female';
+      const hash = s.name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % 99;
+      avatar = isFemaleAvatar
+        ? `https://randomuser.me/api/portraits/women/${hash}.jpg`
+        : `https://randomuser.me/api/portraits/men/${hash}.jpg`;
+    }
 
     return {
       id: s.id,

@@ -56,7 +56,7 @@ export function ChatSocketProvider({ children }) {
     createdAt: raw.created_at ? new Date(raw.created_at) : new Date(),
     user: {
       _id: raw.sender_id,
-      name: raw.sender?.username || 'Unknown',
+      name: raw.sender?.name || raw.sender?.username || 'Unknown',
       avatar: raw.sender?.avatar_url || null,
     },
   });
@@ -305,7 +305,7 @@ export function ChatSocketProvider({ children }) {
         createdAt: new Date(),
         user: {
           _id: senderInfo.id || 'me',
-          name: senderInfo.username || 'You',
+          name: senderInfo.name || senderInfo.username || 'You',
           avatar: senderInfo.avatar_url || null,
         },
         pending: true,
@@ -333,7 +333,7 @@ export function ChatSocketProvider({ children }) {
         createdAt: new Date(),
         user: {
           _id: senderInfo.id || 'me',
-          name: senderInfo.username || 'You',
+          name: senderInfo.name || senderInfo.username || 'You',
           avatar: senderInfo.avatar_url || null,
         },
         pending: true,

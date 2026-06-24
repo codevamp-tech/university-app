@@ -19,7 +19,6 @@
 
 import { APP_CONFIG } from '../config/appConfig';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { fetchStudentsFromSheet } from './googleSheetsService';
 
 const BASE            = APP_CONFIG.API_BASE_URL;
 const TENANT_ID       = APP_CONFIG.TENANT_ID;
@@ -494,39 +493,40 @@ export async function commentOnPost(token, postId, content, parentId = null) {
 // ─── Social Connections ────────────────────────────────────────────────────────
 export async function searchUsersAPI(token, query) {
   try {
-    let cached = await AsyncStorage.getItem('@unicampus_students');
-    let allStudents = [];
-    if (cached) {
-      allStudents = JSON.parse(cached);
-    } else {
-      allStudents = await fetchStudentsFromSheet();
-      await AsyncStorage.setItem('@unicampus_students', JSON.stringify(allStudents));
-    }
-    
-    if (!query) return [];
-    
-    const lowerQuery = query.toLowerCase();
-    const results = allStudents.filter(s => 
-      s.name?.toLowerCase().includes(lowerQuery) || 
-      s.id?.toLowerCase().includes(lowerQuery) ||
-      s.course?.toLowerCase().includes(lowerQuery)
-    );
-    
-    return results.slice(0, 15).map(s => ({
-      user_id: s.id,
-      id: s.id,
-      name: s.name,
-      username: s.name,
-      avatar_url: null,
-      rollNo: s.id,
-      course: s.course,
-      branch: s.branch,
-      year: s.year,
+    const res = await apiCall(`/api/v1/social/users/search?q=${encodeURIComponent(query)}`, {
+      method: 'GET',
+      headers: authHeaders(token),
+    });
+    const results = await unwrap(res, []);
+    return results.map(u => ({
+      user_id: u.id,
+      id: u.id,
+      name: u.full_name || u.username,
+      username: u.username,
+      avatar_url: u.avatar_url,
+      rollNo: u.username,
+      course: u.course,
+      branch: u.branch,
+      year: u.year,
       followers: Math.floor(Math.random() * 500) + 1,
       connections: Math.floor(Math.random() * 300) + 1,
+      connection_status: u.connection_status || 'Connect',
     }));
   } catch(e) {
-    console.error("Local search failed:", e);
+    console.error("Remote search failed:", e);
+    return [];
+  }
+}
+
+export async function getAllStudents(token) {
+  try {
+    const res = await apiCall(`/api/v1/users/students`, {
+      method: 'GET',
+      headers: authHeaders(token),
+    });
+    return unwrap(res, []);
+  } catch (e) {
+    console.error("getAllStudents API failed:", e);
     return [];
   }
 }
@@ -556,8 +556,9 @@ export async function acceptRequestAPI(token, connection_id) {
   return unwrap(res, null);
 }
 
-export async function connectionStatsAPI(token) {
-  const res = await apiCall(`/api/v1/social/connections/stats`, {
+export async function connectionStatsAPI(token, userId = null) {
+  const url = userId ? `/api/v1/social/connections/stats?user_id=${userId}` : `/api/v1/social/connections/stats`;
+  const res = await apiCall(url, {
     method: 'GET',
     headers: authHeaders(token),
   });
@@ -599,7 +600,8 @@ export async function getShopListings(token, category = null, skip = 0, limit = 
       seller: {
         user_id: rawSeller.id || rawSeller.user_id || 'mock_seller_123',
         username: rawSeller.username || 'CampusSeller',
-        avatar_url: rawSeller.avatar_url || 'https://images.unsplash.com/photo-1527980965255-d3b416303d12?auto=format&fit=crop&w=150',
+        full_name: rawSeller.full_name || null,
+        avatar_url: rawSeller.avatar_url || null,
         status: rawSeller.status || 'online'
       }
     };
@@ -652,7 +654,8 @@ export async function getShopGigs(token) {
       seller: {
         user_id: rawSeller.id || rawSeller.user_id || 'mock_seller_123',
         username: rawSeller.username || 'CampusSeller',
-        avatar_url: rawSeller.avatar_url || 'https://images.unsplash.com/photo-1527980965255-d3b416303d12?auto=format&fit=crop&w=150',
+        full_name: rawSeller.full_name || null,
+        avatar_url: rawSeller.avatar_url || null,
         status: rawSeller.status || 'online'
       }
     };
@@ -675,7 +678,8 @@ export async function getShopRequests(token) {
       seller: {
         user_id: rawSeller.id || rawSeller.user_id || 'mock_seller_123',
         username: rawSeller.username || 'CampusSeller',
-        avatar_url: rawSeller.avatar_url || 'https://images.unsplash.com/photo-1527980965255-d3b416303d12?auto=format&fit=crop&w=150',
+        full_name: rawSeller.full_name || null,
+        avatar_url: rawSeller.avatar_url || null,
         status: rawSeller.status || 'online'
       }
     };
@@ -882,6 +886,28 @@ export async function uploadAvatarAPI(token, imageUri) {
   const json = await res.json();
   console.log("Avatar upload status:", res.status);
   console.log("Avatar upload response:", json);
+  return { ok: res.ok, status: res.status, json };
+}
+
+export async function uploadDocumentAPI(token, fileUri, filename) {
+  console.log("Token sent to uploadDocumentAPI:", token ? "Exists" : "MISSING");
+  const formData = new FormData();
+  const actualFilename = filename || fileUri.split('/').pop() || 'document.pdf';
+  formData.append('file', {
+    uri: fileUri,
+    name: actualFilename,
+    type: 'application/pdf',
+  });
+  const res = await fetch(`${BASE}/api/v1/upload/document`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: formData,
+  });
+  const json = await res.json();
+  console.log("Document upload status:", res.status);
+  console.log("Document upload response:", json);
   return { ok: res.ok, status: res.status, json };
 }
 

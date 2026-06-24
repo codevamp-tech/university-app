@@ -9,11 +9,19 @@ import {
   ScrollView,
   SafeAreaView,
   TextInput,
+  Alert,
 } from 'react-native';
 import { Ionicons, MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { APP_CONFIG } from '../../../config/appConfig';
 
 const CampusAIHelpScreen = ({ navigation }) => {
+  const handleFeatureLockAlert = () => {
+    Alert.alert(
+      'Premium Feature',
+      'This feature is locked in the free trial.'
+    );
+  };
+
   const SUGGESTIONS = [
     { id: '1', title: 'Club Schedule', icon: 'sports-cricket', lib: 'MaterialIcons', color: '#343D96', bgColor: '#CBCEFF' },
     { id: '2', title: 'Campus News', icon: 'newspaper', lib: 'Ionicons', color: '#595C5D', bgColor: '#eff1f2' },
@@ -87,9 +95,14 @@ const CampusAIHelpScreen = ({ navigation }) => {
           {/* Suggestion Chips */}
           <View style={styles.chipsRow}>
             {SUGGESTIONS.map((chip) => (
-              <TouchableOpacity key={chip.id} style={[styles.chip, { backgroundColor: chip.bgColor }]}>
-                {renderChipIcon(chip)}
-                <Text style={[styles.chipText, { color: chip.color }]}>{chip.title}</Text>
+              <TouchableOpacity 
+                key={chip.id} 
+                style={[styles.chip, { backgroundColor: '#E5E7EB', opacity: 0.6, flexDirection: 'row', alignItems: 'center', gap: 6 }]}
+                onPress={handleFeatureLockAlert}
+              >
+                <Ionicons name="lock-closed" size={14} color="#9CA3AF" />
+                {renderChipIcon({ ...chip, color: '#9CA3AF' })}
+                <Text style={[styles.chipText, { color: '#9CA3AF' }]}>{chip.title}</Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -118,19 +131,25 @@ const CampusAIHelpScreen = ({ navigation }) => {
 
       {/* Input Bar */}
       <View style={styles.floatingInput}>
-        <View style={styles.inputWrapper}>
-          <TouchableOpacity style={styles.addBtn}>
-            <Ionicons name="add-circle-outline" size={24} color="#9CA3AF" />
-          </TouchableOpacity>
+        <TouchableOpacity 
+          activeOpacity={0.8}
+          style={[styles.inputWrapper, { opacity: 0.6 }]}
+          onPress={handleFeatureLockAlert}
+        >
+          <View style={styles.addBtn}>
+            <Ionicons name="lock-closed" size={22} color="#9CA3AF" />
+          </View>
           <TextInput 
-            style={styles.input}
-            placeholder="Ask about campus..."
+            style={[styles.input, { color: '#9CA3AF', backgroundColor: '#E5E7EB' }]}
+            placeholder="AI Chatbot is locked in trial..."
             placeholderTextColor="#9CA3AF"
+            value=""
+            editable={false}
           />
-          <TouchableOpacity style={styles.sendBtn}>
-            <Ionicons name="search" size={20} color="#FFFFFF" />
-          </TouchableOpacity>
-        </View>
+          <View style={[styles.sendBtn, { backgroundColor: '#4B5563' }]}>
+            <Ionicons name="lock-closed-outline" size={16} color="#FFFFFF" />
+          </View>
+        </TouchableOpacity>
       </View>
 
     </View>

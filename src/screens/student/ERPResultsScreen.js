@@ -5,7 +5,7 @@ import { getAcademicSubjects } from '../../data/aiEngine';
 
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Dimensions, Alert,
+  Dimensions, Alert, ActivityIndicator,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -22,7 +22,7 @@ const ERPResultsScreen = ({ navigation }) => {
 
   const roman = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
   const userSem = user?.semester || 7;
-  const sgpaHistory = user?.sgpaHistory || [8.5, 8.2, 7.9, 8.1, 8.3, 8.25];
+  const sgpaHistory = user?.sgpaHistory || [];
 
   const isMedical = user?.course?.replace(/\./g, '').toUpperCase().includes('MBBS') || user?.category?.toLowerCase() === 'medical';
   const termLabel = isMedical ? 'Phase' : 'Semester';
@@ -56,68 +56,14 @@ const ERPResultsScreen = ({ navigation }) => {
   const currentSemRoman = roman[userSem - 1] || 'VII';
   const [expandedSem, setExpandedSem] = useState(currentSemRoman);
   const [apiSemesterData, setApiSemesterData] = React.useState(null);
-
-  const academicSubjects = getAcademicSubjects(user || { course: 'B.Tech CSE' });
-
-  // Generate current semester subjects with grades or marks
-  const currentSemesterSubjects = academicSubjects.map((sub, idx) => {
-    if (isMedical) {
-      const theoryMarks = [72, 65, 78, 80, 58][idx % 5];
-      const practicalMarks = [78, 70, 82, 85, 62][idx % 5];
-      const totalMarks = theoryMarks + practicalMarks;
-      const maxMarks = 200;
-      const pct = (totalMarks / maxMarks) * 100;
-      return {
-        code: `MBBS${101 + idx}`,
-        name: sub,
-        theory: theoryMarks,
-        practical: practicalMarks,
-        total: totalMarks,
-        max: maxMarks,
-        result: pct >= 75 ? 'DISTINCTION' : 'PASS'
-      };
-    } else {
-      const grades = ['O', 'A+', 'A', 'B+'];
-      const creditsList = [4, 3, 4, 3, 3];
-      return {
-        code: `${user?.course ? user.course.split(' ').map(w => w[0]).join('').toUpperCase().substring(0, 3) : 'CS'}${301 + idx}`,
-        name: sub,
-        credits: creditsList[idx % creditsList.length],
-        grade: grades[idx % grades.length]
-      };
-    }
-  });
-
-  // Build dynamic fallback semesterData object
-  const fallbackSemesterData = {};
-  
-  // Current semester
-  fallbackSemesterData[currentSemRoman] = {
-    label: isMedical ? `Academic Year ${new Date().getFullYear()} • Ongoing` : `Fall ${new Date().getFullYear()} • Ongoing Evaluation`,
-    sgpa: isMedical ? '76.40%' : Math.min((user?.cgpa ? (user.cgpa + 0.25) : 8.9), 10.0).toFixed(2),
-    subjects: currentSemesterSubjects
-  };
-
-  // Completed semesters from history
-  sgpaHistory.forEach((sgpaVal, idx) => {
-    const semIndex = idx;
-    if (semIndex < userSem - 1) {
-      const rName = roman[semIndex];
-      const term = semIndex % 2 === 0 ? 'Fall' : 'Spring';
-      const yearOffset = Math.floor((userSem - 1 - semIndex) / 2);
-      const yearStr = `${new Date().getFullYear() - yearOffset}`;
-      const pctVal = 65 + (sgpaVal * 1.5) + (semIndex * 0.5);
-      fallbackSemesterData[rName] = {
-        label: isMedical ? `Year ${yearStr} • Completed` : `${term} ${yearStr} • Completed`,
-        sgpa: isMedical ? `${pctVal.toFixed(2)}%` : sgpaVal.toFixed(2),
-        subjects: [] // detailed subjects not needed for past semesters in UI expansion
-      };
-    }
-  });
+  const [loading, setLoading] = React.useState(true);
 
   React.useEffect(() => {
     async function loadResults() {
-      if (!accessToken) return;
+      if (!accessToken) {
+        setLoading(false);
+        return;
+      }
       try {
         const data = await getResults(accessToken);
         if (data && data.length > 0) {
@@ -187,12 +133,14 @@ const ERPResultsScreen = ({ navigation }) => {
         }
       } catch (err) {
         console.warn('[ResultsScreen] Error fetching results:', err);
+      } finally {
+        setLoading(false);
       }
     }
     loadResults();
   }, [accessToken, userSem]);
 
-  const semesterData = (apiSemesterData && Object.keys(apiSemesterData).length > 0) ? apiSemesterData : fallbackSemesterData;
+  const semesterData = apiSemesterData || {};
 
   // Calculate total credits
   const totalCredits = 180;
@@ -219,7 +167,12 @@ const ERPResultsScreen = ({ navigation }) => {
 
 
 
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+      {loading ? (
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color={colors.primary} />
+        </View>
+      ) : (
+        <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         {/* Hero */}
         <View style={styles.sectionContainer}>
           <Text style={[styles.heroTitle, { color: colors.textPrimary }]}>{isMedical ? 'Results' : `${termLabel} Results`}</Text>
@@ -441,6 +394,7 @@ const ERPResultsScreen = ({ navigation }) => {
 
         <View style={{ height: 100 }} />
       </ScrollView>
+      )}
     </View>
   );
 };

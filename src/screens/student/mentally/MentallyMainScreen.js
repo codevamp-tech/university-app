@@ -367,14 +367,7 @@ const MentallyMainScreen = ({ navigation }) => {
                 </View>
               </View>
 
-              <View style={[styles.insightBox, { backgroundColor: isDark ? 'rgba(0,102,102,0.1)' : '#F0FDF4', borderColor: colors.border, borderWidth: 1 }]}>
-                <Text style={[styles.insightTitle, { color: colors.primary }]}>Wellness Insight</Text>
-                <Text style={[styles.insightDesc, { color: colors.textSecondary }]}>
-                  {totalSessions > 0 
-                    ? "Great progress! Regularly using breathing guides and writing in your journal helps reduce academic pressure, enhancing recall and memory retention by 15-20%."
-                    : "You haven't completed any focus sessions or mood logs today. Navigate to the Daily Mood Journal or start a Deep Breathing session to build your wellness consistency!"}
-                </Text>
-              </View>
+
             </ScrollView>
           </View>
         </View>

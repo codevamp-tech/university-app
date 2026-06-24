@@ -5,7 +5,7 @@ import { getAcademicSubjects } from '../../data/aiEngine';
 
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Dimensions,
+  Dimensions, ActivityIndicator
 } from 'react-native';
 import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -21,6 +21,7 @@ const ERPAttendanceScreen = ({ navigation }) => {
   const { colors, isDark } = useTheme();
   const { user, accessToken } = useUser();
   const [apiAttendance, setApiAttendance] = React.useState(null);
+  const [loading, setLoading] = React.useState(true);
 
   const roman = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
   const semNum = parseInt(user?.semester) || 7;
@@ -28,27 +29,12 @@ const ERPAttendanceScreen = ({ navigation }) => {
   const isMedical = user?.course?.toUpperCase().includes('MBBS') || user?.category?.toLowerCase() === 'medical';
   const termLabel = isMedical ? 'Phase' : 'Semester';
 
-  const academicSubjects = getAcademicSubjects(user || { course: 'B.Tech CSE' });
-  const overallVal = user?.attendance || 85;
-  const totalClassesVal = 320;
-  const attendedClassesVal = Math.round(overallVal * 3.2);
-
-  const fallbackSubjects = academicSubjects.map((subject, idx) => {
-    const offsets = [7, -3, 5, -8, 2, -1, 4];
-    const offset = offsets[idx % offsets.length];
-    const percentage = Math.min(Math.max(overallVal + offset, 10), 100);
-    const status = percentage >= 75 ? 'safe' : percentage >= 60 ? 'warning' : 'danger';
-    return {
-      code: `${user?.course ? user.course.split(' ').map(w => w[0]).join('').toUpperCase().substring(0, 3) : 'CS'}${301 + idx}`,
-      name: subject,
-      percentage,
-      status
-    };
-  });
-
   React.useEffect(() => {
     async function loadAttendance() {
-      if (!accessToken) return;
+      if (!accessToken) {
+        setLoading(false);
+        return;
+      }
       try {
         const data = await getAttendance(accessToken);
         if (data && data.length > 0) {
@@ -76,16 +62,18 @@ const ERPAttendanceScreen = ({ navigation }) => {
         }
       } catch (err) {
         console.warn('[AttendanceScreen] Error fetching from API:', err);
+      } finally {
+        setLoading(false);
       }
     }
     loadAttendance();
   }, [accessToken, user?.attendance]);
 
   const attendanceData = apiAttendance || {
-    overall: overallVal,
-    totalClasses: totalClassesVal,
-    attendedClasses: attendedClassesVal,
-    subjects: fallbackSubjects
+    overall: '-',
+    totalClasses: 0,
+    attendedClasses: 0,
+    subjects: []
   };
 
   const getStatusColor = (status) => {
@@ -109,101 +97,107 @@ const ERPAttendanceScreen = ({ navigation }) => {
         </View>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        {/* Hero Section */}
-        <View style={styles.sectionContainer}>
-          <Text style={[styles.heroTitle, { color: colors.textPrimary }]}>Attendance Insights</Text>
-          <Text style={[styles.heroSub, { color: colors.textSecondary }]}>{termLabel} {displaySem} • {APP_CONFIG.UNIVERSITY_NAME}</Text>
+      {loading ? (
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color={colors.primary} />
         </View>
-
-        {/* Overall Attendance Card */}
-        <View style={styles.sectionContainer}>
-          <LinearGradient
-            colors={isDark ? ['#1E1B4B', '#312E81'] : ['#EEF2FF', '#E0E7FF']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={[styles.overallCard, { borderColor: colors.border, borderWidth: isDark ? 1 : 0 }]}
-          >
-            <View style={styles.overallHeader}>
-              <Text style={[styles.overallLabel, { color: isDark ? '#818CF8' : '#4338CA' }]}>OVERALL ATTENDANCE</Text>
-              <MaterialCommunityIcons name="shield-check" size={24} color={isDark ? '#818CF8' : '#4338CA'} />
-            </View>
-            
-            <View style={styles.overallMain}>
-              <Text style={[styles.overallPercentage, { color: isDark ? '#A5B4FC' : '#312E81' }]}>
-                {attendanceData.overall}{attendanceData.overall !== '-' ? '%' : ''}
-              </Text>
-              <View style={styles.overallStats}>
-                <View style={styles.statItem}>
-                  <Text style={[styles.statValue, { color: isDark ? '#A5B4FC' : '#312E81' }]}>{attendanceData.attendedClasses}</Text>
-                  <Text style={[styles.statLabel, { color: isDark ? 'rgba(165,180,252,0.7)' : 'rgba(49,46,129,0.7)' }]}>Attended</Text>
-                </View>
-                
-                <View style={styles.statDivider} />
-                
-                <View style={styles.statItem}>
-                  <Text style={[styles.statValue, { color: isDark ? '#A5B4FC' : '#312E81' }]}>{attendanceData.totalClasses}</Text>
-                  <Text style={[styles.statLabel, { color: isDark ? 'rgba(165,180,252,0.7)' : 'rgba(49,46,129,0.7)' }]}>Total</Text>
-                </View>
-              </View>
-            </View>
-
-            <View style={[styles.progressBarBg, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#C7D2FE' }]}>
-              <View style={[styles.progressBarFill, { width: attendanceData.overall === '-' ? '0%' : `${attendanceData.overall}%`, backgroundColor: isDark ? '#818CF8' : '#4338CA' }]} />
-            </View>
-            <Text style={[styles.progressHint, { color: isDark ? 'rgba(255,255,255,0.6)' : 'rgba(67,56,202,0.7)' }]}>
-              {attendanceData.overall === '-' ? 'No attendance records available.' : (attendanceData.overall >= 75 ? 'You are above the 75% minimum criteria. Keep it up!' : 'Warning: Your attendance is below the 75% minimum criteria.')}
-            </Text>
-          </LinearGradient>
-        </View>
-
-        {/* Subject-wise Breakdown */}
-        <View style={styles.sectionContainer}>
-          <Text style={[styles.sectionHeading, { color: colors.textPrimary }]}>Subject-wise Breakdown</Text>
-          
-          <View style={styles.subjectsList}>
-            {attendanceData.subjects.length === 0 ? (
-              <View style={{ padding: 20, alignItems: 'center', backgroundColor: colors.card, borderRadius: 16, borderColor: colors.border, borderWidth: 1 }}>
-                <Text style={{ color: colors.textSecondary, fontWeight: '600' }}>No attendance data available</Text>
-              </View>
-            ) : (
-              attendanceData.subjects.map((subject, index) => {
-                const statusColor = getStatusColor(subject.status);
-                
-                return (
-                  <View key={index} style={[styles.subjectCard, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
-                    <View style={styles.subjectHeader}>
-                      <View>
-                        <Text style={[styles.subjectCode, { color: colors.textSecondary }]}>{subject.code}</Text>
-                        <Text style={[styles.subjectName, { color: colors.textPrimary }]} numberOfLines={1}>{subject.name}</Text>
-                      </View>
-                      <View style={[styles.percentageBadge, { backgroundColor: statusColor + '20' }]}>
-                        <Text style={[styles.percentageText, { color: statusColor }]}>{subject.percentage}%</Text>
-                      </View>
-                    </View>
-                    
-                    <View style={[styles.subjectProgressBg, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F3F4F6' }]}>
-                      <View style={[styles.subjectProgressFill, { width: `${subject.percentage}%`, backgroundColor: statusColor }]} />
-                    </View>
-                    
-                    {subject.status === 'danger' && (
-                      <Text style={[styles.warningText, { color: statusColor }]}>
-                        <MaterialIcons name="error-outline" size={12} color={statusColor} /> Short attendance warning!
-                      </Text>
-                    )}
-                    {subject.status === 'warning' && (
-                      <Text style={[styles.warningText, { color: statusColor }]}>
-                        <MaterialIcons name="warning-amber" size={12} color={statusColor} /> Nearing minimum criteria.
-                      </Text>
-                    )}
-                  </View>
-                );
-              })
-            )}
+      ) : (
+        <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+          {/* Hero Section */}
+          <View style={styles.sectionContainer}>
+            <Text style={[styles.heroTitle, { color: colors.textPrimary }]}>Attendance Insights</Text>
+            <Text style={[styles.heroSub, { color: colors.textSecondary }]}>{termLabel} {displaySem} • {APP_CONFIG.UNIVERSITY_NAME}</Text>
           </View>
-        </View>
 
-      </ScrollView>
+          {/* Overall Attendance Card */}
+          <View style={styles.sectionContainer}>
+            <LinearGradient
+              colors={isDark ? ['#1E1B4B', '#312E81'] : ['#EEF2FF', '#E0E7FF']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={[styles.overallCard, { borderColor: colors.border, borderWidth: isDark ? 1 : 0 }]}
+            >
+              <View style={styles.overallHeader}>
+                <Text style={[styles.overallLabel, { color: isDark ? '#818CF8' : '#4338CA' }]}>OVERALL ATTENDANCE</Text>
+                <MaterialCommunityIcons name="shield-check" size={24} color={isDark ? '#818CF8' : '#4338CA'} />
+              </View>
+              
+              <View style={styles.overallMain}>
+                <Text style={[styles.overallPercentage, { color: isDark ? '#A5B4FC' : '#312E81' }]}>
+                  {attendanceData.overall}{attendanceData.overall !== '-' ? '%' : ''}
+                </Text>
+                <View style={styles.overallStats}>
+                  <View style={styles.statItem}>
+                    <Text style={[styles.statValue, { color: isDark ? '#A5B4FC' : '#312E81' }]}>{attendanceData.attendedClasses}</Text>
+                    <Text style={[styles.statLabel, { color: isDark ? 'rgba(165,180,252,0.7)' : 'rgba(49,46,129,0.7)' }]}>Attended</Text>
+                  </View>
+                  
+                  <View style={styles.statDivider} />
+                  
+                  <View style={styles.statItem}>
+                    <Text style={[styles.statValue, { color: isDark ? '#A5B4FC' : '#312E81' }]}>{attendanceData.totalClasses}</Text>
+                    <Text style={[styles.statLabel, { color: isDark ? 'rgba(165,180,252,0.7)' : 'rgba(49,46,129,0.7)' }]}>Total</Text>
+                  </View>
+                </View>
+              </View>
+
+              <View style={[styles.progressBarBg, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#C7D2FE' }]}>
+                <View style={[styles.progressBarFill, { width: attendanceData.overall === '-' ? '0%' : `${attendanceData.overall}%`, backgroundColor: isDark ? '#818CF8' : '#4338CA' }]} />
+              </View>
+              <Text style={[styles.progressHint, { color: isDark ? 'rgba(255,255,255,0.6)' : 'rgba(67,56,202,0.7)' }]}>
+                {attendanceData.overall === '-' ? 'No attendance records available.' : (attendanceData.overall >= 75 ? 'You are above the 75% minimum criteria. Keep it up!' : 'Warning: Your attendance is below the 75% minimum criteria.')}
+              </Text>
+            </LinearGradient>
+          </View>
+
+          {/* Subject-wise Breakdown */}
+          <View style={styles.sectionContainer}>
+            <Text style={[styles.sectionHeading, { color: colors.textPrimary }]}>Subject-wise Breakdown</Text>
+            
+            <View style={styles.subjectsList}>
+              {attendanceData.subjects.length === 0 ? (
+                <View style={{ padding: 20, alignItems: 'center', backgroundColor: colors.card, borderRadius: 16, borderColor: colors.border, borderWidth: 1 }}>
+                  <Text style={{ color: colors.textSecondary, fontWeight: '600' }}>No attendance data available</Text>
+                </View>
+              ) : (
+                attendanceData.subjects.map((subject, index) => {
+                  const statusColor = getStatusColor(subject.status);
+                  
+                  return (
+                    <View key={index} style={[styles.subjectCard, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
+                      <View style={styles.subjectHeader}>
+                        <View>
+                          <Text style={[styles.subjectCode, { color: colors.textSecondary }]}>{subject.code}</Text>
+                          <Text style={[styles.subjectName, { color: colors.textPrimary }]} numberOfLines={1}>{subject.name}</Text>
+                        </View>
+                        <View style={[styles.percentageBadge, { backgroundColor: statusColor + '20' }]}>
+                          <Text style={[styles.percentageText, { color: statusColor }]}>{subject.percentage}%</Text>
+                        </View>
+                      </View>
+                      
+                      <View style={[styles.subjectProgressBg, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F3F4F6' }]}>
+                        <View style={[styles.subjectProgressFill, { width: `${subject.percentage}%`, backgroundColor: statusColor }]} />
+                      </View>
+                      
+                      {subject.status === 'danger' && (
+                        <Text style={[styles.warningText, { color: statusColor }]}>
+                          <MaterialIcons name="error-outline" size={12} color={statusColor} /> Short attendance warning!
+                        </Text>
+                      )}
+                      {subject.status === 'warning' && (
+                        <Text style={[styles.warningText, { color: statusColor }]}>
+                          <MaterialIcons name="warning-amber" size={12} color={statusColor} /> Nearing minimum criteria.
+                        </Text>
+                      )}
+                    </View>
+                  );
+                })
+              )}
+            </View>
+          </View>
+
+        </ScrollView>
+      )}
     </View>
   );
 };

@@ -17,7 +17,6 @@ import {
 } from '../../data/apiService';
 import { getAvatarUrl } from '../../utils/avatar';
 import { useTheme } from '../../hooks/useTheme';
-import { fetchStudentsFromSheet } from '../../data/googleSheetsService';
 
 const { width } = Dimensions.get('window');
 const DRAWER_WIDTH = width * 0.78;
@@ -55,10 +54,9 @@ const ChatScreen = ({ navigation }) => {
   useEffect(() => {
     const load = async () => {
       try {
-        const [chs, dms, students] = await Promise.all([
+        const [chs, dms] = await Promise.all([
           getChatChannelsAPI(accessToken),
           getDMContactsAPI(accessToken),
-          fetchStudentsFromSheet().catch(() => []),
         ]);
         if (chs?.length) {
           setChannels(chs);
@@ -71,14 +69,10 @@ const ChatScreen = ({ navigation }) => {
           });
         }
         if (dms?.length) {
-          // Enrich DM contacts with real name from Google Sheets if username is a roll number
-          const enrichedDms = dms.map(dm => {
-            const richStudent = students.find(s => s.id.toLowerCase() === dm.username.toLowerCase());
-            return {
-              ...dm,
-              username: richStudent ? richStudent.name : dm.username,
-            };
-          });
+          const enrichedDms = dms.map(dm => ({
+            ...dm,
+            username: dm.full_name || dm.username,
+          }));
           setDmContacts(enrichedDms);
         }
       } catch (e) {
@@ -126,6 +120,7 @@ const ChatScreen = ({ navigation }) => {
     if (!textVal || !activeChannel?.id) return;
     sendChannelMessage(activeChannel.id, textVal, {
       id: user?.id,
+      name: user?.name,
       username: user?.username,
       avatar_url: user?.avatar_url,
     });

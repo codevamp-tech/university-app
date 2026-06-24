@@ -7,10 +7,9 @@ import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useUser } from '../../context/UserContext';
 import { useChatSocketContext } from '../../context/ChatSocketContext';
-import { getDMHistoryAPI } from '../../data/apiService';
+import { getDMHistoryAPI, getPublicProfile } from '../../data/apiService';
 import { getAvatarUrl } from '../../utils/avatar';
 import { useTheme } from '../../hooks/useTheme';
-import { fetchStudentsFromSheet } from '../../data/googleSheetsService';
 
 /**
  * DMConversationScreen
@@ -31,22 +30,21 @@ const DMConversationScreen = ({ route, navigation }) => {
 
   useEffect(() => {
     let isMounted = true;
-    if (contact.username) {
-      const isRollNo = /^\d+$/.test(contact.username.trim());
-      if (isRollNo) {
-        fetchStudentsFromSheet().then((students) => {
-          if (!isMounted) return;
-          const match = students.find(s => s.id.toLowerCase() === contact.username.toLowerCase());
-          if (match) {
-            setContactName(match.name);
+    if (contact.full_name) {
+      setContactName(contact.full_name);
+    } else if (contact.user_id && accessToken) {
+      getPublicProfile(accessToken, contact.user_id)
+        .then((prof) => {
+          if (isMounted && prof && prof.full_name) {
+            setContactName(prof.full_name);
           }
-        }).catch(() => {});
-      } else {
-        setContactName(contact.username);
-      }
+        })
+        .catch(() => {});
+    } else if (contact.username) {
+      setContactName(contact.username);
     }
     return () => { isMounted = false; };
-  }, [contact.username]);
+  }, [contact.username, contact.user_id, contact.full_name, accessToken]);
 
   const {
     connected,

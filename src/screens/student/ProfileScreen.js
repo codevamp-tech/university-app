@@ -9,7 +9,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { APP_CONFIG } from '../../config/appConfig';
 import { useUser } from '../../context/UserContext';
 import { getPersonaBadge } from '../../data/aiEngine';
-import { uploadAvatarAPI, connectionStatsAPI } from '../../data/apiService';
+import { uploadAvatarAPI, connectionStatsAPI, getStartups } from '../../data/apiService';
 import { getAvatarUrl } from '../../utils/avatar';
 import { isMedicalStudent, getDisplayCourse } from '../../utils/courseDisplay';
 
@@ -21,6 +21,8 @@ const ProfileScreen = () => {
   const { user, accessToken, updateAvatarUrl } = useUser();
   const [stats, setStats] = React.useState({ followers: 0, following: 0, connections: 0 });
   const [isUploading, setIsUploading] = React.useState(false);
+  const [myStartups, setMyStartups] = React.useState([]);
+  const [loadingStartups, setLoadingStartups] = React.useState(true);
 
   const isMed = user ? isMedicalStudent(user) : false;
 
@@ -29,6 +31,17 @@ const ProfileScreen = () => {
       connectionStatsAPI(accessToken).then(res => setStats(res || { followers: 0, following: 0, connections: 0 }));
     }
   }, [accessToken]);
+
+  React.useEffect(() => {
+    if (accessToken && !isMed) {
+      getStartups(accessToken, 0, 10, true)
+        .then(res => setMyStartups(res || []))
+        .catch(err => console.warn('[ProfileScreen] Error loading startups:', err))
+        .finally(() => setLoadingStartups(false));
+    } else {
+      setLoadingStartups(false);
+    }
+  }, [accessToken, isMed]);
 
   if (!user) return null;
 
@@ -56,30 +69,7 @@ const ProfileScreen = () => {
           ? 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?w=400&auto=format&fit=crop'
           : 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=400&auto=format&fit=crop'
       }))
-    : [
-        {
-          id: 0,
-          name: isMed
-            ? 'Basic Pharmacology'
-            : user.course?.toLowerCase().includes('mba') || user.course?.toLowerCase().includes('bba')
-            ? 'Advanced Excel'
-            : 'Python Foundations',
-          issuer: `${APP_CONFIG.UNIVERSITY_SHORT_NAME} Academy`,
-          date: 'Recommended Certification',
-          img: 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?w=400&auto=format&fit=crop'
-        },
-        {
-          id: 1,
-          name: isMed
-            ? 'Clinical Trials & Ethics'
-            : user.course?.toLowerCase().includes('mba') || user.course?.toLowerCase().includes('bba')
-            ? 'Data Visualization with BI'
-            : 'Cloud Architect Associate',
-          issuer: 'AWS Academy Partner',
-          date: 'Recommended Certification',
-          img: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=400&auto=format&fit=crop'
-        }
-      ];
+    : [];
 
   const avatarUrl = getAvatarUrl(user.avatar_url || user.name);
 
@@ -116,6 +106,14 @@ const ProfileScreen = () => {
       setIsUploading(false);
     }
   };
+
+  const activeVentureName = isMed 
+    ? "Clinical Rotation"
+    : (myStartups.length > 0 ? myStartups[0].name : "No active venture");
+
+  const activeVentureDesc = isMed 
+    ? `Active clinical posting under Department of ${user.semester <= 4 ? 'Pathology' : 'Pediatrics & Medicine'} at the teaching hospital.`
+    : (myStartups.length > 0 ? myStartups[0].description : "Join the Venture Lab incubator or pitch a startup to display it here.");
 
   return (
 
@@ -311,12 +309,10 @@ const ProfileScreen = () => {
                 <View style={[styles.activeLabel, isMed && { borderColor: 'rgba(168, 85, 247, 0.4)', backgroundColor: 'rgba(168, 85, 247, 0.2)' }]}><Text style={[styles.activeText, isMed && { color: '#C084FC' }]}>ACTIVE</Text></View>
               </View>
               <Text style={styles.ventureName}>
-                {isMed ? 'Rural Health Immersion' : (user.course.includes('Computer') ? 'SkyDrone Campus' : 'HealthTech Innovators')}
+                {activeVentureName}
               </Text>
               <Text style={styles.ventureDesc}>
-                {isMed 
-                  ? 'Conducting community health screenings and analyzing pediatric immunization compliance.'
-                  : `Leading a team of 5 to develop autonomous solutions in ${user.course}.`}
+                {activeVentureDesc}
               </Text>
               <View style={styles.ventureActions}>
                 <TouchableOpacity style={styles.vBtn}>
@@ -335,23 +331,29 @@ const ProfileScreen = () => {
         {/* Certificates */}
         <View style={styles.certificatesWrapper}>
           <View style={styles.certHeader}>
-            <Text style={styles.certSectionTitle}>Earned Digital Certificates</Text>
-            <TouchableOpacity style={styles.certViewAll}>
-              <Text style={styles.certViewAllText}>VIEW ALL</Text>
-              <MaterialIcons name="arrow-forward" size={16} color="#8b4b00" />
-            </TouchableOpacity>
+            <Text style={styles.certSectionTitle}>
+              Earned Digital Certificates
+            </Text>
           </View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.certsContainer}>
-            {finalCerts.map((cert) => (
-              <View key={cert.id} style={styles.certCard}>
-                <View style={styles.certImgBox}>
-                  <Image source={{ uri: cert.img }} style={styles.certImg} />
+          {finalCerts.length > 0 ? (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.certsContainer}>
+              {finalCerts.map((cert) => (
+                <View key={cert.id} style={styles.certCard}>
+                  <View style={styles.certImgBox}>
+                    <Image source={{ uri: cert.img }} style={styles.certImg} />
+                  </View>
+                  <Text style={styles.certName}>{cert.name}</Text>
+                  <Text style={styles.certIssuer}>{cert.issuer} • {cert.date}</Text>
                 </View>
-                <Text style={styles.certName}>{cert.name}</Text>
-                <Text style={styles.certIssuer}>{cert.issuer} • {cert.date}</Text>
-              </View>
-            ))}
-          </ScrollView>
+              ))}
+            </ScrollView>
+          ) : (
+            <View style={{ padding: 24, alignItems: 'center', backgroundColor: colors.card, borderRadius: 20, borderColor: colors.border, borderWidth: 1, marginHorizontal: 16, marginTop: 12 }}>
+              <MaterialCommunityIcons name="certificate-outline" size={40} color={colors.textSecondary} style={{ marginBottom: 8 }} />
+              <Text style={{ color: colors.textPrimary, fontSize: 14, fontWeight: '700' }}>No Earned Certificates</Text>
+              <Text style={{ color: colors.textSecondary, fontSize: 12, textAlign: 'center', marginTop: 4 }}>Complete courses or verify credentials to see them here.</Text>
+            </View>
+          )}
         </View>
 
         <View style={{ height: 100 }} />

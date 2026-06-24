@@ -94,7 +94,7 @@ const SplashScreen = ({ navigation }) => {
       <Animated.View style={{ opacity: textAnim }}>
         <Text style={styles.appName}>
           <Text style={styles.appNameDark}>{APP_CONFIG.UNIVERSITY_SHORT_NAME} </Text>
-          <Text style={styles.appNameAccent}>UNIVERSITY</Text>
+          {/* <Text style={styles.appNameAccent}>UNIVERSITY</Text> */}
         </Text>
 
         <Text style={styles.tagline}>UNICAMPUS</Text>

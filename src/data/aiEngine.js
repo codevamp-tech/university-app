@@ -113,10 +113,18 @@ export function getAcademicSubjects(student) {
     return ['Financial Accounting', 'Cost & Management Accounting', 'Auditing Principles', 'Corporate Laws'];
   }
   if (c.includes('mbbs')) {
-    return ['Anatomy', 'Physiology', 'Pharmacology', 'Pathology', 'Microbiology', 'Forensic Medicine', 'Community Medicine'];
+    const yr = parseInt(student.year || student.current_year, 10) || Math.ceil((parseInt(student.semester, 10) || 1) / 2) || 1;
+    if (yr === 1) return ['Anatomy', 'Physiology', 'Biochemistry'];
+    if (yr === 2) return ['Pathology', 'Pharmacology', 'Microbiology'];
+    if (yr === 3) return ['ENT', 'Ophthalmology', 'Forensic Medicine', 'Community Medicine'];
+    return ['General Medicine', 'General Surgery', 'Pediatrics', 'Obstetrics & Gynecology'];
   }
   if (c.includes('bds')) {
-    return ['Dental Anatomy', 'Dental Materials', 'General Pathology'];
+    const yr = parseInt(student.year || student.current_year, 10) || Math.ceil((parseInt(student.semester, 10) || 1) / 2) || 1;
+    if (yr === 1) return ['General Human Anatomy', 'Physiology & Biochemistry', 'Dental Anatomy'];
+    if (yr === 2) return ['General Pathology', 'Microbiology', 'Dental Pharmacology', 'Dental Materials'];
+    if (yr === 3) return ['General Medicine', 'General Surgery', 'Oral Pathology'];
+    return ['Oral Medicine & Radiology', 'Orthodontics', 'Oral Surgery', 'Prosthodontics', 'Periodontics'];
   }
   if (c.includes('nursing')) {
     return ['Anatomy & Physiology', 'Nursing Foundations', 'Nutrition & Dietetics', 'Pharmacology'];
@@ -436,8 +444,8 @@ export function detectRisks(student) {
 // how far through their programme the student is.
 function assignPhaseStatuses(steps, student) {
   const c = ((student.course || '') + ' ' + (student.branch || '')).toLowerCase();
-  const currentYear  = parseInt(student.year, 10)  || 1;
   const currentSem   = parseInt(student.semester, 10) || 1;
+  const currentYear  = parseInt(student.year || student.current_year, 10) || Math.ceil(currentSem / 2) || 1;
 
   // Determine total programme duration in years
   let totalYears = 4; // default B.Tech
@@ -565,22 +573,75 @@ export function generateRoadmap(student, interests = '') {
   } else if (c.includes('mbbs')) {
     target = target || 'Medical Practitioner / Resident';
     outcome = 'Prepared for NEET-PG and Junior Residency';
-    steps = [
-      { n: 1, title: 'Core Subject Mastery', desc: 'Anatomy, Physiology, Biochemistry', status: 'done' },
-      { n: 2, title: 'Clinical Rotations', desc: 'OPD, ward postings, clinical skills', status: 'current' },
-      { n: 3, title: 'Case Presentations', desc: 'Bedside manner, diagnostic reasoning', status: 'upcoming' },
-      { n: 4, title: 'Research Publication', desc: 'Case reports, PubMed-indexed papers', status: 'upcoming' },
-      { n: 5, title: 'NEET PG Preparation', desc: 'Grand tests, subject-wise revision', status: 'upcoming' },
-    ];
+    const yr = parseInt(student.year || student.current_year, 10) || Math.ceil((parseInt(student.semester, 10) || 1) / 2) || 1;
+    if (yr === 1) {
+      steps = [
+        { n: 1, title: 'Pre-clinical Foundations', desc: 'Anatomy, Physiology, Biochemistry' },
+        { n: 2, title: 'Clinical Introduction', desc: 'Basic clinical posting, history taking' },
+        { n: 3, title: 'Bedside Learning', desc: 'Basic physical examinations & case discussion' },
+        { n: 4, title: 'Research Basics', desc: 'Introduction to clinical research & cases' },
+        { n: 5, title: 'Early PG Orientation', desc: 'Subject-wise mock tests' },
+      ];
+    } else if (yr === 2) {
+      steps = [
+        { n: 1, title: 'Pre-clinical Foundations', desc: 'Anatomy, Physiology, Biochemistry' },
+        { n: 2, title: 'Para-clinical Mastery', desc: 'Pathology, Pharmacology, Microbiology' },
+        { n: 3, title: 'Clinical Postings', desc: 'Ward duties, diagnosis & treatment plans' },
+        { n: 4, title: 'Medical Seminars', desc: 'Active case reports & research posters' },
+        { n: 5, title: 'Mid-term PG Prep', desc: 'Sessional review & MCQ banks' },
+      ];
+    } else if (yr === 3) {
+      steps = [
+        { n: 1, title: 'Pre-clinical Foundations', desc: 'Anatomy, Physiology, Biochemistry' },
+        { n: 2, title: 'Para-clinical Mastery', desc: 'Pathology, Pharmacology, Microbiology' },
+        { n: 3, title: 'Phase III Specialities', desc: 'ENT, Ophthalmology, Community Medicine' },
+        { n: 4, title: 'Clinical Hypotheses', desc: 'Case report submissions, journals' },
+        { n: 5, title: 'Advanced PG Practice', desc: 'NEET PG subject-wise mock grand tests' },
+      ];
+    } else {
+      steps = [
+        { n: 1, title: 'Pre-clinical Foundations', desc: 'Anatomy, Physiology, Biochemistry' },
+        { n: 2, title: 'Para-clinical Mastery', desc: 'Pathology, Pharmacology, Microbiology' },
+        { n: 3, title: 'Phase III Specialities', desc: 'ENT, Ophthalmology, Community Medicine' },
+        { n: 4, title: 'Final Prof Clinicals', desc: 'Medicine, Surgery, Pediatrics, OBGY' },
+        { n: 5, title: 'NEET-PG Grand Revision', desc: 'Full mock tests & intensive revision' },
+      ];
+    }
   } else if (c.includes('bds')) {
     target = target || 'Dental Surgeon';
     outcome = 'Ready for Clinical Dental Practice & NEET MDS';
-    steps = [
-      { n: 1, title: 'Preclinical Skills', desc: 'Phantom labs, dental anatomy', status: 'done' },
-      { n: 2, title: 'Clinical Dentistry', desc: 'Patient handling, core procedures', status: 'current' },
-      { n: 3, title: 'Specialisation Planning', desc: 'Orthodontics / Oral Surgery pathway', status: 'upcoming' },
-      { n: 4, title: 'NEET MDS Preparation', desc: 'PG entrance — subject revision', status: 'upcoming' },
-    ];
+    const yr = parseInt(student.year || student.current_year, 10) || Math.ceil((parseInt(student.semester, 10) || 1) / 2) || 1;
+    if (yr === 1) {
+      steps = [
+        { n: 1, title: 'Preclinical Skills', desc: 'Phantom labs, tooth carving, dental anatomy' },
+        { n: 2, title: 'Intro to Materials', desc: 'Dental materials science' },
+        { n: 3, title: 'Basic Pathology', desc: 'General pathology, microbiology foundations' },
+        { n: 4, title: 'PG MDS Orientation', desc: 'Basic science practice tests' },
+      ];
+    } else if (yr === 2) {
+      steps = [
+        { n: 1, title: 'Preclinical Skills', desc: 'Phantom labs, tooth carving, dental anatomy' },
+        { n: 2, title: 'Preclinical Prostho/Cons', desc: 'Cavity prep, denture layout' },
+        { n: 3, title: 'Dental Pharmacology', desc: 'Anaesthetics, therapeutics' },
+        { n: 4, title: 'Intermediate MDS Prep', desc: 'Dental materials & pharmacology MCQs' },
+      ];
+    } else if (yr === 3) {
+      steps = [
+        { n: 1, title: 'Preclinical Skills', desc: 'Phantom labs, tooth carving, dental anatomy' },
+        { n: 2, title: 'Preclinical Prostho/Cons', desc: 'Cavity prep, denture layout' },
+        { n: 3, title: 'General Medicine & Surgery', desc: 'Systemic diseases, medical emergencies' },
+        { n: 4, title: 'Oral Pathology', desc: 'Biopsies, slide interpretation' },
+        { n: 5, title: 'Advanced MDS Mock Tests', desc: 'Third year subjects grand tests' },
+      ];
+    } else {
+      steps = [
+        { n: 1, title: 'Preclinical Skills', desc: 'Phantom labs, tooth carving, dental anatomy' },
+        { n: 2, title: 'Preclinical Prostho/Cons', desc: 'Cavity prep, denture layout' },
+        { n: 3, title: 'General Medicine & Surgery', desc: 'Systemic diseases, medical emergencies' },
+        { n: 4, title: 'Dental Specialities', desc: 'Orthodontics, Prosthodontics, Periodontics' },
+        { n: 5, title: 'NEET MDS Grand Test Prep', desc: 'Full syllabus tests & mock series' },
+      ];
+    }
   } else if (c.includes('nursing')) {
     target = target || 'Registered Nurse';
     outcome = 'Ready for Clinical Nursing & Healthcare Placements';

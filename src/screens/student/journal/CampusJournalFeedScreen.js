@@ -11,6 +11,7 @@ import { listJournalAPI } from '../../../data/apiService';
 import { useUser } from '../../../context/UserContext';
 import { APP_CONFIG } from '../../../config/appConfig';
 import { useTheme } from '../../../hooks/useTheme';
+import { getAvatarUrl } from '../../../utils/avatar';
 
 const { width } = Dimensions.get('window');
 const JournalSkeleton = () => {
@@ -197,7 +198,7 @@ const CampusJournalFeedScreen = ({ navigation }) => {
             <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
           </TouchableOpacity>
           <Image
-            source={{ uri: user?.avatar_url || (user?.gender === 'F' || user?.gender === 'Female' ? 'https://images.pexels.com/photos/733872/pexels-photo-733872.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=500' : 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=500') }}
+            source={{ uri: getAvatarUrl(user?.avatar_url || user?.name) }}
             style={[styles.profilePic, { borderColor: colors.primary }]}
           />
           <Text style={[styles.headerTitle, { color: colors.primary }]}>Campus Journal</Text>

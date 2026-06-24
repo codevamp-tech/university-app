@@ -1,6 +1,5 @@
 import React, { createContext, useState, useContext } from 'react';
 import { Alert } from 'react-native';
-import { fetchStudentsFromSheet } from '../data/googleSheetsService';
 import { loginWithRollNumber, logoutAPI, getMyProfile, updateMyProfile, loginFacultyWithEmpId, getFacultyProfile } from '../data/apiService';
 
 export const UserContext = createContext();
@@ -105,8 +104,8 @@ export const UserProvider = ({ children }) => {
         certsInProgress: dbProfileRest.certificates_in_progress || [],
         semester: dbProfileRest.semester || null,
         sgpaHistory: dbProfileRest.sgpa_history || [],
-        current_year: dbCurrentYear || null,
-        year: dbCurrentYear || null,
+        current_year: dbCurrentYear || (dbProfileRest.semester ? Math.ceil(parseInt(dbProfileRest.semester, 10) / 2) : 1),
+        year: dbCurrentYear || (dbProfileRest.semester ? Math.ceil(parseInt(dbProfileRest.semester, 10) / 2) : 1),
         rollno: dbRollNo || null,
         batch_year: dbBatchYear || null,
         department_id: dbDeptId || null,
@@ -124,35 +123,11 @@ export const UserProvider = ({ children }) => {
       return u;
     }
 
-    // Student fallback to Google Sheets
-    try {
-      const students = await fetchStudentsFromSheet();
-
-      const found = students.find(s =>
-        (s.id    && s.id.toLowerCase()    === usernameForApi) ||
-        (s.email && s.email.toLowerCase() === usernameForApi) ||
-        (s.id    && s.id.toLowerCase()    === usernameForApi.split('@')[0])
-      );
-
-      if (found) {
-        const u = {
-          ...found,
-          role: 'student',
-        };
-        setUser(u);
-        return u;
-      }
-
-      Alert.alert(
-        'Login Failed',
-        `Roll number not found: ${loginId}\nPlease check your credentials or contact administrator.`
-      );
-      return false;
-
-    } catch (sheetError) {
-      Alert.alert('Connection Error', sheetError.message);
-      return false;
-    }
+    Alert.alert(
+      'Login Failed',
+      `Incorrect roll number or password.\nPlease check your credentials and try again.`
+    );
+    return false;
   };
 
   const logout = async () => {

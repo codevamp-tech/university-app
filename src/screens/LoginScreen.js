@@ -21,7 +21,7 @@ import { useUser } from '../context/UserContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const LOADING_MESSAGES = [
-  "Connecting to university ERP...",
+  "Connecting to ERP...",
   "Preparing the workspace for you...",
   "Synchronising grades & attendance...",
   "Personalising the experience for you...",
@@ -60,14 +60,14 @@ const LoginScreen = ({ navigation }) => {
     try {
       const username = loginId.trim().toLowerCase();
       const savedPassword = await AsyncStorage.getItem(`password_${username}`);
-      
+
       // If a password was set via Change Password, verify it locally
       if (savedPassword && savedPassword !== securityKey) {
         Alert.alert('Login Failed', 'Incorrect security key.');
         setLoading(false);
         return;
       }
-      
+
       // If not overridden, the default API behavior continues normally below
     } catch (e) {
       console.warn('Password check failed:', e);
@@ -75,7 +75,7 @@ const LoginScreen = ({ navigation }) => {
 
     const success = await login(loginId, securityKey, role);
     setLoading(false);
-    
+
     if (success) {
       const userRole = success.role;
       if (userRole === 'teacher') {
@@ -112,7 +112,7 @@ const LoginScreen = ({ navigation }) => {
             style={styles.loaderContent}
           >
             <ActivityIndicator size="large" color="#FFFFFF" style={{ marginBottom: 24 }} />
-            
+
             {/* Carousel message */}
             <View style={styles.messageContainer}>
               <Text style={styles.loaderMessage}>
@@ -147,19 +147,19 @@ const LoginScreen = ({ navigation }) => {
           <View style={styles.formContainer}>
             {/* Role Selector */}
             <View style={styles.roleContainer}>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={[styles.roleBtn, role === 'student' && styles.roleBtnActive]}
                 onPress={() => setRole('student')}
               >
                 <Text style={[styles.roleText, role === 'student' && styles.roleTextActive]}>Student</Text>
               </TouchableOpacity>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={[styles.roleBtn, role === 'teacher' && styles.roleBtnActive]}
                 onPress={() => setRole('teacher')}
               >
                 <Text style={[styles.roleText, role === 'teacher' && styles.roleTextActive]}>Faculty</Text>
               </TouchableOpacity>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={[styles.roleBtn, role === 'admin' && styles.roleBtnActive]}
                 onPress={() => setRole('admin')}
               >
@@ -173,8 +173,8 @@ const LoginScreen = ({ navigation }) => {
                 {role === 'student'
                   ? 'STUDENT ROLL NUMBER'
                   : role === 'admin'
-                  ? 'ADMIN/WARDEN USERNAME'
-                  : 'EMPLOYEE ID'}
+                    ? 'ADMIN/WARDEN USERNAME'
+                    : 'EMPLOYEE ID'}
               </Text>
               <TextInput
                 style={styles.input}
@@ -182,8 +182,8 @@ const LoginScreen = ({ navigation }) => {
                   role === 'student'
                     ? 'e.g., 2400140140005'
                     : role === 'admin'
-                    ? 'e.g., admin or satishkumar'
-                    : 'e.g., D/11/048'
+                      ? 'e.g., admin or satishkumar'
+                      : 'e.g., D/11/048'
                 }
                 placeholderTextColor="#9CA3AF"
                 value={loginId}

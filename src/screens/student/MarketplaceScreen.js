@@ -19,119 +19,21 @@ const MarketplaceScreen = ({ navigation }) => {
   const { user, accessToken } = useUser();
   const avatarUrl = user?.avatar_url || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=1000&auto=format&fit=crop';
 
-  const defaultListings = [
-    {
-      id: 'mock_lst_1',
-      title: 'Stethoscope (Littmann Classic III)',
-      description: 'Excellent condition Littmann stethoscope, used for 1 year in clinical postings. Special plum tube.',
-      price: 4500,
-      category: 'medical',
-      image_url: 'https://images.unsplash.com/photo-1576091160550-2173dba999ef?q=80&w=600'
-    },
-    {
-      id: 'mock_lst_2',
-      title: "Gray's Anatomy for Students",
-      description: 'South Asia Edition. Minor highlights on anatomy diagrams, otherwise brand new condition.',
-      price: 1200,
-      category: 'books',
-      image_url: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?q=80&w=600'
-    },
-    {
-      id: 'mock_lst_3',
-      title: 'iPad Air (4th Gen) 64GB',
-      description: 'Perfect for taking clinical notes and viewing medical slides. Includes Apple Pencil 2 clone.',
-      price: 24000,
-      category: 'electronics',
-      image_url: 'https://images.unsplash.com/photo-1544244015-0df4b3ffc6b0?q=80&w=600'
-    },
-    {
-      id: 'mock_lst_4',
-      title: 'Lab Coat & scrubs (Medium)',
-      description: 'Pure white cotton lab coat with university crest patch and sky blue scrubs.',
-      price: 500,
-      category: 'gear',
-      image_url: 'https://images.unsplash.com/photo-1584515979956-d9f6e5d09982?q=80&w=600'
-    }
-  ];
-
-  const defaultGigs = [
-    {
-      id: 'mock_gig_1',
-      title: 'Differential Diagnosis Tutoring',
-      description: 'Providing 1-on-1 tutoring sessions for second year students preparing for pathology and microbiology exams.',
-      price: 250,
-      category: 'education',
-      image_url: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=600'
-    },
-    {
-      id: 'mock_gig_2',
-      title: 'Clinical Case Study Writing',
-      description: 'Help with formatting and structuring medical case reports for PubMed journal submissions.',
-      price: 350,
-      category: 'research',
-      image_url: 'https://images.unsplash.com/photo-1455390582262-044cdead277a?q=80&w=600'
-    }
-  ];
-
-  const defaultRequests = [
-    {
-      id: 'mock_req_1',
-      title: 'Need Biochemistry Lab Notes',
-      reward: 150,
-      price: 150,
-      category: 'request',
-      description: 'Looking for detailed handwritten notes for Unit 3 (Enzyme Kinetics) biochemistry.'
-    },
-    {
-      id: 'mock_req_2',
-      title: 'Urgent: Ward Duty Swap',
-      reward: 300,
-      price: 300,
-      category: 'request',
-      description: 'Need someone to cover my pediatric ward posting on Thursday evening (5 PM - 8 PM).'
-    }
-  ];
-
   const [apiListings, setApiListings] = React.useState([]);
-  const [apiGigs, setApiGigs] = React.useState([]);
-  const [apiRequests, setApiRequests] = React.useState([]);
   const [walletBalance, setWalletBalance] = React.useState(0);
-  const [isFabMenuVisible, setIsFabMenuVisible] = React.useState(false);
 
   const loadMarketplaceData = React.useCallback(async () => {
     if (!accessToken) return;
     try {
       const data = await getShopListings(accessToken);
-      if (data && data.length > 0) {
+      if (data) {
         setApiListings(data.filter(l => l.category !== 'gig' && l.category !== 'request'));
       } else {
-        setApiListings(defaultListings);
+        setApiListings([]);
       }
     } catch (err) {
       console.warn('[MarketplaceScreen] Error fetching listings:', err);
-      setApiListings(defaultListings);
-    }
-    try {
-      const gigs = await getShopGigs(accessToken);
-      if (gigs && gigs.length > 0) {
-        setApiGigs(gigs);
-      } else {
-        setApiGigs(defaultGigs);
-      }
-    } catch (err) {
-      console.warn('[MarketplaceScreen] Error fetching gigs:', err);
-      setApiGigs(defaultGigs);
-    }
-    try {
-      const reqs = await getShopRequests(accessToken);
-      if (reqs && reqs.length > 0) {
-        setApiRequests(reqs);
-      } else {
-        setApiRequests(defaultRequests);
-      }
-    } catch (err) {
-      console.warn('[MarketplaceScreen] Error fetching requests:', err);
-      setApiRequests(defaultRequests);
+      setApiListings([]);
     }
   }, [accessToken]);
 
@@ -152,16 +54,8 @@ const MarketplaceScreen = ({ navigation }) => {
     const subProduct = DeviceEventEmitter.addListener('newProductAdded', (item) => {
       setApiListings(prev => [item, ...prev]);
     });
-    const subGig = DeviceEventEmitter.addListener('newGigAdded', (item) => {
-      setApiGigs(prev => [item, ...prev]);
-    });
-    const subReq = DeviceEventEmitter.addListener('newRequestAdded', (item) => {
-      setApiRequests(prev => [item, ...prev]);
-    });
     return () => {
       subProduct.remove();
-      subGig.remove();
-      subReq.remove();
     };
   }, []);
 
@@ -222,84 +116,7 @@ const MarketplaceScreen = ({ navigation }) => {
             </ImageBackground>
           </View>
         </View>
-        {/* Quick Requests - Redesigned to match screen.png */}
-        <View style={styles.sectionContainer}>
-          <View style={styles.sectionHeader}>
-            <View>
-              <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Quick Requests</Text>
-              <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>Help others & earn rewards</Text>
-            </View>
 
-            <TouchableOpacity style={styles.viewAllBtn}>
-              <Text style={[styles.viewAllText, { color: isDark ? colors.primary : '#9A3412' }]}>View All</Text>
-              <MaterialIcons name="arrow-forward" size={14} color={isDark ? colors.primary : "#EA580C"} />
-            </TouchableOpacity>
-          </View>
-
-          {apiRequests.length === 0 ? (
-            <View style={{ padding: 24, alignItems: 'center', backgroundColor: colors.card, borderRadius: 16, borderColor: colors.border, borderWidth: 1 }}>
-              <Text style={{ color: colors.textSecondary, fontWeight: '600' }}>No requests active</Text>
-            </View>
-          ) : (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.hScroll}>
-              {apiRequests.map(item => (
-                <View key={item.id} style={[styles.quickCard, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
-                  <View style={styles.quickCardHeader}>
-                    <View style={[styles.quickIconWrapper, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#10B98115' }]}>
-                      <MaterialCommunityIcons name="lightning-bolt" size={20} color={colors.primary} />
-                    </View>
-                    <View style={[styles.quickBadge, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#10B98115' }]}>
-                      <Text style={[styles.quickBadgeText, { color: colors.primary }]}>{item.category || 'REQUEST'}</Text>
-                    </View>
-                  </View>
-                  <Text style={[styles.quickTitle, { color: colors.textPrimary }]} numberOfLines={2}>{item.title}</Text>
-
-                  <View style={[styles.quickDivider, { backgroundColor: colors.border }]} />
-
-                  <View style={styles.quickFooter}>
-                    <View>
-                      <Text style={[styles.quickRewardLabel, { color: colors.textSecondary }]}>REWARD</Text>
-                      <Text style={[styles.quickReward, { color: colors.textPrimary }]}>₹{item.price || item.reward || '0'}</Text>
-                    </View>
-
-                    <TouchableOpacity style={styles.quickBtn}>
-                      <LinearGradient colors={isDark ? ['#9A3412', '#78350F'] : ['#EA580C', '#C2410C']} style={styles.quickBtnGradient}>
-                        <Text style={styles.quickBtnText}>Accept</Text>
-                      </LinearGradient>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              ))}
-            </ScrollView>
-          )}
-        </View>
-
-        {/* Featured Gigs */}
-        <View style={styles.sectionContainer}>
-          <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Featured Gigs</Text>
-
-          {apiGigs.length === 0 ? (
-            <View style={{ padding: 24, alignItems: 'center', backgroundColor: colors.card, borderRadius: 16, borderColor: colors.border, borderWidth: 1 }}>
-              <Text style={{ color: colors.textSecondary, fontWeight: '600' }}>No gigs active</Text>
-            </View>
-          ) : (
-            apiGigs.map((item) => (
-              <View key={item.id} style={[styles.gigCard, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1, marginBottom: 12 }]}>
-                <Image source={{ uri: item.image_url || 'https://images.unsplash.com/photo-1542831371-29b0f74f9713?q=80&w=2070&auto=format&fit=crop' }} style={styles.gigImg} />
-                <View style={styles.gigContent}>
-                  <Text style={[styles.gigTitle, { color: colors.textPrimary }]}>{item.title}</Text>
-                  <Text style={[styles.gigDesc, { color: colors.textSecondary }]}>{item.description}</Text>
-                  <View style={[styles.gigFooter, { borderTopColor: colors.border }]}>
-                    <Text style={[styles.gigPrice, { color: isDark ? colors.primary : '#9A3412' }]}>₹{item.price}<Text style={[styles.gigPriceSub, { color: colors.textSecondary }]}>/hr</Text></Text>
-                    <TouchableOpacity style={[styles.bookGigBtn, { backgroundColor: isDark ? colors.primary : '#78350F' }]}>
-                      <Text style={styles.bookGigText}>Book Gig</Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              </View>
-            ))
-          )}
-        </View>
 
         {/* The Bazaar */}
         <View style={styles.sectionContainer}>
@@ -353,69 +170,11 @@ const MarketplaceScreen = ({ navigation }) => {
           }
         ]}
         activeOpacity={0.9}
-        onPress={() => setIsFabMenuVisible(true)}
+        onPress={() => navigation.navigate('AddProduct')}
       >
         <MaterialIcons name="add" size={24} color="#FFFFFF" />
         <Text style={styles.fabText}>Post</Text>
       </TouchableOpacity>
-
-      {/* FAB Menu Modal */}
-      <Modal
-        visible={isFabMenuVisible}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setIsFabMenuVisible(false)}
-      >
-        <TouchableWithoutFeedback onPress={() => setIsFabMenuVisible(false)}>
-          <View style={styles.modalOverlay}>
-            <TouchableWithoutFeedback>
-              <View style={[styles.modalContent, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>Create New Post</Text>
-
-                <TouchableOpacity
-                  style={[styles.modalOption, { borderBottomColor: colors.border }]}
-                  onPress={() => { setIsFabMenuVisible(false); navigation.navigate('AddProduct'); }}
-                >
-                  <MaterialIcons name="shopping-bag" size={24} color={colors.primary} />
-                  <View style={styles.modalOptionTextContainer}>
-                    <Text style={[styles.modalOptionTitle, { color: colors.textPrimary }]}>Sell an Item</Text>
-                    <Text style={[styles.modalOptionDesc, { color: colors.textSecondary }]}>List a product for sale</Text>
-                  </View>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[styles.modalOption, { borderBottomColor: colors.border }]}
-                  onPress={() => { setIsFabMenuVisible(false); navigation.navigate('AddGig'); }}
-                >
-                  <MaterialIcons name="work" size={24} color={colors.primary} />
-                  <View style={styles.modalOptionTextContainer}>
-                    <Text style={[styles.modalOptionTitle, { color: colors.textPrimary }]}>Offer a Gig</Text>
-                    <Text style={[styles.modalOptionDesc, { color: colors.textSecondary }]}>Offer your services or coaching</Text>
-                  </View>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.modalOption}
-                  onPress={() => { setIsFabMenuVisible(false); navigation.navigate('AddRequest'); }}
-                >
-                  <MaterialIcons name="live-help" size={24} color={colors.primary} />
-                  <View style={styles.modalOptionTextContainer}>
-                    <Text style={[styles.modalOptionTitle, { color: colors.textPrimary }]}>Post a Request</Text>
-                    <Text style={[styles.modalOptionDesc, { color: colors.textSecondary }]}>Ask for something you need</Text>
-                  </View>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[styles.modalCancelBtn, { backgroundColor: colors.background }]}
-                  onPress={() => setIsFabMenuVisible(false)}
-                >
-                  <Text style={[styles.modalCancelText, { color: colors.textPrimary }]}>Cancel</Text>
-                </TouchableOpacity>
-              </View>
-            </TouchableWithoutFeedback>
-          </View>
-        </TouchableWithoutFeedback>
-      </Modal>
     </View>
   );
 };

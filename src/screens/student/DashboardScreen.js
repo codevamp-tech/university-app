@@ -16,7 +16,7 @@ import ActivityRing from '../../components/ActivityRing';
 import { useUser } from '../../context/UserContext';
 import { useHealthMetrics } from '../../hooks/useHealthMetrics';
 import { generateAIInsight, generateRoadmap, computeSkillGap, generateDynamicRoadmap, fetchDynamicLLMInsight } from '../../data/aiEngine';
-import { updateStudentSheet } from '../../data/googleSheetsService';
+
 import { booksData } from '../student/library/LibraryMainScreen';
 import { listGrievancesAPI, resetPasswordAPI, uploadAvatarAPI } from '../../data/apiService';
 import { getDisplayCourse, isMedicalStudent } from '../../utils/courseDisplay';
@@ -52,6 +52,46 @@ const DashboardScreen = ({ navigation }) => {
       checkPrompted();
     }
   }, [user]);
+
+  const [cvButtonText, setCvButtonText] = React.useState('');
+
+  React.useEffect(() => {
+    if (!user) return;
+
+    const checkCVState = async () => {
+      try {
+        const cacheKey = `@ats_resume_${user.id}`;
+        const tsKey = `@ats_resume_timestamp_${user.id}`;
+        
+        const cached = await AsyncStorage.getItem(cacheKey);
+        const lastGenStr = await AsyncStorage.getItem(tsKey);
+        
+        const isMed = isMedicalStudent(user) || (user.course || '').toLowerCase().includes('mbbs') || (user.category || '').toLowerCase().includes('medical');
+
+        if (!cached) {
+          setCvButtonText(isMed ? 'Build Clinical CV' : 'View / Build Resume');
+        } else if (lastGenStr) {
+          const lastGen = parseInt(lastGenStr, 10);
+          const oneWeek = 7 * 24 * 60 * 60 * 1000;
+          if (Date.now() - lastGen >= oneWeek) {
+            setCvButtonText(isMed ? 'Rebuild Clinical CV' : 'Rebuild AI Resume');
+          } else {
+            setCvButtonText(isMed ? 'View Clinical CV' : 'View AI Resume');
+          }
+        } else {
+          setCvButtonText(isMed ? 'View Clinical CV' : 'View AI Resume');
+        }
+      } catch (e) {
+        console.warn('Error checking CV state:', e);
+      }
+    };
+
+    checkCVState();
+    const unsubscribe = navigation.addListener('focus', () => {
+      checkCVState();
+    });
+    return unsubscribe;
+  }, [user, navigation]);
 
   const handlePickAvatar = async () => {
     try {
@@ -295,11 +335,8 @@ const DashboardScreen = ({ navigation }) => {
     return () => { isMounted = false; };
   }, [user, activeInterests]);
 
-  const handleLogout = async () => {
+  const handleLogout = () => {
     setShowProfileMenu(false);
-    if (user && activeInterests) {
-      await updateStudentSheet(user.id, activeInterests);
-    }
     logout();
     navigation.replace('Login');
   };
@@ -1024,7 +1061,7 @@ const DashboardScreen = ({ navigation }) => {
               style={[styles.resumeBtn, { backgroundColor: isDark ? colors.primary : '#111827' }]}
               onPress={() => navigation.navigate('ResumeBuilder')}
             >
-              <Text style={styles.resumeBtnText}>{isMed ? 'Build Clinical CV' : 'View / Build Resume'}</Text>
+              <Text style={styles.resumeBtnText}>{cvButtonText || (isMed ? 'Build Clinical CV' : 'View / Build Resume')}</Text>
               <MaterialCommunityIcons name="magic-staff" size={16} color="#FFFFFF" style={{ marginLeft: 4 }} />
             </TouchableOpacity>
             <View style={styles.resumeBgIcon}>

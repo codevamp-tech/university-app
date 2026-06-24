@@ -3,7 +3,7 @@ import { getAvatarUrl } from "../../utils/avatar";
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Dimensions,
   Modal, TextInput, Alert, KeyboardAvoidingView, Platform, Share, Animated, FlatList,
-  TouchableWithoutFeedback,
+  TouchableWithoutFeedback, RefreshControl,
 } from 'react-native';
 import { Ionicons, MaterialIcons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -31,11 +31,11 @@ import {
   viewStoryAPI,
   likeStoryAPI,
   followUserAPI,
+  getAllStudents,
 } from '../../data/apiService';
 import { APP_CONFIG } from '../../config/appConfig';
 import { useTheme } from '../../hooks/useTheme';
 import { useUser } from '../../context/UserContext';
-import { fetchStudentsFromSheet } from '../../data/googleSheetsService';
 import ContentLoader, { Rect, Circle } from 'react-content-loader/native';
 
 const POST_CHAR_LIMIT = 3000;
@@ -43,12 +43,12 @@ const POST_CHAR_LIMIT = 3000;
 const { width } = Dimensions.get('window');
 
 const REACTION_ICONS = {
-  like: { icon: '👍', color: '#0A66C2' },
-  clap: { icon: '👏', color: '#057642' },
-  heart: { icon: '❤️', color: '#DF704D' },
-  bulb: { icon: '💡', color: '#F8C77E' },
-  laugh: { icon: '😂', color: '#1B85CE' },
-  sad: { icon: '😢', color: '#888888' },
+  like: { icon: '👍', color: '#0A66C2', label: 'Like' },
+  clap: { icon: '👏', color: '#057642', label: 'Clap' },
+  heart: { icon: '❤️', color: '#DF704D', label: 'Love' },
+  bulb: { icon: '💡', color: '#F8C77E', label: 'Insightful' },
+  laugh: { icon: '😂', color: '#1B85CE', label: 'Laugh' },
+  sad: { icon: '😢', color: '#888888', label: 'Sad' },
 };
 
 function timeAgo(dateString) {
@@ -82,6 +82,7 @@ const CommunityScreen = ({ navigation }) => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [posting, setPosting] = useState(false);
   const [studentMap, setStudentMap] = useState({});
+  const [refreshing, setRefreshing] = useState(false);
 
   // Interaction States
   const [activeReactionPostId, setActiveReactionPostId] = useState(null);
@@ -185,19 +186,29 @@ const CommunityScreen = ({ navigation }) => {
   useEffect(() => {
     const loadStudents = async () => {
       try {
-        const students = await fetchStudentsFromSheet();
+        const students = await getAllStudents(accessToken);
         const map = {};
         students.forEach(s => {
-          if (s.id) map[s.id.toLowerCase()] = s;
-          if (s.email) map[s.email.toLowerCase()] = s;
+          const key = (s.username || s.rollno || '').toLowerCase();
+          if (key) {
+            map[key] = {
+              id: s.rollno || s.username,
+              name: s.full_name || s.username,
+              course: s.course,
+              year: s.current_year,
+              avatar: s.avatar_url || getAvatarUrl(s.username),
+            };
+          }
         });
         setStudentMap(map);
       } catch (err) {
         console.warn('Failed to load student profiles:', err);
       }
     };
-    loadStudents();
-  }, []);
+    if (accessToken) {
+      loadStudents();
+    }
+  }, [accessToken]);
 
   const loadFeed = useCallback(async () => {
     if (!accessToken) return;
@@ -220,6 +231,17 @@ const CommunityScreen = ({ navigation }) => {
       setLoadingFeed(false);
     }
   }, [accessToken, loadStories]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await loadFeed();
+    } catch (e) {
+      console.warn("Pull-to-refresh error:", e);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [loadFeed]);
 
   useFocusEffect(
     React.useCallback(() => {
@@ -640,7 +662,7 @@ const CommunityScreen = ({ navigation }) => {
     // Resolve user details
     const posterUsername = targetPost.user?.username;
     const isMe = posterUsername === user?.id;
-    let displayName = posterUsername || 'User';
+    let displayName = targetPost.user?.full_name || posterUsername || 'User';
     let avatarUrl = targetPost.user?.avatar_url || getAvatarUrl(posterUsername || targetPost.id);
     let courseYearStr = '';
 
@@ -655,13 +677,26 @@ const CommunityScreen = ({ navigation }) => {
       if (pData.avatar) avatarUrl = pData.avatar;
     }
 
+    let repostAuthorName = 'User';
+    if (isOriginal) {
+      const repUsername = post.user?.username;
+      const isRepMe = repUsername === user?.id;
+      if (isRepMe) {
+        repostAuthorName = 'You';
+      } else if (repUsername && studentMap[repUsername.toLowerCase()]) {
+        repostAuthorName = studentMap[repUsername.toLowerCase()].name || repUsername;
+      } else {
+        repostAuthorName = post.user?.full_name || repUsername || 'User';
+      }
+    }
+
     return (
       <View key={post.id} style={[styles.postCard, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1, marginTop: isRepost ? 0 : 16 }]}>
         {isOriginal && (
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12 }}>
             <MaterialCommunityIcons name="repeat" size={16} color={colors.textSecondary} />
             <Text style={{ fontSize: 13, color: colors.textSecondary, fontWeight: '600' }}>
-              {post.user?.username === user?.id ? 'You' : (studentMap[post.user?.username?.toLowerCase()]?.name || post.user?.username || 'User')} reposted this
+              {repostAuthorName} reposted {displayName}'s post
             </Text>
           </View>
         )}
@@ -679,8 +714,6 @@ const CommunityScreen = ({ navigation }) => {
                     name: displayName,
                     avatar_url: avatarUrl,
                     rollNo: posterUsername,
-                    followers: Math.floor(Math.random() * 500) + 1,
-                    connections: Math.floor(Math.random() * 300) + 1,
                   }
                 });
               }
@@ -699,6 +732,7 @@ const CommunityScreen = ({ navigation }) => {
             <TouchableOpacity
               onPress={async () => {
                 if (!accessToken) return;
+                if (targetPost.connection_status === 'Pending' || targetPost.connection_status === 'Connected') return;
                 try {
                   await followUserAPI(accessToken, targetPost.author_id);
                   Alert.alert('Success', `You are now following ${displayName}`);
@@ -707,9 +741,33 @@ const CommunityScreen = ({ navigation }) => {
                   Alert.alert('Error', 'Failed to follow user');
                 }
               }}
-              style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, backgroundColor: colors.primary + '20' }}
+              disabled={targetPost.connection_status === 'Pending' || targetPost.connection_status === 'Connected'}
+              style={{
+                paddingHorizontal: 12,
+                paddingVertical: 6,
+                borderRadius: 16,
+                backgroundColor: targetPost.connection_status === 'Connected'
+                  ? colors.border
+                  : targetPost.connection_status === 'Pending'
+                    ? colors.border + '50'
+                    : colors.primary + '20'
+              }}
             >
-              <Text style={{ color: colors.primary, fontWeight: '700', fontSize: 13 }}>+ Follow</Text>
+              <Text style={{
+                color: targetPost.connection_status === 'Connected'
+                  ? colors.textSecondary
+                  : targetPost.connection_status === 'Pending'
+                    ? colors.textMuted
+                    : colors.primary,
+                fontWeight: '700',
+                fontSize: 13
+              }}>
+                {targetPost.connection_status === 'Connected'
+                  ? 'Following'
+                  : targetPost.connection_status === 'Pending'
+                    ? 'Pending'
+                    : '+ Follow'}
+              </Text>
             </TouchableOpacity>
           )}
         </View>
@@ -748,7 +806,7 @@ const CommunityScreen = ({ navigation }) => {
                 <Ionicons name="thumbs-up-outline" size={20} color={colors.textSecondary} />
               )}
               <Text style={[styles.actionCount, { color: targetPost.user_reaction ? REACTION_ICONS[targetPost.user_reaction].color : colors.textSecondary }]}>
-                {targetPost.user_reaction ? targetPost.user_reaction.charAt(0).toUpperCase() + targetPost.user_reaction.slice(1) : 'Like'}
+                {targetPost.user_reaction ? (REACTION_ICONS[targetPost.user_reaction]?.label || targetPost.user_reaction.charAt(0).toUpperCase() + targetPost.user_reaction.slice(1)) : 'Like'}
               </Text>
             </TouchableOpacity>
 
@@ -928,7 +986,18 @@ const CommunityScreen = ({ navigation }) => {
         </View>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        contentContainerStyle={styles.scroll} 
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[colors.primary]}
+            tintColor={colors.primary}
+          />
+        }
+      >
         {/* Pulse Stories Section */}
         {/* ── Stories Row ── */}
         <ScrollView

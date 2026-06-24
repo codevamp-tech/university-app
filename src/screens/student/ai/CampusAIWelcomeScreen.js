@@ -9,6 +9,7 @@ import {
   SafeAreaView,
   StatusBar,
   Dimensions,
+  Alert,
 } from 'react-native';
 import { Ionicons, MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -63,6 +64,13 @@ const CampusAIWelcomeScreen = ({ navigation }) => {
     return <Ionicons name={item.icon} size={24} color={item.color} />;
   };
 
+  const handleFeatureLockAlert = () => {
+    Alert.alert(
+      'Premium Feature',
+      'This feature is locked in the free trial.'
+    );
+  };
+
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" />
@@ -113,17 +121,18 @@ const CampusAIWelcomeScreen = ({ navigation }) => {
           {SUGGESTIONS.map((item) => (
             <TouchableOpacity
               key={item.id}
-              style={styles.card}
-              onPress={() => navigation.navigate('CampusAIChat', { initialQuery: item.title })}
+              style={[styles.card, { opacity: 0.6 }]}
+              activeOpacity={0.8}
+              onPress={handleFeatureLockAlert}
             >
-              <View style={[styles.iconContainer, { backgroundColor: item.bgColor }]}>
-                {renderIcon(item)}
+              <View style={[styles.iconContainer, { backgroundColor: '#E5E7EB' }]}>
+                {renderIcon({ ...item, color: '#9CA3AF' })}
               </View>
               <View style={styles.cardBody}>
-                <Text style={styles.cardTitle}>{item.title}</Text>
-                <Text style={styles.cardDesc}>{item.desc}</Text>
+                <Text style={[styles.cardTitle, { color: '#6B7280' }]}>{item.title} (Locked)</Text>
+                <Text style={[styles.cardDesc, { color: '#9CA3AF' }]}>{item.desc}</Text>
               </View>
-              <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
+              <Ionicons name="lock-closed" size={18} color="#9CA3AF" />
             </TouchableOpacity>
           ))}
         </View>
@@ -131,23 +140,24 @@ const CampusAIWelcomeScreen = ({ navigation }) => {
 
       {/* Input Bar */}
       <SafeAreaView style={styles.inputSticky}>
-        <View style={styles.inputWrapper}>
-          <TouchableOpacity style={styles.attachBtn}>
-            <Ionicons name="attach" size={24} color="#6B7280" />
-          </TouchableOpacity>
-          <Text style={styles.placeholderText}>Type a message...</Text>
-          <TouchableOpacity 
-            style={styles.sendBtn}
-            onPress={() => navigation.navigate('CampusAIChat')}
-          >
+        <TouchableOpacity 
+          activeOpacity={0.8}
+          style={[styles.inputWrapper, { opacity: 0.6 }]}
+          onPress={handleFeatureLockAlert}
+        >
+          <View style={styles.attachBtn}>
+            <Ionicons name="lock-closed" size={22} color="#9CA3AF" />
+          </View>
+          <Text style={styles.placeholderText}>AI Chatbot is locked in trial...</Text>
+          <View style={styles.sendBtn}>
             <LinearGradient
-              colors={['#EA580C', '#9A3412']}
+              colors={['#9CA3AF', '#4B5563']}
               style={styles.sendBtnGradient}
             >
-              <Ionicons name="search" size={20} color="#FFFFFF" />
+              <Ionicons name="lock-closed-outline" size={20} color="#FFFFFF" />
             </LinearGradient>
-          </TouchableOpacity>
-        </View>
+          </View>
+        </TouchableOpacity>
       </SafeAreaView>
 
     </View>

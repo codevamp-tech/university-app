@@ -8,7 +8,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../hooks/useTheme';
 import { useUser } from '../../context/UserContext';
 import { getPublicProfile } from '../../data/apiService';
-import { fetchStudentsFromSheet } from '../../data/googleSheetsService';
+import { getAvatarUrl } from '../../utils/avatar';
 
 const { width } = Dimensions.get('window');
 
@@ -33,40 +33,15 @@ const ProductDetailScreen = ({ route, navigation }) => {
       try {
         const dbProfile = await getPublicProfile(accessToken, product.seller_id);
         if (dbProfile && isMounted) {
-          try {
-            const students = await fetchStudentsFromSheet();
-            const richStudent = students.find(s => s.id.toLowerCase() === dbProfile.username.toLowerCase());
-            if (richStudent) {
-              setSellerProfile({
-                user_id: product.seller_id,
-                username: richStudent.name,
-                rollno: dbProfile.rollno,
-                avatar_url: dbProfile.avatar_url || (richStudent.gender === 'F' || richStudent.gender === 'Female' 
-                  ? 'https://images.pexels.com/photos/733872/pexels-photo-733872.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=500'
-                  : 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=500'),
-                course: richStudent.course,
-                year: richStudent.year,
-              });
-            } else {
-              setSellerProfile({
-                user_id: product.seller_id,
-                username: dbProfile.username,
-                rollno: dbProfile.rollno,
-                avatar_url: dbProfile.avatar_url,
-                course: '',
-                year: dbProfile.current_year,
-              });
-            }
-          } catch (sheetError) {
-            setSellerProfile({
-              user_id: product.seller_id,
-              username: dbProfile.username,
-              rollno: dbProfile.rollno,
-              avatar_url: dbProfile.avatar_url,
-              course: '',
-              year: dbProfile.current_year,
-            });
-          }
+          setSellerProfile({
+            user_id: product.seller_id,
+            name: dbProfile.full_name,
+            username: dbProfile.username,
+            rollno: dbProfile.rollno,
+            avatar_url: dbProfile.avatar_url,
+            course: dbProfile.course || '',
+            year: dbProfile.current_year,
+          });
         }
       } catch (err) {
         console.warn('[ProductDetail] Error fetching seller public profile:', err);
@@ -133,16 +108,19 @@ const ProductDetailScreen = ({ route, navigation }) => {
           </View>
 
           {/* Seller Info */}
-          <View style={[styles.sellerCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <View style={[styles.sellerCard, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
             <Image 
               source={{ 
-                uri: sellerProfile?.avatar_url || seller.avatar_url || 'https://images.unsplash.com/photo-1527980965255-d3b416303d12?auto=format&fit=crop&w=150' 
+                uri: getAvatarUrl(
+                  sellerProfile?.avatar_url || seller.avatar_url,
+                  sellerProfile?.name || seller.full_name || sellerProfile?.username || seller.username || 'User'
+                )
               }} 
               style={styles.sellerAvatar} 
             />
             <View style={styles.sellerInfo}>
               <Text style={[styles.sellerName, { color: colors.textPrimary }]}>
-                {sellerProfile?.username || seller.username || 'Campus Seller'}
+                {sellerProfile?.name || seller.full_name || sellerProfile?.username || seller.username || 'Campus Seller'}
               </Text>
               <Text style={[styles.sellerRole, { color: colors.textSecondary }]}>
                 {sellerProfile?.course 

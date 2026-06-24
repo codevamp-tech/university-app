@@ -791,7 +791,6 @@ const ERPHubScreen = ({ navigation }) => {
               style={[styles.submitBtn, { backgroundColor: colors.primary }]}
               onPress={async () => {
                 if (!outpassForm.reason) return;
-                setShowRequestModal(false);
                 setGatePassStatus('pending');
                 try {
                   if (accessToken) {
@@ -808,6 +807,8 @@ const ERPHubScreen = ({ navigation }) => {
                   }
                 } catch (err) {
                   console.warn('[ERPHub] Error creating outpass:', err);
+                } finally {
+                  setShowRequestModal(false);
                 }
               }}
             >
