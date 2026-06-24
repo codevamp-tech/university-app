@@ -18,10 +18,26 @@ import { useHealthMetrics } from '../../hooks/useHealthMetrics';
 import { generateAIInsight, generateRoadmap, computeSkillGap, generateDynamicRoadmap, fetchDynamicLLMInsight } from '../../data/aiEngine';
 
 import { booksData } from '../student/library/LibraryMainScreen';
-import { listGrievancesAPI, uploadAvatarAPI } from '../../data/apiService';
+import { listGrievancesAPI, uploadAvatarAPI, createOutpass, getStudentOutpasses } from '../../data/apiService';
 import { getDisplayCourse, isMedicalStudent } from '../../utils/courseDisplay';
 
 const { width } = Dimensions.get('window');
+
+const formatTime = (isoString) => {
+  if (!isoString) return '';
+  try {
+    const d = new Date(isoString);
+    let hours = d.getHours();
+    const minutes = d.getMinutes();
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12;
+    hours = hours ? hours : 12;
+    const minStr = minutes < 10 ? '0' + minutes : minutes;
+    return `${hours}:${minStr} ${ampm}`;
+  } catch (e) {
+    return '';
+  }
+};
 
 const DashboardScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
@@ -247,6 +263,7 @@ const DashboardScreen = ({ navigation }) => {
 
   const [isHostelMode, setIsHostelMode] = React.useState(false);
   const [gatePassStatus, setGatePassStatus] = React.useState('idle'); // idle, pending, approved
+  const [activeOutpass, setActiveOutpass] = React.useState(null);
   const [showQRModal, setShowQRModal] = React.useState(false);
   const [showRequestModal, setShowRequestModal] = React.useState(false);
   const [outpassForm, setOutpassForm] = React.useState({ reason: '', duration: '2 Hours' });
@@ -332,6 +349,47 @@ const DashboardScreen = ({ navigation }) => {
 
     return () => { isMounted = false; };
   }, [user, activeInterests]);
+
+  const loadOutpassStatus = React.useCallback(async () => {
+    if (!accessToken) return;
+    try {
+      const res = await getStudentOutpasses(accessToken);
+      if (res && res.length > 0) {
+        const latest = res[0];
+        setActiveOutpass(latest);
+        const status = latest.status?.toLowerCase();
+        if (status === 'pending') {
+          setGatePassStatus('pending');
+        } else if (status === 'approved') {
+          setGatePassStatus('approved');
+        } else if (status === 'rejected') {
+          setGatePassStatus('rejected');
+        } else {
+          setGatePassStatus('idle');
+        }
+      } else {
+        setGatePassStatus('idle');
+        setActiveOutpass(null);
+      }
+    } catch (err) {
+      console.warn('[DashboardScreen] Error loading outpasses:', err);
+    }
+  }, [accessToken]);
+
+  React.useEffect(() => {
+    if (isHostelMode && accessToken) {
+      loadOutpassStatus();
+    }
+  }, [isHostelMode, accessToken, loadOutpassStatus]);
+
+  React.useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      if (isHostelMode && accessToken) {
+        loadOutpassStatus();
+      }
+    });
+    return unsubscribe;
+  }, [navigation, isHostelMode, accessToken, loadOutpassStatus]);
 
   const handleLogout = () => {
     setShowProfileMenu(false);
@@ -550,7 +608,7 @@ const DashboardScreen = ({ navigation }) => {
             <View style={styles.qrWrapper}>
               <MaterialCommunityIcons name="qrcode" size={200} color={isDark ? '#FFF' : '#111827'} />
               <View style={styles.qrStatusBadge}>
-                <Text style={styles.qrStatusText}>VALID UNTIL 10:30 PM</Text>
+                <Text style={styles.qrStatusText}>VALID UNTIL {activeOutpass ? (formatTime(activeOutpass.return_time) || '10:30 PM') : '10:30 PM'}</Text>
               </View>
             </View>
 
@@ -616,14 +674,27 @@ const DashboardScreen = ({ navigation }) => {
 
             <TouchableOpacity
               style={[styles.submitBtn, { backgroundColor: colors.primary }]}
-              onPress={() => {
+              onPress={async () => {
                 if (!outpassForm.reason) return;
-                setShowRequestModal(false);
                 setGatePassStatus('pending');
-                // Simulate warden approval
-                setTimeout(() => {
-                  setGatePassStatus('approved');
-                }, 3000);
+                try {
+                  if (accessToken) {
+                    const now = new Date();
+                    const exit_time = now.toISOString();
+                    const return_time = new Date(now.getTime() + 2 * 60 * 60 * 1000).toISOString();
+                    await createOutpass(accessToken, {
+                      reason: `${outpassForm.reason};Out of Campus`,
+                      destination: 'Out of Campus',
+                      exit_time,
+                      return_time
+                    });
+                    await loadOutpassStatus();
+                  }
+                } catch (err) {
+                  console.warn('[DashboardScreen] Error creating outpass:', err);
+                } finally {
+                  setShowRequestModal(false);
+                }
               }}
             >
               <Text style={styles.submitBtnText}>SEND TO WARDEN</Text>
@@ -779,17 +850,18 @@ const DashboardScreen = ({ navigation }) => {
             <View style={styles.hostelGrid}>
               {/* Mess Menu */}
               <TouchableOpacity
-                style={[styles.hostelCard, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}
-                onPress={() => navigation.navigate('HostelMess')}
+                style={[styles.hostelCard, { backgroundColor: isDark ? colors.card : '#FFFFFF', opacity: 0.7 }]}
+                onPress={() => Alert.alert('Premium Feature', 'Tonight\'s Mess Menu is locked in this demo.')}
+                activeOpacity={0.8}
               >
-                <View style={[styles.hostelIconCircle, { backgroundColor: '#FEE2E2' }]}>
-                  <MaterialCommunityIcons name="food-variant" size={20} color="#EF4444" />
+                <View style={[styles.hostelIconCircle, { backgroundColor: isDark ? '#374151' : '#F3F4F6' }]}>
+                  <MaterialCommunityIcons name="lock" size={20} color={colors.textSecondary} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.hostelCardTitle, { color: colors.textPrimary }]}>Tonight's Dinner</Text>
-                  <Text style={[styles.hostelCardSub, { color: colors.textSecondary }]} numberOfLines={1}>Paneer, Dal, Roti, Kheer</Text>
+                  <Text style={[styles.hostelCardTitle, { color: colors.textPrimary, textDecorationLine: 'line-through' }]}>Tonight's Dinner</Text>
+                  <Text style={[styles.hostelCardSub, { color: colors.textSecondary }]} numberOfLines={1}>Paneer, Dal, Roti, Kheer (Locked)</Text>
                 </View>
-                <Text style={styles.messTime}>8:00 PM</Text>
+                <MaterialCommunityIcons name="lock-outline" size={18} color={colors.textMuted} style={{ marginRight: 8 }} />
               </TouchableOpacity>
 
               {/* Laundry Status */}
