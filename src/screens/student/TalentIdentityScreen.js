@@ -6,7 +6,7 @@ import { Ionicons, MaterialIcons, MaterialCommunityIcons } from '@expo/vector-ic
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
-import { uploadAvatarAPI, updateMyProfile } from '../../data/apiService';
+import { uploadAvatarAPI, updateMyProfile, connectionStatsAPI, getStartups } from '../../data/apiService';
 import { getAvatarUrl } from '../../utils/avatar';
 import { ActivityIndicator, Alert } from 'react-native';
 
@@ -31,6 +31,46 @@ const TalentIdentityScreen = ({ navigation }) => {
     ? `Dedicated medical student in MBBS, passionate about clinical practice, community health, and patient care. Leading rotation reports at primary clinics and practicing diagnostic reasoning.` 
     : `Passionate student deeply interested in technology, learning, and projects. Active member of campus groups, always looking to build and collaborate with like-minded peers!`;
   const [userBio, setUserBio] = React.useState(user?.bio || defaultBio);
+  const [stats, setStats] = React.useState({ followers: 0, following: 0, connections: 0 });
+  const [myStartups, setMyStartups] = React.useState([]);
+  const [loadingData, setLoadingData] = React.useState(true);
+
+  React.useEffect(() => {
+    let isMounted = true;
+    
+    const loadData = () => {
+      if (!accessToken) return;
+      connectionStatsAPI(accessToken)
+        .then(res => {
+          if (isMounted && res) {
+            setStats(res);
+          }
+        })
+        .catch(err => console.warn('[TalentIdentityScreen] stats error:', err));
+
+      getStartups(accessToken, 0, 50, true)
+        .then(res => {
+          if (isMounted && res) {
+            setMyStartups(res);
+          }
+        })
+        .catch(err => console.warn('[TalentIdentityScreen] startups error:', err))
+        .finally(() => {
+          if (isMounted) setLoadingData(false);
+        });
+    };
+
+    loadData();
+
+    const unsubscribe = navigation.addListener('focus', () => {
+      loadData();
+    });
+
+    return () => {
+      isMounted = false;
+      unsubscribe();
+    };
+  }, [accessToken, navigation]);
 
   const handleGenerateBio = async () => {
     Alert.alert(
@@ -70,46 +110,36 @@ const TalentIdentityScreen = ({ navigation }) => {
     return cl !== 'yes' && cl !== 'no' && cl !== 'na' && cl !== 'n/a' && cl !== 'none' && cl !== '';
   });
 
-  const finalCerts = displayCerts.length > 0 
-    ? displayCerts.map((name, idx) => ({
-        id: idx,
-        name: name,
-        issuer: name.toLowerCase().includes('aws') || name.toLowerCase().includes('cloud')
-          ? 'AWS Academy'
-          : name.toLowerCase().includes('google')
-          ? 'Google Cloud'
-          : name.toLowerCase().includes('nptel') || name.toLowerCase().includes('swayam')
-          ? 'NPTEL'
-          : `${APP_CONFIG.UNIVERSITY_SHORT_NAME} Venture Lab`,
-        date: 'Issued recently',
-        img: idx % 2 === 0 
-          ? 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?w=400&auto=format&fit=crop'
-          : 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=400&auto=format&fit=crop'
-      }))
-    : [
-        {
-          id: 0,
-          name: isMed
-            ? 'Basic Pharmacology'
-            : user.course?.toLowerCase().includes('mba') || user.course?.toLowerCase().includes('bba')
-            ? 'Advanced Excel'
-            : 'Python Foundations',
-          issuer: `${APP_CONFIG.UNIVERSITY_SHORT_NAME} Academy`,
-          date: 'Recommended Certification',
-          img: 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?w=400&auto=format&fit=crop'
-        },
-        {
-          id: 1,
-          name: isMed
-            ? 'Clinical Trials & Ethics'
-            : user.course?.toLowerCase().includes('mba') || user.course?.toLowerCase().includes('bba')
-            ? 'Data Visualization with BI'
-            : 'Cloud Architect Associate',
-          issuer: 'AWS Academy Partner',
-          date: 'Recommended Certification',
-          img: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=400&auto=format&fit=crop'
-        }
-      ];
+  const finalCerts = displayCerts.map((name, idx) => ({
+    id: idx,
+    name: name,
+    issuer: name.toLowerCase().includes('aws') || name.toLowerCase().includes('cloud')
+      ? 'AWS Academy'
+      : name.toLowerCase().includes('google')
+      ? 'Google Cloud'
+      : name.toLowerCase().includes('nptel') || name.toLowerCase().includes('swayam')
+      ? 'NPTEL'
+      : `${APP_CONFIG.UNIVERSITY_SHORT_NAME} Venture Lab`,
+    date: 'Issued recently',
+    img: idx % 2 === 0 
+      ? 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?w=400&auto=format&fit=crop'
+      : 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=400&auto=format&fit=crop'
+  }));
+
+  const leadershipItems = (user.leadership || []).filter(c => {
+    const cl = (c || '').toLowerCase();
+    return cl !== 'yes' && cl !== 'no' && cl !== 'na' && cl !== 'n/a' && cl !== 'none' && cl !== '';
+  });
+
+  const extracurricularItems = (user.extracurricular || []).filter(c => {
+    const cl = (c || '').toLowerCase();
+    return cl !== 'yes' && cl !== 'no' && cl !== 'na' && cl !== 'n/a' && cl !== 'none' && cl !== '';
+  });
+
+  const allSocialActivities = [
+    ...leadershipItems.map(item => ({ name: item, type: 'Leadership Role', icon: 'grade' })),
+    ...extracurricularItems.map(item => ({ name: item, type: 'Extracurricular', icon: 'stars' })),
+  ];
 
     const handlePickImage = async () => {
     try {
@@ -216,9 +246,9 @@ const TalentIdentityScreen = ({ navigation }) => {
 
           {/* LinkedIn-style Connections */}
           <View style={styles.networkStats}>
-            <Text style={[styles.networkText, { color: isDark ? colors.primary : '#3474ec' }]}><Text style={[styles.networkBold, { color: colors.textPrimary }]}>1.2K</Text> Followers</Text>
+            <Text style={[styles.networkText, { color: isDark ? colors.primary : '#3474ec' }]}><Text style={[styles.networkBold, { color: colors.textPrimary }]}>{stats.followers}</Text> Followers</Text>
             <Text style={[styles.networkDivider, { color: colors.textMuted }]}>•</Text>
-            <Text style={[styles.networkText, { color: isDark ? colors.primary : '#3474ec' }]}><Text style={[styles.networkBold, { color: colors.textPrimary }]}>500+</Text> Connections</Text>
+            <Text style={[styles.networkText, { color: isDark ? colors.primary : '#3474ec' }]}><Text style={[styles.networkBold, { color: colors.textPrimary }]}>{stats.connections}</Text> Connections</Text>
           </View>
 
 
@@ -307,29 +337,31 @@ const TalentIdentityScreen = ({ navigation }) => {
               <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>Social Impact Credits</Text>
               <Text style={[styles.cardSubSub, { color: colors.textSecondary }]}>Community Service & Volunteering</Text>
             </View>
-            <View style={[styles.scoreBadge, { backgroundColor: colors.primaryLight }]}><Text style={[styles.scoreText, { color: colors.primary }]}>{user?.social_credits || ((user?.extracurricular?.length || 0) + (user?.leadership?.length || 0)) * 100 + 120} pts</Text></View>
+            <View style={[styles.scoreBadge, { backgroundColor: colors.primaryLight }]}><Text style={[styles.scoreText, { color: colors.primary }]}>{user?.social_credits || allSocialActivities.length * 100} pts</Text></View>
           </View>
 
 
           <View style={styles.proofList}>
-            <View style={[styles.proofItem, { backgroundColor: colors.background, borderColor: colors.border, borderWidth: 1 }]}>
-              <View style={[styles.proofLeadIcon, { backgroundColor: colors.card }]}><MaterialIcons name="volunteer-activism" size={18} color={colors.primary} /></View>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.proofName, { color: colors.textPrimary }]}>Campus Green Drive</Text>
-                <Text style={[styles.proofMeta, { color: colors.textSecondary }]}>12 Hours • NGO Partner</Text>
+            {allSocialActivities.length > 0 ? (
+              allSocialActivities.map((activity, index) => (
+                <View key={index} style={[styles.proofItem, { backgroundColor: index % 2 === 0 ? colors.background : (isDark ? 'rgba(255,255,255,0.03)' : '#F3F4F6'), borderColor: colors.border, borderWidth: 1 }]}>
+                  <View style={[styles.proofLeadIcon, { backgroundColor: colors.card }]}><MaterialIcons name={activity.icon} size={18} color={colors.primary} /></View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.proofName, { color: colors.textPrimary }]}>{activity.name}</Text>
+                    <Text style={[styles.proofMeta, { color: colors.textSecondary }]}>{activity.type}</Text>
+                  </View>
+                  <View style={{ backgroundColor: colors.primaryLight, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12 }}>
+                    <Text style={{ fontSize: 10, fontWeight: '700', color: colors.primary }}>100 pts</Text>
+                  </View>
+                </View>
+              ))
+            ) : (
+              <View style={{ padding: 16, alignItems: 'center' }}>
+                <Text style={{ color: colors.textSecondary, fontSize: 12, textAlign: 'center' }}>
+                  No campus activities or volunteering records found.
+                </Text>
               </View>
-              <TouchableOpacity><Text style={[styles.viewProofText, { color: colors.primary }]}>VIEW PROOF</Text></TouchableOpacity>
-            </View>
-
-
-            <View style={[styles.proofItem, { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#F3F4F6', borderColor: colors.border, borderWidth: 1 }]}>
-              <View style={[styles.proofLeadIcon, { backgroundColor: colors.card }]}><MaterialIcons name="groups" size={18} color={isDark ? colors.primary : "#4953ac"} /></View>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.proofName, { color: colors.textPrimary }]}>Peer Mentorship</Text>
-                <Text style={[styles.proofMeta, { color: colors.textSecondary }]}>Spring Semester '24</Text>
-              </View>
-              <TouchableOpacity><Text style={[styles.viewProofText, { color: colors.primary }]}>VIEW PROOF</Text></TouchableOpacity>
-            </View>
+            )}
           </View>
         </View>
 
@@ -353,25 +385,29 @@ const TalentIdentityScreen = ({ navigation }) => {
                   : { backgroundColor: isDark ? 'rgba(234, 88, 12, 0.2)' : 'rgba(254, 152, 50, 0.15)', borderColor: isDark ? 'rgba(234, 88, 12, 0.3)' : 'rgba(254, 152, 50, 0.3)' }
               ]}>
                 <Text style={[styles.activeProjectText, { color: isMed ? (isDark ? '#C084FC' : '#6B21A8') : colors.primary }]}>
-                  {isMed ? 'ACTIVE ROTATION' : 'ACTIVE PROJECT'}
+                  {myStartups.length > 0 ? (isMed ? 'ACTIVE PROPOSAL' : 'ACTIVE VENTURE') : 'INACTIVE'}
                 </Text>
               </View>
             </View>
 
             <Text style={[styles.ventureTitle, { color: isMed ? colors.textPrimary : '#fe9832' }]}>
-              {isMed ? 'Rural Health Immersion' : 'SkyDrone Campus'}
+              {myStartups.length > 0 
+                ? myStartups[0].name 
+                : (isMed ? 'No Active Research' : 'No Active Venture')}
             </Text>
             <Text style={[styles.ventureDesc, { color: isMed ? colors.textSecondary : '#dadddf' }]}>
-              {isMed 
-                ? 'Conducting community health screenings and analyzing pediatric immunization compliance at the local primary health center.'
-                : 'Leading a team of 5 to develop autonomous delivery drones for last-mile pharmaceutical logistics in rural regions.'}
+              {myStartups.length > 0 
+                ? (myStartups[0].tagline || myStartups[0].description)
+                : (isMed 
+                  ? 'Submit your clinical research proposal outline on the Research tab to showcase it on your profile.'
+                  : 'Pitch your startup idea on the Venture tab to showcase it on your profile.')}
             </Text>
             <View style={styles.ventureActions}>
-              <TouchableOpacity style={[styles.vActionBtn, isMed && { backgroundColor: isDark ? '#6B21A8' : '#7C3AED' }]}>
+              <TouchableOpacity style={[styles.vActionBtn, isMed && { backgroundColor: isDark ? '#6B21A8' : '#7C3AED' }]} onPress={() => navigation.navigate('Venture')}>
                 <Ionicons name={isMed ? "journal-outline" : "link-outline"} size={14} color="#FFFFFF" />
                 <Text style={styles.vActionText}>{isMed ? 'Case Studies' : 'Project Proofs'}</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.vActionBtn, isMed && { backgroundColor: isDark ? '#6B21A8' : '#7C3AED' }]}>
+              <TouchableOpacity style={[styles.vActionBtn, isMed && { backgroundColor: isDark ? '#6B21A8' : '#7C3AED' }]} onPress={() => navigation.navigate('Venture')}>
                 <MaterialCommunityIcons name={isMed ? "clipboard-check-outline" : "rocket-launch"} size={14} color="#FFFFFF" />
                 <Text style={styles.vActionText}>{isMed ? 'Logbook ID' : 'Startup ID'}</Text>
               </TouchableOpacity>
@@ -384,24 +420,34 @@ const TalentIdentityScreen = ({ navigation }) => {
         <View style={styles.certWrapper}>
           <View style={styles.sectionHeader}>
             <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>Earned Digital Certificates</Text>
-            <TouchableOpacity style={styles.viewAllRow}>
-              <Text style={[styles.viewAllCertText, { color: colors.primary }]}>VIEW ALL</Text>
-              <MaterialIcons name="arrow-forward" size={16} color={colors.primary} />
-            </TouchableOpacity>
+            {finalCerts.length > 0 && (
+              <TouchableOpacity style={styles.viewAllRow}>
+                <Text style={[styles.viewAllCertText, { color: colors.primary }]}>VIEW ALL</Text>
+                <MaterialIcons name="arrow-forward" size={16} color={colors.primary} />
+              </TouchableOpacity>
+            )}
           </View>
 
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.certScroll}>
-            {finalCerts.map((cert) => (
-              <View key={cert.id} style={[styles.certCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                <Image
-                  source={{ uri: cert.img }}
-                  style={styles.certImg}
-                />
-                <Text style={[styles.certName, { color: colors.textPrimary }]}>{cert.name}</Text>
-                <Text style={[styles.certIssuer, { color: colors.textSecondary }]}>{cert.issuer} • {cert.date}</Text>
-              </View>
-            ))}
-          </ScrollView>
+          {finalCerts.length > 0 ? (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.certScroll}>
+              {finalCerts.map((cert) => (
+                <View key={cert.id} style={[styles.certCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                  <Image
+                    source={{ uri: cert.img }}
+                    style={styles.certImg}
+                  />
+                  <Text style={[styles.certName, { color: colors.textPrimary }]}>{cert.name}</Text>
+                  <Text style={[styles.certIssuer, { color: colors.textSecondary }]}>{cert.issuer} • {cert.date}</Text>
+                </View>
+              ))}
+            </ScrollView>
+          ) : (
+            <View style={{ padding: 24, alignItems: 'center', backgroundColor: colors.card, borderRadius: 20, borderColor: colors.border, borderWidth: 1, marginHorizontal: 16 }}>
+              <MaterialCommunityIcons name="certificate-outline" size={40} color={colors.textSecondary} style={{ marginBottom: 8 }} />
+              <Text style={{ color: colors.textPrimary, fontSize: 14, fontWeight: '700' }}>No Earned Certificates</Text>
+              <Text style={{ color: colors.textSecondary, fontSize: 12, textAlign: 'center', marginTop: 4 }}>Complete courses or verify credentials to see them here.</Text>
+            </View>
+          )}
 
         </View>
 
