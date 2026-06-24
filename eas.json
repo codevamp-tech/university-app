@@ -15,7 +15,7 @@
       },
       "channel": "preview",
       "env": {
-        "EXPO_PUBLIC_API_BASE_URL": "http://54.174.185.143:8000",
+        "EXPO_PUBLIC_API_BASE_URL": "http://54.198.177.105:8000",
         "EXPO_PUBLIC_TENANT_ID": "d3b07384-d113-4956-a5db-e0e457e51c89",
         "EXPO_PUBLIC_DEPT_ID": "e0c46647-7ee9-4c12-97b7-580ea5d3bc7d"
       }
