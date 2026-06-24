@@ -2,8 +2,8 @@ import { APP_CONFIG } from '../config/appConfig';
 import { aiChatCompletionAPI } from './apiService';
 
 // ─── Category Detection ───────────────────────────────────────────────────────
-export function detectCategory(course = '') {
-  const c = course.toLowerCase();
+export function detectCategory(course) {
+  const c = (course || '').toLowerCase();
   if (c.includes('mbbs') || c.includes('bds')) return 'medical';
   if (
     c.includes('nursing') ||
