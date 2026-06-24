@@ -5,7 +5,7 @@ import { getAcademicSubjects } from '../../data/aiEngine';
 
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Dimensions,
+  Dimensions, Alert,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -24,7 +24,7 @@ const ERPResultsScreen = ({ navigation }) => {
   const userSem = user?.semester || 7;
   const sgpaHistory = user?.sgpaHistory || [8.5, 8.2, 7.9, 8.1, 8.3, 8.25];
 
-  const isMedical = user?.course?.toUpperCase().includes('MBBS') || user?.category?.toLowerCase() === 'medical';
+  const isMedical = user?.course?.replace(/\./g, '').toUpperCase().includes('MBBS') || user?.category?.toLowerCase() === 'medical';
   const termLabel = isMedical ? 'Phase' : 'Semester';
 
   const getDisplayTerm = (semKey) => {
@@ -36,6 +36,22 @@ const ERPResultsScreen = ({ navigation }) => {
     return semKey;
   };
 
+  const getMedicalCircleText = (semKey) => {
+    if (semKey === 'I' || semKey === 'II') return '1st';
+    if (semKey === 'III' || semKey === 'IV') return '2nd';
+    if (semKey === 'V' || semKey === 'VI') return '3rd P1';
+    if (semKey === 'VII') return '3rd P2';
+    return semKey;
+  };
+
+  const getMedicalProfName = (semKey) => {
+    if (semKey === 'I' || semKey === 'II') return '1st Prof';
+    if (semKey === 'III' || semKey === 'IV') return '2nd Prof';
+    if (semKey === 'V' || semKey === 'VI') return '3rd Prof Part I';
+    if (semKey === 'VII') return '3rd Prof Part II';
+    return semKey;
+  };
+
   // Dynamically expand to the current semester
   const currentSemRoman = roman[userSem - 1] || 'VII';
   const [expandedSem, setExpandedSem] = useState(currentSemRoman);
@@ -43,16 +59,33 @@ const ERPResultsScreen = ({ navigation }) => {
 
   const academicSubjects = getAcademicSubjects(user || { course: 'B.Tech CSE' });
 
-  // Generate current semester subjects with grades
+  // Generate current semester subjects with grades or marks
   const currentSemesterSubjects = academicSubjects.map((sub, idx) => {
-    const grades = ['O', 'A+', 'A', 'B+'];
-    const creditsList = [4, 3, 4, 3, 3];
-    return {
-      code: `${user?.course ? user.course.split(' ').map(w => w[0]).join('').toUpperCase().substring(0, 3) : 'CS'}${301 + idx}`,
-      name: sub,
-      credits: creditsList[idx % creditsList.length],
-      grade: grades[idx % grades.length]
-    };
+    if (isMedical) {
+      const theoryMarks = [72, 65, 78, 80, 58][idx % 5];
+      const practicalMarks = [78, 70, 82, 85, 62][idx % 5];
+      const totalMarks = theoryMarks + practicalMarks;
+      const maxMarks = 200;
+      const pct = (totalMarks / maxMarks) * 100;
+      return {
+        code: `MBBS${101 + idx}`,
+        name: sub,
+        theory: theoryMarks,
+        practical: practicalMarks,
+        total: totalMarks,
+        max: maxMarks,
+        result: pct >= 75 ? 'DISTINCTION' : 'PASS'
+      };
+    } else {
+      const grades = ['O', 'A+', 'A', 'B+'];
+      const creditsList = [4, 3, 4, 3, 3];
+      return {
+        code: `${user?.course ? user.course.split(' ').map(w => w[0]).join('').toUpperCase().substring(0, 3) : 'CS'}${301 + idx}`,
+        name: sub,
+        credits: creditsList[idx % creditsList.length],
+        grade: grades[idx % grades.length]
+      };
+    }
   });
 
   // Build dynamic fallback semesterData object
@@ -60,8 +93,8 @@ const ERPResultsScreen = ({ navigation }) => {
   
   // Current semester
   fallbackSemesterData[currentSemRoman] = {
-    label: `Fall ${new Date().getFullYear()} • Ongoing Evaluation`,
-    sgpa: Math.min((user?.cgpa ? (user.cgpa + 0.25) : 8.9), 10.0).toFixed(2),
+    label: isMedical ? `Academic Year ${new Date().getFullYear()} • Ongoing` : `Fall ${new Date().getFullYear()} • Ongoing Evaluation`,
+    sgpa: isMedical ? '76.40%' : Math.min((user?.cgpa ? (user.cgpa + 0.25) : 8.9), 10.0).toFixed(2),
     subjects: currentSemesterSubjects
   };
 
@@ -73,9 +106,10 @@ const ERPResultsScreen = ({ navigation }) => {
       const term = semIndex % 2 === 0 ? 'Fall' : 'Spring';
       const yearOffset = Math.floor((userSem - 1 - semIndex) / 2);
       const yearStr = `${new Date().getFullYear() - yearOffset}`;
+      const pctVal = 65 + (sgpaVal * 1.5) + (semIndex * 0.5);
       fallbackSemesterData[rName] = {
-        label: `${term} ${yearStr} • Completed`,
-        sgpa: sgpaVal.toFixed(2),
+        label: isMedical ? `Year ${yearStr} • Completed` : `${term} ${yearStr} • Completed`,
+        sgpa: isMedical ? `${pctVal.toFixed(2)}%` : sgpaVal.toFixed(2),
         subjects: [] // detailed subjects not needed for past semesters in UI expansion
       };
     }
@@ -93,8 +127,8 @@ const ERPResultsScreen = ({ navigation }) => {
             const rName = roman[i - 1];
             const isCurrent = i === userSem;
             semMap[rName] = {
-              label: isCurrent ? `Fall ${new Date().getFullYear()} • Ongoing Evaluation` : `Completed`,
-              sgpa: isCurrent ? '8.50' : '8.00',
+              label: isCurrent ? (isMedical ? `Year ${new Date().getFullYear()} • Ongoing` : `Fall ${new Date().getFullYear()} • Ongoing Evaluation`) : `Completed`,
+              sgpa: isCurrent ? (isMedical ? '74.50%' : '8.50') : (isMedical ? '71.20%' : '8.00'),
               subjects: []
             };
           }
@@ -104,24 +138,48 @@ const ERPResultsScreen = ({ navigation }) => {
             const rName = roman[semIndex - 1] || `${semIndex}`;
             if (!semMap[rName]) {
               semMap[rName] = {
-                label: semIndex === userSem ? `Fall ${new Date().getFullYear()} • Ongoing Evaluation` : `Completed`,
-                sgpa: '8.00',
+                label: semIndex === userSem ? (isMedical ? `Year ${new Date().getFullYear()} • Ongoing` : `Fall ${new Date().getFullYear()} • Ongoing Evaluation`) : `Completed`,
+                sgpa: isMedical ? '70.00%' : '8.00',
                 subjects: []
               };
             }
-            semMap[rName].subjects.push({
-              code: item.subject_code,
-              name: item.subject_name || item.subject_code,
-              credits: item.credits || 3,
-              grade: item.grade || 'A'
-            });
+
+            if (isMedical) {
+              const seedVal = item.subject_code.charCodeAt(0) + item.semester;
+              const theory = 50 + (seedVal % 45);
+              const practical = 55 + (seedVal % 40);
+              const total = theory + practical;
+              const max = 200;
+              const pct = (total / max) * 100;
+              semMap[rName].subjects.push({
+                code: item.subject_code,
+                name: item.subject_name || item.subject_code,
+                theory,
+                practical,
+                total,
+                max,
+                result: pct >= 75 ? 'DISTINCTION' : 'PASS'
+              });
+            } else {
+              semMap[rName].subjects.push({
+                code: item.subject_code,
+                name: item.subject_name || item.subject_code,
+                credits: item.credits || 3,
+                grade: item.grade || 'A'
+              });
+            }
           });
 
           // Apply historical SGPAs if they match
           Object.keys(semMap).forEach(rName => {
             const semIdx = roman.indexOf(rName);
             if (semIdx !== -1 && sgpaHistory[semIdx]) {
-              semMap[rName].sgpa = sgpaHistory[semIdx].toFixed(2);
+              if (isMedical) {
+                const pctVal = 65 + (sgpaHistory[semIdx] * 1.5) + (semIdx * 0.5);
+                semMap[rName].sgpa = `${pctVal.toFixed(2)}%`;
+              } else {
+                semMap[rName].sgpa = sgpaHistory[semIdx].toFixed(2);
+              }
             }
           });
 
@@ -140,6 +198,11 @@ const ERPResultsScreen = ({ navigation }) => {
   const totalCredits = 180;
   const completedCredits = semesterData ? Object.keys(semesterData).length * 22 : 0;
   const creditsPct = Math.min(Math.round((completedCredits / totalCredits) * 100), 100);
+
+  // Medical journey calculation
+  const totalYears = 4.5;
+  const completedYears = Math.max(0, userSem - 1) * 0.5;
+  const medicalProgressPct = Math.min(Math.round((completedYears / totalYears) * 100), 100);
 
 
   return (
@@ -170,8 +233,11 @@ const ERPResultsScreen = ({ navigation }) => {
               </Text>
             );
           })()}
-          <TouchableOpacity style={[styles.downloadBtn, { backgroundColor: isDark ? colors.card : '#FFFFFF', borderColor: colors.border, borderWidth: 1 }]}>
-            <MaterialIcons name="download" size={18} color={isDark ? '#818CF8' : '#4338CA'} />
+          <TouchableOpacity 
+            style={[styles.downloadBtn, { backgroundColor: isDark ? colors.card : '#FFFFFF', borderColor: colors.border, borderWidth: 1, opacity: 0.85 }]}
+            onPress={() => Alert.alert('🔒 Demo Lock', 'Downloading Provisional Marksheet is locked in this demo. Contact admin to unlock.')}
+          >
+            <MaterialIcons name="lock" size={18} color={isDark ? '#818CF8' : '#4338CA'} />
             <Text style={[styles.downloadBtnText, { color: isDark ? '#818CF8' : '#4338CA' }]}>Download Provisional Marksheet</Text>
           </TouchableOpacity>
         </View>
@@ -188,11 +254,17 @@ const ERPResultsScreen = ({ navigation }) => {
             style={styles.cgpaCard}
           >
 
-            <Text style={[styles.cgpaLabel, { color: 'rgba(255,255,255,0.7)' }]}>CUMULATIVE GRADE</Text>
-            <Text style={styles.cgpaValue}>{user ? user.cgpa.toFixed(2) : '8.42'}</Text>
+            <Text style={[styles.cgpaLabel, { color: 'rgba(255,255,255,0.7)' }]}>
+              {isMedical ? 'AGGREGATE PERCENTAGE' : 'CUMULATIVE GRADE'}
+            </Text>
+            <Text style={styles.cgpaValue}>
+              {isMedical ? (semesterData[currentSemRoman]?.sgpa || '76.40%') : (user ? user.cgpa.toFixed(2) : '8.42')}
+            </Text>
             <View style={styles.cgpaBadge}>
-              <MaterialIcons name="trending-up" size={14} color="#FFFFFF" />
-              <Text style={styles.cgpaBadgeText}>TOP 5% OF BATCH</Text>
+              <MaterialIcons name={isMedical ? "check-circle" : "trending-up"} size={14} color="#FFFFFF" />
+              <Text style={styles.cgpaBadgeText}>
+                {isMedical ? 'PASSED ALL PAPERS' : 'TOP 5% OF BATCH'}
+              </Text>
             </View>
           </LinearGradient>
         </View>
@@ -201,13 +273,30 @@ const ERPResultsScreen = ({ navigation }) => {
         {/* Credits */}
         <View style={styles.sectionContainer}>
           <View style={[styles.creditsCard, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
-            <Text style={[styles.creditsLabel, { color: colors.textSecondary }]}>ACADEMIC PROGRESS</Text>
+            <Text style={[styles.creditsLabel, { color: colors.textSecondary }]}>
+              {isMedical ? 'MBBS ACADEMIC JOURNEY' : 'ACADEMIC PROGRESS'}
+            </Text>
             <View style={styles.creditsRow}>
-              <Text style={[styles.creditsValue, { color: colors.textPrimary }]}>{completedCredits}</Text>
-              <Text style={[styles.creditsTotal, { color: colors.textSecondary }]}>/ {totalCredits} Credits</Text>
+              {isMedical ? (
+                <>
+                  <Text style={[styles.creditsValue, { color: colors.textPrimary }]}>{completedYears.toFixed(1)}</Text>
+                  <Text style={[styles.creditsTotal, { color: colors.textSecondary }]}>/ {totalYears} Years Completed</Text>
+                </>
+              ) : (
+                <>
+                  <Text style={[styles.creditsValue, { color: colors.textPrimary }]}>{completedCredits}</Text>
+                  <Text style={[styles.creditsTotal, { color: colors.textSecondary }]}>/ {totalCredits} Credits</Text>
+                </>
+              )}
             </View>
             <View style={[styles.progressBarBg, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F3F4F6' }]}>
-              <View style={[styles.progressBarFill, { width: `${creditsPct}%`, backgroundColor: isDark ? '#34D399' : '#059669' }]} />
+              <View style={[
+                styles.progressBarFill, 
+                { 
+                  width: `${isMedical ? medicalProgressPct : creditsPct}%`, 
+                  backgroundColor: isDark ? '#34D399' : '#059669' 
+                }
+              ]} />
             </View>
           </View>
         </View>
@@ -220,8 +309,11 @@ const ERPResultsScreen = ({ navigation }) => {
           <LinearGradient colors={['#4953AC', '#343D96']} style={styles.transcriptCard}>
             <Text style={styles.transcriptTitle}>Official Transcript</Text>
             <Text style={styles.transcriptDesc}>Need a stamped and signed copy for higher studies or placements?</Text>
-            <TouchableOpacity style={styles.transcriptBtn}>
-              <Text style={styles.transcriptBtnText}>Request Official Transcript</Text>
+            <TouchableOpacity 
+              style={styles.transcriptBtn}
+              onPress={() => Alert.alert('🔒 Demo Lock', 'Official Transcript Request is locked in this demo. Contact admin to unlock.')}
+            >
+              <Text style={styles.transcriptBtnText}>🔒 Request Official Transcript</Text>
             </TouchableOpacity>
           </LinearGradient>
         </View>
@@ -256,16 +348,22 @@ const ERPResultsScreen = ({ navigation }) => {
                         { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F3F4F6' },
                         isActive && { backgroundColor: isDark ? 'rgba(234, 88, 12, 0.2)' : '#FFEDD5' }
                       ]}>
-                        <Text style={[styles.semCircleText, { color: colors.textSecondary }, isActive && { color: colors.primary }]}>{displayTermName}</Text>
+                        <Text style={[styles.semCircleText, { color: colors.textSecondary }, isActive && { color: colors.primary }]}>
+                          {isMedical ? getMedicalCircleText(sem) : displayTermName}
+                        </Text>
                       </View>
                       <View>
-                        <Text style={[styles.semName, { color: colors.textPrimary }]}>{termLabel} {displayTermName}</Text>
+                        <Text style={[styles.semName, { color: colors.textPrimary }]}>
+                          {isMedical ? getMedicalProfName(sem) : `${termLabel} ${displayTermName}`}
+                        </Text>
                         <Text style={[styles.semLabel, { color: colors.textSecondary }]}>{data.label}</Text>
                       </View>
                     </View>
                     <View style={styles.semRight}>
                       <View>
-                        <Text style={[styles.sgpaLabel, { color: colors.textSecondary }]}>SGPA</Text>
+                        <Text style={[styles.sgpaLabel, { color: colors.textSecondary }]}>
+                          {isMedical ? 'PERCENT' : 'SGPA'}
+                        </Text>
                         <Text style={[styles.sgpaValue, { color: isActive ? colors.primary : colors.textPrimary }]}>{data.sgpa}</Text>
                       </View>
                       <MaterialIcons
@@ -283,15 +381,42 @@ const ERPResultsScreen = ({ navigation }) => {
                           <View style={styles.subjectInfo}>
                             <Text style={[styles.subjectCode, { color: isDark ? '#34D399' : '#059669' }]}>{sub.code}</Text>
                             <Text style={[styles.subjectName, { color: colors.textPrimary }]}>{sub.name}</Text>
+                            {isMedical && (
+                              <Text style={{ fontSize: 11, color: colors.textSecondary, marginTop: 2 }}>
+                                Theory: {sub.theory}/100 · Practical: {sub.practical}/100
+                              </Text>
+                            )}
                           </View>
                           <View style={styles.subjectRight}>
-                            <View style={styles.creditBox}>
-                              <Text style={[styles.creditLabel, { color: colors.textSecondary }]}>CREDITS</Text>
-                              <Text style={[styles.creditValue, { color: colors.textPrimary }]}>{sub.credits}</Text>
-                            </View>
-                            <View style={[styles.gradeBox, { backgroundColor: colors.primary }]}>
-                              <Text style={styles.gradeText}>{sub.grade}</Text>
-                            </View>
+                            {isMedical ? (
+                              <>
+                                <View style={[styles.creditBox, { alignItems: 'flex-start', marginRight: 10 }]}>
+                                  <Text style={[styles.creditLabel, { color: colors.textSecondary, fontSize: 8 }]}>MARKS</Text>
+                                  <Text style={[styles.creditValue, { color: colors.textPrimary, fontSize: 12 }]}>{sub.theory + sub.practical}/200</Text>
+                                </View>
+                                <View style={[
+                                  styles.gradeBox, 
+                                  { 
+                                    backgroundColor: sub.result === 'DISTINCTION' ? '#F59E0B' : '#10B981', 
+                                    width: 62 
+                                  }
+                                ]}>
+                                  <Text style={[styles.gradeText, { fontSize: 9, fontWeight: '900' }]}>
+                                    {sub.result === 'DISTINCTION' ? 'DIST.' : 'PASS'}
+                                  </Text>
+                                </View>
+                              </>
+                            ) : (
+                              <>
+                                <View style={styles.creditBox}>
+                                  <Text style={[styles.creditLabel, { color: colors.textSecondary }]}>CREDITS</Text>
+                                  <Text style={[styles.creditValue, { color: colors.textPrimary }]}>{sub.credits}</Text>
+                                </View>
+                                <View style={[styles.gradeBox, { backgroundColor: colors.primary }]}>
+                                  <Text style={styles.gradeText}>{sub.grade}</Text>
+                                </View>
+                              </>
+                            )}
                           </View>
                         </View>
                       ))}
@@ -306,7 +431,7 @@ const ERPResultsScreen = ({ navigation }) => {
             <TouchableOpacity style={styles.showAllBtn}>
               <MaterialIcons name="history" size={20} color={colors.primary} />
               <Text style={[styles.showAllText, { color: colors.primary }]}>
-                Show All {termLabel}s (I - {isMedical ? getDisplayTerm(roman[userSem - 2] || 'I') : (userSem > 1 ? (roman[userSem - 2] || (userSem - 1)) : 'I')})
+                Show All {isMedical ? 'Professional Years' : `${termLabel}s`} (I - {isMedical ? getMedicalCircleText(roman[userSem - 2] || 'I') : (userSem > 1 ? (roman[userSem - 2] || (userSem - 1)) : 'I')})
               </Text>
             </TouchableOpacity>
           )}

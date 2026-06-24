@@ -6,6 +6,7 @@ import { MaterialIcons, MaterialCommunityIcons, Ionicons } from '@expo/vector-ic
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../hooks/useTheme';
+import { useUser } from '../../context/UserContext';
 import { APP_CONFIG } from '../../config/appConfig';
 
 const { width, height } = Dimensions.get('window');
@@ -13,6 +14,9 @@ const { width, height } = Dimensions.get('window');
 const SuggestWithAIScreen = ({ navigation }) => {
   const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
+  const { user } = useUser();
+  const isMed = user && (user.course?.toLowerCase().includes('mbbs') || user.course?.toLowerCase().includes('medicine') || user.category?.toLowerCase().includes('medical'));
+
   const [isGenerating, setIsGenerating] = React.useState(false);
   const pulseAnim = React.useRef(new Animated.Value(1)).current;
 
@@ -40,7 +44,24 @@ const SuggestWithAIScreen = ({ navigation }) => {
     }, 3000);
   };
 
-  const ideas = [
+  const ideas = isMed ? [
+    {
+      title: 'NutriClinic AI Study',
+      category: 'Public Health',
+      match: '98%',
+      desc: `Clinical efficacy of AI-driven glycemic management for type-2 diabetes mellitus patients in rural settings.`,
+      icon: 'healing',
+      color: '#E11D48',
+    },
+    {
+      title: 'CardioScan Mobile',
+      category: 'Cardiology',
+      match: '94%',
+      desc: 'Validation of low-cost mobile phone photoplethysmography (PPG) sensors for atrial fibrillation screening.',
+      icon: 'favorite',
+      color: '#E11D48',
+    }
+  ] : [
     {
       title: 'EduSync AI',
       category: 'EdTech',
@@ -67,7 +88,7 @@ const SuggestWithAIScreen = ({ navigation }) => {
         <TouchableOpacity onPress={() => navigation.goBack()} style={[styles.backBtn, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
           <Ionicons name="arrow-back" size={20} color={colors.primary} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>AI Venture Studio</Text>
+        <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>{isMed ? 'Clinical Research Studio' : 'AI Venture Studio'}</Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -75,38 +96,38 @@ const SuggestWithAIScreen = ({ navigation }) => {
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* AI Orb */}
         <View style={styles.orbContainer}>
-          <Animated.View style={[styles.orbPulse, { transform: [{ scale: pulseAnim }], backgroundColor: isDark ? 'rgba(234, 88, 12, 0.15)' : 'rgba(234, 88, 12, 0.08)' }]}>
+          <Animated.View style={[styles.orbPulse, { transform: [{ scale: pulseAnim }], backgroundColor: isMed ? (isDark ? 'rgba(225, 29, 72, 0.15)' : 'rgba(225, 29, 72, 0.08)') : (isDark ? 'rgba(234, 88, 12, 0.15)' : 'rgba(234, 88, 12, 0.08)') }]}>
             <LinearGradient
-              colors={isDark ? ['#9A3412', '#78350F'] : ['#EA580C', '#9A3412']}
+              colors={isMed ? (isDark ? ['#9F1239', '#4C0519'] : ['#E11D48', '#9F1239']) : (isDark ? ['#9A3412', '#78350F'] : ['#EA580C', '#9A3412'])}
               style={styles.orb}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
             >
-              <MaterialCommunityIcons name="brain" size={50} color="#FFFFFF" />
+              <MaterialCommunityIcons name={isMed ? "biotech" : "brain"} size={50} color="#FFFFFF" />
             </LinearGradient>
           </Animated.View>
-          <Text style={[styles.orbLabel, { color: colors.textSecondary }]}>{isGenerating ? 'ANALYZING MARKET GAPS...' : 'READY TO INNOVATE'}</Text>
+          <Text style={[styles.orbLabel, { color: colors.textSecondary }]}>{isGenerating ? (isMed ? 'ANALYZING CLINICAL GAPS...' : 'ANALYZING MARKET GAPS...') : 'READY TO INNOVATE'}</Text>
         </View>
 
 
         {/* Action Section */}
         <View style={[styles.actionCard, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
-          <Text style={[styles.actionTitle, { color: colors.textPrimary }]}>Generate Venture Idea</Text>
-          <Text style={[styles.actionSub, { color: colors.textSecondary }]}>AI will scan campus trends and global markets to suggest your next big startup.</Text>
+          <Text style={[styles.actionTitle, { color: colors.textPrimary }]}>{isMed ? 'Generate Research Proposal' : 'Generate Venture Idea'}</Text>
+          <Text style={[styles.actionSub, { color: colors.textSecondary }]}>{isMed ? 'AI will scan clinical journals and public health trends to suggest your next research proposal.' : 'AI will scan campus trends and global markets to suggest your next big startup.'}</Text>
 
           <TouchableOpacity
-            style={styles.generateBtn}
+            style={[styles.generateBtn, { shadowColor: isMed ? '#E11D48' : '#EA580C' }]}
             onPress={startAnimation}
             disabled={isGenerating}
           >
             <LinearGradient
-              colors={isDark ? ['#9A3412', '#78350F'] : ['#EA580C', '#9A3412']}
+              colors={isMed ? (isDark ? ['#9F1239', '#4C0519'] : ['#E11D48', '#BE123C']) : (isDark ? ['#9A3412', '#78350F'] : ['#EA580C', '#9A3412'])}
               style={styles.generateBtnGradient}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
             >
               <MaterialIcons name="auto-awesome" size={18} color="#FFFFFF" />
-              <Text style={styles.generateBtnText}>{isGenerating ? 'Generating...' : 'Inspire Me'}</Text>
+              <Text style={styles.generateBtnText}>{isGenerating ? 'Generating...' : (isMed ? 'Analyze Clinical Gaps' : 'Inspire Me')}</Text>
             </LinearGradient>
           </TouchableOpacity>
         </View>
@@ -115,7 +136,7 @@ const SuggestWithAIScreen = ({ navigation }) => {
         {/* Suggestion List */}
         {!isGenerating && (
           <View style={styles.suggestionsList}>
-            <Text style={[styles.listTitle, { color: colors.textPrimary }]}>Top AI Suggestions</Text>
+            <Text style={[styles.listTitle, { color: colors.textPrimary }]}>{isMed ? 'Top Research Suggestions' : 'Top AI Suggestions'}</Text>
             {ideas.map((idea, i) => (
               <View
                 key={i}
@@ -140,11 +161,11 @@ const SuggestWithAIScreen = ({ navigation }) => {
 
                   <View style={styles.ideaFooter}>
                     <TouchableOpacity style={[styles.pitchSmallBtn, { backgroundColor: colors.textPrimary }]}>
-                      <Text style={[styles.pitchSmallText, { color: colors.background }]}>Draft Pitch</Text>
+                      <Text style={[styles.pitchSmallText, { color: colors.background }]}>{isMed ? 'Draft Proposal' : 'Draft Pitch'}</Text>
                     </TouchableOpacity>
                     <TouchableOpacity style={[styles.coFoundBtn, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F3F4F6', borderColor: colors.border }]}>
-                      <Ionicons name="people" size={16} color={isDark ? '#818CF8' : '#4338CA'} />
-                      <Text style={[styles.coFoundText, { color: isDark ? '#818CF8' : '#4338CA' }]}>Find Partners</Text>
+                      <Ionicons name={isMed ? "git-pull-request-outline" : "people"} size={16} color={isDark ? '#818CF8' : '#4338CA'} />
+                      <Text style={[styles.coFoundText, { color: isDark ? '#818CF8' : '#4338CA' }]}>{isMed ? 'Find Collaborators' : 'Find Partners'}</Text>
                     </TouchableOpacity>
                   </View>
                 </View>

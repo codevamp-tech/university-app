@@ -76,7 +76,7 @@ const StudentSearchScreen = ({ navigation }) => {
       onPress={() => handleProfileClick(item)}
     >
       <View style={styles.avatarPlaceholder}>
-        <Image source={{ uri: item.avatar_url || getAvatarUrl(item.username) }} style={{ width: 50, height: 50, borderRadius: 25 }} />
+        <Image source={{ uri: getAvatarUrl(item.avatar_url || item.username) }} style={{ width: 50, height: 50, borderRadius: 25 }} />
       </View>
       <View style={styles.studentInfo}>
         <Text style={[styles.studentName, { color: colors.textPrimary, fontSize: 16 }]}>{item.username}</Text>

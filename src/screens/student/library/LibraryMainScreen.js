@@ -1,11 +1,12 @@
 import React from 'react';
 import {
-  View, Text, StyleSheet, FlatList, TouchableOpacity, Image, Dimensions, TextInput
+  View, Text, StyleSheet, FlatList, TouchableOpacity, Image, Dimensions, TextInput, Alert
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../../hooks/useTheme';
 import { Feather, MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { useUser } from '../../../context/UserContext';
+import { isMedicalStudent } from '../../../utils/courseDisplay';
 
 const { width } = Dimensions.get('window');
 
@@ -159,6 +160,94 @@ export const booksData = [
     category: 'Pharmacology',
     pages: 1104,
     description: 'The gold standard reference for medicinal chemistry — drug design, structure-activity relationships, and mechanisms.'
+  },
+  {
+    id: '16',
+    title: 'Public Health Nutrition',
+    author: 'Sheila Chander Vir',
+    cover: 'https://images.unsplash.com/photo-1498837167922-ddd27525d352?q=80&w=1000&auto=format&fit=crop',
+    rating: 4.8,
+    category: 'Medical',
+    pages: 928,
+    description: 'An essential textbook on public health nutrition, covering nutritional epidemiology, community-based practice, and developing country challenges.',
+    pdfUrl: 'https://drive.google.com/file/d/12pesuDYq2ZzUBvN236pUsJIbjz6cFMbq/view?usp=sharing'
+  },
+  {
+    id: '17',
+    title: 'Health Information Management',
+    author: 'Merida L. Johns',
+    cover: 'https://images.unsplash.com/photo-1576091160550-2173dba999ef?q=80&w=1000&auto=format&fit=crop',
+    rating: 4.7,
+    category: 'Medical',
+    pages: 480,
+    description: 'An in-depth guide on health information systems, clinical records management, and healthcare data governance.',
+    pdfUrl: 'https://drive.google.com/file/d/1Ra2O97B3FqqQfsekrrRwuTnW50E_przv/view?usp=drive_link'
+  },
+  {
+    id: '18',
+    title: 'Textbook of Medical Physiology',
+    author: 'Guyton & Hall',
+    cover: 'https://images.unsplash.com/photo-1584515979956-d9f6e5d09982?q=80&w=1000&auto=format&fit=crop',
+    rating: 4.9,
+    category: 'Physiology',
+    pages: 1120,
+    description: 'The world\'s foremost medical physiology textbook, presenting complex principles in clear, easy-to-understand language.',
+    pdfUrl: 'https://drive.google.com/file/d/1aGvTmFJ1T7dQTVWbqFeIpIzvX-Z1iTx1/view?usp=drive_link'
+  },
+  {
+    id: '19',
+    title: "Ganong's Review of Medical Physiology",
+    author: 'Kim E. Barrett',
+    cover: 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?q=80&w=1000&auto=format&fit=crop',
+    rating: 4.8,
+    category: 'Physiology',
+    pages: 750,
+    description: 'A concise, high-yield review of medical physiology, perfect for clinical course preparation and USMLE / NEET PG revision.',
+    pdfUrl: 'https://drive.google.com/file/d/1sclOYxeRCxTk07Gl-tDTrOx4_xdeHUBc/view?usp=drive_link'
+  },
+  {
+    id: '20',
+    title: 'Essentials for Health Protection',
+    author: 'Alistair Hunter',
+    cover: 'https://images.unsplash.com/photo-1532938911079-1b06ac7ceec7?q=80&w=1000&auto=format&fit=crop',
+    rating: 4.6,
+    category: 'Medical',
+    pages: 320,
+    description: 'Focuses on the key components of health protection, including communicable disease control, environmental health, and emergency response.',
+    pdfUrl: 'https://drive.google.com/file/d/1qxX7hyyHKQIRGxmsS2jye9tmRi599hdd/view?usp=drive_link'
+  },
+  {
+    id: '21',
+    title: 'Demystifying COVID-19',
+    author: 'World Health Organization',
+    cover: 'https://images.unsplash.com/photo-1582719508461-905c673771fd?q=80&w=1000&auto=format&fit=crop',
+    rating: 4.7,
+    category: 'Medical',
+    pages: 290,
+    description: 'An exhaustive compilation detailing the disease history, diagnosis protocols, treatment modalities, and epidemiological profiles of COVID-19.',
+    pdfUrl: 'https://drive.google.com/file/d/1S9DxvVIxPKXJNsfuXgs7n3DKr8esbGhl/view?usp=drive_link'
+  },
+  {
+    id: '22',
+    title: 'Critical Epidemiology',
+    author: 'Jaime Breilh',
+    cover: 'https://images.unsplash.com/photo-1530026405186-ed1ea0ac7a63?q=80&w=1000&auto=format&fit=crop',
+    rating: 4.6,
+    category: 'Medical',
+    pages: 340,
+    description: 'A critical approach to epidemiological science, discussing social determinants of health, research methodologies, and systemic wellness.',
+    pdfUrl: 'https://drive.google.com/file/d/1UT9KIZcOXa6dmaHPx_QAVjiWdAKP1kAQ/view?usp=drive_link'
+  },
+  {
+    id: '23',
+    title: 'Anatomy & Physiology Vol. 2',
+    author: 'OpenStax',
+    cover: 'https://images.unsplash.com/photo-1576091160550-2173dba999ef?q=80&w=1000&auto=format&fit=crop',
+    rating: 4.8,
+    category: 'Anatomy',
+    pages: 680,
+    description: 'Volume 2 of the comprehensive textbook covering human anatomy and systemic physiology with detailed illustrations.',
+    pdfUrl: 'https://drive.google.com/file/d/1v2DQHACYu9IdCCYXYmpKQGghPBi3WSam/view?usp=drive_link'
   }
 ];
 
@@ -170,6 +259,20 @@ const LibraryMainScreen = ({ navigation }) => {
   const sortedBooks = React.useMemo(() => {
     if (!user) return booksData;
 
+    const isMed = isMedicalStudent(user) || (user.course || '').toLowerCase().includes('mbbs') || (user.category || '').toLowerCase().includes('medical');
+
+    if (isMed) {
+      const medCategories = ['Medicine', 'Medical', 'Anatomy', 'Pathology', 'Pharmacology', 'Nutrition', 'Pharmaceutics', 'Physiology'];
+      const filtered = booksData.filter(b => medCategories.includes(b.category));
+      return filtered.sort((a, b) => {
+        const aId = parseInt(a.id, 10);
+        const bId = parseInt(b.id, 10);
+        if (aId >= 16 && bId < 16) return -1;
+        if (aId < 16 && bId >= 16) return 1;
+        return aId - bId;
+      });
+    }
+
     const courseLower = (user.course || '').toLowerCase();
     const branchLower = (user.branch || '').toLowerCase();
     const categoryLower = (user.category || '').toLowerCase();
@@ -178,8 +281,6 @@ const LibraryMainScreen = ({ navigation }) => {
     if (courseLower.includes('pharma')) {
       // B.Pharma, D.Pharma, M.Pharma — Pharmacology books first
       matchCategories = ['Pharmacology', 'Pharmaceutics', 'Anatomy', 'Pathology'];
-    } else if (categoryLower.includes('medical') || courseLower.includes('mbbs') || courseLower.includes('medicine')) {
-      matchCategories = ['Medicine', 'Anatomy', 'Pathology', 'Pharmacology'];
     } else if (branchLower.includes('computer') || branchLower.includes('cse') || branchLower.includes('it') || courseLower.includes('mca') || courseLower.includes('bca') || branchLower.includes('software')) {
       matchCategories = ['Programming', 'Software Engineering', 'AI / ML', 'Computer Science'];
     } else if (branchLower.includes('electronics') || branchLower.includes('ec') || branchLower.includes('ece')) {
@@ -198,25 +299,40 @@ const LibraryMainScreen = ({ navigation }) => {
     });
   }, [user]);
 
-  const renderBook = ({ item }) => (
-    <TouchableOpacity 
-      style={[styles.bookCard, { backgroundColor: colors.card, borderColor: colors.border }]}
-      onPress={() => navigation.navigate('BookDetail', { book: item })}
-    >
-      <Image source={{ uri: item.cover }} style={styles.bookCover} />
-      <View style={styles.bookInfo}>
-        <Text style={[styles.bookTitle, { color: colors.textPrimary }]} numberOfLines={2}>{item.title}</Text>
-        <Text style={[styles.bookAuthor, { color: colors.textSecondary }]}>{item.author}</Text>
-        <View style={styles.bookMeta}>
-          <View style={styles.ratingBox}>
-            <MaterialIcons name="star" size={14} color="#F59E0B" />
-            <Text style={styles.ratingText}>{item.rating}</Text>
+  const renderBook = ({ item }) => {
+    const isBookUnlocked = parseInt(item.id, 10) >= 16;
+    return (
+      <TouchableOpacity 
+        style={[styles.bookCard, { backgroundColor: colors.card, borderColor: colors.border }, !isBookUnlocked && { opacity: 0.5 }]}
+        onPress={() => {
+          if (isBookUnlocked) {
+            navigation.navigate('BookDetail', { book: item });
+          } else {
+            Alert.alert('Premium Feature', 'This feature is locked in the free trial.');
+          }
+        }}
+      >
+        {!isBookUnlocked && (
+          <View style={styles.lockBadge}>
+            <MaterialIcons name="lock" size={10} color="#FFFFFF" />
+            <Text style={styles.lockBadgeText}>DEMO LOCK</Text>
           </View>
-          <Text style={[styles.categoryTag, { color: colors.textMuted }]}>{item.category}</Text>
+        )}
+        <Image source={{ uri: item.cover }} style={styles.bookCover} />
+        <View style={styles.bookInfo}>
+          <Text style={[styles.bookTitle, { color: colors.textPrimary }]} numberOfLines={2}>{item.title}</Text>
+          <Text style={[styles.bookAuthor, { color: colors.textSecondary }]}>{item.author}</Text>
+          <View style={styles.bookMeta}>
+            <View style={styles.ratingBox}>
+              <MaterialIcons name="star" size={14} color="#F59E0B" />
+              <Text style={styles.ratingText}>{item.rating}</Text>
+            </View>
+            <Text style={[styles.categoryTag, { color: colors.textMuted }]}>{item.category}</Text>
+          </View>
         </View>
-      </View>
-    </TouchableOpacity>
-  );
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
@@ -269,6 +385,24 @@ const styles = StyleSheet.create({
   ratingBox: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   ratingText: { fontSize: 12, fontWeight: '800', color: '#B45309' },
   categoryTag: { fontSize: 10, fontWeight: '700' },
+  lockBadge: {
+    position: 'absolute',
+    top: 10,
+    left: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(239, 68, 68, 0.95)',
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 6,
+    zIndex: 10,
+  },
+  lockBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 8,
+    fontWeight: '900',
+  },
 });
 
 export default LibraryMainScreen;

@@ -107,7 +107,7 @@ const DMConversationScreen = ({ route, navigation }) => {
       <View style={[styles.msgRow, isMe ? styles.msgRowRight : styles.msgRowLeft]}>
         {!isMe && (
           <Image
-            source={{ uri: item.user?.avatar || getAvatarUrl(contact.user_id) }}
+            source={{ uri: getAvatarUrl(item.user?.avatar || contact.user_id) }}
             style={styles.msgAvatar}
           />
         )}
@@ -149,7 +149,7 @@ const DMConversationScreen = ({ route, navigation }) => {
           >
             <View style={styles.avatarWrap}>
               <Image
-                source={{ uri: contact.avatar_url || getAvatarUrl(contact.user_id) }}
+                source={{ uri: getAvatarUrl(contact.avatar_url || contact.user_id) }}
                 style={styles.avatar}
               />
               <View style={[styles.statusDot, { backgroundColor: isOnline ? '#10B981' : '#D1D5DB' }]} />

@@ -10,6 +10,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useUser } from '../../context/UserContext';
 import { getFacultyTimetable, getFacultyTopics, uploadAvatarAPI } from '../../data/apiService';
 import ActivityRing from '../../components/ActivityRing';
+import { getAvatarUrl } from '../../utils/avatar';
 
 const { width } = Dimensions.get('window');
 
@@ -258,7 +259,7 @@ const TeacherDashboardScreen = ({ navigation }) => {
         <View style={styles.header}>
           <View style={styles.headerLeft}>
             <TouchableOpacity onPress={() => setShowProfileMenu(true)} activeOpacity={0.85}>
-              {user?.avatar_url ? (
+              {user?.avatar_url && !user.avatar_url.includes('pravatar.cc') ? (
                 <Image source={{ uri: user.avatar_url }} style={styles.avatarImage} />
               ) : (
                 <LinearGradient
@@ -535,7 +536,7 @@ const TeacherDashboardScreen = ({ navigation }) => {
         >
           <View style={[styles.profileMenu, { top: insets.top + 60 }]}>
             <View style={styles.menuHeader}>
-              {user?.avatar_url ? (
+              {user?.avatar_url && !user.avatar_url.includes('pravatar.cc') ? (
                 <Image source={{ uri: user.avatar_url }} style={styles.menuAvatar} />
               ) : (
                 <View style={styles.menuAvatarFallback}>
@@ -602,7 +603,7 @@ const TeacherDashboardScreen = ({ navigation }) => {
               style={styles.avatarPreviewContainer}
             >
               <Image 
-                source={{ uri: selectedAvatarUri || user?.avatar_url || `https://i.pravatar.cc/150?u=${user?.emp_id}` }} 
+                source={{ uri: selectedAvatarUri || getAvatarUrl(user?.avatar_url || user?.emp_id) }} 
                 style={styles.avatarPreviewImage} 
               />
               <View style={styles.avatarCameraBadge}>

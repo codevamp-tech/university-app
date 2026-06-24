@@ -5,18 +5,19 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width } = Dimensions.get('window');
 
 const slides = [
   {
     id: '1',
-    title: 'Track Attendance',
-    titleAccent: 'Easily.',
-    description: 'Manage your classroom presence with a single tap. Stay focused on your learning while we handle the rest.',
-    icon: 'checkbox-outline',
+    title: 'Digital E-Library',
+    titleAccent: 'Anywhere.',
+    description: 'Read program textbooks, study reference guides, and access digital resources inside the app, customized to your program.',
+    icon: 'book-outline',
     iconBg: '#EA580C',
-    badge: { label: 'STATUS', value: 'Present', icon: 'checkmark-circle' },
+    badge: { label: 'TEXTBOOKS', value: '16 Loaded', icon: 'book-outline' },
   },
   {
     id: '2',
@@ -44,16 +45,25 @@ const OnboardingScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const flatRef = useRef(null);
 
+  const completeOnboarding = async () => {
+    try {
+      await AsyncStorage.setItem('@onboarding_completed', 'true');
+    } catch (e) {
+      console.warn('Error saving onboarding state:', e);
+    }
+    navigation.replace('Login');
+  };
+
   const goNext = () => {
     if (currentIndex < slides.length - 1) {
       flatRef.current?.scrollToIndex({ index: currentIndex + 1 });
       setCurrentIndex(currentIndex + 1);
     } else {
-      navigation.replace('Login');
+      completeOnboarding();
     }
   };
 
-  const skip = () => navigation.replace('Login');
+  const skip = () => completeOnboarding();
 
   const slide = slides[currentIndex];
 

@@ -280,6 +280,16 @@ export async function getOutpass(token, outpassId) {
   return unwrap(res);
 }
 
+/**
+ * GET /api/v1/erp/outpass
+ */
+export async function getStudentOutpasses(token) {
+  const res = await apiCall('/api/v1/erp/outpass', {
+    headers: authHeaders(token),
+  });
+  return unwrap(res);
+}
+
 // ─── Wallet ───────────────────────────────────────────────────────────────────
 
 /**
@@ -582,16 +592,18 @@ export async function getShopListings(token, category = null, skip = 0, limit = 
   });
   let listings = unwrap(res, []);
   
-  // Inject mock seller if missing, so Chat Demo works!
-  return listings.map(l => ({
-    ...l,
-    seller: l.seller || {
-      user_id: 'mock_seller_123',
-      username: 'CampusSeller',
-      avatar_url: 'https://images.unsplash.com/photo-1527980965255-d3b416303d12?auto=format&fit=crop&w=150',
-      status: 'online'
-    }
-  }));
+  return listings.map(l => {
+    const rawSeller = l.seller || {};
+    return {
+      ...l,
+      seller: {
+        user_id: rawSeller.id || rawSeller.user_id || 'mock_seller_123',
+        username: rawSeller.username || 'CampusSeller',
+        avatar_url: rawSeller.avatar_url || 'https://images.unsplash.com/photo-1527980965255-d3b416303d12?auto=format&fit=crop&w=150',
+        status: rawSeller.status || 'online'
+      }
+    };
+  });
 }
 
 /**
@@ -632,7 +644,19 @@ export async function getShopGigs(token) {
   const res = await apiCall(`/api/v1/shop/gigs?${params}`, {
     headers: authHeaders(token),
   });
-  return unwrap(res, []);
+  let gigs = unwrap(res, []);
+  return gigs.map(l => {
+    const rawSeller = l.seller || {};
+    return {
+      ...l,
+      seller: {
+        user_id: rawSeller.id || rawSeller.user_id || 'mock_seller_123',
+        username: rawSeller.username || 'CampusSeller',
+        avatar_url: rawSeller.avatar_url || 'https://images.unsplash.com/photo-1527980965255-d3b416303d12?auto=format&fit=crop&w=150',
+        status: rawSeller.status || 'online'
+      }
+    };
+  });
 }
 
 /**
@@ -643,8 +667,21 @@ export async function getShopRequests(token) {
   const res = await apiCall(`/api/v1/shop/requests?${params}`, {
     headers: authHeaders(token),
   });
-  return unwrap(res, []);
+  let requests = unwrap(res, []);
+  return requests.map(l => {
+    const rawSeller = l.seller || {};
+    return {
+      ...l,
+      seller: {
+        user_id: rawSeller.id || rawSeller.user_id || 'mock_seller_123',
+        username: rawSeller.username || 'CampusSeller',
+        avatar_url: rawSeller.avatar_url || 'https://images.unsplash.com/photo-1527980965255-d3b416303d12?auto=format&fit=crop&w=150',
+        status: rawSeller.status || 'online'
+      }
+    };
+  });
 }
+
 
 export async function createShopGigAPI(token, data) {
   const res = await apiCall('/api/v1/shop/gigs', {

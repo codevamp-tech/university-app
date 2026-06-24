@@ -89,7 +89,7 @@ const LoginScreen = ({ navigation }) => {
   };
 
   const handleGuest = () => {
-    navigation.replace('GuestOnboarding');
+    Alert.alert('🔒 Guest Mode Locked', 'Guest mode is locked in the demo version. Please log in using your student or faculty credentials.');
   };
 
   return (

@@ -154,7 +154,7 @@ const ChatScreen = ({ navigation }) => {
       <View style={[styles.msgRow, isMe ? styles.msgRowRight : styles.msgRowLeft]}>
         {!isMe && (
           <Image
-            source={{ uri: item.user?.avatar || getAvatarUrl(item.user?._id || 'u') }}
+            source={{ uri: getAvatarUrl(item.user?.avatar || item.user?._id || 'u') }}
             style={styles.msgAvatar}
           />
         )}
@@ -349,7 +349,7 @@ const ChatScreen = ({ navigation }) => {
                 }}
               >
                 <View style={styles.dmAvatarWrap}>
-                  <Image source={{ uri: dm.avatar_url || getAvatarUrl(dm.user_id) }} style={styles.dmAvatar} />
+                  <Image source={{ uri: getAvatarUrl(dm.avatar_url || dm.user_id) }} style={styles.dmAvatar} />
                   <View style={[styles.statusDot, { backgroundColor: isOnline ? '#10B981' : '#D1D5DB' }]} />
                 </View>
                 <View style={{ flex: 1 }}>
@@ -386,7 +386,7 @@ const ChatScreen = ({ navigation }) => {
                 }}
               >
                 <View style={styles.dmAvatarWrap}>
-                  <Image source={{ uri: dm.avatar_url || getAvatarUrl(dm.user_id) }} style={styles.dmAvatar} />
+                  <Image source={{ uri: getAvatarUrl(dm.avatar_url || dm.user_id) }} style={styles.dmAvatar} />
                   <View style={[styles.statusDot, { backgroundColor: isOnline ? '#10B981' : '#D1D5DB' }]} />
                 </View>
                 <View style={{ flex: 1 }}>

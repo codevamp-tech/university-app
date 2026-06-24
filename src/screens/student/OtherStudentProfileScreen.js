@@ -60,8 +60,7 @@ const OtherStudentProfileScreen = ({ route, navigation }) => {
         <View style={styles.profileHeroSection}>
           <View style={styles.profileHeroCard}>
             <LinearGradient colors={['#4953ac', '#8b2fc9']} style={styles.heroImgPlaceholder}>
-              <Image source={{ uri: student.avatar_url || getAvatarUrl(student.name) }} style={{ width: '100%', height: '100%', opacity: 0.6 }} />
-            </LinearGradient>
+              <Image source={{ uri: getAvatarUrl(student.avatar_url || student.name) }} style={{ width: '100%', height: '100%', opacity: 0.6 }} />            </LinearGradient>
             <LinearGradient colors={['transparent', 'rgba(0,0,0,0.85)']} style={styles.heroOverlay}>
               <Text style={styles.heroName}>{student.name}</Text>
             </LinearGradient>

@@ -2,11 +2,11 @@ import React, { useState, useRef } from 'react';
 import { getAvatarUrl } from "../../utils/avatar";
 import { useTheme } from '../../hooks/useTheme';
 import { useUser } from '../../context/UserContext';
-import { createOutpass, getAlerts } from '../../data/apiService';
+import { createOutpass, getAlerts, getStudentOutpasses } from '../../data/apiService';
 
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, Image,
-  Dimensions, Animated, Modal, StatusBar, TextInput, Platform, Alert,
+  Dimensions, Animated, Modal, StatusBar, TextInput, Platform, Alert, RefreshControl,
 } from 'react-native';
 import { MaterialIcons, MaterialCommunityIcons, Feather, Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -48,11 +48,56 @@ const ERPHubScreen = ({ navigation }) => {
   const slideAnim = useRef(new Animated.Value(width)).current;
 
   // Added states for Outpass
-  const [gatePassStatus, setGatePassStatus] = useState('idle'); // idle, pending, approved
+  const [gatePassStatus, setGatePassStatus] = useState('idle'); // idle, pending, approved, rejected
+  const [activeOutpass, setActiveOutpass] = useState(null);
   const [showQRModal, setShowQRModal] = useState(false);
   const [showBusPassModal, setShowBusPassModal] = useState(false);
+  const [showLibraryQRModal, setShowLibraryQRModal] = useState(false);
   const [showRequestModal, setShowRequestModal] = useState(false);
   const [outpassForm, setOutpassForm] = useState({ reason: '', duration: '2 Hours' });
+  const [refreshing, setRefreshing] = useState(false);
+
+  const loadOutpassStatus = async () => {
+    if (!accessToken) return;
+    try {
+      const res = await getStudentOutpasses(accessToken);
+      if (res && res.length > 0) {
+        const latest = res[0];
+        setActiveOutpass(latest);
+        const status = latest.status?.toLowerCase();
+        if (status === 'pending') {
+          setGatePassStatus('pending');
+        } else if (status === 'approved') {
+          setGatePassStatus('approved');
+        } else if (status === 'rejected') {
+          setGatePassStatus('rejected');
+        } else {
+          setGatePassStatus('idle');
+        }
+      } else {
+        setGatePassStatus('idle');
+        setActiveOutpass(null);
+      }
+    } catch (err) {
+      console.warn('[ERPHubScreen] Error loading outpasses:', err);
+    }
+  };
+
+  React.useEffect(() => {
+    loadOutpassStatus();
+  }, [accessToken]);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try {
+      const resAlerts = await getAlerts(accessToken);
+      if (resAlerts && resAlerts.data) {
+        setAlerts(resAlerts.data);
+      }
+    } catch (err) {}
+    await loadOutpassStatus();
+    setRefreshing(false);
+  };
 
   const openDrawer = () => {
     setDrawerVisible(true);
@@ -104,7 +149,18 @@ const ERPHubScreen = ({ navigation }) => {
 
 
 
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        contentContainerStyle={styles.scroll} 
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[colors.primary]}
+            tintColor={colors.primary}
+          />
+        }
+      >
 
         {/* Hero Banner */}
         <View style={styles.sectionContainer}>
@@ -187,12 +243,15 @@ const ERPHubScreen = ({ navigation }) => {
             </View>
             <Text style={[styles.busPassTitle, { color: isDark ? '#818CF8' : '#4338CA' }]}>Smart Bus Pass</Text>
             <Text style={[styles.busPassDesc, { color: colors.textSecondary }]}>
-              Route 14: City Center → {APP_CONFIG.UNIVERSITY_SHORT_NAME} Campus
+              Route 14: City Center → SRMS Campus
             </Text>
 
 
-            <TouchableOpacity style={[styles.showPassBtn, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]} onPress={() => setShowBusPassModal(true)}>
-              <MaterialIcons name="qr-code-2" size={18} color={isDark ? '#818CF8' : '#4338CA'} />
+            <TouchableOpacity 
+              style={[styles.showPassBtn, { backgroundColor: isDark ? colors.card : '#FFFFFF', opacity: 0.85 }]} 
+              onPress={() => Alert.alert('🔒 Demo Lock', 'Bus Pass module is locked in this demo. Contact admin to unlock.')}
+            >
+              <MaterialIcons name="lock" size={18} color={isDark ? '#818CF8' : '#4338CA'} style={{ marginRight: 6 }} />
               <Text style={[styles.showPassText, { color: isDark ? '#818CF8' : '#4338CA' }]}>Show Pass</Text>
             </TouchableOpacity>
           </LinearGradient>
@@ -357,22 +416,7 @@ const ERPHubScreen = ({ navigation }) => {
             </View>
           </TouchableOpacity>
 
-          {/* Maintenance */}
-          <TouchableOpacity style={[styles.essentialCard, { backgroundColor: colors.card, borderColor: colors.border }]} activeOpacity={0.85}>
-            <LinearGradient colors={isDark ? ['#1F2937', '#374151'] : ['#F3F4F6', '#E5E7EB']} style={styles.essentialIconBg}>
-              <MaterialIcons name="build" size={22} color={isDark ? colors.textSecondary : '#6B7280'} />
-            </LinearGradient>
-            <View style={styles.essentialContent}>
-              <Text style={[styles.essentialCardTitle, { color: colors.textPrimary }]}>Maintenance</Text>
-              <Text style={[styles.essentialCardDesc, { color: colors.textSecondary }]}>Report issues with room facilities or water supply.</Text>
-              <View style={styles.essentialFooter}>
-                <View style={[styles.dueBadge, { backgroundColor: isDark ? colors.background : '#F3F4F6' }]}>
-                  <Text style={[styles.dueText, { color: colors.textSecondary }]}>H1-BLOCK 204</Text>
-                </View>
-                <MaterialIcons name="chevron-right" size={20} color={colors.textMuted} />
-              </View>
-            </View>
-          </TouchableOpacity>
+
         </View>
 
         {/* Smart Library */}
@@ -451,7 +495,7 @@ const ERPHubScreen = ({ navigation }) => {
 
             <View style={styles.lcStudentRow}>
               <Image
-                source={{ uri: getAvatarUrl(user?.id || user?.email || 'me') }}
+                source={{ uri: getAvatarUrl(user?.avatar_url || user?.name || user?.id || 'me') }}
                 style={styles.lcAvatar}
               />
               <View style={styles.lcStudentInfo}>
@@ -524,7 +568,7 @@ const ERPHubScreen = ({ navigation }) => {
                 <MaterialIcons name="event" size={12} color="rgba(255,255,255,0.5)" />
                 <Text style={styles.lcValidText}>Valid until: 31 May 2025</Text>
               </View>
-              <TouchableOpacity style={styles.lcQRBtn}>
+              <TouchableOpacity style={styles.lcQRBtn} onPress={() => setShowLibraryQRModal(true)}>
                 <MaterialIcons name="qr-code-2" size={16} color="#EA580C" />
                 <Text style={styles.lcQRBtnText}>Show QR</Text>
               </TouchableOpacity>
@@ -637,18 +681,60 @@ const ERPHubScreen = ({ navigation }) => {
             <View style={styles.qrWrapper}>
                <MaterialCommunityIcons name="qrcode" size={200} color={isDark ? '#FFF' : '#111827'} />
                <View style={styles.qrStatusBadge}>
-                 <Text style={styles.qrStatusText}>VALID UNTIL 10:30 PM</Text>
+                 <Text style={styles.qrStatusText}>VALID UNTIL {activeOutpass ? (activeOutpass.to || '10:30 PM') : '10:30 PM'}</Text>
                </View>
             </View>
 
             <View style={styles.qrInfo}>
-               <Text style={[styles.qrInfoName, { color: colors.textPrimary }]}>Aryan Kumar</Text>
-               <Text style={[styles.qrInfoSub, { color: colors.textSecondary }]}>Room 402 • Main Hostel</Text>
+               <Text style={[styles.qrInfoName, { color: colors.textPrimary }]}>{user?.name || 'Student'}</Text>
+               {/* <Text style={[styles.qrInfoSub, { color: colors.textSecondary }]}>Room 402 • Main Hostel</Text> */}
             </View>
 
             <TouchableOpacity 
               style={[styles.qrDownloadBtn, { backgroundColor: colors.primary }]}
               onPress={() => setShowQRModal(false)}
+            >
+               <Text style={styles.qrDownloadText}>DONE</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Library QR Modal */}
+      <Modal
+        visible={showLibraryQRModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowLibraryQRModal(false)}
+      >
+        <View style={styles.qrModalOverlay}>
+          <View style={[styles.qrContainer, { backgroundColor: colors.card }]}>
+            <View style={styles.qrHeader}>
+               <Text style={[styles.qrTitle, { color: colors.textPrimary }]}>Library Card QR</Text>
+               <TouchableOpacity onPress={() => setShowLibraryQRModal(false)}>
+                 <MaterialIcons name="close" size={24} color={colors.textPrimary} />
+               </TouchableOpacity>
+            </View>
+            
+            <View style={styles.qrWrapper}>
+               <MaterialCommunityIcons name="qrcode" size={200} color={isDark ? '#FFF' : '#111827'} />
+               <View style={[styles.qrStatusBadge, { backgroundColor: '#EA580C' }]}>
+                 <Text style={styles.qrStatusText}>
+                   {user?.id ? `LIB-${user.id}` : `LIB-2024-001`}
+                 </Text>
+               </View>
+            </View>
+
+            <View style={styles.qrInfo}>
+               <Text style={[styles.qrInfoName, { color: colors.textPrimary }]}>{user?.name || 'Student'}</Text>
+               <Text style={[styles.qrInfoSub, { color: colors.textSecondary }]}>
+                 {user?.course ? (isMedical ? user.course : `${user.course} ${user.branch ? '- ' + user.branch : ''}`) : 'B.Tech CSE'}
+               </Text>
+            </View>
+
+            <TouchableOpacity 
+              style={[styles.qrDownloadBtn, { backgroundColor: '#EA580C' }]}
+              onPress={() => setShowLibraryQRModal(false)}
             >
                <Text style={styles.qrDownloadText}>DONE</Text>
             </TouchableOpacity>
@@ -713,19 +799,16 @@ const ERPHubScreen = ({ navigation }) => {
                     const exit_time = now.toISOString();
                     const return_time = new Date(now.getTime() + 2 * 60 * 60 * 1000).toISOString();
                     await createOutpass(accessToken, {
-                      reason: outpassForm.reason,
+                      reason: `${outpassForm.reason};Out of Campus`,
                       destination: 'Out of Campus',
                       exit_time,
                       return_time
                     });
+                    await loadOutpassStatus();
                   }
                 } catch (err) {
                   console.warn('[ERPHub] Error creating outpass:', err);
                 }
-                // Simulate warden approval
-                setTimeout(() => {
-                  setGatePassStatus('approved');
-                }, 3000);
               }}
             >
                <Text style={styles.submitBtnText}>SEND TO WARDEN</Text>
@@ -744,7 +827,7 @@ const ERPHubScreen = ({ navigation }) => {
             <TouchableOpacity activeOpacity={1}>
               <LinearGradient colors={['#EA580C', '#9A3412']} style={styles.drawerHeader}>
                 <Image
-                  source={{ uri: getAvatarUrl(user?.id || user?.email || 'me') }}
+                  source={{ uri: getAvatarUrl(user?.avatar_url || user?.name || user?.id || 'me') }}
                   style={styles.drawerAvatar}
                 />
                 <Text style={styles.drawerName}>{user?.name || 'Aryan Kumar'}</Text>

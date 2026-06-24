@@ -159,6 +159,22 @@ const DashboardScreen = ({ navigation }) => {
   // ── Dynamic featured books — same course-aware sorting as LibraryMainScreen ──
   const featuredBooks = React.useMemo(() => {
     if (!user) return booksData.slice(0, 4);
+
+    const isMed = isMedicalStudent(user) || (user.course || '').toLowerCase().includes('mbbs') || (user.category || '').toLowerCase().includes('medical');
+
+    if (isMed) {
+      const medCategories = ['Medicine', 'Medical', 'Anatomy', 'Pathology', 'Pharmacology', 'Nutrition', 'Pharmaceutics', 'Physiology'];
+      const filtered = booksData.filter(b => medCategories.includes(b.category));
+      const sorted = filtered.sort((a, b) => {
+        const aId = parseInt(a.id, 10);
+        const bId = parseInt(b.id, 10);
+        if (aId >= 16 && bId < 16) return -1;
+        if (aId < 16 && bId >= 16) return 1;
+        return aId - bId;
+      });
+      return sorted.slice(0, 4);
+    }
+
     const courseLower = (user.course || '').toLowerCase();
     const branchLower = (user.branch || '').toLowerCase();
     const categoryLower = (user.category || '').toLowerCase();
@@ -166,8 +182,6 @@ const DashboardScreen = ({ navigation }) => {
     let matchCategories = [];
     if (courseLower.includes('pharma')) {
       matchCategories = ['Pharmacology', 'Pharmaceutics', 'Anatomy', 'Pathology'];
-    } else if (categoryLower.includes('medical') || courseLower.includes('mbbs') || courseLower.includes('medicine')) {
-      matchCategories = ['Medicine', 'Anatomy', 'Pathology', 'Pharmacology'];
     } else if (branchLower.includes('computer') || branchLower.includes('cse') || branchLower.includes('it') || courseLower.includes('mca') || courseLower.includes('bca') || branchLower.includes('software')) {
       matchCategories = ['Programming', 'Software Engineering', 'AI / ML', 'Computer Science'];
     } else if (branchLower.includes('electronics') || branchLower.includes('ec') || branchLower.includes('ece')) {
@@ -186,7 +200,8 @@ const DashboardScreen = ({ navigation }) => {
     return sorted.slice(0, 4);
   }, [user]);
 
-  const avatarUrl = user?.avatar_url || getAvatarUrl(user?.name);
+  const avatarUrl = getAvatarUrl(user?.avatar_url || user?.name);
+  const isMed = user && (isMedicalStudent(user) || (user.course || '').toLowerCase().includes('mbbs') || (user.category || '').toLowerCase().includes('medical'));
   const [activeMood, setActiveMood] = React.useState(2);
   const [showProfileMenu, setShowProfileMenu] = React.useState(false);
   const [showResetModal, setShowResetModal] = React.useState(false);
@@ -209,7 +224,7 @@ const DashboardScreen = ({ navigation }) => {
     if (!user) return;
     const loadInsight = async () => {
       try {
-        const key = `@ai_insight_${user.id}`;
+        const key = `@ai_insight_v2_${user.id}`;
         const cached = await AsyncStorage.getItem(key);
         if (cached) {
           setCachedInsight(cached);
@@ -935,33 +950,52 @@ const DashboardScreen = ({ navigation }) => {
               <Text style={[styles.moduleTitle, { color: colors.textSecondary }]}>E-Library</Text>
               <Text style={[styles.sectionSub, { color: colors.textSecondary }]}>Expand your knowledge</Text>
             </View>
-            <TouchableOpacity onPress={() => Alert.alert('Premium Feature', 'This feature is locked in the free trial.')}>
-              <Text style={[styles.viewAllText, { color: '#EA580C', opacity: 0.5 }]}>View All</Text>
+            <TouchableOpacity 
+              onPress={() => {
+                if (isMed) {
+                  navigation.navigate('LibraryMain');
+                } else {
+                  Alert.alert('Premium Feature', 'This feature is locked in the free trial.');
+                }
+              }}
+            >
+              <Text style={[styles.viewAllText, { color: '#EA580C' }, !isMed && { opacity: 0.5 }]}>View All</Text>
             </TouchableOpacity>
           </View>
 
           <View style={styles.libraryGrid}>
-            {featuredBooks.map((book) => (
-              <TouchableOpacity
-                key={book.id}
-                style={[styles.libraryBookCard, { opacity: 0.5 }]}
-                onPress={() => Alert.alert('Premium Feature', 'This feature is locked in the free trial.')}
-              >
-                <View style={[styles.lockBadge, { top: 5, left: 5, zIndex: 10 }]}>
-                  <MaterialIcons name="lock" size={10} color="#FFFFFF" />
-                  <Text style={styles.lockBadgeText}>DEMO LOCK</Text>
-                </View>
-                <Image source={{ uri: book.cover }} style={styles.libraryBookImg} />
-                <Text style={[styles.libraryBookTitle, { color: colors.textPrimary }]} numberOfLines={1}>{book.title}</Text>
-                <Text style={[styles.libraryBookAuthor, { color: colors.textMuted }]} numberOfLines={1}>{book.author}</Text>
-              </TouchableOpacity>
-            ))}
+            {featuredBooks.map((book) => {
+              const isBookUnlocked = parseInt(book.id, 10) >= 16;
+              return (
+                <TouchableOpacity
+                  key={book.id}
+                  style={[styles.libraryBookCard, !isBookUnlocked && { opacity: 0.5 }]}
+                  onPress={() => {
+                    if (isBookUnlocked) {
+                      navigation.navigate('BookDetail', { book });
+                    } else {
+                      Alert.alert('Premium Feature', 'This feature is locked in the free trial.');
+                    }
+                  }}
+                >
+                  {!isBookUnlocked && (
+                    <View style={[styles.lockBadge, { top: 5, left: 5, zIndex: 10 }]}>
+                      <MaterialIcons name="lock" size={10} color="#FFFFFF" />
+                      <Text style={styles.lockBadgeText}>DEMO LOCK</Text>
+                    </View>
+                  )}
+                  <Image source={{ uri: book.cover }} style={styles.libraryBookImg} />
+                  <Text style={[styles.libraryBookTitle, { color: colors.textPrimary }]} numberOfLines={1}>{book.title}</Text>
+                  <Text style={[styles.libraryBookAuthor, { color: colors.textMuted }]} numberOfLines={1}>{book.author}</Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
         </View>
 
         <View style={styles.innovationHeader}>
           <Text style={[styles.innovationBadge, { color: colors.primary }]}>INNOVATION HUB</Text>
-          <Text style={[styles.innovationTitle, { color: colors.textPrimary }]}>Career AI Catalyst</Text>
+          <Text style={[styles.innovationTitle, { color: colors.textPrimary }]}>{isMed ? 'Clinical Career Catalyst' : 'Career AI Catalyst'}</Text>
         </View>
 
 
@@ -975,8 +1009,12 @@ const DashboardScreen = ({ navigation }) => {
             <View style={[styles.resumeIcon, { backgroundColor: isDark ? colors.background : '#FFF7ED' }]}>
               <MaterialCommunityIcons name="file-document-edit-outline" size={28} color={colors.primary} />
             </View>
-            <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>AI Resume Builder</Text>
-            <Text style={[styles.cardDesc, { color: colors.textSecondary, marginBottom: 8 }]}>Smart tailoring based on your 8.9 CGPA and technical skills in {APP_CONFIG.UNIVERSITY_SHORT_NAME} labs.</Text>
+            <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>{isMed ? 'Clinical CV & Case Portfolio' : 'AI Resume Builder'}</Text>
+            <Text style={[styles.cardDesc, { color: colors.textSecondary, marginBottom: 8 }]}>
+              {isMed 
+                ? 'Structure your clinical postings, case logs, OPD observations, and clinical workshops.' 
+                : `Smart tailoring based on your ${user?.cgpa || '8.9'} CGPA and technical skills in ${APP_CONFIG.UNIVERSITY_SHORT_NAME} labs.`}
+            </Text>
             <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12, backgroundColor: isDark ? 'rgba(139, 92, 246, 0.1)' : '#EDE9FE', alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 }}>
               <MaterialCommunityIcons name="clock-outline" size={14} color={isDark ? '#A78BFA' : '#6D28D9'} />
               <Text style={{ fontSize: 10, fontWeight: '700', color: isDark ? '#A78BFA' : '#6D28D9', marginLeft: 4 }}>GENERATES ONCE A WEEK</Text>
@@ -986,7 +1024,7 @@ const DashboardScreen = ({ navigation }) => {
               style={[styles.resumeBtn, { backgroundColor: isDark ? colors.primary : '#111827' }]}
               onPress={() => navigation.navigate('ResumeBuilder')}
             >
-              <Text style={styles.resumeBtnText}>View / Build Resume</Text>
+              <Text style={styles.resumeBtnText}>{isMed ? 'Build Clinical CV' : 'View / Build Resume'}</Text>
               <MaterialCommunityIcons name="magic-staff" size={16} color="#FFFFFF" style={{ marginLeft: 4 }} />
             </TouchableOpacity>
             <View style={styles.resumeBgIcon}>
@@ -1004,8 +1042,12 @@ const DashboardScreen = ({ navigation }) => {
               <MaterialIcons name="auto-awesome" size={24} color={isDark ? colors.primaryLight : "#A5B4FC"} />
             </View>
             <View>
-              <Text style={styles.interviewTitle}>Mock Interview</Text>
-              <Text style={[styles.interviewDesc, { color: isDark ? '#C7D2FE' : '#C7D2FE' }]}>Practice with specialized AI for 'Cloud Architect' roles.</Text>
+              <Text style={styles.interviewTitle}>{isMed ? 'Clinical Viva & OSCE Prep' : 'Mock Interview'}</Text>
+              <Text style={[styles.interviewDesc, { color: isDark ? '#C7D2FE' : '#C7D2FE' }]}>
+                {isMed 
+                  ? 'Simulate emergency ward rounds, patient history vivas, and residency interviews.' 
+                  : "Practice with specialized AI for 'Cloud Architect' roles."}
+              </Text>
             </View>
 
             <View style={styles.lockBadge}>
@@ -1037,7 +1079,7 @@ const DashboardScreen = ({ navigation }) => {
                 <MaterialCommunityIcons name="chart-areaspline" size={24} color={colors.primary} />
               </View>
             </View>
-            <Text style={[styles.skillGapTitle, { color: colors.textPrimary }]}>Skill Gap Analysis</Text>
+            <Text style={[styles.skillGapTitle, { color: colors.textPrimary }]}>{isMed ? 'Clinical Competency Gap' : 'Skill Gap Analysis'}</Text>
             {user && (() => {
               const gapData = computeSkillGap(user);
               const targetGoal = user.course?.toLowerCase().includes('medicine') || user.course?.toLowerCase().includes('mbbs')
@@ -1068,12 +1110,14 @@ const DashboardScreen = ({ navigation }) => {
 
               return (
                 <>
-                  <Text style={[styles.skillGapDesc, { color: colors.textSecondary }]}>What's missing for {targetGoal}?</Text>
+                  <Text style={[styles.skillGapDesc, { color: colors.textSecondary }]}>
+                    {isMed ? 'What clinical competencies are missing for NEET-PG/NEXT?' : `What's missing for ${targetGoal}?`}
+                  </Text>
 
                   {/* Category Split Metrics */}
                   <View style={{ flexDirection: 'row', gap: 12, marginTop: 12, marginBottom: 16 }}>
                     <View style={{ flex: 1, padding: 12, borderRadius: 16, backgroundColor: isDark ? 'rgba(59,130,246,0.1)' : '#EFF6FF', borderWidth: 1, borderColor: isDark ? 'rgba(59,130,246,0.2)' : '#DBEAFE' }}>
-                      <Text style={{ fontSize: 10, fontWeight: '800', color: '#3B82F6', textTransform: 'uppercase', marginBottom: 4 }}>Academic Prep</Text>
+                      <Text style={{ fontSize: 10, fontWeight: '800', color: '#3B82F6', textTransform: 'uppercase', marginBottom: 4 }}>{isMed ? 'Prof Theory Prep' : 'Academic Prep'}</Text>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                         <Text style={{ fontSize: 16, fontWeight: '900', color: colors.textPrimary }}>{gapData.academicMatchPct}%</Text>
                         <View style={{ flex: 1, height: 4, backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)', borderRadius: 2 }}>
@@ -1082,7 +1126,7 @@ const DashboardScreen = ({ navigation }) => {
                       </View>
                     </View>
                     <View style={{ flex: 1, padding: 12, borderRadius: 16, backgroundColor: isDark ? 'rgba(124,58,237,0.1)' : '#F5F3FF', borderWidth: 1, borderColor: isDark ? 'rgba(124,58,237,0.2)' : '#EDE9FE' }}>
-                      <Text style={{ fontSize: 10, fontWeight: '800', color: '#7C3AED', textTransform: 'uppercase', marginBottom: 4 }}>Industry Skill</Text>
+                      <Text style={{ fontSize: 10, fontWeight: '800', color: '#7C3AED', textTransform: 'uppercase', marginBottom: 4 }}>{isMed ? 'Clinical Competency' : 'Industry Skill'}</Text>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                         <Text style={{ fontSize: 16, fontWeight: '900', color: colors.textPrimary }}>{gapData.industryMatchPct}%</Text>
                         <View style={{ flex: 1, height: 4, backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)', borderRadius: 2 }}>
@@ -1113,7 +1157,7 @@ const DashboardScreen = ({ navigation }) => {
                                   color: skill.isAcademic ? '#3B82F6' : '#7C3AED',
                                   textTransform: 'uppercase',
                                 }}>
-                                  {skill.isAcademic ? 'Academic' : 'Industry'}
+                                  {skill.isAcademic ? (isMed ? 'Theory' : 'Academic') : (isMed ? 'Clinical' : 'Industry')}
                                 </Text>
                               </View>
                               <View style={{
@@ -1151,7 +1195,7 @@ const DashboardScreen = ({ navigation }) => {
               >
                 <LinearGradient colors={['#EA580C', '#9A3412']} style={styles.giveTestBtnGradient}>
                   <MaterialCommunityIcons name="pencil-outline" size={16} color="#FFFFFF" />
-                  <Text style={styles.giveTestBtnText}>Give Test</Text>
+                  <Text style={styles.giveTestBtnText}>{isMed ? 'Assess Competency' : 'Give Test'}</Text>
                 </LinearGradient>
               </TouchableOpacity>
 
@@ -1159,7 +1203,7 @@ const DashboardScreen = ({ navigation }) => {
                 style={[styles.analyzeBtn, { borderColor: colors.border }]}
                 onPress={() => navigation.navigate('DeepDiveAnalysis')}
               >
-                <Text style={[styles.analyzeBtnText, { color: colors.primary }]}>Deep Dive Analysis →</Text>
+                <Text style={[styles.analyzeBtnText, { color: colors.primary }]}>{isMed ? 'Clinical Gap Analysis →' : 'Deep Dive Analysis →'}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -1174,7 +1218,7 @@ const DashboardScreen = ({ navigation }) => {
               <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 6, backgroundColor: isDark ? '#451A03' : '#FEF3C7', alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: '#F59E0B' }}>
                 <MaterialCommunityIcons name="briefcase-check" size={16} color={isDark ? '#FCD34D' : '#D97706'} />
                 <Text style={{ marginLeft: 6, fontSize: 13, fontWeight: '800', color: isDark ? '#FCD34D' : '#D97706' }}>
-                  Target Role: {roadmapData.target}
+                  {isMed ? 'Target Specialty: ' : 'Target Role: '}{roadmapData.target}
                 </Text>
               </View>
             ) : (
@@ -1212,7 +1256,7 @@ const DashboardScreen = ({ navigation }) => {
                             <Text style={styles.activeBadgeText}>CURRENT PHASE</Text>
                           </View>
                         )}
-                        <Text style={[styles.timelineYear, { color: isDark && isCurrent ? '#FED7AA' : colors.textSecondary }]}>PHASE {step.n}</Text>
+                        <Text style={[styles.timelineYear, { color: isDark && isCurrent ? '#FED7AA' : colors.textSecondary }]}>{isMed ? `PROF PHASE ${step.n}` : `PHASE ${step.n}`}</Text>
                         <Text style={[styles.timelineCardTitle, { color: isDark && isCurrent ? '#FFFFFF' : colors.textPrimary }]}>{step.title}</Text>
 
                         <Text style={{ fontSize: 12, color: isDark && isCurrent ? '#FFFFFF' : (isCurrent ? '#4B5563' : colors.textSecondary), marginTop: 4 }}>{step.desc}</Text>
@@ -1247,7 +1291,7 @@ const DashboardScreen = ({ navigation }) => {
             {/* Dynamic Interests Input */}
             <View style={{ marginTop: 24, paddingHorizontal: 16, paddingBottom: 12, backgroundColor: colors.card, borderRadius: 16, borderWidth: 1, borderColor: colors.border }}>
               <Text style={{ fontSize: 14, fontWeight: '700', color: colors.textPrimary, marginTop: 16, marginBottom: 8 }}>
-                Refine Your Pathway
+                {isMed ? 'Refine Your Clinical Pathway' : 'Refine Your Pathway'}
               </Text>
               <Text style={{ fontSize: 12, color: colors.textSecondary, marginBottom: 12 }}>
                 {isMedicalStudent(user)

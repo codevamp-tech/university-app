@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, Platform } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../hooks/useTheme';
+import { useUser } from '../context/UserContext';
 
 // Student Screens
 import DashboardScreen from '../screens/student/DashboardScreen';
@@ -16,6 +17,8 @@ const Tab = createBottomTabNavigator();
 
 const StudentTabs = () => {
   const { colors, isDark } = useTheme();
+  const { user } = useUser();
+  const isMed = user && (user.course?.toLowerCase().includes('mbbs') || user.course?.toLowerCase().includes('medicine') || user.category?.toLowerCase().includes('medical'));
 
   return (
     <Tab.Navigator
@@ -48,8 +51,8 @@ const StudentTabs = () => {
             label = 'ID';
           } else if (route.name === 'Venture') {
             IconLibrary = MaterialCommunityIcons;
-            iconName = 'rocket-outline';
-            label = 'Venture';
+            iconName = isMed ? 'microscope' : 'rocket-outline';
+            label = isMed ? 'Research' : 'Venture';
           } else if (route.name === 'Marketplace') {
             IconLibrary = MaterialCommunityIcons;
             iconName = 'storefront-outline';

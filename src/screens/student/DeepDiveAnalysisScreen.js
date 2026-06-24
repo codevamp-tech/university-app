@@ -18,6 +18,7 @@ const DeepDiveAnalysisScreen = ({ navigation }) => {
   const { colors, isDark } = useTheme();
 
   const { user } = useUser();
+  const isMed = user && (user.course?.toLowerCase().includes('mbbs') || user.course?.toLowerCase().includes('medicine') || user.category?.toLowerCase().includes('medical'));
   const gapData = user ? computeSkillGap(user) : { matchPct: 0, missingSkills: [], expectedSkills: [], academicExpectedSkills: [], academicMissingSkills: [], academicMatchPct: 0, industryExpectedSkills: [], industryMissingSkills: [], industryMatchPct: 0 };
 
   const [activeTab, setActiveTab] = useState('academic');
@@ -67,7 +68,7 @@ const DeepDiveAnalysisScreen = ({ navigation }) => {
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <Feather name="arrow-left" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Deep Dive Analysis</Text>
+        <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>{isMed ? 'Clinical Competency Analysis' : 'Deep Dive Analysis'}</Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -79,7 +80,7 @@ const DeepDiveAnalysisScreen = ({ navigation }) => {
         >
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
             <View>
-              <Text style={styles.heroTitle}>Overall Readiness</Text>
+              <Text style={styles.heroTitle}>{isMed ? 'Overall Clinical Readiness' : 'Overall Readiness'}</Text>
               <Text style={styles.readinessScore}>{gapData.matchPct}%</Text>
             </View>
             <MaterialCommunityIcons name="shield-check-outline" size={44} color="rgba(255,255,255,0.4)" />
@@ -91,7 +92,7 @@ const DeepDiveAnalysisScreen = ({ navigation }) => {
           <View style={{ gap: 12 }}>
             <View>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
-                <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 10, fontWeight: '800', letterSpacing: 0.5 }}>ACADEMIC PREPARATION</Text>
+                <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 10, fontWeight: '800', letterSpacing: 0.5 }}>{isMed ? 'PROF THEORY PREPARATION' : 'ACADEMIC PREPARATION'}</Text>
                 <Text style={{ color: '#FFFFFF', fontSize: 11, fontWeight: '900' }}>{gapData.academicMatchPct}%</Text>
               </View>
               <View style={{ height: 6, backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 3 }}>
@@ -101,7 +102,7 @@ const DeepDiveAnalysisScreen = ({ navigation }) => {
 
             <View>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
-                <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 10, fontWeight: '800', letterSpacing: 0.5 }}>INDUSTRY ALIGNMENT</Text>
+                <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 10, fontWeight: '800', letterSpacing: 0.5 }}>{isMed ? 'CLINICAL COMPETENCY' : 'INDUSTRY ALIGNMENT'}</Text>
                 <Text style={{ color: '#FFFFFF', fontSize: 11, fontWeight: '900' }}>{gapData.industryMatchPct}%</Text>
               </View>
               <View style={{ height: 6, backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 3 }}>
@@ -119,7 +120,7 @@ const DeepDiveAnalysisScreen = ({ navigation }) => {
           >
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
               <Feather name="book" size={16} color={activeTab === 'academic' ? colors.primary : colors.textSecondary} />
-              <Text style={{ fontSize: 13, fontWeight: '800', color: activeTab === 'academic' ? colors.textPrimary : colors.textSecondary }}>Academic Subjects</Text>
+              <Text style={{ fontSize: 13, fontWeight: '800', color: activeTab === 'academic' ? colors.textPrimary : colors.textSecondary }}>{isMed ? 'Prof Subjects' : 'Academic Subjects'}</Text>
             </View>
           </TouchableOpacity>
           <TouchableOpacity 
@@ -127,14 +128,20 @@ const DeepDiveAnalysisScreen = ({ navigation }) => {
             onPress={() => setActiveTab('industry')}
           >
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              <Feather name="briefcase" size={16} color={activeTab === 'industry' ? colors.primary : colors.textSecondary} />
-              <Text style={{ fontSize: 13, fontWeight: '800', color: activeTab === 'industry' ? colors.textPrimary : colors.textSecondary }}>Industry Skills</Text>
+              {isMed ? (
+                <MaterialCommunityIcons name="stethoscope" size={16} color={activeTab === 'industry' ? colors.primary : colors.textSecondary} />
+              ) : (
+                <Feather name="briefcase" size={16} color={activeTab === 'industry' ? colors.primary : colors.textSecondary} />
+              )}
+              <Text style={{ fontSize: 13, fontWeight: '800', color: activeTab === 'industry' ? colors.textPrimary : colors.textSecondary }}>{isMed ? 'Clinical Skills' : 'Industry Skills'}</Text>
             </View>
           </TouchableOpacity>
         </View>
 
         <Text style={[styles.sectionTitle, { color: colors.textPrimary, fontSize: 18, marginBottom: 16 }]}>
-          {activeTab === 'academic' ? 'Course Syllabus Gaps' : 'Career Skill Gaps'}
+          {activeTab === 'academic' 
+            ? (isMed ? 'Prof Syllabus Gaps' : 'Course Syllabus Gaps') 
+            : (isMed ? 'Clinical Competency Gaps' : 'Career Skill Gaps')}
         </Text>
 
         {listExpected.map((skill, index) => {
@@ -177,8 +184,12 @@ const DeepDiveAnalysisScreen = ({ navigation }) => {
                   />
                   <Text style={[styles.gapText, { color: colors.textPrimary }]}>
                     {isMissing 
-                      ? (activeTab === 'academic' ? "This subject is currently a gap in your academic syllabus." : "This skill is currently a gap in your career readiness.")
-                      : (activeTab === 'academic' ? "You have completed this subject syllabus." : "You have verified proficiency in this skill.")
+                      ? (activeTab === 'academic' 
+                          ? (isMed ? "This subject is currently a gap in your professional preparation." : "This subject is currently a gap in your academic syllabus.") 
+                          : (isMed ? "This clinical skill is currently a gap in your clinical competency." : "This skill is currently a gap in your career readiness."))
+                      : (activeTab === 'academic' 
+                          ? (isMed ? "You have completed this professional subject." : "You have completed this subject syllabus.") 
+                          : (isMed ? "You have verified clinical proficiency." : "You have verified proficiency in this skill."))
                     }
                   </Text>
                 </View>
@@ -190,7 +201,9 @@ const DeepDiveAnalysisScreen = ({ navigation }) => {
                 const btnTextColor = isViewed ? '#10B981' : '#EA580C';
                 const btnText = isViewed 
                   ? 'View'
-                  : (activeTab === 'academic' ? 'Explore Syllabus Guide' : 'Explore Learning Path');
+                  : (activeTab === 'academic' 
+                      ? (isMed ? 'Explore Clinical Syllabus Guide' : 'Explore Syllabus Guide') 
+                      : (isMed ? 'Explore Clinical Pathway' : 'Explore Learning Path'));
 
                 return (
                   <TouchableOpacity 
@@ -220,7 +233,7 @@ const DeepDiveAnalysisScreen = ({ navigation }) => {
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <View style={styles.modalHeader}>
-              <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>AI Learning Path</Text>
+              <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>{isMed ? 'Clinical Learning Path' : 'AI Learning Path'}</Text>
               <TouchableOpacity onPress={() => setActiveSkill(null)} style={styles.modalCloseBtn}>
                 <Feather name="x" size={24} color={colors.textPrimary} />
               </TouchableOpacity>
@@ -254,7 +267,7 @@ const DeepDiveAnalysisScreen = ({ navigation }) => {
                           <Text style={styles.timeText}>{step.timeframe}</Text>
                         </View>
 
-                        <Text style={[styles.subTitleLabel, { color: colors.textSecondary }]}>Core Topics:</Text>
+                        <Text style={[styles.subTitleLabel, { color: colors.textSecondary }]}>{isMed ? 'Clinical Topics / High-yield Points:' : 'Core Topics:'}</Text>
                         <View style={styles.topicsGrid}>
                           {step.topics.map((topic, i) => (
                             <View key={i} style={[styles.topicChip, { backgroundColor: isDark ? '#1E293B' : '#F1F5F9' }]}>
@@ -263,7 +276,7 @@ const DeepDiveAnalysisScreen = ({ navigation }) => {
                           ))}
                         </View>
 
-                        <Text style={[styles.subTitleLabel, { color: colors.textSecondary }]}>Recommended Resources:</Text>
+                        <Text style={[styles.subTitleLabel, { color: colors.textSecondary }]}>{isMed ? 'Standard Textbooks & Clinical Guides:' : 'Recommended Resources:'}</Text>
                         {step.resources.map((res, i) => (
                           <View key={i} style={styles.resourceItem}>
                             <Feather name="book-open" size={14} color="#4338CA" />

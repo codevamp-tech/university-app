@@ -2,6 +2,7 @@ import React from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Dimensions, Platform
 } from 'react-native';
+import * as WebBrowser from 'expo-web-browser';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../../hooks/useTheme';
 import { Feather, MaterialIcons, Ionicons, FontAwesome } from '@expo/vector-icons';
@@ -94,7 +95,16 @@ const BookDetailScreen = ({ route, navigation }) => {
             <Text style={[styles.description, { color: colors.textSecondary }]}>{book.description}</Text>
           </View>
 
-          <TouchableOpacity style={styles.readBtn} onPress={() => setIsReading(true)}>
+          <TouchableOpacity 
+            style={styles.readBtn} 
+           onPress={() => {
+              if (book.pdfUrl) {
+                WebBrowser.openBrowserAsync(book.pdfUrl).catch(err => console.error("Couldn't open in-app browser", err));
+              } else {
+                setIsReading(true);
+              }
+            }}
+          >
             <LinearGradient colors={['#4338CA', '#312E81']} style={styles.readBtnGradient}>
               <Feather name="book-open" size={20} color="#FFFFFF" />
               <Text style={styles.readBtnText}>Start Reading</Text>

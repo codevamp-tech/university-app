@@ -143,7 +143,7 @@ const TalentIdentityScreen = ({ navigation }) => {
     }
   };
 
-  const avatarUrl = user?.avatar_url || getAvatarUrl(user?.id || user?.email || 'me');
+  const avatarUrl = getAvatarUrl(user?.avatar_url || user?.id || user?.email || 'me');
 
 
   return (

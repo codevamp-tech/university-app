@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../constants/colors';
 import { APP_CONFIG } from '../config/appConfig';
 import { useUser } from '../context/UserContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const SplashScreen = ({ navigation }) => {
   const { user } = useUser();
@@ -32,7 +33,7 @@ const SplashScreen = ({ navigation }) => {
       useNativeDriver: false,
     }).start();
 
-    const timer = setTimeout(() => {
+    const checkNavigation = async () => {
       if (user) {
         if (user.role === 'teacher') {
           navigation.replace('TeacherMain');
@@ -40,8 +41,21 @@ const SplashScreen = ({ navigation }) => {
           navigation.replace('StudentMain');
         }
       } else {
-        navigation.replace('Onboarding1');
+        try {
+          const completed = await AsyncStorage.getItem('@onboarding_completed');
+          if (completed === 'true') {
+            navigation.replace('Login');
+          } else {
+            navigation.replace('Onboarding1');
+          }
+        } catch (e) {
+          navigation.replace('Onboarding1');
+        }
       }
+    };
+
+    const timer = setTimeout(() => {
+      checkNavigation();
     }, 2800);
 
     return () => clearTimeout(timer);

@@ -1451,6 +1451,18 @@ export async function generateATSResume(student) {
     throw new Error("GROQ_API_KEY is missing. Cannot generate resume.");
   }
 
+  const cat = resolveCategory(student);
+  const collegeName = "SRMS - Shri Ram Murti Smarak";
+  const courseText = (student.course?.toLowerCase().includes('mbbs') || student.course?.toLowerCase().includes('bds'))
+    ? `${student.course} (Medicine)`
+    : `${student.course} in ${student.branch}`;
+
+  const extraGuideline = cat === 'medical'
+    ? 'Extracurricular/Clubs/Certs: (assume they are active in 2 medical/health study circles or student associations and have 1 clinical workshop certification like BLS or ACLS if not provided)'
+    : cat === 'alliedhealth'
+    ? 'Extracurricular/Clubs/Certs: (assume they are active in 2 allied health/nursing student associations and have 1 clinical workshop/practical certification if not provided)'
+    : 'Extracurricular/Clubs/Certs: (assume they are active in 2 tech/business clubs and have 1 professional certification if not provided)';
+
   const prompt = `
 You are an expert career counselor and resume writer. 
 Generate a professional, ATS-compatible resume in JSON format for the following student.
@@ -1458,11 +1470,11 @@ Do not use markdown blocks, return ONLY raw JSON.
 
 Student Info:
 Name: ${student.name}
-Course: ${student.course} in ${student.branch} (Year ${student.year})
+Course: ${courseText} (Year ${student.year})
 CGPA: ${student.cgpa}
 Skills: ${student.skills ? student.skills.join(', ') : 'Various technical and soft skills'}
 Attendance: ${student.attendance}%
-Extracurricular/Clubs/Certs: (assume they are active in 2 tech clubs and have 1 certification based on typical profile if not provided)
+${extraGuideline}
 Base Analysis: ${generateAIInsight(student)}
 
 The JSON must exactly match this structure:
@@ -1472,7 +1484,7 @@ The JSON must exactly match this structure:
   "objective": "A strong 2-sentence professional summary.",
   "education": [
     {
-      "institution": "University Name",
+      "institution": "${collegeName}",
       "degree": "Degree and Branch",
       "duration": "Start Year - Expected Graduation Year",
       "details": "GPA, relevant coursework"
@@ -1495,6 +1507,10 @@ The JSON must exactly match this structure:
   ],
   "skills": ["Skill 1", "Skill 2", "Skill 3"]
 }
+
+Guidelines for Education:
+1. For institution name, use exactly "${collegeName}".
+2. For medical students, ensure degree is formatted as "Bachelor of Medicine, Bachelor of Surgery (MBBS)" rather than "MBBS in MBBS" or "M.B.B.S in MBBS".
 `;
 
   try {
@@ -1516,12 +1532,39 @@ The JSON must exactly match this structure:
     if (data.error) throw new Error(data.error.message || "Groq API Error");
 
     let textResponse = data.choices[0].message.content;
-    textResponse = textResponse.replace(/$$$$$$json/g, '').replace(/$$$$$$/g, '').trim();
+    textResponse = textResponse.replace(/```json/g, '').replace(/```/g, '').trim();
     
-    return JSON.parse(textResponse);
+    const resume = JSON.parse(textResponse);
+
+    // Post-process to guarantee MBBS formatting and college name in education entries
+    if (resume.education && Array.isArray(resume.education)) {
+      resume.education = resume.education.map(edu => {
+        let degree = edu.degree || '';
+        let institution = edu.institution || '';
+        
+        // Clean degree name
+        if (degree.toLowerCase().includes('m.b.b.s') || degree.toLowerCase().includes('mbbs')) {
+          if (degree.toLowerCase().includes('in mbbs') || degree.toLowerCase().includes('in m.b.b.s') || degree.toLowerCase().includes('in medicine') || degree === 'MBBS' || degree === 'M.B.B.S.') {
+            degree = 'Bachelor of Medicine, Bachelor of Surgery (MBBS)';
+          }
+        }
+        
+        // Ensure institution is correct
+        if (!institution || institution.toLowerCase() === 'university name' || institution.toLowerCase() === 'null') {
+          institution = collegeName;
+        }
+        
+        return {
+          ...edu,
+          degree,
+          institution
+        };
+      });
+    }
+
+    return resume;
   } catch (error) {
     console.error("Failed to generate ATS resume:", error);
     throw error;
   }
 }
-

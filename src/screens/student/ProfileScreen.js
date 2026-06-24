@@ -81,7 +81,7 @@ const ProfileScreen = () => {
         }
       ];
 
-  const avatarUrl = user.avatar_url || getAvatarUrl(user.name);
+  const avatarUrl = getAvatarUrl(user.avatar_url || user.name);
 
 
   const handlePickImage = async () => {

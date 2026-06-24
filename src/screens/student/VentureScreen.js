@@ -57,6 +57,7 @@ const VentureScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
   const { accessToken, user } = useUser();
+  const isMed = user && (user.course?.toLowerCase().includes('mbbs') || user.course?.toLowerCase().includes('medicine') || user.category?.toLowerCase().includes('medical'));
 
   const [startups, setStartups] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -68,11 +69,23 @@ const VentureScreen = ({ navigation }) => {
   const [vName, setVName] = useState('');
   const [vPitch, setVPitch] = useState('');
   const [vCategory, setVCategory] = useState('');
-  const [vLookingFor, setVLookingFor] = useState('Developer, Marketing');
+  const [vLookingFor, setVLookingFor] = useState(isMed ? 'Statistician, Clinical Lead' : 'Developer, Marketing');
 
   // Student's own posted startups states
   const [myStartups, setMyStartups] = useState([]);
   const [myLoading, setMyLoading] = useState(false);
+
+  const getStageLabel = (stage) => {
+    if (isMed) {
+      const s = (stage || 'IDEA').toLowerCase();
+      if (s.includes('revenue') || s.includes('trial') || s.includes('clinical')) return 'Clinical Trial';
+      if (s.includes('idea') || s.includes('hypothesis') || s.includes('concept')) return 'Hypothesis';
+      if (s.includes('mvp') || s.includes('prototype')) return 'Prototype / Study';
+      if (s.includes('scale') || s.includes('practice')) return 'Clinical Practice';
+      return 'Hypothesis';
+    }
+    return (stage || 'PRE-REVENUE').replace(/[-_]/g, ' ').toUpperCase();
+  };
 
   const fetchAllStartups = useCallback(async () => {
     setLoading(true);
@@ -118,31 +131,33 @@ const VentureScreen = ({ navigation }) => {
 
   const handleCoFounderMatch = useCallback(async () => {
     if (!accessToken) {
-      Alert.alert('Login Required', 'You must be logged in to match with co-founders.');
+      Alert.alert('Login Required', isMed ? 'You must be logged in to match with research collaborators.' : 'You must be logged in to match with co-founders.');
       return;
     }
     setMatching(true);
     try {
       await triggerCofounderMatch(accessToken);
       Alert.alert(
-        'AI Matchmaking Triggered',
-        'We have analyzed student profiles and triggered background matches. Check back soon for connections!'
+        isMed ? 'AI Research Matchmaking' : 'AI Matchmaking Triggered',
+        isMed 
+          ? 'We have analyzed profiles and triggered background collaboration matches. Check back soon for connections!'
+          : 'We have analyzed student profiles and triggered background matches. Check back soon for connections!'
       );
     } catch (err) {
       Alert.alert('Error', err.message || 'Failed to trigger matchmaking.');
     } finally {
       setMatching(false);
     }
-  }, [accessToken]);
+  }, [accessToken, isMed]);
 
   const handleSubmitPitch = async () => {
     if (!vName.trim() || !vPitch.trim()) {
-      Alert.alert('Validation Error', 'Venture Name and One-Sentence Pitch are required.');
+      Alert.alert('Validation Error', isMed ? 'Study / Proposal Name and Clinical Hypothesis are required.' : 'Venture Name and One-Sentence Pitch are required.');
       return;
     }
 
     if (!accessToken) {
-      Alert.alert('Login Required', 'You must be logged in to submit a pitch.');
+      Alert.alert('Login Required', isMed ? 'You must be logged in to submit a proposal.' : 'You must be logged in to submit a pitch.');
       return;
     }
 
@@ -167,10 +182,10 @@ const VentureScreen = ({ navigation }) => {
           deck_url: deckUrl
         });
       } else {
-        throw new Error("Venture was registered but response was invalid.");
+        throw new Error(isMed ? "Proposal was registered but response was invalid." : "Venture was registered but response was invalid.");
       }
 
-      Alert.alert('Success', 'Your venture has been registered and pitch deck submitted successfully!');
+      Alert.alert('Success', isMed ? 'Your research proposal has been registered and clinical outline submitted successfully!' : 'Your venture has been registered and pitch deck submitted successfully!');
       
       // Reset form fields
       setVName('');
@@ -180,7 +195,7 @@ const VentureScreen = ({ navigation }) => {
       fetchAllStartups();
       fetchMyStartups();
     } catch (err) {
-      Alert.alert('Error', err.message || 'Failed to submit pitch.');
+      Alert.alert('Error', err.message || (isMed ? 'Failed to submit proposal.' : 'Failed to submit pitch.'));
     } finally {
       setSubmitting(false);
     }
@@ -194,12 +209,12 @@ const VentureScreen = ({ navigation }) => {
       <View style={[styles.header, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
         <View style={styles.headerLeft}>
           <LinearGradient
-            colors={isDark ? ['#9A3412', '#7C2D12'] : ['#EA580C', '#9A3412']}
+            colors={isMed ? (isDark ? ['#9F1239', '#4C0519'] : ['#E11D48', '#9F1239']) : (isDark ? ['#9A3412', '#7C2D12'] : ['#EA580C', '#9A3412'])}
             style={styles.logoIconBg}
           >
-            <MaterialIcons name="lightbulb" size={20} color="#FFFFFF" />
+            <MaterialIcons name={isMed ? "biotech" : "lightbulb"} size={20} color="#FFFFFF" />
           </LinearGradient>
-          <Text style={[styles.headerLogo, { color: colors.textPrimary }]}>{APP_CONFIG.UNIVERSITY_SHORT_NAME} Ventures</Text>
+          <Text style={[styles.headerLogo, { color: colors.textPrimary }]}>{isMed ? 'Clinical Innovation & Research' : `${APP_CONFIG.UNIVERSITY_SHORT_NAME} Ventures`}</Text>
         </View>
 
         <View style={styles.headerRight}>
@@ -225,38 +240,38 @@ const VentureScreen = ({ navigation }) => {
             style={styles.heroImg}
           />
           <LinearGradient
-            colors={isDark ? ['rgba(0,0,0,0.85)', 'rgba(139, 75, 0, 0.4)'] : ['rgba(139, 75, 0, 0.95)', 'rgba(122, 65, 0, 0.4)']}
+            colors={isMed ? (isDark ? ['rgba(0,0,0,0.85)', 'rgba(159, 18, 57, 0.4)'] : ['rgba(159, 18, 57, 0.95)', 'rgba(136, 19, 55, 0.4)']) : (isDark ? ['rgba(0,0,0,0.85)', 'rgba(139, 75, 0, 0.4)'] : ['rgba(139, 75, 0, 0.95)', 'rgba(122, 65, 0, 0.4)'])}
             style={styles.heroOverlay}
           >
             <View style={[styles.heroBadge, { backgroundColor: 'rgba(255,255,255,0.1)', borderColor: 'rgba(255,255,255,0.2)' }]}>
-              <Text style={styles.heroBadgeText}>{APP_CONFIG.UNIVERSITY_SHORT_NAME} PULSE LAB</Text>
+              <Text style={styles.heroBadgeText}>{isMed ? 'CLINICAL PULSE LAB' : `${APP_CONFIG.UNIVERSITY_SHORT_NAME} PULSE LAB`}</Text>
             </View>
-            <Text style={styles.heroTitle}>Where Ideas {"\n"}<Text style={styles.heroTitleItalic}>Go Infinite.</Text></Text>
+            <Text style={styles.heroTitle}>{isMed ? "Where Research \n" : "Where Ideas \n"}<Text style={styles.heroTitleItalic}>{isMed ? "Go Clinical." : "Go Infinite."}</Text></Text>
             <View style={styles.heroBtns}>
               <TouchableOpacity style={styles.pitchBtn} onPress={() => scrollViewRef.current?.scrollToEnd({ animated: true })}>
-                <Text style={[styles.pitchBtnText, { color: colors.primary }]}>Pitch Your Idea</Text>
+                <Text style={[styles.pitchBtnText, { color: colors.primary }]}>{isMed ? 'Submit Proposal' : 'Pitch Your Idea'}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={[styles.exploreBtn, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.15)', borderColor: 'rgba(255,255,255,0.2)' }]} onPress={() => scrollViewRef.current?.scrollTo({ y: 550, animated: true })}>
-                <Text style={styles.exploreBtnText}>Explore Startups</Text>
+                <Text style={styles.exploreBtnText}>{isMed ? 'Explore Proposals' : 'Explore Startups'}</Text>
               </TouchableOpacity>
             </View>
           </LinearGradient>
         </View>
 
         {/* Co-founder Match Card */}
-        <View style={[styles.matchCard, { backgroundColor: isDark ? '#1E1B4B' : '#4338CA', shadowColor: '#4338CA' }]}>
+        <View style={[styles.matchCard, { backgroundColor: isMed ? (isDark ? '#4C0519' : '#BE123C') : (isDark ? '#1E1B4B' : '#4338CA'), shadowColor: isMed ? '#BE123C' : '#4338CA' }]}>
           <View style={styles.cardHeader}>
             <View style={[styles.cardIconBox, { backgroundColor: 'rgba(255,255,255,0.1)' }]}>
-              <MaterialIcons name="psychology-alt" size={28} color="#FFFFFF" />
+              <MaterialIcons name={isMed ? "biotech" : "psychology-alt"} size={28} color="#FFFFFF" />
             </View>
-            <Text style={styles.cardHeaderTitle}>Find a Co-founder</Text>
+            <Text style={styles.cardHeaderTitle}>{isMed ? 'Find a Collaborator' : 'Find a Co-founder'}</Text>
           </View>
-          <Text style={[styles.cardDesc, { color: '#E0E7FF' }]}>Our AI matches your vision with students across Engineering, Design, and MBA departments.</Text>
+          <Text style={[styles.cardDesc, { color: '#E0E7FF' }]}>{isMed ? 'Our AI matches your clinical hypothesis with peers across Medicine, Pharmacology, and Bio-Engineering.' : 'Our AI matches your vision with students across Engineering, Design, and MBA departments.'}</Text>
           <View style={styles.matchingFooter}>
             <View style={styles.miniAvatars}>
-              <View style={[styles.mAvatar, { borderColor: isDark ? '#1E1B4B' : '#4338CA' }]} />
-              <View style={[styles.mAvatar, { marginLeft: -8, borderColor: isDark ? '#1E1B4B' : '#4338CA' }]} />
-              <View style={[styles.mAvatar, { marginLeft: -8, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center', borderColor: isDark ? '#1E1B4B' : '#4338CA' }]}>
+              <View style={[styles.mAvatar, { borderColor: isMed ? (isDark ? '#4C0519' : '#BE123C') : (isDark ? '#1E1B4B' : '#4338CA') }]} />
+              <View style={[styles.mAvatar, { marginLeft: -8, borderColor: isMed ? (isDark ? '#4C0519' : '#BE123C') : (isDark ? '#1E1B4B' : '#4338CA') }]} />
+              <View style={[styles.mAvatar, { marginLeft: -8, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center', borderColor: isMed ? (isDark ? '#4C0519' : '#BE123C') : (isDark ? '#1E1B4B' : '#4338CA') }]}>
                 <Text style={{ fontSize: 9, color: '#FFFFFF', fontWeight: '800' }}>+42</Text>
               </View>
             </View>
@@ -266,9 +281,9 @@ const VentureScreen = ({ navigation }) => {
               disabled={matching}
             >
               {matching ? (
-                <ActivityIndicator size="small" color={isDark ? '#E0E7FF' : '#4338CA'} />
+                <ActivityIndicator size="small" color={isDark ? '#E0E7FF' : (isMed ? '#BE123C' : '#4338CA')} />
               ) : (
-                <Text style={[styles.startMatchBtnText, { color: isDark ? '#E0E7FF' : '#4338CA' }]}>Start Matching</Text>
+                <Text style={[styles.startMatchBtnText, { color: isDark ? '#E0E7FF' : (isMed ? '#BE123C' : '#4338CA') }]}>{isMed ? 'Start Collaborating' : 'Start Matching'}</Text>
               )}
             </TouchableOpacity>
           </View>
@@ -277,7 +292,7 @@ const VentureScreen = ({ navigation }) => {
         {/* Top Startups */}
         <View style={styles.sectionHeader}>
           <View style={styles.sectionTitleRow}>
-            <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Top Startups</Text>
+            <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>{isMed ? 'Top Clinical Proposals' : 'Top Startups'}</Text>
             <MaterialIcons name="star" size={20} color={colors.primary} />
           </View>
           <TouchableOpacity onPress={fetchAllStartups}><Text style={[styles.viewAllText, { color: colors.primary }]}>Refresh</Text></TouchableOpacity>
@@ -291,7 +306,7 @@ const VentureScreen = ({ navigation }) => {
           <View style={[styles.emptyCard, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
             <MaterialIcons name="lightbulb-outline" size={40} color={colors.textSecondary} style={{ marginBottom: 12 }} />
             <Text style={[styles.emptyCardText, { color: colors.textSecondary }]}>
-              No startups active. There are currently no startups registered on the launchpad.
+              {isMed ? 'No clinical proposals active. There are currently no research proposals registered.' : 'No startups active. There are currently no startups registered on the launchpad.'}
             </Text>
           </View>
         ) : (
@@ -306,7 +321,7 @@ const VentureScreen = ({ navigation }) => {
                   </View>
                   <View style={[styles.startupLabel, { backgroundColor: iconInfo.tagBg }]}>
                     <Text style={[styles.startupLabelText, { color: iconInfo.tagColor }]}>
-                      {(startup.stage || 'PRE-REVENUE').replace(/[-_]/g, ' ').toUpperCase()}
+                      {getStageLabel(startup.stage)}
                     </Text>
                   </View>
                   <Text style={[styles.startupName, { color: colors.textPrimary }]}>{startup.name}</Text>
@@ -328,7 +343,7 @@ const VentureScreen = ({ navigation }) => {
         {/* My Posted Ideas */}
         <View style={styles.sectionHeader}>
           <View style={styles.sectionTitleRow}>
-            <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>My Posted Ideas</Text>
+            <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>{isMed ? 'My Clinical Proposals' : 'My Posted Ideas'}</Text>
             <MaterialCommunityIcons name="lightbulb-on-outline" size={22} color={colors.primary} />
           </View>
         </View>
@@ -341,7 +356,7 @@ const VentureScreen = ({ navigation }) => {
           <View style={[styles.myEmptyCard, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
             <MaterialCommunityIcons name="lightbulb-outline" size={32} color={colors.textMuted} style={{ marginBottom: 8 }} />
             <Text style={[styles.emptyCardText, { color: colors.textSecondary }]}>
-              You haven't posted any venture ideas yet.
+              {isMed ? "You haven't posted any research proposals yet." : "You haven't posted any venture ideas yet."}
             </Text>
           </View>
         ) : (
@@ -358,12 +373,12 @@ const VentureScreen = ({ navigation }) => {
                     <View style={{ flex: 1, marginLeft: 12 }}>
                       <Text style={[styles.myStartupNameText, { color: colors.textPrimary }]}>{startup.name}</Text>
                       <Text style={[styles.myStartupCategoryText, { color: colors.textMuted }]}>
-                        {(startup.category || '').toUpperCase()} • {(startup.stage || 'IDEA').replace(/[-_]/g, ' ').toUpperCase()}
+                        {(startup.category || '').toUpperCase()} • {getStageLabel(startup.stage)}
                       </Text>
                     </View>
                     <View style={[styles.myStatusBadge, { backgroundColor: iconInfo.tagBg }]}>
                       <Text style={[styles.myStatusBadgeText, { color: iconInfo.tagColor }]}>
-                        {(startup.stage || 'IDEA').replace(/[-_]/g, ' ').toUpperCase()}
+                        {getStageLabel(startup.stage)}
                       </Text>
                     </View>
                   </View>
@@ -388,14 +403,14 @@ const VentureScreen = ({ navigation }) => {
 
         {/* Pitch Form Card */}
         <View style={[styles.pitchCard, { backgroundColor: isDark ? colors.card : '#F3F4F6', borderColor: colors.border, borderWidth: 1 }]}>
-          <Text style={[styles.pitchTitle, { color: colors.textPrimary }]}>Pitch Your Idea</Text>
-          <Text style={[styles.pitchSub, { color: colors.textSecondary }]}>Ready to disrupt the market? Submit your pitch deck.</Text>
+          <Text style={[styles.pitchTitle, { color: colors.textPrimary }]}>{isMed ? 'Submit Clinical Research Proposal' : 'Pitch Your Idea'}</Text>
+          <Text style={[styles.pitchSub, { color: colors.textSecondary }]}>{isMed ? 'Ready to share your clinical hypothesis? Submit your research proposal outline.' : 'Ready to disrupt the market? Submit your pitch deck.'}</Text>
 
           <View style={styles.inputGroup}>
-            <Text style={[styles.label, { color: colors.textSecondary }]}>VENTURE NAME</Text>
+            <Text style={[styles.label, { color: colors.textSecondary }]}>{isMed ? 'STUDY / PROPOSAL NAME' : 'VENTURE NAME'}</Text>
             <TextInput 
               style={[styles.input, { backgroundColor: isDark ? colors.background : '#FFFFFF', color: colors.textPrimary, borderColor: colors.border, borderWidth: 1 }]} 
-              placeholder={`e.g. ${APP_CONFIG.UNIVERSITY_SHORT_NAME} AI`} 
+              placeholder={isMed ? 'e.g. NutriClinic AI Study' : `e.g. ${APP_CONFIG.UNIVERSITY_SHORT_NAME} AI`} 
               placeholderTextColor={isDark ? 'rgba(255,255,255,0.3)' : '#9CA3AF'} 
               value={vName}
               onChangeText={setVName}
@@ -403,10 +418,10 @@ const VentureScreen = ({ navigation }) => {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={[styles.label, { color: colors.textSecondary }]}>ONE-SENTENCE PITCH</Text>
+            <Text style={[styles.label, { color: colors.textSecondary }]}>{isMed ? 'CLINICAL HYPOTHESIS & OBJECTIVE' : 'ONE-SENTENCE PITCH'}</Text>
             <TextInput 
               style={[styles.input, { backgroundColor: isDark ? colors.background : '#FFFFFF', color: colors.textPrimary, borderColor: colors.border, borderWidth: 1, height: 80, textAlignVertical: 'top' }]} 
-              placeholder="What problem are you solving?" 
+              placeholder={isMed ? 'What clinical problem or research question are you addressing?' : 'What problem are you solving?'} 
               placeholderTextColor={isDark ? 'rgba(255,255,255,0.3)' : '#9CA3AF'} 
               multiline 
               value={vPitch}
@@ -415,10 +430,10 @@ const VentureScreen = ({ navigation }) => {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={[styles.label, { color: colors.textSecondary }]}>CATEGORY (e.g. Agriculture, Education, Pharma, Tech)</Text>
+            <Text style={[styles.label, { color: colors.textSecondary }]}>{isMed ? 'SPECIALTY & FIELD (e.g. Cardiology, Pediatrics, Pharma)' : 'CATEGORY (e.g. Agriculture, Education, Pharma, Tech)'}</Text>
             <TextInput 
               style={[styles.input, { backgroundColor: isDark ? colors.background : '#FFFFFF', color: colors.textPrimary, borderColor: colors.border, borderWidth: 1 }]} 
-              placeholder="e.g. Pharma" 
+              placeholder={isMed ? 'e.g. Cardiology' : 'e.g. Pharma'} 
               placeholderTextColor={isDark ? 'rgba(255,255,255,0.3)' : '#9CA3AF'} 
               value={vCategory}
               onChangeText={setVCategory}
@@ -426,10 +441,10 @@ const VentureScreen = ({ navigation }) => {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={[styles.label, { color: colors.textSecondary }]}>LOOKING FOR (comma separated)</Text>
+            <Text style={[styles.label, { color: colors.textSecondary }]}>{isMed ? 'COLLABORATORS NEEDED (comma separated)' : 'LOOKING FOR (comma separated)'}</Text>
             <TextInput 
               style={[styles.input, { backgroundColor: isDark ? colors.background : '#FFFFFF', color: colors.textPrimary, borderColor: colors.border, borderWidth: 1 }]} 
-              placeholder="e.g. Developer, Marketing, Co-founder" 
+              placeholder={isMed ? 'e.g. Statistician, Lab Tech, Clinical Lead' : 'e.g. Developer, Marketing, Co-founder'} 
               placeholderTextColor={isDark ? 'rgba(255,255,255,0.3)' : '#9CA3AF'} 
               value={vLookingFor}
               onChangeText={setVLookingFor}
@@ -438,7 +453,7 @@ const VentureScreen = ({ navigation }) => {
 
           <TouchableOpacity style={[styles.uploadArea, { borderColor: colors.border, backgroundColor: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)' }]}>
             <MaterialIcons name="upload-file" size={24} color={colors.textSecondary} />
-            <Text style={[styles.uploadText, { color: colors.textSecondary }]}>UPLOAD PITCH DECK (PDF)</Text>
+            <Text style={[styles.uploadText, { color: colors.textSecondary }]}>{isMed ? 'UPLOAD RESEARCH PROPOSAL / HYPOTHESIS (PDF)' : 'UPLOAD PITCH DECK (PDF)'}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity 
@@ -449,7 +464,7 @@ const VentureScreen = ({ navigation }) => {
             {submitting ? (
               <ActivityIndicator size="small" color="#FFFFFF" />
             ) : (
-              <Text style={styles.submitBtnText}>Submit Pitch</Text>
+              <Text style={styles.submitBtnText}>{isMed ? 'Submit Research Proposal' : 'Submit Pitch'}</Text>
             )}
           </TouchableOpacity>
         </View>

@@ -16,6 +16,7 @@ const ResumeBuilderScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
   const { user } = useUser();
+  const isMed = user && (user.course?.toLowerCase().includes('mbbs') || user.course?.toLowerCase().includes('medicine') || user.category?.toLowerCase().includes('medical'));
 
   const [resumeData, setResumeData] = useState(null);
   const [isGenerating, setIsGenerating] = useState(true);
@@ -115,7 +116,7 @@ const ResumeBuilderScreen = ({ navigation }) => {
               <p>${resumeData.contact}</p>
             </div>
             
-            <div class="section-title">OBJECTIVE</div>
+            <div class="section-title">${isMed ? 'CLINICAL SUMMARY' : 'OBJECTIVE'}</div>
             <p>${resumeData.objective}</p>
 
             <div class="section-title">EDUCATION</div>
@@ -128,7 +129,7 @@ const ResumeBuilderScreen = ({ navigation }) => {
             `).join('')}
 
             ${resumeData.experience?.length ? `
-              <div class="section-title">EXPERIENCE</div>
+              <div class="section-title">${isMed ? 'CLINICAL POSTINGS & RESIDENCY' : 'EXPERIENCE'}</div>
               ${resumeData.experience.map(exp => `
                 <div style="margin-bottom: 15px;">
                   <div><span class="item-title">${exp.role}</span><span class="item-date">${exp.duration}</span></div>
@@ -141,7 +142,7 @@ const ResumeBuilderScreen = ({ navigation }) => {
             ` : ''}
 
             ${resumeData.projects?.length ? `
-              <div class="section-title">PROJECTS</div>
+              <div class="section-title">${isMed ? 'CLINICAL CASE STUDIES' : 'PROJECTS'}</div>
               ${resumeData.projects.map(proj => `
                 <div style="margin-bottom: 15px;">
                   <div class="item-title">${proj.title}</div>
@@ -152,7 +153,7 @@ const ResumeBuilderScreen = ({ navigation }) => {
             ` : ''}
 
             ${resumeData.skills?.length ? `
-              <div class="section-title">SKILLS</div>
+              <div class="section-title">${isMed ? 'CLINICAL SKILLS & COMPETENCIES' : 'SKILLS'}</div>
               <div class="skills">${resumeData.skills.join(', ')}</div>
             ` : ''}
           </body>
@@ -177,10 +178,12 @@ const ResumeBuilderScreen = ({ navigation }) => {
       <View style={[styles.loadingContainer, { backgroundColor: colors.background, paddingTop: insets.top }]}>
         <ActivityIndicator size="large" color={colors.primary} />
         <Text style={[styles.loadingText, { color: colors.textPrimary }]}>
-          AI is analyzing your profile...
+          {isMed ? 'AI is compiling your clinical profile...' : 'AI is analyzing your profile...'}
         </Text>
         <Text style={[styles.loadingSub, { color: colors.textSecondary }]}>
-          Structuring an ATS-compatible resume based on your {user?.course} background and {user?.cgpa} CGPA.
+          {isMed 
+            ? 'Structuring a medical CV based on your clinical rotations, ward postings, and exam scores.'
+            : `Structuring an ATS-compatible resume based on your ${user?.course} background and ${user?.cgpa} CGPA.`}
         </Text>
       </View>
     );
@@ -193,7 +196,7 @@ const ResumeBuilderScreen = ({ navigation }) => {
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
           <MaterialIcons name="arrow-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>AI Resume</Text>
+        <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>{isMed ? 'Clinical CV' : 'AI Resume'}</Text>
       </View>
 
       {resumeData ? (
@@ -208,7 +211,7 @@ const ResumeBuilderScreen = ({ navigation }) => {
 
             {/* Objective */}
             <View style={styles.section}>
-              <Text style={[styles.sectionTitle, { color: colors.primary }]}>OBJECTIVE</Text>
+              <Text style={[styles.sectionTitle, { color: colors.primary }]}>{isMed ? 'CLINICAL SUMMARY' : 'OBJECTIVE'}</Text>
               <Text style={[styles.sectionContent, { color: colors.textPrimary }]}>{resumeData.objective}</Text>
             </View>
 
@@ -230,7 +233,7 @@ const ResumeBuilderScreen = ({ navigation }) => {
             {/* Experience */}
             {resumeData.experience && resumeData.experience.length > 0 && (
               <View style={styles.section}>
-                <Text style={[styles.sectionTitle, { color: colors.primary }]}>EXPERIENCE</Text>
+                <Text style={[styles.sectionTitle, { color: colors.primary }]}>{isMed ? 'CLINICAL POSTINGS & RESIDENCY' : 'EXPERIENCE'}</Text>
                 {resumeData.experience.map((exp, idx) => (
                   <View key={idx} style={styles.itemContainer}>
                     <View style={styles.itemHeader}>
@@ -252,7 +255,7 @@ const ResumeBuilderScreen = ({ navigation }) => {
             {/* Projects */}
             {resumeData.projects && resumeData.projects.length > 0 && (
               <View style={styles.section}>
-                <Text style={[styles.sectionTitle, { color: colors.primary }]}>PROJECTS</Text>
+                <Text style={[styles.sectionTitle, { color: colors.primary }]}>{isMed ? 'CLINICAL CASE STUDIES' : 'PROJECTS'}</Text>
                 {resumeData.projects.map((proj, idx) => (
                   <View key={idx} style={styles.itemContainer}>
                     <Text style={[styles.itemTitle, { color: colors.textPrimary }]}>{proj.title}</Text>
@@ -266,7 +269,7 @@ const ResumeBuilderScreen = ({ navigation }) => {
             {/* Skills */}
             {resumeData.skills && resumeData.skills.length > 0 && (
               <View style={styles.section}>
-                <Text style={[styles.sectionTitle, { color: colors.primary }]}>SKILLS</Text>
+                <Text style={[styles.sectionTitle, { color: colors.primary }]}>{isMed ? 'CLINICAL SKILLS & COMPETENCIES' : 'SKILLS'}</Text>
                 <View style={styles.skillsGrid}>
                   {resumeData.skills.map((skill, idx) => (
                     <View key={idx} style={[styles.skillBadge, { backgroundColor: isDark ? 'rgba(99, 102, 241, 0.1)' : '#EEF2FF' }]}>
