@@ -186,10 +186,7 @@ const DashboardScreen = ({ navigation }) => {
     return sorted.slice(0, 4);
   }, [user]);
 
-  const isFemaleAvatar = user?.gender === 'F' || user?.gender === 'Female';
-  const avatarUrl = user?.avatar_url || (isFemaleAvatar
-    ? 'https://images.pexels.com/photos/733872/pexels-photo-733872.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=500'
-    : 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=500');
+  const avatarUrl = user?.avatar_url || getAvatarUrl(user?.name);
   const [activeMood, setActiveMood] = React.useState(2);
   const [showProfileMenu, setShowProfileMenu] = React.useState(false);
   const [showResetModal, setShowResetModal] = React.useState(false);

@@ -70,9 +70,11 @@ export function getDisplayCourse(user) {
 
   if (isMedicalStudent(user)) {
     const ordinal = yearNum ? (YEAR_ORDINALS[yearNum - 1] || `${yearNum}th`) : '';
+    if (ordinal) {
+      return `${ordinal} Year MBBS`;
+    }
     const phase = getPhaseRoman(semNum, yearNum);
-    const phaseStr = phase ? ` - Phase ${phase}` : '';
-    return ordinal ? `${ordinal} Year MBBS${phaseStr}` : (phase ? `MBBS - Phase ${phase}` : 'MBBS');
+    return phase ? `Phase ${phase} MBBS` : 'MBBS';
   }
 
   // For non-medical: check if branch is redundant (same as course or '-')

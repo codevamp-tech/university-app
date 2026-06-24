@@ -81,10 +81,7 @@ const ProfileScreen = () => {
         }
       ];
 
-  const isFemaleAvatar = user.gender === 'F' || user.gender === 'Female';
-  const avatarUrl = user.avatar_url || (isFemaleAvatar
-    ? 'https://images.pexels.com/photos/733872/pexels-photo-733872.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=500'
-    : 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=500');
+  const avatarUrl = user.avatar_url || getAvatarUrl(user.name);
 
 
   const handlePickImage = async () => {

@@ -9,6 +9,7 @@ import { useTheme } from '../../hooks/useTheme';
 import { APP_CONFIG } from '../../config/appConfig';
 import { useUser } from '../../context/UserContext';
 import { getStartups, createStartup, submitPitch, triggerCofounderMatch } from '../../data/apiService';
+import { getAvatarUrl } from '../../utils/avatar';
 
 const { width } = Dimensions.get('window');
 
@@ -185,10 +186,7 @@ const VentureScreen = ({ navigation }) => {
     }
   };
 
-  const isFemaleAvatar = user?.gender === 'F' || user?.gender === 'Female';
-  const avatarUrl = user?.avatar_url || (isFemaleAvatar
-    ? 'https://images.pexels.com/photos/733872/pexels-photo-733872.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=500'
-    : 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=500');
+  const avatarUrl = user?.avatar_url || getAvatarUrl(user?.name);
 
   return (
     <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>

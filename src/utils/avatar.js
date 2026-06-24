@@ -1,4 +1,4 @@
-export function getAvatarUrl(seed) {
-  if (!seed) return 'https://robohash.org/default_cat?set=set4&bgset=bg1';
-  return `https://robohash.org/${encodeURIComponent(seed)}?set=set4&bgset=bg1`;
+export function getAvatarUrl(name) {
+  const seed = name || 'User';
+  return `https://ui-avatars.com/api/?name=${encodeURIComponent(seed)}&background=F97316&color=fff&size=250&bold=true`;
 }
