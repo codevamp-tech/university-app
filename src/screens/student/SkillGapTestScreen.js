@@ -270,7 +270,12 @@ const SkillGapTestScreen = ({ navigation }) => {
   const micAnim = useRef(new Animated.Value(1)).current;
 
   const { user, updateSkillScore } = useUser();
-  const isMed = user && (user.course?.toLowerCase().includes('mbbs') || user.course?.toLowerCase().includes('bds') || user.course?.toLowerCase().includes('medicine') || user.category?.toLowerCase().includes('medical'));
+  const isMed = user && (
+    user.course?.replace(/\./g, '').toLowerCase().includes('mbbs') ||
+    user.course?.replace(/\./g, '').toLowerCase().includes('bds') ||
+    user.course?.toLowerCase().includes('medicine') ||
+    user.category?.toLowerCase().includes('medical')
+  );
   const gapData = user ? computeSkillGap(user) : { expectedSkills: ['DSA', 'System Design'], missingSkills: ['DSA', 'System Design'], academicMissingSkills: [], academicExpectedSkills: [], industryMissingSkills: [], industryExpectedSkills: [] };
   
   // Choose missing or expected based on mode

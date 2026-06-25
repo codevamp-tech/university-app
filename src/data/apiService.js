@@ -963,7 +963,7 @@ export async function likeStoryAPI(token, storyId) {
 /**
  * POST /api/v1/fitness/generate
  */
-export async function generateFitnessPlanAPI(token, type, weight, height, bmi, studentName) {
+export async function generateFitnessPlanAPI(token, type, weight, height, bmi, studentName, dietaryPreference = 'veg') {
   const res = await apiCall('/api/v1/fitness/generate', {
     method: 'POST',
     headers: authHeaders(token),
@@ -973,6 +973,7 @@ export async function generateFitnessPlanAPI(token, type, weight, height, bmi, s
       height: parseFloat(height),
       bmi: parseFloat(bmi),
       student_name: studentName,
+      dietary_preference: dietaryPreference, // 'veg' or 'nonveg'
     }),
   });
 

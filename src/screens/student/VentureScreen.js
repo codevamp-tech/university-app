@@ -58,7 +58,11 @@ const VentureScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
   const { accessToken, user } = useUser();
-  const isMed = user && (user.course?.toLowerCase().includes('mbbs') || user.course?.toLowerCase().includes('medicine') || user.category?.toLowerCase().includes('medical'));
+  const isMed = user && (
+    user.course?.replace(/\./g, '').toLowerCase().includes('mbbs') ||
+    user.course?.toLowerCase().includes('medicine') ||
+    user.category?.toLowerCase().includes('medical')
+  );
 
   const [startups, setStartups] = useState([]);
   const [loading, setLoading] = useState(true);

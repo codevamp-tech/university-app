@@ -16,7 +16,11 @@ const ResumeBuilderScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
   const { user, accessToken } = useUser();
-  const isMed = user && (user.course?.toLowerCase().includes('mbbs') || user.course?.toLowerCase().includes('medicine') || user.category?.toLowerCase().includes('medical'));
+  const isMed = user && (
+    user.course?.replace(/\./g, '').toLowerCase().includes('mbbs') ||
+    user.course?.toLowerCase().includes('medicine') ||
+    user.category?.toLowerCase().includes('medical')
+  );
 
   const [resumeData, setResumeData] = useState(null);
   const [isGenerating, setIsGenerating] = useState(true);
@@ -121,10 +125,13 @@ const ResumeBuilderScreen = ({ navigation }) => {
 
             <div class="section-title">EDUCATION</div>
             ${resumeData.education?.map(edu => `
-              <div style="margin-bottom: 10px;">
-                <div><span class="item-title">${edu.degree}</span><span class="item-date">${edu.duration}</span></div>
-                <div class="item-sub">${edu.institution}</div>
-                <p>${edu.details}</p>
+              <div style="margin-bottom: 12px;">
+                <div class="item-title" style="margin-bottom: 2px;">${edu.degree}</div>
+                <div style="display: flex; justify-content: space-between; font-size: 13px; color: #555; margin-bottom: 4px;">
+                  <span style="font-style: italic;">${edu.institution}</span>
+                  <span>${edu.duration}</span>
+                </div>
+                <p style="margin: 0; font-size: 13px;">${edu.details}</p>
               </div>
             `).join('')}
 
@@ -132,10 +139,13 @@ const ResumeBuilderScreen = ({ navigation }) => {
               <div class="section-title">${isMed ? 'CLINICAL POSTINGS & RESIDENCY' : 'EXPERIENCE'}</div>
               ${resumeData.experience.map(exp => `
                 <div style="margin-bottom: 15px;">
-                  <div><span class="item-title">${exp.role}</span><span class="item-date">${exp.duration}</span></div>
-                  <div class="item-sub">${exp.company}</div>
-                  <ul>
-                    ${exp.bullets?.map(b => `<li>${b}</li>`).join('')}
+                  <div class="item-title" style="margin-bottom: 2px;">${exp.role}</div>
+                  <div style="display: flex; justify-content: space-between; font-size: 13px; color: #555; margin-bottom: 4px;">
+                    <span style="font-style: italic;">${exp.company}</span>
+                    <span>${exp.duration}</span>
+                  </div>
+                  <ul style="margin: 4px 0 0 0; padding-left: 20px;">
+                    ${exp.bullets?.map(b => `<li style="font-size: 13px; margin-bottom: 3px;">${b}</li>`).join('')}
                   </ul>
                 </div>
               `).join('')}
@@ -220,12 +230,12 @@ const ResumeBuilderScreen = ({ navigation }) => {
               <Text style={[styles.sectionTitle, { color: colors.primary }]}>EDUCATION</Text>
               {resumeData.education?.map((edu, idx) => (
                 <View key={idx} style={styles.itemContainer}>
-                  <View style={styles.itemHeader}>
-                    <Text style={[styles.itemTitle, { color: colors.textPrimary }]}>{edu.degree}</Text>
+                  <Text style={[styles.itemTitle, { color: colors.textPrimary, marginBottom: 2 }]}>{edu.degree}</Text>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', flexWrap: 'wrap', marginBottom: 4 }}>
+                    <Text style={[styles.itemSub, { color: colors.textSecondary, marginBottom: 0, flex: 1, marginRight: 8 }]}>{edu.institution}</Text>
                     <Text style={[styles.itemDate, { color: colors.textSecondary }]}>{edu.duration}</Text>
                   </View>
-                  <Text style={[styles.itemSub, { color: colors.textSecondary }]}>{edu.institution}</Text>
-                  <Text style={[styles.itemDesc, { color: colors.textPrimary }]}>{edu.details}</Text>
+                  <Text style={[styles.itemDesc, { color: colors.textPrimary, marginTop: 4 }]}>{edu.details}</Text>
                 </View>
               ))}
             </View>
@@ -236,11 +246,11 @@ const ResumeBuilderScreen = ({ navigation }) => {
                 <Text style={[styles.sectionTitle, { color: colors.primary }]}>{isMed ? 'CLINICAL POSTINGS & RESIDENCY' : 'EXPERIENCE'}</Text>
                 {resumeData.experience.map((exp, idx) => (
                   <View key={idx} style={styles.itemContainer}>
-                    <View style={styles.itemHeader}>
-                      <Text style={[styles.itemTitle, { color: colors.textPrimary }]}>{exp.role}</Text>
+                    <Text style={[styles.itemTitle, { color: colors.textPrimary, marginBottom: 2 }]}>{exp.role}</Text>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', flexWrap: 'wrap', marginBottom: 4 }}>
+                      <Text style={[styles.itemSub, { color: colors.textSecondary, marginBottom: 0, flex: 1, marginRight: 8 }]}>{exp.company}</Text>
                       <Text style={[styles.itemDate, { color: colors.textSecondary }]}>{exp.duration}</Text>
                     </View>
-                    <Text style={[styles.itemSub, { color: colors.textSecondary }]}>{exp.company}</Text>
                     {exp.bullets?.map((bullet, bIdx) => (
                       <View key={bIdx} style={styles.bulletRow}>
                         <Text style={[styles.bulletPoint, { color: colors.textPrimary }]}>•</Text>

@@ -15,10 +15,10 @@ import { TimelineSkeleton } from '../../components/SkeletonLoader';
 import ActivityRing from '../../components/ActivityRing';
 import { useUser } from '../../context/UserContext';
 import { useHealthMetrics } from '../../hooks/useHealthMetrics';
-import { generateAIInsight, generateRoadmap, computeSkillGap, generateDynamicRoadmap, fetchDynamicLLMInsight } from '../../data/aiEngine';
+import { generateAIInsight, generateRoadmap, computeSkillGap, generateDynamicRoadmap, fetchDynamicLLMInsight, enrichRoadmapWithMarks } from '../../data/aiEngine';
 
 import { booksData } from '../student/library/LibraryMainScreen';
-import { listGrievancesAPI, uploadAvatarAPI, createOutpass, getStudentOutpasses } from '../../data/apiService';
+import { listGrievancesAPI, uploadAvatarAPI, createOutpass, getStudentOutpasses, getResults } from '../../data/apiService';
 import { getDisplayCourse, isMedicalStudent } from '../../utils/courseDisplay';
 
 const { width } = Dimensions.get('window');
@@ -274,6 +274,7 @@ const DashboardScreen = ({ navigation }) => {
   const [isGeneratingRoadmap, setIsGeneratingRoadmap] = React.useState(false);
   const [pathwayRetriesLeft, setPathwayRetriesLeft] = React.useState(1);
   const [cachedInsight, setCachedInsight] = React.useState(null);
+  const [academicResults, setAcademicResults] = React.useState([]);
 
   React.useEffect(() => {
     if (!user) return;
@@ -296,6 +297,14 @@ const DashboardScreen = ({ navigation }) => {
     };
     loadInsight();
   }, [user, accessToken]);
+
+  // Fetch academic results for competency gap scoring
+  React.useEffect(() => {
+    if (!accessToken) return;
+    getResults(accessToken)
+      .then(data => { if (data && data.length > 0) setAcademicResults(data); })
+      .catch(() => {});
+  }, [accessToken]);
 
   const loadPathwayRetries = React.useCallback(async () => {
     try {
@@ -325,7 +334,7 @@ const DashboardScreen = ({ navigation }) => {
     if (!user) return;
 
     if (!activeInterests) {
-      setRoadmapData(generateRoadmap(user, ''));
+      setRoadmapData(generateRoadmap(user, '', academicResults));
       return;
     }
 
@@ -342,13 +351,13 @@ const DashboardScreen = ({ navigation }) => {
       .catch(err => {
         console.error(err);
         if (isMounted) {
-          setRoadmapData(generateRoadmap(user, activeInterests));
+          setRoadmapData(generateRoadmap(user, activeInterests, academicResults));
           setIsGeneratingRoadmap(false);
         }
       });
 
     return () => { isMounted = false; };
-  }, [user, activeInterests]);
+  }, [user, activeInterests, academicResults]);
 
   const loadOutpassStatus = React.useCallback(async () => {
     if (!accessToken) return;
@@ -1131,9 +1140,9 @@ const DashboardScreen = ({ navigation }) => {
             </View>
             <Text style={[styles.skillGapTitle, { color: colors.textPrimary }]}>{isMed ? 'Clinical Competency Gap' : 'Skill Gap Analysis'}</Text>
             {user && (() => {
-              const gapData = computeSkillGap(user);
+              const gapData = computeSkillGap(user, academicResults);
               const targetGoal = user.course?.toLowerCase().includes('medicine') || user.course?.toLowerCase().includes('mbbs')
-                ? 'NEET-PG' : user.course?.toLowerCase().includes('computer') || user.course?.toLowerCase().includes('cse')
+                ? 'NEET-PG / NEXT' : user.course?.toLowerCase().includes('computer') || user.course?.toLowerCase().includes('cse')
                   ? 'FAANG' : 'Top Placements';
 
               let missingItems = [
@@ -1147,13 +1156,8 @@ const DashboardScreen = ({ navigation }) => {
                 ];
               }
               const displaySkills = missingItems.slice(0, 6).map(item => {
-                const testedScore = user.skillScores ? user.skillScores[item.name] : undefined;
-                let score = 0;
-                if (item.isMissing) {
-                  score = testedScore !== undefined ? testedScore : 0;
-                } else {
-                  score = testedScore !== undefined ? testedScore : 90;
-                }
+                const score = gapData.skillScores?.[item.name] ??
+                  (item.isMissing ? 0 : 90);
                 const color = score >= 75 ? '#10B981' : score >= 50 ? '#F59E0B' : '#EF4444';
                 return { ...item, score, color };
               });
@@ -1161,8 +1165,24 @@ const DashboardScreen = ({ navigation }) => {
               return (
                 <>
                   <Text style={[styles.skillGapDesc, { color: colors.textSecondary }]}>
-                    {isMed ? 'What clinical competencies are missing for NEET-PG/NEXT?' : `What's missing for ${targetGoal}?`}
+                    {isMed ? `What clinical competencies are missing for ${targetGoal}?` : `What's missing for ${targetGoal}?`}
                   </Text>
+
+                  {/* Completed Phases Strip — MBBS only */}
+                  {isMed && gapData.completedPhases && gapData.completedPhases.length > 0 && (
+                    <View style={{ marginTop: 12, marginBottom: 4 }}>
+                      <Text style={{ fontSize: 10, fontWeight: '800', color: colors.textSecondary, letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 8 }}>Completed Professional Years</Text>
+                      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                        {gapData.completedPhases.map((cp, idx) => (
+                          <View key={idx} style={{ flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: isDark ? 'rgba(16,185,129,0.12)' : '#D1FAE5', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20, borderWidth: 1, borderColor: isDark ? 'rgba(16,185,129,0.3)' : '#6EE7B7' }}>
+                            <MaterialCommunityIcons name="check-circle" size={12} color="#10B981" />
+                            <Text style={{ fontSize: 11, fontWeight: '800', color: '#10B981' }}>{cp.phase}</Text>
+                            <Text style={{ fontSize: 11, fontWeight: '600', color: isDark ? '#6EE7B7' : '#065F46' }}>Avg {cp.avg}%</Text>
+                          </View>
+                        ))}
+                      </View>
+                    </View>
+                  )}
 
                   {/* Category Split Metrics */}
                   <View style={{ flexDirection: 'row', gap: 12, marginTop: 12, marginBottom: 16 }}>
@@ -1283,7 +1303,10 @@ const DashboardScreen = ({ navigation }) => {
               </View>
             ) : (
               <>
-                {roadmapData && roadmapData.steps.map((step, index) => {
+                  {roadmapData && (() => {
+                    // Enrich roadmap with real marks averages for MBBS students
+                    const displayRoadmap = enrichRoadmapWithMarks(roadmapData, academicResults, user);
+                    return displayRoadmap.steps.map((step, index) => {
                   const isDone = step.status === 'done';
                   const isCurrent = step.status === 'current';
                   const dotColors = isCurrent ? ['#EA580C', '#9A3412'] : isDone ? ['#10B981', '#059669'] : ['#9CA3AF', '#6B7280'];
@@ -1295,7 +1318,7 @@ const DashboardScreen = ({ navigation }) => {
                     <View key={index} style={styles.timelineItem}>
                       <View style={styles.timelineDotWrapper}>
                         <LinearGradient colors={dotColors} style={[styles.timelineDot, isCurrent && styles.timelineDotActive, { borderColor: isDark && isCurrent ? colors.primaryLight : isCurrent ? '#FED7AA' : 'transparent' }]} />
-                        {index < roadmapData.steps.length - 1 && <View style={[styles.timelineLine, { backgroundColor: colors.border }]} />}
+                        {index < displayRoadmap.steps.length - 1 && <View style={[styles.timelineLine, { backgroundColor: colors.border }]} />}
                       </View>
                       <LinearGradient
                         colors={cardColors}
@@ -1313,7 +1336,8 @@ const DashboardScreen = ({ navigation }) => {
                       </LinearGradient>
                     </View>
                   );
-                })}
+                });
+                  })()}
 
                 {/* Pathway Outcome */}
                 {roadmapData && (

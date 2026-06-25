@@ -168,6 +168,7 @@ const FitnessDetailScreen = ({ navigation }) => {
 
   const [todayPlans, setTodayPlans] = React.useState({ diet: null, exercise: null });
   const [fetchingPlans, setFetchingPlans] = React.useState(false);
+  const [dietPref, setDietPref] = React.useState('veg'); // 'veg' or 'nonveg'
 
   const loadTodayPlans = React.useCallback(async () => {
     if (!accessToken) return;
@@ -215,7 +216,7 @@ const FitnessDetailScreen = ({ navigation }) => {
 
     setIsGenerating(true);
     try {
-      const plan = await generateFitnessPlanAPI(accessToken, type, weight, height, bmi, user?.name);
+      const plan = await generateFitnessPlanAPI(accessToken, type, weight, height, bmi, user?.name, dietPref);
       if (plan) {
         setPlanResult(plan);
         setShowPlanModal(true);
@@ -422,6 +423,26 @@ const FitnessDetailScreen = ({ navigation }) => {
           </View>
 
           <View style={styles.planButtons}>
+            {/* Veg / Non-Veg Toggle */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: isDark ? '#1F2937' : '#F9FAFB', borderRadius: 16, borderWidth: 1, borderColor: isDark ? '#374151' : '#E5E7EB', paddingHorizontal: 16, paddingVertical: 12, marginBottom: 12 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <View style={{ width: 14, height: 14, borderRadius: 3, borderWidth: 2, borderColor: dietPref === 'veg' ? '#16A34A' : '#DC2626', justifyContent: 'center', alignItems: 'center' }}>
+                  <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: dietPref === 'veg' ? '#16A34A' : '#DC2626' }} />
+                </View>
+                <Text style={{ fontSize: 14, fontWeight: '700', color: isDark ? '#F1F5F9' : '#1F2937' }}>
+                  {dietPref === 'veg' ? '🥦 Vegetarian Plan' : '🍗 Non-Vegetarian Plan'}
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => setDietPref(p => p === 'veg' ? 'nonveg' : 'veg')}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: dietPref === 'veg' ? (isDark ? 'rgba(22,163,74,0.15)' : '#DCFCE7') : (isDark ? 'rgba(220,38,38,0.15)' : '#FEE2E2'), borderRadius: 20, paddingHorizontal: 14, paddingVertical: 7, borderWidth: 1, borderColor: dietPref === 'veg' ? '#16A34A' : '#DC2626' }}
+              >
+                <Text style={{ fontSize: 12, fontWeight: '800', color: dietPref === 'veg' ? '#16A34A' : '#DC2626' }}>
+                  Switch to {dietPref === 'veg' ? 'Non-Veg' : 'Veg'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+
             <TouchableOpacity style={styles.planBtn} onPress={() => handleGeneratePlan('diet')} disabled={isGenerating}>
               <LinearGradient colors={['#059669', '#064E3B']} style={styles.planBtnGradient}>
                 <View style={styles.planBtnHeader}>

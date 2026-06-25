@@ -23,6 +23,8 @@ const ERPAttendanceScreen = ({ navigation }) => {
   const [apiAttendance, setApiAttendance] = React.useState(null);
   const [loading, setLoading] = React.useState(true);
 
+  const [expandedPhase, setExpandedPhase] = React.useState(null);
+
   const roman = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
   const semNum = parseInt(user?.semester) || 7;
   const isMedical = user?.course?.replace(/\./g, '').toUpperCase().includes('MBBS') || user?.category?.toLowerCase() === 'medical';
@@ -33,8 +35,23 @@ const ERPAttendanceScreen = ({ navigation }) => {
     if (s <= 6) return 'III';
     return 'IV';
   };
-  const displaySem = isMedical ? getPhaseRomanLocal(semNum) : (roman[semNum - 1] || 'VII');
+  const getMedicalProfNameFromSemLocal = (sem) => {
+    const s = parseInt(sem);
+    if (s <= 2) return '1st Prof';
+    if (s <= 4) return '2nd Prof';
+    if (s <= 6) return '3rd Prof Part I';
+    return '3rd Prof Part II';
+  };
+  const currentSemRoman = roman[semNum - 1] || 'VII';
+  const currentPhaseName = isMedical ? getMedicalProfNameFromSemLocal(semNum) : `Semester ${currentSemRoman}`;
+  const displaySem = isMedical ? getPhaseRomanLocal(semNum) : currentSemRoman;
   const termLabel = isMedical ? 'Phase' : 'Semester';
+
+  React.useEffect(() => {
+    if (currentPhaseName) {
+      setExpandedPhase(currentPhaseName);
+    }
+  }, [currentPhaseName]);
 
   React.useEffect(() => {
     async function loadAttendance() {
@@ -45,14 +62,38 @@ const ERPAttendanceScreen = ({ navigation }) => {
       try {
         const data = await getAttendance(accessToken);
         if (data && data.length > 0) {
-          const subjects = data.map(item => {
+          // Filter out exam/sessional components (where attendance_pct is null or undefined)
+          const validRecords = data.filter(
+            item => item.attendance_pct !== null && item.attendance_pct !== undefined
+          );
+
+          const subjects = validRecords.map(item => {
             const percentage = Math.round(item.attendance_pct || 0);
-            const status = percentage >= 75 ? 'safe' : percentage >= 60 ? 'warning' : 'danger';
+            
+            // NMC criteria: 80% for clinical postings/practicals/labs, 75% for theory classes
+            const nameUpper = (item.subject_name || item.subject_code || '').toUpperCase();
+            const isPractical = nameUpper.includes('PRACTICAL') || 
+                                nameUpper.includes('CLINICAL') || 
+                                nameUpper.includes('DISSECTION') || 
+                                nameUpper.includes('POSTING') || 
+                                nameUpper.includes('LAB');
+            const requiredPct = isPractical ? 80 : 75;
+
+            // Safe if above threshold, warning if nearing, danger if below
+            const status = percentage >= requiredPct 
+              ? 'safe' 
+              : percentage >= (requiredPct - 5) 
+                ? 'warning' 
+                : 'danger';
+
             return {
               code: item.subject_code,
               name: item.subject_name || item.subject_code,
               percentage,
-              status
+              status,
+              isPractical,
+              requiredPct,
+              semester: item.semester
             };
           });
 
@@ -82,6 +123,62 @@ const ERPAttendanceScreen = ({ navigation }) => {
     attendedClasses: 0,
     subjects: []
   };
+
+  const displayData = React.useMemo(() => {
+    if (!attendanceData.subjects || attendanceData.subjects.length === 0) {
+      return {};
+    }
+
+    const grouped = {};
+    const order = isMedical 
+      ? ['1st Prof', '2nd Prof', '3rd Prof Part I', '3rd Prof Part II']
+      : roman.slice(0, semNum).map(sem => `Semester ${sem}`);
+
+    // Pre-initialize groupings up to current semester / year
+    order.forEach(phase => {
+      grouped[phase] = {
+        label: phase === currentPhaseName ? 'Ongoing' : 'Completed',
+        percentageSum: 0,
+        count: 0,
+        subjects: []
+      };
+    });
+
+    attendanceData.subjects.forEach(sub => {
+      const semRoman = roman[sub.semester - 1] || `${sub.semester}`;
+      const phaseName = isMedical 
+        ? getMedicalProfNameFromSemLocal(sub.semester) 
+        : `Semester ${semRoman}`;
+
+      if (!grouped[phaseName]) {
+        grouped[phaseName] = {
+          label: sub.semester === semNum ? 'Ongoing' : (sub.semester < semNum ? 'Completed' : 'Upcoming'),
+          percentageSum: 0,
+          count: 0,
+          subjects: []
+        };
+      }
+
+      grouped[phaseName].subjects.push(sub);
+      grouped[phaseName].percentageSum += sub.percentage;
+      grouped[phaseName].count += 1;
+    });
+
+    // Filter out groups with no subjects, but keep the current ongoing phase if it exists
+    const finalGrouped = {};
+    Object.entries(grouped).forEach(([phase, data]) => {
+      if (data.count > 0 || phase === currentPhaseName) {
+        const avg = data.count > 0 ? Math.round(data.percentageSum / data.count) : 0;
+        finalGrouped[phase] = {
+          label: data.label,
+          overallPct: avg,
+          subjects: data.subjects
+        };
+      }
+    });
+
+    return finalGrouped;
+  }, [attendanceData.subjects, isMedical, currentPhaseName, semNum]);
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -157,44 +254,120 @@ const ERPAttendanceScreen = ({ navigation }) => {
             </LinearGradient>
           </View>
 
-          {/* Subject-wise Breakdown */}
+          {/* Subject-wise Breakdown Accordions */}
           <View style={styles.sectionContainer}>
-            <Text style={[styles.sectionHeading, { color: colors.textPrimary }]}>Subject-wise Breakdown</Text>
+            <Text style={[styles.sectionHeading, { color: colors.textPrimary }]}>
+              {isMedical ? 'Professional Year Breakdown' : 'Semester-wise Breakdown'}
+            </Text>
             
             <View style={styles.subjectsList}>
-              {attendanceData.subjects.length === 0 ? (
+              {Object.keys(displayData).length === 0 ? (
                 <View style={{ padding: 20, alignItems: 'center', backgroundColor: colors.card, borderRadius: 16, borderColor: colors.border, borderWidth: 1 }}>
                   <Text style={{ color: colors.textSecondary, fontWeight: '600' }}>No attendance data available</Text>
                 </View>
               ) : (
-                attendanceData.subjects.map((subject, index) => {
-                  const statusColor = getStatusColor(subject.status);
+                Object.entries(displayData).map(([phase, phaseData]) => {
+                  const isExpanded = expandedPhase === phase;
+                  const isActive = phase === currentPhaseName;
                   
                   return (
-                    <View key={index} style={[styles.subjectCard, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
-                      <View style={styles.subjectHeader}>
-                        <View>
-                          <Text style={[styles.subjectCode, { color: colors.textSecondary }]}>{subject.code}</Text>
-                          <Text style={[styles.subjectName, { color: colors.textPrimary }]} numberOfLines={1}>{subject.name}</Text>
+                    <View key={phase} style={styles.phaseContainer}>
+                      {/* Accordion Header */}
+                      <TouchableOpacity
+                        style={[
+                          styles.semHeader,
+                          { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 },
+                          isActive && { borderColor: colors.primary, borderWidth: 1.5, backgroundColor: isDark ? 'rgba(234, 88, 12, 0.08)' : '#FFF7ED' }
+                        ]}
+                        onPress={() => setExpandedPhase(isExpanded ? null : phase)}
+                      >
+                        <View style={styles.semHeaderLeft}>
+                          <View style={[
+                            styles.semCircle,
+                            { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F3F4F6' },
+                            isActive && { backgroundColor: isDark ? 'rgba(234, 88, 12, 0.2)' : '#FFEDD5' }
+                          ]}>
+                            <Text style={[styles.semCircleText, { color: colors.textSecondary }, isActive && { color: colors.primary }]}>
+                              {isMedical ? (phase.includes('1st') ? '1st' : phase.includes('2nd') ? '2nd' : phase.includes('Part I') ? '3rd P1' : '3rd P2') : phase.replace('Semester ', '')}
+                            </Text>
+                          </View>
+                          <View>
+                            <Text style={[styles.semName, { color: colors.textPrimary }]}>
+                              {phase}
+                            </Text>
+                            <Text style={[styles.semLabel, { color: colors.textSecondary }]}>
+                              {isActive ? 'Ongoing Evaluation' : 'Completed Phase'}
+                            </Text>
+                          </View>
                         </View>
-                        <View style={[styles.percentageBadge, { backgroundColor: statusColor + '20' }]}>
-                          <Text style={[styles.percentageText, { color: statusColor }]}>{subject.percentage}%</Text>
+                        
+                        <View style={styles.semRight}>
+                          <View style={{ alignItems: 'flex-end', marginRight: 4 }}>
+                            <Text style={[styles.sgpaLabel, { color: colors.textSecondary }]}>
+                              OVERALL
+                            </Text>
+                            <Text style={[styles.sgpaValue, { color: isActive ? colors.primary : colors.textPrimary }]}>
+                              {phaseData.overallPct}%
+                            </Text>
+                          </View>
+                          <MaterialIcons
+                            name={isExpanded ? 'expand-less' : 'expand-more'}
+                            size={24}
+                            color={colors.textSecondary}
+                          />
                         </View>
-                      </View>
-                      
-                      <View style={[styles.subjectProgressBg, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F3F4F6' }]}>
-                        <View style={[styles.subjectProgressFill, { width: `${subject.percentage}%`, backgroundColor: statusColor }]} />
-                      </View>
-                      
-                      {subject.status === 'danger' && (
-                        <Text style={[styles.warningText, { color: statusColor }]}>
-                          <MaterialIcons name="error-outline" size={12} color={statusColor} /> Short attendance warning!
-                        </Text>
-                      )}
-                      {subject.status === 'warning' && (
-                        <Text style={[styles.warningText, { color: statusColor }]}>
-                          <MaterialIcons name="warning-amber" size={12} color={statusColor} /> Nearing minimum criteria.
-                        </Text>
+                      </TouchableOpacity>
+
+                      {/* Expanded Subject Cards */}
+                      {isExpanded && (
+                        <View style={[styles.subjectsContainer, { backgroundColor: isDark ? 'rgba(255,255,255,0.01)' : 'rgba(0,0,0,0.01)' }]}>
+                          {phaseData.subjects.length === 0 ? (
+                            <View style={{ padding: 16, alignItems: 'center' }}>
+                              <Text style={{ color: colors.textSecondary, fontSize: 13 }}>No active subjects registered for this phase.</Text>
+                            </View>
+                          ) : (
+                            phaseData.subjects.map((subject, idx) => {
+                              const statusColor = getStatusColor(subject.status);
+                              
+                              return (
+                                <View key={idx} style={[styles.subjectCard, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1, marginTop: idx > 0 ? 12 : 0 }]}>
+                                  <View style={styles.subjectHeader}>
+                                    <View style={{ flex: 1, paddingRight: 10 }}>
+                                      <Text style={[styles.subjectCode, { color: colors.textSecondary }]}>{subject.code}</Text>
+                                      <Text style={[styles.subjectName, { color: colors.textPrimary }]} numberOfLines={1}>{subject.name}</Text>
+                                      <Text style={{ fontSize: 11, color: colors.textSecondary, marginTop: 4 }}>
+                                        {subject.isPractical ? 'Practical/Clinical Posting' : 'Theory Subject'} • Target: {subject.requiredPct}%
+                                      </Text>
+                                    </View>
+                                    <View style={[styles.percentageBadge, { backgroundColor: statusColor + '20' }]}>
+                                      <Text style={[styles.percentageText, { color: statusColor }]}>{subject.percentage}%</Text>
+                                    </View>
+                                  </View>
+                                  
+                                  <View style={[styles.subjectProgressBg, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F3F4F6' }]}>
+                                    <View style={[styles.subjectProgressFill, { width: `${subject.percentage}%`, backgroundColor: statusColor }]} />
+                                  </View>
+                                  
+                                  {/* Only show warnings for the active ongoing phase to avoid stress */}
+                                  {isActive && (
+                                    <>
+                                      {subject.status === 'danger' && (
+                                        <Text style={[styles.warningText, { color: statusColor }]}>
+                                          <MaterialIcons name="error-outline" size={12} color={statusColor} /> Short attendance warning! (Below {subject.requiredPct}%)
+                                        </Text>
+                                      )}
+                                      {subject.status === 'warning' && (
+                                        <Text style={[styles.warningText, { color: statusColor }]}>
+                                          <MaterialIcons name="warning-amber" size={12} color={statusColor} /> Nearing minimum criteria (Threshold: {subject.requiredPct}%)
+                                        </Text>
+                                      )}
+                                    </>
+                                  )}
+                                </View>
+                              );
+                            })
+                          )}
+                        </View>
                       )}
                     </View>
                   );
@@ -257,6 +430,23 @@ const styles = StyleSheet.create({
   subjectProgressBg: { height: 6, borderRadius: 3, overflow: 'hidden' },
   subjectProgressFill: { height: '100%', borderRadius: 3 },
   warningText: { fontSize: 12, fontWeight: '500', marginTop: 12, flexDirection: 'row', alignItems: 'center' },
+  phaseContainer: { marginBottom: 12 },
+  semHeader: {
+    borderRadius: 16, padding: 16,
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+  },
+  semHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  semCircle: {
+    width: 48, height: 48, borderRadius: 24,
+    justifyContent: 'center', alignItems: 'center',
+  },
+  semCircleText: { fontSize: 14, fontWeight: '800' },
+  semName: { fontSize: 15, fontWeight: '700' },
+  semLabel: { fontSize: 10, fontWeight: '700', letterSpacing: 0.3, marginTop: 2, textTransform: 'uppercase' },
+  semRight: { flexDirection: 'row', alignItems: 'center', gap: 16 },
+  sgpaLabel: { fontSize: 9, fontWeight: '800', letterSpacing: 0.5 },
+  sgpaValue: { fontSize: 18, fontWeight: '900' },
+  subjectsContainer: { borderRadius: 16, padding: 8, marginTop: 8, gap: 12 },
 });
 
 export default ERPAttendanceScreen;

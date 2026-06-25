@@ -11,7 +11,7 @@ import { useUser } from '../../context/UserContext';
 import { getPersonaBadge } from '../../data/aiEngine';
 import { uploadAvatarAPI, connectionStatsAPI, getStartups } from '../../data/apiService';
 import { getAvatarUrl } from '../../utils/avatar';
-import { isMedicalStudent, getDisplayCourse } from '../../utils/courseDisplay';
+import { isMedicalStudent, getDisplayCourse, getMBBSProfLabel } from '../../utils/courseDisplay';
 
 
 const { width } = Dimensions.get('window');
@@ -168,9 +168,11 @@ const ProfileScreen = () => {
               const currentYear = user?.year || user?.current_year || (user?.semester ? Math.ceil(parseInt(user.semester) / 2) : '1');
               const vibeCheck = isMed ? 'Clinician' : (user?.category?.toLowerCase().includes('management') ? 'Strategist' : (user?.category?.toLowerCase().includes('alliedhealth') ? 'Caregiver' : 'Innovator'));
               const vibeColor = isMed ? '#B91C1C' : '#006666';
+              // For MBBS students show "3rd Prof" etc. instead of "Year 3"
+              const yearLabel = isMed ? getMBBSProfLabel(currentYear) : `Year ${currentYear}`;
               return (
                 <>
-                  <Text style={styles.profileSub}>Year {currentYear} • {APP_CONFIG.UNIVERSITY_NAME}</Text>
+                  <Text style={styles.profileSub}>{yearLabel} • {APP_CONFIG.UNIVERSITY_NAME}</Text>
                   <View style={styles.infoCapsuleRow}>
                     <View style={styles.infoCapsule}>
                       <Text style={styles.infoLabel}>SEM</Text>

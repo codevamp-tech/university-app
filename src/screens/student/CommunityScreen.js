@@ -991,7 +991,7 @@ const CommunityScreen = ({ navigation }) => {
           >
             <MaterialIcons name="groups" size={20} color="#FFFFFF" />
           </LinearGradient>
-          <Text style={[styles.headerLogo, { color: colors.textPrimary }]}>{APP_CONFIG.UNIVERSITY_SHORT_NAME} Social</Text>
+          <Text style={[styles.headerLogo, { color: colors.textPrimary }]}>Campus Social</Text>
         </View>
 
         <View style={styles.headerRight}>
@@ -1573,12 +1573,12 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   headerLogo: {
-    fontSize: 22,
+    fontSize: 18,
     fontWeight: '900',
     letterSpacing: -0.5,
   },
-  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  headerIconBtn: { padding: 8 },
+  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 2 },
+  headerIconBtn: { padding: 6 },
   scroll: { paddingBottom: 20 },
   storiesScroll: { paddingVertical: 16 },
   storiesContainer: { paddingHorizontal: 16, gap: 12 },

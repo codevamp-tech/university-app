@@ -15,7 +15,11 @@ const SuggestWithAIScreen = ({ navigation }) => {
   const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
   const { user } = useUser();
-  const isMed = user && (user.course?.toLowerCase().includes('mbbs') || user.course?.toLowerCase().includes('medicine') || user.category?.toLowerCase().includes('medical'));
+  const isMed = user && (
+    user.course?.replace(/\./g, '').toLowerCase().includes('mbbs') ||
+    user.course?.toLowerCase().includes('medicine') ||
+    user.category?.toLowerCase().includes('medical')
+  );
 
   const [isGenerating, setIsGenerating] = React.useState(false);
   const pulseAnim = React.useRef(new Animated.Value(1)).current;

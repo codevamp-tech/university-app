@@ -80,6 +80,10 @@ const AlertsScreen = ({ navigation }) => {
         }
         return;
       }
+      if (subType === 'follow' || subType === 'connection') {
+        navigation.navigate('Notifications');
+        return;
+      }
       // Generic social (follow, mention, etc.) → Community tab
       navigation.navigate('Community');
       return;

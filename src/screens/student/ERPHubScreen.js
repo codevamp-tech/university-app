@@ -12,7 +12,7 @@ import { MaterialIcons, MaterialCommunityIcons, Feather, Ionicons } from '@expo/
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { APP_CONFIG } from '../../config/appConfig';
-import { getDisplayCourse } from '../../utils/courseDisplay';
+import { getDisplayCourse, getMBBSProfLabel } from '../../utils/courseDisplay';
 
 const { width } = Dimensions.get('window');
 
@@ -194,18 +194,15 @@ const ERPHubScreen = ({ navigation }) => {
                     ? user.course.split(' ').map(w => w[0]).join('').toUpperCase().substring(0, 4)
                     : 'CSE';
 
-              const getPhaseRoman = (sem) => {
-                if (sem <= 2) return 'I';
-                if (sem <= 4) return 'II';
-                if (sem <= 6) return 'III';
-                return 'IV';
-              };
+              // For MBBS: compute year from semester and show Prof label
+              const medYear = user?.year || user?.current_year || (user?.semester ? Math.ceil(parseInt(user.semester) / 2) : 1);
+              const profLabel = getMBBSProfLabel(medYear);
 
               return (
                 <View style={[styles.heroStats, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.12)' }]}>
                   <View style={styles.heroStatItem}>
-                    <Text style={styles.heroStatValue}>{isMedical ? getPhaseRoman(user?.semester || 3) : displaySem}</Text>
-                    <Text style={styles.heroStatLabel}>{isMedical ? 'PHASE' : 'SEMESTER'}</Text>
+                    <Text style={styles.heroStatValue}>{isMedical ? profLabel : displaySem}</Text>
+                    <Text style={styles.heroStatLabel}>{isMedical ? 'PROF YEAR' : 'SEMESTER'}</Text>
                   </View>
                   <View style={[styles.heroStatDivider, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.2)' }]} />
                   <View style={styles.heroStatItem}>
@@ -370,15 +367,12 @@ const ERPHubScreen = ({ navigation }) => {
               {(() => {
                 const roman = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
                 const displayPrevSem = user?.semester && user.semester > 1 ? (roman[user.semester - 2] || (user.semester - 1)) : 'VI';
-                const getPhaseRoman = (sem) => {
-                  if (sem <= 2) return 'I';
-                  if (sem <= 4) return 'II';
-                  if (sem <= 6) return 'III';
-                  return 'IV';
-                };
+                // For MBBS: show previous Prof year (e.g. if current is 3rd Prof, previous is 2nd Prof)
+                const medYear = user?.year || user?.current_year || (user?.semester ? Math.ceil(parseInt(user.semester) / 2) : 1);
+                const prevMedYear = Math.max(1, parseInt(medYear) - 1);
                 return (
                   <Text style={[styles.essentialCardDesc, { color: colors.textSecondary }]}>
-                    {isMedical ? `Phase ${getPhaseRoman(user?.semester && user.semester > 2 ? user.semester - 2 : 1)}` : `Semester ${displayPrevSem}`} Marksheet is now available for download.
+                    {isMedical ? getMBBSProfLabel(prevMedYear) : `Semester ${displayPrevSem}`} Marksheet is now available for download.
                   </Text>
                 );
               })()}
@@ -508,15 +502,11 @@ const ERPHubScreen = ({ navigation }) => {
                 {(() => {
                   const roman = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
                   const displaySem = user?.semester ? (roman[user.semester - 1] || user.semester) : 'VII';
-                  const getPhaseRoman = (sem) => {
-                    if (sem <= 2) return 'I';
-                    if (sem <= 4) return 'II';
-                    if (sem <= 6) return 'III';
-                    return 'IV';
-                  };
+                  // For MBBS: show current Prof label (e.g. "3rd Prof")
+                  const medYear = user?.year || user?.current_year || (user?.semester ? Math.ceil(parseInt(user.semester) / 2) : 1);
                   return (
                     <Text style={styles.lcStudentSem}>
-                      {isMedical ? `Phase ${getPhaseRoman(user?.semester || 3)}` : `Semester ${displaySem}`}  •  Section A
+                      {isMedical ? getMBBSProfLabel(medYear) : `Semester ${displaySem}`}  •  Section A
                     </Text>
                   );
                 })()}

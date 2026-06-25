@@ -1,7 +1,7 @@
 /**
  * Smart course display helper.
  *
- * For medical students (MBBS) it returns e.g. "3rd Year MBBS"
+ * For medical students (MBBS) it returns e.g. "3rd Prof MBBS"
  * For engineering/other students it returns e.g. "B.Tech • Computer Science"
  *
  * This prevents the duplicate "M.B.B.S MBBS" display that occurs when
@@ -9,6 +9,20 @@
  */
 
 const YEAR_ORDINALS = ['1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th', '9th', '10th'];
+
+// ─── Indian MBBS Professional Year Labels ───────────────────────────────────
+// Returns the correct Indian MBBS terminology based on year number.
+// Year 1  → "1st Prof"
+// Year 2  → "2nd Prof"
+// Year 3  → "3rd Prof"
+// Year 4+ → "Final Prof"
+export function getMBBSProfLabel(yearNum) {
+  const y = parseInt(yearNum) || 1;
+  if (y === 1) return '1st Prof';
+  if (y === 2) return '2nd Prof';
+  if (y === 3) return '3rd Prof';
+  return 'Final Prof';
+}
 
 function getPhaseRoman(sem, year) {
   const s = parseInt(sem);
@@ -69,9 +83,10 @@ export function getDisplayCourse(user) {
   }
 
   if (isMedicalStudent(user)) {
-    const ordinal = yearNum ? (YEAR_ORDINALS[yearNum - 1] || `${yearNum}th`) : '';
-    if (ordinal) {
-      return `${ordinal} Year MBBS`;
+    // Use proper Indian MBBS professional year terminology (e.g. "3rd Prof MBBS")
+    // instead of generic "3rd Year MBBS"
+    if (yearNum) {
+      return `${getMBBSProfLabel(yearNum)} MBBS`;
     }
     const phase = getPhaseRoman(semNum, yearNum);
     return phase ? `Phase ${phase} MBBS` : 'MBBS';

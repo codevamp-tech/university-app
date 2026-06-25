@@ -1,5 +1,6 @@
-import React, { createContext, useState, useContext } from 'react';
+import React, { createContext, useState, useContext, useEffect } from 'react';
 import { Alert } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { loginWithRollNumber, logoutAPI, getMyProfile, updateMyProfile, loginFacultyWithEmpId, getFacultyProfile } from '../data/apiService';
 
 export const UserContext = createContext();
@@ -7,6 +8,22 @@ export const UserContext = createContext();
 export const UserProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [accessToken, setAccessToken] = useState(null);
+
+  useEffect(() => {
+    const loadSession = async () => {
+      try {
+        const token = await AsyncStorage.getItem('@access_token');
+        const savedUser = await AsyncStorage.getItem('@user');
+        if (token && savedUser) {
+          setAccessToken(token);
+          setUser(JSON.parse(savedUser));
+        }
+      } catch (e) {
+        console.warn('[UserContext] Error loading session:', e.message);
+      }
+    };
+    loadSession();
+  }, []);
 
   /**
    * Login flow:
@@ -47,6 +64,12 @@ export const UserProvider = ({ children }) => {
             accessToken: facultyData.access_token,
           };
           setUser(u);
+          try {
+            await AsyncStorage.setItem('@access_token', facultyData.access_token);
+            await AsyncStorage.setItem('@user', JSON.stringify(u));
+          } catch (e) {
+            console.warn('[UserContext] Error saving session:', e.message);
+          }
           return u;
         }
       } catch (err) {
@@ -107,6 +130,12 @@ export const UserProvider = ({ children }) => {
         };
 
         setUser(u);
+        try {
+          await AsyncStorage.setItem('@access_token', tokenData.access_token);
+          await AsyncStorage.setItem('@user', JSON.stringify(u));
+        } catch (e) {
+          console.warn('[UserContext] Error saving session:', e.message);
+        }
         return u;
       }
     }
@@ -124,6 +153,11 @@ export const UserProvider = ({ children }) => {
     }
     setUser(null);
     setAccessToken(null);
+    try {
+      await AsyncStorage.multiRemove(['@access_token', '@user']);
+    } catch (e) {
+      console.warn('[UserContext] Error clearing session:', e.message);
+    }
   };
 
   const updateSkillScore = (skillName, score) => {
@@ -141,7 +175,9 @@ export const UserProvider = ({ children }) => {
       const skillScores = { ...(prevUser.skillScores || {}) };
       skillScores[skillName] = score;
 
-      return { ...prevUser, currentSkills, skillScores };
+      const updated = { ...prevUser, currentSkills, skillScores };
+      AsyncStorage.setItem('@user', JSON.stringify(updated)).catch(() => {});
+      return updated;
     });
   };
 
@@ -149,7 +185,9 @@ export const UserProvider = ({ children }) => {
   const updateAvatarUrl = async (newUrl) => {
     setUser(prevUser => {
       if (!prevUser) return null;
-      return { ...prevUser, avatar_url: newUrl };
+      const updated = { ...prevUser, avatar_url: newUrl };
+      AsyncStorage.setItem('@user', JSON.stringify(updated)).catch(() => {});
+      return updated;
     });
     if (accessToken) {
       try {

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, Modal
 } from 'react-native';
@@ -10,6 +10,7 @@ import { useUser } from '../../context/UserContext';
 import { computeSkillGap, generateLearningPath } from '../../data/aiEngine';
 import { TimelineSkeleton, SkeletonBlock } from '../../components/SkeletonLoader';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getResults } from '../../data/apiService';
 
 const { width } = Dimensions.get('window');
 
@@ -18,8 +19,26 @@ const DeepDiveAnalysisScreen = ({ navigation }) => {
   const { colors, isDark } = useTheme();
 
   const { user, accessToken } = useUser();
-  const isMed = user && (user.course?.toLowerCase().includes('mbbs') || user.course?.toLowerCase().includes('medicine') || user.category?.toLowerCase().includes('medical'));
-  const gapData = user ? computeSkillGap(user) : { matchPct: 0, missingSkills: [], expectedSkills: [], academicExpectedSkills: [], academicMissingSkills: [], academicMatchPct: 0, industryExpectedSkills: [], industryMissingSkills: [], industryMatchPct: 0 };
+  const isMed = user && (
+    user.course?.replace(/\./g, '').toLowerCase().includes('mbbs') ||
+    user.course?.toLowerCase().includes('medicine') ||
+    user.category?.toLowerCase().includes('medical')
+  );
+
+  // Fetch academic results to power real-score competency analysis
+  const [academicResults, setAcademicResults] = useState([]);
+  useEffect(() => {
+    if (!accessToken) return;
+    getResults(accessToken)
+      .then(data => { if (data && data.length > 0) setAcademicResults(data); })
+      .catch(() => {});
+  }, [accessToken]);
+
+  // Compute gap data reactively whenever results or user changes
+  const gapData = useMemo(() => {
+    if (!user) return { matchPct: 0, missingSkills: [], expectedSkills: [], academicExpectedSkills: [], academicMissingSkills: [], academicMatchPct: 0, industryExpectedSkills: [], industryMissingSkills: [], industryMatchPct: 0, skillScores: {}, completedPhases: [] };
+    return computeSkillGap(user, academicResults);
+  }, [user, academicResults]);
 
   const [activeTab, setActiveTab] = useState('academic');
   const [activeSkill, setActiveSkill] = useState(null);
@@ -112,6 +131,24 @@ const DeepDiveAnalysisScreen = ({ navigation }) => {
           </View>
         </LinearGradient>
 
+        {/* Completed Phases Strip — MBBS only, shown above the tab selector */}
+        {isMed && gapData.completedPhases && gapData.completedPhases.length > 0 && (
+          <View style={{ marginBottom: 24, paddingHorizontal: 4 }}>
+            <Text style={{ fontSize: 10, fontWeight: '800', color: colors.textSecondary, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 10 }}>Completed Professional Years</Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+              {gapData.completedPhases.map((cp, idx) => (
+                <View key={idx} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: isDark ? 'rgba(16,185,129,0.1)' : '#ECFDF5', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20, borderWidth: 1, borderColor: isDark ? 'rgba(16,185,129,0.25)' : '#A7F3D0' }}>
+                  <MaterialCommunityIcons name="check-circle" size={14} color="#10B981" />
+                  <Text style={{ fontSize: 12, fontWeight: '800', color: '#10B981' }}>{cp.phase}</Text>
+                  <View style={{ width: 1, height: 12, backgroundColor: isDark ? 'rgba(16,185,129,0.3)' : '#A7F3D0' }} />
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: isDark ? '#6EE7B7' : '#059669' }}>Avg {cp.avg}%</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
+
+
         {/* Tab Selector */}
         <View style={{ flexDirection: 'row', backgroundColor: isDark ? colors.card : '#F1F5F9', borderRadius: 16, padding: 4, marginBottom: 24, borderWidth: 1, borderColor: colors.border }}>
           <TouchableOpacity 
@@ -146,13 +183,10 @@ const DeepDiveAnalysisScreen = ({ navigation }) => {
 
         {listExpected.map((skill, index) => {
           const isMissing = listMissing.includes(skill);
-          const testedScore = user.skillScores ? user.skillScores[skill] : undefined;
-          let score = 0;
-          if (isMissing) {
-            score = testedScore !== undefined ? testedScore : 0;
-          } else {
-            score = testedScore !== undefined ? testedScore : 90;
-          }
+          // Use the precomputed score from gapData.skillScores (derived from real marks or
+          // deterministic hash fallback). Never show 0% for MBBS students.
+          const score = gapData.skillScores?.[skill] ??
+            (isMissing ? 62 : 90); // safe fallback if skillScores missing
           const color = score >= 75 ? '#10B981' : score >= 50 ? '#F59E0B' : '#EF4444';
           const priority = isMissing ? (score < 50 ? 'HIGH' : 'MEDIUM') : 'LOW';
 
