@@ -56,6 +56,12 @@ function unwrap(result, fallback = null) {
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
 
+let lastLoginDiagnostics = '';
+
+export function getLastLoginDiagnostics() {
+  return lastLoginDiagnostics;
+}
+
 /**
  * Login with roll number. Uses roll_number as both username and password.
  * If user doesn't exist (404), auto-registers them first.
@@ -80,10 +86,7 @@ export async function loginWithRollNumber(rollNumber, password) {
   }
 
   // Debug failed login attempt
-  Alert.alert(
-    'Login Diagnostics',
-    `Base URL: ${BASE}\nEndpoint: /api/v1/auth/login\nStatus: ${loginRes.status}\nNetwork Error: ${!!loginRes.networkError}\nJSON Success: ${!!loginRes.json?.success}\nError Message: ${loginRes.json?.error?.message || 'none'}\nSent Payload: ${JSON.stringify({ username, tenant_id: TENANT_ID })}`
-  );
+  lastLoginDiagnostics = `Base URL: ${BASE}\nStatus: ${loginRes.status}\nNetwork Error: ${!!loginRes.networkError}\nError Message: ${loginRes.json?.error?.message || 'none'}\nSent Payload: ${JSON.stringify({ username, tenant_id: TENANT_ID })}`;
 
   // 2. If login failed, try auto-register then login
   const registerRes = await apiCall('/api/v1/auth/register', {

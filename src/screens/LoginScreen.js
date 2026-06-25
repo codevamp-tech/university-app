@@ -19,6 +19,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { APP_CONFIG } from '../config/appConfig';
 import { useUser } from '../context/UserContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getLastLoginDiagnostics } from '../data/apiService';
 
 const LOADING_MESSAGES = [
   "Connecting to ERP...",
@@ -34,6 +35,7 @@ const LoginScreen = ({ navigation }) => {
   const [role, setRole] = useState('student');
   const [loading, setLoading] = useState(false);
   const [currentMessageIdx, setCurrentMessageIdx] = useState(0);
+  const [diagnostics, setDiagnostics] = useState('');
   const insets = useSafeAreaInsets();
   const { login } = useUser();
 
@@ -56,6 +58,7 @@ const LoginScreen = ({ navigation }) => {
       return;
     }
     setLoading(true);
+    setDiagnostics('');
 
     try {
       const username = loginId.trim().toLowerCase();
@@ -84,6 +87,11 @@ const LoginScreen = ({ navigation }) => {
         navigation.replace('AdminMain');
       } else {
         navigation.replace('StudentMain');
+      }
+    } else {
+      const diag = getLastLoginDiagnostics();
+      if (diag) {
+        setDiagnostics(diag);
       }
     }
   };
@@ -255,6 +263,11 @@ const LoginScreen = ({ navigation }) => {
             <Text style={{ fontSize: 10, color: '#EA580C', fontWeight: 'bold', marginTop: 12, textAlign: 'center' }}>
               OTA UPDATE: DIAGNOSTICS ACTIVE
             </Text>
+            {!!diagnostics && (
+              <Text style={{ fontSize: 11, color: '#DC2626', marginTop: 8, textAlign: 'center', fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace' }}>
+                {diagnostics}
+              </Text>
+            )}
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
