@@ -19,6 +19,7 @@
 
 import { APP_CONFIG } from '../config/appConfig';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Alert } from 'react-native';
 
 const BASE            = APP_CONFIG.API_BASE_URL;
 const TENANT_ID       = APP_CONFIG.TENANT_ID;
@@ -77,6 +78,12 @@ export async function loginWithRollNumber(rollNumber, password) {
   if (loginRes.ok && loginRes.json?.success) {
     return loginRes.json.data; // { access_token, refresh_token, ... }
   }
+
+  // Debug failed login attempt
+  Alert.alert(
+    'Login Diagnostics',
+    `Base URL: ${BASE}\nEndpoint: /api/v1/auth/login\nStatus: ${loginRes.status}\nNetwork Error: ${!!loginRes.networkError}\nJSON Success: ${!!loginRes.json?.success}\nError Message: ${loginRes.json?.error?.message || 'none'}\nSent Payload: ${JSON.stringify({ username, tenant_id: TENANT_ID })}`
+  );
 
   // 2. If login failed, try auto-register then login
   const registerRes = await apiCall('/api/v1/auth/register', {
