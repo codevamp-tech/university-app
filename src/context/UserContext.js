@@ -52,75 +52,63 @@ export const UserProvider = ({ children }) => {
       } catch (err) {
         console.warn('[UserContext] Faculty API login failed:', err.message);
       }
+    } else {
+      // ── Student / Admin Login ────────────────────────────────────────────────
+      const usernameForApi = queryId.toLowerCase();
 
-      // Fallback for offline/demo
-      const u = { role: 'teacher', email: queryId, name: 'Faculty Member' };
-      setUser(u);
-      return u;
-    }
-
-    // ── Student / Admin Login ────────────────────────────────────────────────
-    const usernameForApi = queryId.toLowerCase();
-
-    // Step 1: Authenticate via API
-    let tokenData = null;
-    try {
-      tokenData = await loginWithRollNumber(usernameForApi, password);
-    } catch (err) {
-      console.warn('[UserContext] API login error, falling back to mocks:', err.message);
-    }
-
-    if (tokenData?.access_token) {
-      setAccessToken(tokenData.access_token);
-
-      // Fetch DB profile since we have a valid token
-      let dbProfile = null;
+      // Step 1: Authenticate via API
+      let tokenData = null;
       try {
-        dbProfile = await getMyProfile(tokenData.access_token);
+        tokenData = await loginWithRollNumber(usernameForApi, password);
       } catch (err) {
-        console.warn('[UserContext] DB profile fetch error:', err.message);
+        console.warn('[UserContext] API login error:', err.message);
       }
 
-      const {
-        id: dbUserId,
-        cgpa: dbCgpa,
-        rollno: dbRollNo,
-        batch_year: dbBatchYear,
-        department_id: dbDeptId,
-        role: dbRole,
-        current_year: dbCurrentYear,
-        ...dbProfileRest
-      } = dbProfile || {};
+      if (tokenData?.access_token) {
+        setAccessToken(tokenData.access_token);
 
-      const u = {
-        id: usernameForApi,
-        name: dbProfileRest.full_name || usernameForApi,
-        role: dbRole || role,
-        user_id: dbUserId || null,
-        cgpa: dbCgpa || 0,
-        attendance: dbProfileRest.attendance || 0,
-        currentSkills: dbProfileRest.current_skills || [],
-        certsDone: dbProfileRest.certificates_done || [],
-        certsInProgress: dbProfileRest.certificates_in_progress || [],
-        semester: dbProfileRest.semester || null,
-        sgpaHistory: dbProfileRest.sgpa_history || [],
-        current_year: dbCurrentYear || (dbProfileRest.semester ? Math.ceil(parseInt(dbProfileRest.semester, 10) / 2) : 1),
-        year: dbCurrentYear || (dbProfileRest.semester ? Math.ceil(parseInt(dbProfileRest.semester, 10) / 2) : 1),
-        rollno: dbRollNo || null,
-        batch_year: dbBatchYear || null,
-        department_id: dbDeptId || null,
-        ...dbProfileRest,
-      };
+        // Fetch DB profile since we have a valid token
+        let dbProfile = null;
+        try {
+          dbProfile = await getMyProfile(tokenData.access_token);
+        } catch (err) {
+          console.warn('[UserContext] DB profile fetch error:', err.message);
+        }
 
-      setUser(u);
-      return u;
-    }
+        const {
+          id: dbUserId,
+          cgpa: dbCgpa,
+          rollno: dbRollNo,
+          batch_year: dbBatchYear,
+          department_id: dbDeptId,
+          role: dbRole,
+          current_year: dbCurrentYear,
+          ...dbProfileRest
+        } = dbProfile || {};
 
-    // ── Fallback to Offline Mock data ────────────────────────────────────────
-    if (role === 'admin') {
-      const u = { role: 'super_admin', email: loginId, name: 'System Admin', id: 'admin' };
-      setUser(u);
-      return u;
+        const u = {
+          id: usernameForApi,
+          name: dbProfileRest.full_name || usernameForApi,
+          role: dbRole || role,
+          user_id: dbUserId || null,
+          cgpa: dbCgpa || 0,
+          attendance: dbProfileRest.attendance || 0,
+          currentSkills: dbProfileRest.current_skills || [],
+          certsDone: dbProfileRest.certificates_done || [],
+          certsInProgress: dbProfileRest.certificates_in_progress || [],
+          semester: dbProfileRest.semester || null,
+          sgpaHistory: dbProfileRest.sgpa_history || [],
+          current_year: dbCurrentYear || (dbProfileRest.semester ? Math.ceil(parseInt(dbProfileRest.semester, 10) / 2) : 1),
+          year: dbCurrentYear || (dbProfileRest.semester ? Math.ceil(parseInt(dbProfileRest.semester, 10) / 2) : 1),
+          rollno: dbRollNo || null,
+          batch_year: dbBatchYear || null,
+          department_id: dbDeptId || null,
+          ...dbProfileRest,
+        };
+
+        setUser(u);
+        return u;
+      }
     }
 
     Alert.alert(
