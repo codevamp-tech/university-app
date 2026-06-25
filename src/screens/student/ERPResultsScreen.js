@@ -52,9 +52,18 @@ const ERPResultsScreen = ({ navigation }) => {
     return semKey;
   };
 
+  const getMedicalProfCircleText = (profName) => {
+    if (profName === '1st Prof') return '1st';
+    if (profName === '2nd Prof') return '2nd';
+    if (profName === '3rd Prof Part I') return '3rd P1';
+    if (profName === '3rd Prof Part II') return '3rd P2';
+    return profName;
+  };
+
   // Dynamically expand to the current semester
   const currentSemRoman = roman[userSem - 1] || 'VII';
-  const [expandedSem, setExpandedSem] = useState(currentSemRoman);
+  const currentProfName = isMedical ? getMedicalProfName(currentSemRoman) : currentSemRoman;
+  const [expandedSem, setExpandedSem] = useState(currentProfName);
   const [apiSemesterData, setApiSemesterData] = React.useState(null);
   const [loading, setLoading] = React.useState(true);
 
@@ -142,6 +151,58 @@ const ERPResultsScreen = ({ navigation }) => {
 
   const semesterData = apiSemesterData || {};
 
+  const displayData = React.useMemo(() => {
+    if (!isMedical) return semesterData;
+
+    const grouped = {};
+    const order = ['1st Prof', '2nd Prof', '3rd Prof Part I', '3rd Prof Part II'];
+    order.forEach(prof => {
+      grouped[prof] = {
+        label: 'Completed',
+        sgpa: '0.00%',
+        subjects: [],
+        percentageSum: 0,
+        count: 0
+      };
+    });
+
+    Object.entries(semesterData).forEach(([semRoman, data]) => {
+      const prof = getMedicalProfName(semRoman);
+      if (!grouped[prof]) {
+        grouped[prof] = {
+          label: 'Completed',
+          sgpa: '0.00%',
+          subjects: [],
+          percentageSum: 0,
+          count: 0
+        };
+      }
+      
+      grouped[prof].subjects.push(...data.subjects);
+      const pct = parseFloat(data.sgpa.replace('%', '')) || 0;
+      grouped[prof].percentageSum += pct;
+      grouped[prof].count += 1;
+      
+      if (data.label.includes('Ongoing')) {
+        grouped[prof].label = data.label;
+      }
+    });
+
+    const finalGrouped = {};
+    order.forEach(prof => {
+      const g = grouped[prof];
+      if (g.count > 0) {
+        const avg = g.percentageSum / g.count;
+        finalGrouped[prof] = {
+          label: g.label,
+          sgpa: `${avg.toFixed(2)}%`,
+          subjects: g.subjects
+        };
+      }
+    });
+    return finalGrouped;
+  }, [semesterData, isMedical]);
+
   // Calculate total credits
   const totalCredits = 180;
   const completedCredits = semesterData ? Object.keys(semesterData).length * 22 : 0;
@@ -211,7 +272,7 @@ const ERPResultsScreen = ({ navigation }) => {
               {isMedical ? 'AGGREGATE PERCENTAGE' : 'CUMULATIVE GRADE'}
             </Text>
             <Text style={styles.cgpaValue}>
-              {isMedical ? (semesterData[currentSemRoman]?.sgpa || '76.40%') : (user ? user.cgpa.toFixed(2) : '8.42')}
+              {isMedical ? (displayData[currentProfName]?.sgpa || '76.40%') : (user ? user.cgpa.toFixed(2) : '8.42')}
             </Text>
             <View style={styles.cgpaBadge}>
               <MaterialIcons name={isMedical ? "check-circle" : "trending-up"} size={14} color="#FFFFFF" />
@@ -276,14 +337,14 @@ const ERPResultsScreen = ({ navigation }) => {
           <Text style={[styles.timelineTitle, { color: colors.textPrimary }]}>Academic Timeline</Text>
 
 
-          {Object.keys(semesterData).length === 0 ? (
+          {Object.keys(displayData).length === 0 ? (
             <View style={{ padding: 24, alignItems: 'center', backgroundColor: colors.card, borderRadius: 16, borderColor: colors.border, borderWidth: 1, marginBottom: 12 }}>
               <Text style={{ color: colors.textSecondary, fontWeight: '600' }}>No academic results available</Text>
             </View>
           ) : (
-            Object.entries(semesterData).map(([sem, data]) => {
+            Object.entries(displayData).map(([sem, data]) => {
               const isExpanded = expandedSem === sem;
-              const isActive = sem === currentSemRoman;
+              const isActive = isMedical ? (sem === currentProfName) : (sem === currentSemRoman);
               const displayTermName = getDisplayTerm(sem);
               return (
                 <View key={sem}>
@@ -302,12 +363,12 @@ const ERPResultsScreen = ({ navigation }) => {
                         isActive && { backgroundColor: isDark ? 'rgba(234, 88, 12, 0.2)' : '#FFEDD5' }
                       ]}>
                         <Text style={[styles.semCircleText, { color: colors.textSecondary }, isActive && { color: colors.primary }]}>
-                          {isMedical ? getMedicalCircleText(sem) : displayTermName}
+                          {isMedical ? getMedicalProfCircleText(sem) : displayTermName}
                         </Text>
                       </View>
                       <View>
                         <Text style={[styles.semName, { color: colors.textPrimary }]}>
-                          {isMedical ? getMedicalProfName(sem) : `${termLabel} ${displayTermName}`}
+                          {isMedical ? sem : `${termLabel} ${displayTermName}`}
                         </Text>
                         <Text style={[styles.semLabel, { color: colors.textSecondary }]}>{data.label}</Text>
                       </View>
@@ -380,11 +441,11 @@ const ERPResultsScreen = ({ navigation }) => {
             })
           )}
 
-          {Object.keys(semesterData).length > 0 && (
+          {Object.keys(displayData).length > 0 && (
             <TouchableOpacity style={styles.showAllBtn}>
               <MaterialIcons name="history" size={20} color={colors.primary} />
               <Text style={[styles.showAllText, { color: colors.primary }]}>
-                Show All {isMedical ? 'Professional Years' : `${termLabel}s`} (I - {isMedical ? getMedicalCircleText(roman[userSem - 2] || 'I') : (userSem > 1 ? (roman[userSem - 2] || (userSem - 1)) : 'I')})
+                Show All {isMedical ? 'Professional Years' : `${termLabel}s`} (I - {isMedical ? getMedicalProfCircleText(getMedicalProfName(roman[userSem - 2] || 'I')) : (userSem > 1 ? (roman[userSem - 2] || (userSem - 1)) : 'I')})
               </Text>
             </TouchableOpacity>
           )}

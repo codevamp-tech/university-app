@@ -129,10 +129,10 @@ const FitnessDetailScreen = ({ navigation }) => {
   const [showFocusTimer, setShowFocusTimer] = React.useState(false);
 
   const activityData = [
-    { label: 'Steps',    value: `${metrics.steps.toLocaleString()} (${(metrics.steps / 1300).toFixed(1)} km)`,  goal: goals.steps.toLocaleString(),  unit: '', color: '#EF4444', icon: 'run' },
-    { label: 'Calories', value: String(metrics.calories),        goal: String(goals.calories),        unit: 'kcal',  color: '#10B981', icon: 'fire' },
-    { label: 'Focus',    value: String(metrics.focusMinutes),    goal: String(goals.focus),           unit: 'min',   color: '#3B82F6', icon: 'brain' },
-    { label: 'Sleep',    value: String(metrics.sleepHours),      goal: String(goals.sleep),           unit: 'hrs',   color: '#8B5CF6', icon: 'bed' },
+    { label: 'Steps', value: `${metrics.steps.toLocaleString()} (${(metrics.steps / 1300).toFixed(1)} km)`, goal: goals.steps.toLocaleString(), unit: '', color: '#EF4444', icon: 'run' },
+    { label: 'Calories', value: String(metrics.calories), goal: String(goals.calories), unit: 'kcal', color: '#10B981', icon: 'fire' },
+    { label: 'Focus', value: String(metrics.focusMinutes), goal: String(goals.focus), unit: 'min', color: '#3B82F6', icon: 'brain' },
+    { label: 'Sleep', value: String(metrics.sleepHours), goal: String(goals.sleep), unit: 'hrs', color: '#8B5CF6', icon: 'bed' },
   ];
 
   // Ring progress based on actual data
@@ -235,8 +235,8 @@ const FitnessDetailScreen = ({ navigation }) => {
     try {
       await Share.share({
         message: `*Campus Fitness — My AI ${planResult.plan_type.toUpperCase()} Plan*\n\n` +
-                 `Weight: ${planResult.weight}kg | Height: ${planResult.height}cm | BMI: ${planResult.bmi}\n\n` +
-                 planResult.content,
+          `Weight: ${planResult.weight}kg | Height: ${planResult.height}cm | BMI: ${planResult.bmi}\n\n` +
+          planResult.content,
       });
     } catch (error) {
       console.log('Share error:', error);
@@ -268,12 +268,12 @@ const FitnessDetailScreen = ({ navigation }) => {
               <p><strong>Generated on:</strong> ${new Date(planResult.created_at).toLocaleDateString()}</p>
             </div>
             <div>${planResult.content
-              .replace(/^### (.*$)/gim, '<h3>$1</h3>')
-              .replace(/^## (.*$)/gim, '<h2>$1</h2>')
-              .replace(/^# (.*$)/gim, '<h1>$1</h1>')
-              .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-              .replace(/\*(.*?)\*/g, '<em>$1</em>')
-              .replace(/\n/g, '<br/>')}</div>
+          .replace(/^### (.*$)/gim, '<h3>$1</h3>')
+          .replace(/^## (.*$)/gim, '<h2>$1</h2>')
+          .replace(/^# (.*$)/gim, '<h1>$1</h1>')
+          .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+          .replace(/\*(.*?)\*/g, '<em>$1</em>')
+          .replace(/\n/g, '<br/>')}</div>
           </body>
         </html>
       `;
@@ -343,7 +343,7 @@ const FitnessDetailScreen = ({ navigation }) => {
                 ) : (
                   <Text style={[styles.statVal, { color: colors.textPrimary }]}>{item.value}</Text>
                 )}
-                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{item.label} ({item.unit})</Text>
+                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{item.label} {item.unit && `(${item.unit})`}</Text>
                 <View style={styles.progressContainer}>
                   <View style={[styles.progressBg, { backgroundColor: isDark ? '#1F2937' : '#F3F4F6' }]}>
                     <View style={[styles.progressFill, { width: `${progressPercent}%`, backgroundColor: item.color }]} />
@@ -454,7 +454,7 @@ const FitnessDetailScreen = ({ navigation }) => {
               </LinearGradient>
             </TouchableOpacity>
           </View>
-          
+
           {isGenerating && (
             <View style={{ marginTop: 16, alignItems: 'center', gap: 8 }}>
               <ActivityIndicator size="small" color={colors.primary} />

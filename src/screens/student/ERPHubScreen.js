@@ -94,7 +94,7 @@ const ERPHubScreen = ({ navigation }) => {
       if (resAlerts && resAlerts.data) {
         setAlerts(resAlerts.data);
       }
-    } catch (err) {}
+    } catch (err) { }
     await loadOutpassStatus();
     setRefreshing(false);
   };
@@ -149,8 +149,8 @@ const ERPHubScreen = ({ navigation }) => {
 
 
 
-      <ScrollView 
-        contentContainerStyle={styles.scroll} 
+      <ScrollView
+        contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -189,10 +189,10 @@ const ERPHubScreen = ({ navigation }) => {
               const displayBranch = user?.branch && user.branch !== '-'
                 ? user.branch.split(' ').map(w => w[0]).join('').toUpperCase().substring(0, 4)
                 : user?.course && user.course.replace(/\./g, '').toUpperCase().includes('MBBS')
-                ? 'MBBS'
-                : user?.course 
-                ? user.course.split(' ').map(w => w[0]).join('').toUpperCase().substring(0, 4)
-                : 'CSE';
+                  ? 'MBBS'
+                  : user?.course
+                    ? user.course.split(' ').map(w => w[0]).join('').toUpperCase().substring(0, 4)
+                    : 'CSE';
 
               const getPhaseRoman = (sem) => {
                 if (sem <= 2) return 'I';
@@ -247,8 +247,8 @@ const ERPHubScreen = ({ navigation }) => {
             </Text>
 
 
-            <TouchableOpacity 
-              style={[styles.showPassBtn, { backgroundColor: isDark ? colors.card : '#FFFFFF', opacity: 0.85 }]} 
+            <TouchableOpacity
+              style={[styles.showPassBtn, { backgroundColor: isDark ? colors.card : '#FFFFFF', opacity: 0.85 }]}
               onPress={() => Alert.alert('🔒 Demo Lock', 'Bus Pass module is locked in this demo. Contact admin to unlock.')}
             >
               <MaterialIcons name="lock" size={18} color={isDark ? '#818CF8' : '#4338CA'} style={{ marginRight: 6 }} />
@@ -276,9 +276,9 @@ const ERPHubScreen = ({ navigation }) => {
               </View>
 
             </View>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[
-                styles.outpassBtn, 
+                styles.outpassBtn,
                 { backgroundColor: gatePassStatus === 'pending' ? '#FEF3C7' : gatePassStatus === 'approved' ? '#ECFDF5' : (isDark ? '#059669' : '#059669') }
               ]}
               onPress={() => {
@@ -501,8 +501,8 @@ const ERPHubScreen = ({ navigation }) => {
               <View style={styles.lcStudentInfo}>
                 <Text style={styles.lcStudentName}>{user?.name || 'Aryan Kumar'}</Text>
                 <Text style={styles.lcStudentDept}>
-                  {user?.course 
-                    ? (isMedical ? user.course : `${user.course} ${user.branch ? '- ' + user.branch : ''}`) 
+                  {user?.course
+                    ? (isMedical ? user.course : `${user.course} ${user.branch ? '- ' + user.branch : ''}`)
                     : 'B.Tech Computer Science & Engineering'}
                 </Text>
                 {(() => {
@@ -566,7 +566,7 @@ const ERPHubScreen = ({ navigation }) => {
             <View style={styles.lcFooterRow}>
               <View style={styles.lcValidRow}>
                 <MaterialIcons name="event" size={12} color="rgba(255,255,255,0.5)" />
-                <Text style={styles.lcValidText}>Valid until: 31 May 2025</Text>
+                <Text style={styles.lcValidText}>Valid until: 31 May 2027</Text>
               </View>
               <TouchableOpacity style={styles.lcQRBtn} onPress={() => setShowLibraryQRModal(true)}>
                 <MaterialIcons name="qr-code-2" size={16} color="#EA580C" />
@@ -634,29 +634,29 @@ const ERPHubScreen = ({ navigation }) => {
         <View style={styles.qrModalOverlay}>
           <View style={[styles.qrContainer, { backgroundColor: colors.card }]}>
             <View style={styles.qrHeader}>
-               <Text style={[styles.qrTitle, { color: colors.textPrimary }]}>Smart Bus Pass</Text>
-               <TouchableOpacity onPress={() => setShowBusPassModal(false)}>
-                 <MaterialIcons name="close" size={24} color={colors.textPrimary} />
-               </TouchableOpacity>
+              <Text style={[styles.qrTitle, { color: colors.textPrimary }]}>Smart Bus Pass</Text>
+              <TouchableOpacity onPress={() => setShowBusPassModal(false)}>
+                <MaterialIcons name="close" size={24} color={colors.textPrimary} />
+              </TouchableOpacity>
             </View>
-            
+
             <View style={styles.qrWrapper}>
-               <MaterialCommunityIcons name="qrcode" size={200} color={isDark ? '#FFF' : '#111827'} />
-               <View style={[styles.qrStatusBadge, { backgroundColor: '#4338CA' }]}>
-                 <Text style={styles.qrStatusText}>ROUTE 14: CAMPUS EXPRESS</Text>
-               </View>
+              <MaterialCommunityIcons name="qrcode" size={200} color={isDark ? '#FFF' : '#111827'} />
+              <View style={[styles.qrStatusBadge, { backgroundColor: '#4338CA' }]}>
+                <Text style={styles.qrStatusText}>ROUTE 14: CAMPUS EXPRESS</Text>
+              </View>
             </View>
 
             <View style={styles.qrInfo}>
-               <Text style={[styles.qrInfoName, { color: colors.textPrimary }]}>Aryan Kumar</Text>
-               <Text style={[styles.qrInfoSub, { color: colors.textSecondary }]}>Valid until End of Semester</Text>
+              <Text style={[styles.qrInfoName, { color: colors.textPrimary }]}>Aryan Kumar</Text>
+              <Text style={[styles.qrInfoSub, { color: colors.textSecondary }]}>Valid until End of Semester</Text>
             </View>
 
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[styles.qrDownloadBtn, { backgroundColor: '#4338CA' }]}
               onPress={() => setShowBusPassModal(false)}
             >
-               <Text style={styles.qrDownloadText}>DONE</Text>
+              <Text style={styles.qrDownloadText}>DONE</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -672,29 +672,29 @@ const ERPHubScreen = ({ navigation }) => {
         <View style={styles.qrModalOverlay}>
           <View style={[styles.qrContainer, { backgroundColor: colors.card }]}>
             <View style={styles.qrHeader}>
-               <Text style={[styles.qrTitle, { color: colors.textPrimary }]}>Exit Gate Pass</Text>
-               <TouchableOpacity onPress={() => setShowQRModal(false)}>
-                 <MaterialIcons name="close" size={24} color={colors.textPrimary} />
-               </TouchableOpacity>
+              <Text style={[styles.qrTitle, { color: colors.textPrimary }]}>Exit Gate Pass</Text>
+              <TouchableOpacity onPress={() => setShowQRModal(false)}>
+                <MaterialIcons name="close" size={24} color={colors.textPrimary} />
+              </TouchableOpacity>
             </View>
-            
+
             <View style={styles.qrWrapper}>
-               <MaterialCommunityIcons name="qrcode" size={200} color={isDark ? '#FFF' : '#111827'} />
-               <View style={styles.qrStatusBadge}>
-                 <Text style={styles.qrStatusText}>VALID UNTIL {activeOutpass ? (activeOutpass.to || '10:30 PM') : '10:30 PM'}</Text>
-               </View>
+              <MaterialCommunityIcons name="qrcode" size={200} color={isDark ? '#FFF' : '#111827'} />
+              <View style={styles.qrStatusBadge}>
+                <Text style={styles.qrStatusText}>VALID UNTIL {activeOutpass ? (activeOutpass.to || '10:30 PM') : '10:30 PM'}</Text>
+              </View>
             </View>
 
             <View style={styles.qrInfo}>
-               <Text style={[styles.qrInfoName, { color: colors.textPrimary }]}>{user?.name || 'Student'}</Text>
-               {/* <Text style={[styles.qrInfoSub, { color: colors.textSecondary }]}>Room 402 • Main Hostel</Text> */}
+              <Text style={[styles.qrInfoName, { color: colors.textPrimary }]}>{user?.name || 'Student'}</Text>
+              {/* <Text style={[styles.qrInfoSub, { color: colors.textSecondary }]}>Room 402 • Main Hostel</Text> */}
             </View>
 
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[styles.qrDownloadBtn, { backgroundColor: colors.primary }]}
               onPress={() => setShowQRModal(false)}
             >
-               <Text style={styles.qrDownloadText}>DONE</Text>
+              <Text style={styles.qrDownloadText}>DONE</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -710,33 +710,33 @@ const ERPHubScreen = ({ navigation }) => {
         <View style={styles.qrModalOverlay}>
           <View style={[styles.qrContainer, { backgroundColor: colors.card }]}>
             <View style={styles.qrHeader}>
-               <Text style={[styles.qrTitle, { color: colors.textPrimary }]}>Library Card QR</Text>
-               <TouchableOpacity onPress={() => setShowLibraryQRModal(false)}>
-                 <MaterialIcons name="close" size={24} color={colors.textPrimary} />
-               </TouchableOpacity>
+              <Text style={[styles.qrTitle, { color: colors.textPrimary }]}>Library Card QR</Text>
+              <TouchableOpacity onPress={() => setShowLibraryQRModal(false)}>
+                <MaterialIcons name="close" size={24} color={colors.textPrimary} />
+              </TouchableOpacity>
             </View>
-            
+
             <View style={styles.qrWrapper}>
-               <MaterialCommunityIcons name="qrcode" size={200} color={isDark ? '#FFF' : '#111827'} />
-               <View style={[styles.qrStatusBadge, { backgroundColor: '#EA580C' }]}>
-                 <Text style={styles.qrStatusText}>
-                   {user?.id ? `LIB-${user.id}` : `LIB-2024-001`}
-                 </Text>
-               </View>
+              <MaterialCommunityIcons name="qrcode" size={200} color={isDark ? '#FFF' : '#111827'} />
+              <View style={[styles.qrStatusBadge, { backgroundColor: '#EA580C' }]}>
+                <Text style={styles.qrStatusText}>
+                  {user?.id ? `LIB-${user.id}` : `LIB-2024-001`}
+                </Text>
+              </View>
             </View>
 
             <View style={styles.qrInfo}>
-               <Text style={[styles.qrInfoName, { color: colors.textPrimary }]}>{user?.name || 'Student'}</Text>
-               <Text style={[styles.qrInfoSub, { color: colors.textSecondary }]}>
-                 {user?.course ? (isMedical ? user.course : `${user.course} ${user.branch ? '- ' + user.branch : ''}`) : 'B.Tech CSE'}
-               </Text>
+              <Text style={[styles.qrInfoName, { color: colors.textPrimary }]}>{user?.name || 'Student'}</Text>
+              <Text style={[styles.qrInfoSub, { color: colors.textSecondary }]}>
+                {user?.course ? (isMedical ? user.course : `${user.course} ${user.branch ? '- ' + user.branch : ''}`) : 'B.Tech CSE'}
+              </Text>
             </View>
 
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[styles.qrDownloadBtn, { backgroundColor: '#EA580C' }]}
               onPress={() => setShowLibraryQRModal(false)}
             >
-               <Text style={styles.qrDownloadText}>DONE</Text>
+              <Text style={styles.qrDownloadText}>DONE</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -752,42 +752,42 @@ const ERPHubScreen = ({ navigation }) => {
         <View style={styles.requestModalOverlay}>
           <View style={[styles.requestContainer, { backgroundColor: colors.card }]}>
             <View style={styles.qrHeader}>
-               <Text style={[styles.qrTitle, { color: colors.textPrimary }]}>Apply for Outpass</Text>
-               <TouchableOpacity onPress={() => setShowRequestModal(false)}>
-                 <MaterialIcons name="close" size={24} color={colors.textPrimary} />
-               </TouchableOpacity>
+              <Text style={[styles.qrTitle, { color: colors.textPrimary }]}>Apply for Outpass</Text>
+              <TouchableOpacity onPress={() => setShowRequestModal(false)}>
+                <MaterialIcons name="close" size={24} color={colors.textPrimary} />
+              </TouchableOpacity>
             </View>
 
             <View style={styles.formGroup}>
-               <Text style={[styles.formLabel, { color: colors.textSecondary }]}>REASON FOR EXIT</Text>
-               <TextInput 
-                 style={[styles.formInput, { backgroundColor: isDark ? '#1F2937' : '#F9FAFB', color: colors.textPrimary, borderColor: colors.border }]}
-                 placeholder="e.g., Grocery shopping, Visiting family..."
-                 placeholderTextColor={colors.textMuted}
-                 value={outpassForm.reason}
-                 onChangeText={(text) => setOutpassForm({...outpassForm, reason: text})}
-               />
+              <Text style={[styles.formLabel, { color: colors.textSecondary }]}>REASON FOR EXIT</Text>
+              <TextInput
+                style={[styles.formInput, { backgroundColor: isDark ? '#1F2937' : '#F9FAFB', color: colors.textPrimary, borderColor: colors.border }]}
+                placeholder="e.g., Grocery shopping, Visiting family..."
+                placeholderTextColor={colors.textMuted}
+                value={outpassForm.reason}
+                onChangeText={(text) => setOutpassForm({ ...outpassForm, reason: text })}
+              />
             </View>
 
             <View style={styles.formGroup}>
-               <Text style={[styles.formLabel, { color: colors.textSecondary }]}>DURATION</Text>
-               <View style={styles.durationRow}>
-                 {['2 Hours', '4 Hours', 'Full Day', 'Overnight'].map((d) => (
-                   <TouchableOpacity 
-                     key={d} 
-                     style={[
-                       styles.durationBtn, 
-                       { backgroundColor: outpassForm.duration === d ? colors.primary : isDark ? '#1F2937' : '#F1F5F9' }
-                     ]}
-                     onPress={() => setOutpassForm({...outpassForm, duration: d})}
-                   >
-                     <Text style={[styles.durationBtnText, { color: outpassForm.duration === d ? '#FFF' : colors.textPrimary }]}>{d}</Text>
-                   </TouchableOpacity>
-                 ))}
-               </View>
+              <Text style={[styles.formLabel, { color: colors.textSecondary }]}>DURATION</Text>
+              <View style={styles.durationRow}>
+                {['2 Hours', '4 Hours', 'Full Day', 'Overnight'].map((d) => (
+                  <TouchableOpacity
+                    key={d}
+                    style={[
+                      styles.durationBtn,
+                      { backgroundColor: outpassForm.duration === d ? colors.primary : isDark ? '#1F2937' : '#F1F5F9' }
+                    ]}
+                    onPress={() => setOutpassForm({ ...outpassForm, duration: d })}
+                  >
+                    <Text style={[styles.durationBtnText, { color: outpassForm.duration === d ? '#FFF' : colors.textPrimary }]}>{d}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
             </View>
 
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[styles.submitBtn, { backgroundColor: colors.primary }]}
               onPress={async () => {
                 if (!outpassForm.reason) return;
@@ -812,7 +812,7 @@ const ERPHubScreen = ({ navigation }) => {
                 }
               }}
             >
-               <Text style={styles.submitBtnText}>SEND TO WARDEN</Text>
+              <Text style={styles.submitBtnText}>SEND TO WARDEN</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -1767,7 +1767,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '800',
   },
-  
+
   // Request Modal Styles
   requestModalOverlay: {
     flex: 1,

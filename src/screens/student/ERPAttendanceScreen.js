@@ -25,8 +25,15 @@ const ERPAttendanceScreen = ({ navigation }) => {
 
   const roman = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
   const semNum = parseInt(user?.semester) || 7;
-  const displaySem = roman[semNum - 1] || 'VII';
-  const isMedical = user?.course?.toUpperCase().includes('MBBS') || user?.category?.toLowerCase() === 'medical';
+  const isMedical = user?.course?.replace(/\./g, '').toUpperCase().includes('MBBS') || user?.category?.toLowerCase() === 'medical';
+  const getPhaseRomanLocal = (sem) => {
+    const s = parseInt(sem);
+    if (s <= 2) return 'I';
+    if (s <= 4) return 'II';
+    if (s <= 6) return 'III';
+    return 'IV';
+  };
+  const displaySem = isMedical ? getPhaseRomanLocal(semNum) : (roman[semNum - 1] || 'VII');
   const termLabel = isMedical ? 'Phase' : 'Semester';
 
   React.useEffect(() => {

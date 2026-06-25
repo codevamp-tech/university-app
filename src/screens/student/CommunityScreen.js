@@ -17,6 +17,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { 
   likeCommentAPI,
   deleteCommentAPI,
+  deletePostAPI,
   connectionStatsAPI,
   getSocialFeed, 
   createPost, 
@@ -623,6 +624,22 @@ const CommunityScreen = ({ navigation }) => {
      ]);
   };
 
+  const handleDeletePost = async (postId) => {
+    Alert.alert('Delete Post', 'Are you sure you want to delete this post?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete', style: 'destructive', onPress: async () => {
+         // Optimistic UI update
+         setApiFeed(prev => prev.filter(p => p.id !== postId));
+         try {
+            await deletePostAPI(accessToken, postId);
+         } catch(e) {
+            console.warn('Failed to delete post', e);
+            loadFeed(); // Revert/Reload if fails
+         }
+      }}
+    ]);
+  };
+
   const handleRepost = async (postId) => {
     Alert.alert('Repost', 'Share this post to your feed?', [
       { text: 'Cancel', style: 'cancel' },
@@ -662,6 +679,7 @@ const CommunityScreen = ({ navigation }) => {
     // Resolve user details
     const posterUsername = targetPost.user?.username;
     const isMe = posterUsername === user?.id;
+    const isAuthor = post.user?.username === user?.id || post.author_id === user?.user_id;
     let displayName = targetPost.user?.full_name || posterUsername || 'User';
     let avatarUrl = targetPost.user?.avatar_url || getAvatarUrl(posterUsername || targetPost.id);
     let courseYearStr = '';
@@ -728,47 +746,58 @@ const CommunityScreen = ({ navigation }) => {
               </Text>
             </View>
           </TouchableOpacity>
-          {!isMe && (
+          {isAuthor ? (
             <TouchableOpacity
-              onPress={async () => {
-                if (!accessToken) return;
-                if (targetPost.connection_status === 'Pending' || targetPost.connection_status === 'Connected') return;
-                try {
-                  await followUserAPI(accessToken, targetPost.author_id);
-                  Alert.alert('Success', `You are now following ${displayName}`);
-                  loadFeed();
-                } catch (e) {
-                  Alert.alert('Error', 'Failed to follow user');
-                }
-              }}
-              disabled={targetPost.connection_status === 'Pending' || targetPost.connection_status === 'Connected'}
+              onPress={() => handleDeletePost(post.id)}
               style={{
-                paddingHorizontal: 12,
-                paddingVertical: 6,
-                borderRadius: 16,
-                backgroundColor: targetPost.connection_status === 'Connected'
-                  ? colors.border
-                  : targetPost.connection_status === 'Pending'
-                    ? colors.border + '50'
-                    : colors.primary + '20'
+                padding: 8,
               }}
             >
-              <Text style={{
-                color: targetPost.connection_status === 'Connected'
-                  ? colors.textSecondary
-                  : targetPost.connection_status === 'Pending'
-                    ? colors.textMuted
-                    : colors.primary,
-                fontWeight: '700',
-                fontSize: 13
-              }}>
-                {targetPost.connection_status === 'Connected'
-                  ? 'Following'
-                  : targetPost.connection_status === 'Pending'
-                    ? 'Pending'
-                    : '+ Follow'}
-              </Text>
+              <MaterialCommunityIcons name="delete-outline" size={22} color="#EF4444" />
             </TouchableOpacity>
+          ) : (
+            !isMe && (
+              <TouchableOpacity
+                onPress={async () => {
+                  if (!accessToken) return;
+                  if (targetPost.connection_status === 'Pending' || targetPost.connection_status === 'Connected') return;
+                  try {
+                    await followUserAPI(accessToken, targetPost.author_id);
+                    Alert.alert('Success', `You are now following ${displayName}`);
+                    loadFeed();
+                  } catch (e) {
+                    Alert.alert('Error', 'Failed to follow user');
+                  }
+                }}
+                disabled={targetPost.connection_status === 'Pending' || targetPost.connection_status === 'Connected'}
+                style={{
+                  paddingHorizontal: 12,
+                  paddingVertical: 6,
+                  borderRadius: 16,
+                  backgroundColor: targetPost.connection_status === 'Connected'
+                    ? colors.border
+                    : targetPost.connection_status === 'Pending'
+                      ? colors.border + '50'
+                      : colors.primary + '20'
+                }}
+              >
+                <Text style={{
+                  color: targetPost.connection_status === 'Connected'
+                    ? colors.textSecondary
+                    : targetPost.connection_status === 'Pending'
+                      ? colors.textMuted
+                      : colors.primary,
+                  fontWeight: '700',
+                  fontSize: 13
+                }}>
+                  {targetPost.connection_status === 'Connected'
+                    ? 'Following'
+                    : targetPost.connection_status === 'Pending'
+                      ? 'Pending'
+                      : '+ Follow'}
+                </Text>
+              </TouchableOpacity>
+            )
           )}
         </View>
 

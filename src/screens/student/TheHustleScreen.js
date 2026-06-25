@@ -10,7 +10,7 @@ import { useUser } from '../../context/UserContext';
 import { getAllStudents } from '../../data/apiService';
 import { LeaderboardPageSkeleton } from '../../components/SkeletonLoader';
 import { getAvatarUrl } from '../../utils/avatar';
-import { getDisplayCourse } from '../../utils/courseDisplay';
+import { getDisplayCourse, isMedicalStudent } from '../../utils/courseDisplay';
 
 const { width } = Dimensions.get('window');
 
@@ -30,7 +30,8 @@ const TheHustleScreen = ({ navigation }) => {
           if (accessToken) {
             const list = await getAllStudents(accessToken);
             if (active) {
-              const mapped = list.map(s => ({
+              const medicalList = list.filter(s => isMedicalStudent(s));
+              const mapped = medicalList.map(s => ({
                 id: s.rollno || s.username || s.id,
                 name: s.full_name || s.username || 'Student',
                 course: s.course,

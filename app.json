@@ -40,7 +40,7 @@
         "backgroundColor": "#F0F4FF"
       },
       "package": "com.university.portal",
-      "edgeToEdgeEnabled": true,
+      "edgeToEdgeEnabled": false,
       "permissions": [
         "android.permission.health.READ_STEPS",
         "android.permission.health.READ_ACTIVE_CALORIES_BURNED",

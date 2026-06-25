@@ -21,7 +21,7 @@ import { useUser } from '../context/UserContext';
 
 const DEFAULT_GOALS = {
   steps: 10000,
-  calories: 600,
+  calories: 500,
   sleep: 8.0,
   focus: 60,
 };
@@ -141,9 +141,10 @@ export function useHealthMetrics() {
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
       fetchMetrics();
+      loadGoals();
     });
     return unsubscribe;
-  }, [navigation, fetchMetrics]);
+  }, [navigation, fetchMetrics, loadGoals]);
 
   return {
     metrics,

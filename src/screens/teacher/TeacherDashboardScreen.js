@@ -11,6 +11,7 @@ import { useUser } from '../../context/UserContext';
 import { getFacultyTimetable, getFacultyTopics, uploadAvatarAPI } from '../../data/apiService';
 import ActivityRing from '../../components/ActivityRing';
 import { getAvatarUrl } from '../../utils/avatar';
+import { useHealthMetrics } from '../../hooks/useHealthMetrics';
 
 const { width } = Dimensions.get('window');
 
@@ -147,11 +148,10 @@ const TeacherDashboardScreen = ({ navigation }) => {
   };
 
   // Fitness stats (same values and goals structure as student dashboard)
-  const [metrics] = useState({ steps: 7240, calories: 295, sleepHours: 6.8 });
-  const [goals] = useState({ steps: 10000, calories: 500 });
-  const stepsProgress = Math.min(1, metrics.steps / goals.steps);
-  const caloriesProgress = Math.min(1, metrics.calories / goals.calories);
-  const focusProgress = 0.65;
+  const { metrics, goals } = useHealthMetrics();
+  const stepsProgress = goals.steps > 0 ? Math.min(metrics.steps / goals.steps, 1) : 0;
+  const caloriesProgress = goals.calories > 0 ? Math.min(metrics.calories / goals.calories, 1) : 0;
+  const focusProgress = goals.focus > 0 ? Math.min(metrics.focusMinutes / goals.focus, 1) : 0.65;
 
   const facultyName = user?.name || 'Faculty Member';
   const empId = user?.emp_id || '';
@@ -462,7 +462,7 @@ const TeacherDashboardScreen = ({ navigation }) => {
               <View style={[styles.fitnessHDivider, { backgroundColor: '#F3F4F6' }]} />
               <View style={styles.fitnessRow}>
                 <View style={styles.fitnessItem}>
-                  <Text style={styles.fitnessVal}>{Math.round((metrics.calories / goals.calories) * 100)}%</Text>
+                  <Text style={styles.fitnessVal}>{Math.round((metrics.calories / Math.max(1, goals.calories)) * 100)}%</Text>
                   <Text style={styles.fitnessLabel}>MOVE GOAL</Text>
                 </View>
                 <View style={styles.fitnessItem}>
