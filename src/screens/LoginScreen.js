@@ -252,6 +252,9 @@ const LoginScreen = ({ navigation }) => {
                 <Text style={styles.footerLinkText}>SYSTEM STATUS</Text>
               </TouchableOpacity>
             </View>
+            <Text style={{ fontSize: 10, color: '#EA580C', fontWeight: 'bold', marginTop: 12, textAlign: 'center' }}>
+              OTA UPDATE: DIAGNOSTICS ACTIVE
+            </Text>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
