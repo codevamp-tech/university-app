@@ -15,6 +15,16 @@ import { getResults } from '../../data/apiService';
 
 const { width } = Dimensions.get('window');
 
+const formatScore = (val) => {
+  if (val === '-' || val === null || val === undefined) return '-';
+  if (typeof val === 'string' && val.includes('/')) {
+    return val.split('/').map(v => formatScore(v.trim())).join(' / ');
+  }
+  const num = parseFloat(val);
+  if (isNaN(num)) return val;
+  return num % 1 === 0 ? num.toString() : num.toFixed(1);
+};
+
 const ERPResultsScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
@@ -76,69 +86,73 @@ const ERPResultsScreen = ({ navigation }) => {
       try {
         const data = await getResults(accessToken);
         if (data && data.length > 0) {
-          const semMap = {};
-          // Initialize semesters
-          for (let i = 1; i <= userSem; i++) {
-            const rName = roman[i - 1];
-            const isCurrent = i === userSem;
-            semMap[rName] = {
-              label: isCurrent ? (isMedical ? `Year ${new Date().getFullYear()} • Ongoing` : `Fall ${new Date().getFullYear()} • Ongoing Evaluation`) : `Completed`,
-              sgpa: isCurrent ? (isMedical ? '74.50%' : '8.50') : (isMedical ? '71.20%' : '8.00'),
-              subjects: []
-            };
-          }
-
-          data.forEach(item => {
-            const semIndex = item.semester;
-            const rName = roman[semIndex - 1] || `${semIndex}`;
-            if (!semMap[rName]) {
+          if (isMedical && data[0].is_sessional) {
+            setApiSemesterData({ type: 'sessional', marks: data });
+          } else {
+            const semMap = {};
+            // Initialize semesters
+            for (let i = 1; i <= userSem; i++) {
+              const rName = roman[i - 1];
+              const isCurrent = i === userSem;
               semMap[rName] = {
-                label: semIndex === userSem ? (isMedical ? `Year ${new Date().getFullYear()} • Ongoing` : `Fall ${new Date().getFullYear()} • Ongoing Evaluation`) : `Completed`,
-                sgpa: isMedical ? '70.00%' : '8.00',
+                label: isCurrent ? (isMedical ? `Year ${new Date().getFullYear()} • Ongoing` : `Fall ${new Date().getFullYear()} • Ongoing Evaluation`) : `Completed`,
+                sgpa: isCurrent ? (isMedical ? '74.50%' : '8.50') : (isMedical ? '71.20%' : '8.00'),
                 subjects: []
               };
             }
 
-            if (isMedical) {
-              const seedVal = item.subject_code.charCodeAt(0) + item.semester;
-              const theory = 50 + (seedVal % 45);
-              const practical = 55 + (seedVal % 40);
-              const total = theory + practical;
-              const max = 200;
-              const pct = (total / max) * 100;
-              semMap[rName].subjects.push({
-                code: item.subject_code,
-                name: item.subject_name || item.subject_code,
-                theory,
-                practical,
-                total,
-                max,
-                result: pct >= 75 ? 'DISTINCTION' : 'PASS'
-              });
-            } else {
-              semMap[rName].subjects.push({
-                code: item.subject_code,
-                name: item.subject_name || item.subject_code,
-                credits: item.credits || 3,
-                grade: item.grade || 'A'
-              });
-            }
-          });
-
-          // Apply historical SGPAs if they match
-          Object.keys(semMap).forEach(rName => {
-            const semIdx = roman.indexOf(rName);
-            if (semIdx !== -1 && sgpaHistory[semIdx]) {
-              if (isMedical) {
-                const pctVal = 65 + (sgpaHistory[semIdx] * 1.5) + (semIdx * 0.5);
-                semMap[rName].sgpa = `${pctVal.toFixed(2)}%`;
-              } else {
-                semMap[rName].sgpa = sgpaHistory[semIdx].toFixed(2);
+            data.forEach(item => {
+              const semIndex = item.semester;
+              const rName = roman[semIndex - 1] || `${semIndex}`;
+              if (!semMap[rName]) {
+                semMap[rName] = {
+                  label: semIndex === userSem ? (isMedical ? `Year ${new Date().getFullYear()} • Ongoing` : `Fall ${new Date().getFullYear()} • Ongoing Evaluation`) : `Completed`,
+                  sgpa: isMedical ? '70.00%' : '8.00',
+                  subjects: []
+                };
               }
-            }
-          });
 
-          setApiSemesterData(semMap);
+              if (isMedical) {
+                const seedVal = item.subject_code.charCodeAt(0) + item.semester;
+                const theory = 50 + (seedVal % 45);
+                const practical = 55 + (seedVal % 40);
+                const total = theory + practical;
+                const max = 200;
+                const pct = (total / max) * 100;
+                semMap[rName].subjects.push({
+                  code: item.subject_code,
+                  name: item.subject_name || item.subject_code,
+                  theory,
+                  practical,
+                  total,
+                  max,
+                  result: pct >= 75 ? 'DISTINCTION' : 'PASS'
+                });
+              } else {
+                semMap[rName].subjects.push({
+                  code: item.subject_code,
+                  name: item.subject_name || item.subject_code,
+                  credits: item.credits || 3,
+                  grade: item.grade || 'A'
+                });
+              }
+            });
+
+            // Apply historical SGPAs if they match
+            Object.keys(semMap).forEach(rName => {
+              const semIdx = roman.indexOf(rName);
+              if (semIdx !== -1 && sgpaHistory[semIdx]) {
+                if (isMedical) {
+                  const pctVal = 65 + (sgpaHistory[semIdx] * 1.5) + (semIdx * 0.5);
+                  semMap[rName].sgpa = `${pctVal.toFixed(2)}%`;
+                } else {
+                  semMap[rName].sgpa = sgpaHistory[semIdx].toFixed(2);
+                }
+              }
+            });
+
+            setApiSemesterData(semMap);
+          }
         }
       } catch (err) {
         console.warn('[ResultsScreen] Error fetching results:', err);
@@ -152,7 +166,135 @@ const ERPResultsScreen = ({ navigation }) => {
   const semesterData = apiSemesterData || {};
 
   const displayData = React.useMemo(() => {
-    if (!isMedical) return semesterData;
+    if (isMedical) {
+      const STANDARDIZED_PROF_SUBJECTS = {
+        "1st Prof": [
+          { code: "AN", name: "ANATOMY" },
+          { code: "PY", name: "PHYSIOLOGY" },
+          { code: "BI", name: "BIOCHEMISTRY" },
+          { code: "CM", name: "COMMUNITY MEDICINE" }
+        ],
+        "2nd Prof": [
+          { code: "MI", name: "MICROBIOLOGY" },
+          { code: "PA", name: "PATHOLOGY" },
+          { code: "PH", name: "PHARMACOLOGY" }
+        ],
+        "3rd Prof Part I": [
+          { code: "CM", name: "COMMUNITY MEDICINE" },
+          { code: "FM", name: "FORENSIC MEDICINE" },
+          { code: "TX", name: "toxicology" },
+          { code: "ENT", name: "ENT" },
+          { code: "OPH", name: "OPYHTHALMOLOGY" }
+        ],
+        "3rd Prof Part II": [
+          { code: "IM", name: "GENERAL MEDICINE" },
+          { code: "SU", name: "GENERAL SURGERY" },
+          { code: "PE", name: "PEDIATRICS" },
+          { code: "OG", name: "OBSTETRICS & GYNAECOLOGY" }
+        ]
+      };
+
+      const parsedData = {};
+      const order = ['1st Prof', '2nd Prof', '3rd Prof Part I', '3rd Prof Part II'];
+
+      order.forEach(prof => {
+        const isCurrent = prof === currentProfName;
+        parsedData[prof] = {
+          label: isCurrent ? 'Ongoing Evaluation' : (order.indexOf(prof) < order.indexOf(currentProfName) ? 'Completed Phase' : 'Upcoming Phase'),
+          sgpa: '-',
+          subjects: STANDARDIZED_PROF_SUBJECTS[prof].map(s => ({
+            name: s.name,
+            code: s.code,
+            sess1: '-',
+            sess2: '-',
+            preUniv: '-',
+            univ: '-'
+          }))
+        };
+      });
+
+      // Populate actual marks if present
+      const marksList = apiSemesterData?.type === 'sessional' ? (apiSemesterData.marks || []) : [];
+      marksList.forEach(m => {
+        // Find which prof year contains this subject code
+        let profName = null;
+        for (const [pName, subjects] of Object.entries(STANDARDIZED_PROF_SUBJECTS)) {
+          if (subjects.some(s => s.code.toLowerCase() === m.subject_code.toLowerCase())) {
+            // Special case for CM (Community Medicine) which exists in both 1st Prof and 3rd Prof Part I
+            if (m.subject_code.toLowerCase() === 'cm') {
+              if (m.yr_fk === '3') {
+                profName = '3rd Prof Part I';
+              } else {
+                profName = '1st Prof';
+              }
+            } else {
+              profName = pName;
+            }
+            break;
+          }
+        }
+
+        if (!profName || !parsedData[profName]) return;
+
+        const sub = parsedData[profName].subjects.find(s => s.code.toLowerCase() === m.subject_code.toLowerCase());
+        if (!sub) return;
+
+        const paperName = (m.subject_name || m.paper_name || '').toLowerCase();
+        const scoreStr = m.obtained_marks !== null && m.obtained_marks !== undefined ? m.obtained_marks.toString() : '-';
+
+        if (paperName.includes('1st sessional') || paperName.includes('1st sessional exam') || paperName.includes('first sessional') || paperName.includes('1 sessional')) {
+          sub.sess1 = scoreStr;
+        } else if (paperName.includes('2nd sessional') || paperName.includes('2nd sessional exam') || paperName.includes('second sessional') || paperName.includes('2 sessional')) {
+          sub.sess2 = scoreStr;
+        } else if (paperName.includes('3rd sessional') || paperName.includes('pre university') || paperName.includes('pre-university') || paperName.includes('pre university(100+100)') || paperName.includes('3 sessional')) {
+          if (sub.preUniv === '-') {
+            sub.preUniv = scoreStr;
+          } else {
+            sub.preUniv = `${sub.preUniv} / ${scoreStr}`;
+          }
+        } else if (paperName.includes('university') && !paperName.includes('pre')) {
+          sub.univ = scoreStr;
+        }
+      });
+
+      // Compute dynamic SGPA (percentage) for each Prof from scores
+      order.forEach(prof => {
+        const g = parsedData[prof];
+        if (g.label === 'Ongoing Evaluation' || g.label === 'Upcoming Phase') {
+          g.sgpa = '-';
+          return;
+        }
+        let sum = 0;
+        let count = 0;
+        g.subjects.forEach(sub => {
+          const scores = [];
+          if (sub.sess1 !== '-') scores.push(parseFloat(sub.sess1));
+          if (sub.sess2 !== '-') scores.push(parseFloat(sub.sess2));
+          if (sub.preUniv !== '-') {
+            sub.preUniv.split('/').forEach(val => {
+              const v = parseFloat(val.trim());
+              if (!isNaN(v)) scores.push(v);
+            });
+          }
+          if (sub.univ !== '-') scores.push(parseFloat(sub.univ));
+
+          if (scores.length > 0) {
+            const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
+            // Heuristic to scale out-of-50 scores to 100
+            sum += avg < 50 ? avg * 2 : avg;
+            count += 1;
+          }
+        });
+
+        if (count > 0) {
+          g.sgpa = `${(sum / count).toFixed(2)}%`;
+        } else {
+          g.sgpa = '-';
+        }
+      });
+
+      return parsedData;
+    }
 
     const grouped = {};
     const order = ['1st Prof', '2nd Prof', '3rd Prof Part I', '3rd Prof Part II'];
@@ -201,7 +343,25 @@ const ERPResultsScreen = ({ navigation }) => {
       }
     });
     return finalGrouped;
-  }, [semesterData, isMedical]);
+  }, [semesterData, isMedical, apiSemesterData, currentProfName]);
+
+  const aggregatePercentage = React.useMemo(() => {
+    if (!isMedical) return null;
+    const completedProfScores = [];
+    Object.values(displayData).forEach(g => {
+      if (g.sgpa !== '-') {
+        const val = parseFloat(g.sgpa.replace('%', ''));
+        if (!isNaN(val)) {
+          completedProfScores.push(val);
+        }
+      }
+    });
+    if (completedProfScores.length > 0) {
+      const avg = completedProfScores.reduce((a, b) => a + b, 0) / completedProfScores.length;
+      return `${avg.toFixed(2)}%`;
+    }
+    return '-';
+  }, [displayData, isMedical]);
 
   // Calculate total credits
   const totalCredits = 180;
@@ -272,7 +432,7 @@ const ERPResultsScreen = ({ navigation }) => {
               {isMedical ? 'AGGREGATE PERCENTAGE' : 'CUMULATIVE GRADE'}
             </Text>
             <Text style={styles.cgpaValue}>
-              {isMedical ? (displayData[currentProfName]?.sgpa || '76.40%') : (user ? user.cgpa.toFixed(2) : '8.42')}
+              {isMedical ? aggregatePercentage : (user ? user.cgpa.toFixed(2) : '8.42')}
             </Text>
             <View style={styles.cgpaBadge}>
               <MaterialIcons name={isMedical ? "check-circle" : "trending-up"} size={14} color="#FFFFFF" />
@@ -390,50 +550,57 @@ const ERPResultsScreen = ({ navigation }) => {
 
                   {isExpanded && data.subjects.length > 0 && (
                     <View style={[styles.subjectsContainer, { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : colors.background }]}>
-                      {data.subjects.map((sub, idx) => (
-                        <View key={idx} style={[styles.subjectRow, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
-                          <View style={styles.subjectInfo}>
-                            <Text style={[styles.subjectCode, { color: isDark ? '#34D399' : '#059669' }]}>{sub.code}</Text>
-                            <Text style={[styles.subjectName, { color: colors.textPrimary }]}>{sub.name}</Text>
-                            {isMedical && (
-                              <Text style={{ fontSize: 11, color: colors.textSecondary, marginTop: 2 }}>
-                                Theory: {sub.theory}/100 · Practical: {sub.practical}/100
-                              </Text>
-                            )}
+                      {isMedical ? (
+                        <View style={[styles.medicalTable, { borderColor: colors.border }]}>
+                          <View style={[styles.tableHeader, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : '#F9FAFB', borderBottomColor: colors.border }]}>
+                            <Text style={[styles.headerCell, styles.subjectHeaderCell, { color: colors.textSecondary }]}>SUBJECT</Text>
+                            <Text style={[styles.headerCell, styles.scoreHeaderCell, { color: colors.textSecondary }]}>SESS I</Text>
+                            <Text style={[styles.headerCell, styles.scoreHeaderCell, { color: colors.textSecondary }]}>SESS II</Text>
+                            <Text style={[styles.headerCell, styles.preUnivHeaderCell, { color: colors.textSecondary }]}>PRE-UNIV</Text>
+                            <Text style={[styles.headerCell, styles.scoreHeaderCell, { color: colors.textSecondary }]}>UNIV</Text>
                           </View>
-                          <View style={styles.subjectRight}>
-                            {isMedical ? (
-                              <>
-                                <View style={[styles.creditBox, { alignItems: 'flex-start', marginRight: 10 }]}>
-                                  <Text style={[styles.creditLabel, { color: colors.textSecondary, fontSize: 8 }]}>MARKS</Text>
-                                  <Text style={[styles.creditValue, { color: colors.textPrimary, fontSize: 12 }]}>{sub.theory + sub.practical}/200</Text>
-                                </View>
-                                <View style={[
-                                  styles.gradeBox, 
-                                  { 
-                                    backgroundColor: sub.result === 'DISTINCTION' ? '#F59E0B' : '#10B981', 
-                                    width: 62 
-                                  }
-                                ]}>
-                                  <Text style={[styles.gradeText, { fontSize: 9, fontWeight: '900' }]}>
-                                    {sub.result === 'DISTINCTION' ? 'DIST.' : 'PASS'}
-                                  </Text>
-                                </View>
-                              </>
-                            ) : (
-                              <>
-                                <View style={styles.creditBox}>
-                                  <Text style={[styles.creditLabel, { color: colors.textSecondary }]}>CREDITS</Text>
-                                  <Text style={[styles.creditValue, { color: colors.textPrimary }]}>{sub.credits}</Text>
-                                </View>
-                                <View style={[styles.gradeBox, { backgroundColor: colors.primary }]}>
-                                  <Text style={styles.gradeText}>{sub.grade}</Text>
-                                </View>
-                              </>
-                            )}
-                          </View>
+                          {data.subjects.map((sub, idx) => (
+                            <View 
+                              key={idx} 
+                              style={[
+                                styles.tableRow, 
+                                { 
+                                  borderBottomWidth: idx === data.subjects.length - 1 ? 0 : 1,
+                                  borderBottomColor: colors.border,
+                                  backgroundColor: idx % 2 === 0 ? 'transparent' : (isDark ? 'rgba(255,255,255,0.01)' : 'rgba(0,0,0,0.01)')
+                                }
+                              ]}
+                            >
+                              <View style={styles.subjectNameCell}>
+                                <Text style={[styles.subjectCodeText, { color: isDark ? '#34D399' : '#059669' }]}>{sub.code}</Text>
+                                <Text style={[styles.subjectNameText, { color: colors.textPrimary }]} numberOfLines={2}>{sub.name}</Text>
+                              </View>
+                              <Text style={[styles.scoreCell, { color: colors.textPrimary }]} numberOfLines={1} adjustsFontSizeToFit>{formatScore(sub.sess1)}</Text>
+                              <Text style={[styles.scoreCell, { color: colors.textPrimary }]} numberOfLines={1} adjustsFontSizeToFit>{formatScore(sub.sess2)}</Text>
+                              <Text style={[styles.preUnivCell, { color: colors.textPrimary }]} numberOfLines={1} adjustsFontSizeToFit>{formatScore(sub.preUniv)}</Text>
+                              <Text style={[styles.scoreCell, { color: colors.textPrimary, fontWeight: sub.univ !== '-' ? '700' : '400' }]} numberOfLines={1} adjustsFontSizeToFit>{formatScore(sub.univ)}</Text>
+                            </View>
+                          ))}
                         </View>
-                      ))}
+                      ) : (
+                        data.subjects.map((sub, idx) => (
+                          <View key={idx} style={[styles.subjectRow, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
+                            <View style={styles.subjectInfo}>
+                              <Text style={[styles.subjectCode, { color: isDark ? '#34D399' : '#059669' }]}>{sub.code}</Text>
+                              <Text style={[styles.subjectName, { color: colors.textPrimary }]}>{sub.name}</Text>
+                            </View>
+                            <View style={styles.subjectRight}>
+                              <View style={styles.creditBox}>
+                                <Text style={[styles.creditLabel, { color: colors.textSecondary }]}>CREDITS</Text>
+                                <Text style={[styles.creditValue, { color: colors.textPrimary }]}>{sub.credits}</Text>
+                              </View>
+                              <View style={[styles.gradeBox, { backgroundColor: colors.primary }]}>
+                                <Text style={styles.gradeText}>{sub.grade}</Text>
+                              </View>
+                            </View>
+                          </View>
+                        ))
+                      )}
                     </View>
                   )}
                 </View>
@@ -567,6 +734,73 @@ const styles = StyleSheet.create({
     paddingVertical: 16, borderRadius: 14, marginTop: 4,
   },
   showAllText: { fontSize: 14, fontWeight: '700' },
+
+  // Medical sessional table styles
+  medicalTable: {
+    borderWidth: 1,
+    borderRadius: 12,
+    overflow: 'hidden',
+    marginTop: 4,
+    marginBottom: 4,
+  },
+  tableHeader: {
+    flexDirection: 'row',
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderBottomWidth: 1,
+    alignItems: 'center',
+  },
+  tableRow: {
+    flexDirection: 'row',
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    alignItems: 'center',
+  },
+  headerCell: {
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  subjectHeaderCell: {
+    flex: 2.2,
+  },
+  scoreHeaderCell: {
+    flex: 1,
+    textAlign: 'center',
+  },
+  preUnivHeaderCell: {
+    flex: 1.4,
+    textAlign: 'center',
+  },
+  subjectNameCell: {
+    flex: 2.2,
+    justifyContent: 'center',
+    paddingRight: 4,
+  },
+  subjectCodeText: {
+    fontSize: 9,
+    fontWeight: '900',
+    letterSpacing: 1,
+    marginBottom: 1,
+    textTransform: 'uppercase',
+  },
+  subjectNameText: {
+    fontSize: 12,
+    fontWeight: '600',
+    lineHeight: 15,
+  },
+  scoreCell: {
+    flex: 1,
+    fontSize: 12,
+    textAlign: 'center',
+    fontWeight: '500',
+  },
+  preUnivCell: {
+    flex: 1.4,
+    fontSize: 12,
+    textAlign: 'center',
+    fontWeight: '500',
+  },
 });
 
 
