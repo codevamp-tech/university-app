@@ -546,13 +546,13 @@ const SkillGapTestScreen = ({ navigation }) => {
           <TouchableOpacity 
             style={styles.startBtn}
             onPress={() => {
-              Alert.alert('Premium Feature', 'This feature is locked in the free trial.');
+              setTestStarted(true);
             }}
           >
-            <LinearGradient colors={['#9CA3AF', '#4B5563']} style={styles.startBtnGradient}>
+            <LinearGradient colors={['#EA580C', '#9A3412']} style={styles.startBtnGradient}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                <MaterialCommunityIcons name="lock" size={18} color="#FFFFFF" />
-                <Text style={styles.startBtnText}>{isMed ? 'Start Clinical Assessment (Locked)' : 'Start AI Assessment (Locked)'}</Text>
+                <MaterialCommunityIcons name="play-circle-outline" size={18} color="#FFFFFF" />
+                <Text style={styles.startBtnText}>{isMed ? 'Start Clinical Assessment' : 'Start AI Assessment'}</Text>
               </View>
             </LinearGradient>
           </TouchableOpacity>
