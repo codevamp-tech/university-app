@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 
 import { APP_CONFIG } from '../config/appConfig';
 import { useUser } from '../context/UserContext';
@@ -31,6 +32,7 @@ const LOADING_MESSAGES = [
 const LoginScreen = ({ navigation }) => {
   const [loginId, setLoginId] = useState('');
   const [securityKey, setSecurityKey] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [role, setRole] = useState('student');
   const [loading, setLoading] = useState(false);
   const [currentMessageIdx, setCurrentMessageIdx] = useState(0);
@@ -197,14 +199,26 @@ const LoginScreen = ({ navigation }) => {
               <View style={styles.labelRow}>
                 <Text style={styles.inputLabel}>SECURITY KEY</Text>
               </View>
-              <TextInput
-                style={styles.input}
-                placeholder="••••••••"
-                placeholderTextColor="#9CA3AF"
-                value={securityKey}
-                onChangeText={setSecurityKey}
-                secureTextEntry
-              />
+              <View style={styles.passwordContainer}>
+                <TextInput
+                  style={[styles.input, { borderBottomWidth: 0, flex: 1 }]}
+                  placeholder="••••••••"
+                  placeholderTextColor="#9CA3AF"
+                  value={securityKey}
+                  onChangeText={setSecurityKey}
+                  secureTextEntry={!showPassword}
+                />
+                <TouchableOpacity
+                  onPress={() => setShowPassword(!showPassword)}
+                  style={styles.eyeButton}
+                >
+                  <Ionicons
+                    name={showPassword ? 'eye-off' : 'eye'}
+                    size={20}
+                    color="#6B7280"
+                  />
+                </TouchableOpacity>
+              </View>
             </View>
 
             {/* Sign In Button */}
@@ -519,6 +533,18 @@ const styles = StyleSheet.create({
     marginTop: 16,
     letterSpacing: 0.5,
     fontWeight: '500',
+  },
+  passwordContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  eyeButton: {
+    paddingLeft: 10,
+    paddingVertical: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
 
