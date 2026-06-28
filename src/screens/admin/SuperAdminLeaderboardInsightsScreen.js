@@ -38,6 +38,7 @@ const SuperAdminLeaderboardInsightsScreen = ({ navigation }) => {
             name: s.full_name || s.username || 'Student',
             course: s.course,
             branch: s.branch,
+            category: s.category,
             cgpa: s.cgpa || 0,
             attendance: s.attendance || 0,
             certsDone: s.certificates_done || [],
