@@ -16,6 +16,28 @@ import { getAttendance } from '../../data/apiService';
 
 const { width } = Dimensions.get('window');
 
+const getParentSubjectName = (name) => {
+  const n = name.trim();
+  const lower = n.toLowerCase();
+  
+  if (lower.includes('anatomy')) return 'Anatomy';
+  if (lower.includes('physiology')) return 'Physiology';
+  if (lower.includes('biochemistry')) return 'Biochemistry';
+  if (lower.includes('pathology')) return 'Pathology';
+  if (lower.includes('pharmacology')) return 'Pharmacology';
+  if (lower.includes('microbiology')) return 'Microbiology';
+  if (lower.includes('forensic') || lower.includes('fmt')) return 'Forensic Medicine';
+  if (lower.includes('community medicine') || lower.includes('psm') || lower.includes('preventive')) return 'Community Medicine';
+  if (lower.includes('medicine')) return 'Medicine';
+  if (lower.includes('surgery')) return 'Surgery';
+  if (lower.includes('pediatrics') || lower.includes('paediatrics')) return 'Pediatrics';
+  if (lower.includes('obstetrics') || lower.includes('gynecology') || lower.includes('obg')) return 'Obstetrics & Gynecology';
+  if (lower.includes('ophthalmology') || lower.includes('eye')) return 'Ophthalmology';
+  if (lower.includes('ent') || lower.includes('ear')) return 'ENT';
+  
+  return n.split(' ')[0];
+};
+
 const ERPAttendanceScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
@@ -24,6 +46,7 @@ const ERPAttendanceScreen = ({ navigation }) => {
   const [loading, setLoading] = React.useState(true);
 
   const [expandedPhase, setExpandedPhase] = React.useState(null);
+  const [expandedSubject, setExpandedSubject] = React.useState(null);
 
   const roman = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
   const semNum = parseInt(user?.semester) || 7;
@@ -169,10 +192,48 @@ const ERPAttendanceScreen = ({ navigation }) => {
     Object.entries(grouped).forEach(([phase, data]) => {
       if (data.count > 0 || phase === currentPhaseName) {
         const avg = data.count > 0 ? Math.round(data.percentageSum / data.count) : 0;
+        
+        // Group subjects by parent subject name
+        const parentMap = {};
+        data.subjects.forEach(sub => {
+          const parentName = getParentSubjectName(sub.name);
+          if (!parentMap[parentName]) {
+            parentMap[parentName] = {
+              name: parentName,
+              code: sub.code?.substring(0, 2).toUpperCase() || parentName.substring(0, 2).toUpperCase(),
+              percentageSum: 0,
+              count: 0,
+              subCategories: []
+            };
+          }
+          parentMap[parentName].subCategories.push(sub);
+          parentMap[parentName].percentageSum += sub.percentage;
+          parentMap[parentName].count += 1;
+        });
+
+        const groupedSubjects = Object.values(parentMap).map(parent => {
+          const avgPct = Math.round(parent.percentageSum / parent.count);
+          const requiredPct = parent.subCategories[0]?.requiredPct || 75;
+          const status = avgPct >= requiredPct 
+            ? 'safe' 
+            : avgPct >= (requiredPct - 5) 
+              ? 'warning' 
+              : 'danger';
+
+          return {
+            name: parent.name,
+            code: parent.code,
+            percentage: avgPct,
+            status,
+            requiredPct,
+            subCategories: parent.subCategories
+          };
+        });
+
         finalGrouped[phase] = {
           label: data.label,
           overallPct: avg,
-          subjects: data.subjects
+          subjects: groupedSubjects
         };
       }
     });
@@ -328,40 +389,85 @@ const ERPAttendanceScreen = ({ navigation }) => {
                           ) : (
                             phaseData.subjects.map((subject, idx) => {
                               const statusColor = getStatusColor(subject.status);
+                              const isSubjectExpanded = expandedSubject === `${phase}_${subject.name}`;
                               
                               return (
                                 <View key={idx} style={[styles.subjectCard, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1, marginTop: idx > 0 ? 12 : 0 }]}>
-                                  <View style={styles.subjectHeader}>
-                                    <View style={{ flex: 1, paddingRight: 10 }}>
-                                      <Text style={[styles.subjectCode, { color: colors.textSecondary }]}>{subject.code}</Text>
-                                      <Text style={[styles.subjectName, { color: colors.textPrimary }]} numberOfLines={1}>{subject.name}</Text>
-                                      <Text style={{ fontSize: 11, color: colors.textSecondary, marginTop: 4 }}>
-                                        {subject.isPractical ? 'Practical/Clinical Posting' : 'Theory Subject'} • Target: {subject.requiredPct}%
-                                      </Text>
-                                    </View>
-                                    <View style={[styles.percentageBadge, { backgroundColor: statusColor + '20' }]}>
-                                      <Text style={[styles.percentageText, { color: statusColor }]}>{subject.percentage}%</Text>
-                                    </View>
-                                  </View>
-                                  
-                                  <View style={[styles.subjectProgressBg, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F3F4F6' }]}>
-                                    <View style={[styles.subjectProgressFill, { width: `${subject.percentage}%`, backgroundColor: statusColor }]} />
-                                  </View>
-                                  
-                                  {/* Only show warnings for the active ongoing phase to avoid stress */}
-                                  {isActive && (
-                                    <>
-                                      {subject.status === 'danger' && (
-                                        <Text style={[styles.warningText, { color: statusColor }]}>
-                                          <MaterialIcons name="error-outline" size={12} color={statusColor} /> Short attendance warning! (Below {subject.requiredPct}%)
+                                  <TouchableOpacity
+                                    activeOpacity={0.7}
+                                    onPress={() => setExpandedSubject(isSubjectExpanded ? null : `${phase}_${subject.name}`)}
+                                  >
+                                    <View style={styles.subjectHeader}>
+                                      <View style={{ flex: 1, paddingRight: 10 }}>
+                                        <Text style={[styles.subjectCode, { color: colors.textSecondary }]}>{subject.code}</Text>
+                                        <Text style={[styles.subjectName, { color: colors.textPrimary }]} numberOfLines={1}>{subject.name}</Text>
+                                        <Text style={{ fontSize: 11, color: colors.textSecondary, marginTop: 4 }}>
+                                          {subject.subCategories.length} sub-categor{subject.subCategories.length === 1 ? 'y' : 'ies'} • Target: {subject.requiredPct}%
                                         </Text>
-                                      )}
-                                      {subject.status === 'warning' && (
-                                        <Text style={[styles.warningText, { color: statusColor }]}>
-                                          <MaterialIcons name="warning-amber" size={12} color={statusColor} /> Nearing minimum criteria (Threshold: {subject.requiredPct}%)
-                                        </Text>
-                                      )}
-                                    </>
+                                      </View>
+                                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                        <View style={[styles.percentageBadge, { backgroundColor: statusColor + '20' }]}>
+                                          <Text style={[styles.percentageText, { color: statusColor }]}>{subject.percentage}%</Text>
+                                        </View>
+                                        <MaterialIcons
+                                          name={isSubjectExpanded ? 'expand-less' : 'expand-more'}
+                                          size={20}
+                                          color={colors.textSecondary}
+                                        />
+                                      </View>
+                                    </View>
+                                    
+                                    <View style={[styles.subjectProgressBg, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F3F4F6', marginBottom: isSubjectExpanded ? 12 : 0 }]}>
+                                      <View style={[styles.subjectProgressFill, { width: `${subject.percentage}%`, backgroundColor: statusColor }]} />
+                                    </View>
+                                  </TouchableOpacity>
+                                  
+                                  {isSubjectExpanded && (
+                                    <View style={{
+                                      marginTop: 4,
+                                      paddingLeft: 8,
+                                      borderLeftWidth: 2,
+                                      borderLeftColor: colors.border,
+                                      gap: 8,
+                                    }}>
+                                      {subject.subCategories.map((subCat, subIdx) => {
+                                        const subColor = getStatusColor(subCat.status);
+                                        return (
+                                          <View
+                                            key={subIdx}
+                                            style={{
+                                              flexDirection: 'row',
+                                              justifyContent: 'space-between',
+                                              alignItems: 'center',
+                                              backgroundColor: isDark ? 'rgba(255,255,255,0.02)' : '#F9FAFB',
+                                              borderColor: colors.border,
+                                              borderWidth: 1,
+                                              borderRadius: 12,
+                                              padding: 10,
+                                            }}
+                                          >
+                                            <View style={{ flex: 1, paddingRight: 8 }}>
+                                              <Text style={{ fontSize: 13, fontWeight: '700', color: colors.textPrimary }}>
+                                                {subCat.name}
+                                              </Text>
+                                              <Text style={{ fontSize: 11, color: colors.textSecondary, marginTop: 2 }}>
+                                                {subCat.isPractical ? 'Practical/Clinical Posting' : 'Theory Subject'} • Target: {subCat.requiredPct}%
+                                              </Text>
+                                            </View>
+                                            <View style={{
+                                              paddingHorizontal: 8,
+                                              paddingVertical: 2,
+                                              borderRadius: 8,
+                                              backgroundColor: subColor + '20',
+                                            }}>
+                                              <Text style={{ fontSize: 12, fontWeight: '800', color: subColor }}>
+                                                {subCat.percentage}%
+                                              </Text>
+                                            </View>
+                                          </View>
+                                        );
+                                      })}
+                                    </View>
                                   )}
                                 </View>
                               );
@@ -392,7 +498,7 @@ const styles = StyleSheet.create({
   backBtn: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
   headerTitle: { fontSize: 20, fontWeight: '700' },
   notifBtn: { padding: 8 },
-  scroll: { paddingBottom: 40 },
+  scroll: { paddingBottom: 140 },
   sectionContainer: { paddingHorizontal: 20, marginTop: 24 },
   heroTitle: { fontSize: 28, fontWeight: '800', marginBottom: 4 },
   heroSub: { fontSize: 14, fontWeight: '500' },

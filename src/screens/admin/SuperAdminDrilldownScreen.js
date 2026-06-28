@@ -221,6 +221,56 @@ const SuperAdminDrilldownScreen = ({ route, navigation }) => {
       );
     }
 
+    if (category === 'grievances') {
+      const getPriorityColor = pri => {
+        if (pri === 'high') return colors.danger;
+        if (pri === 'medium') return colors.orange;
+        return colors.primary;
+      };
+      const getStatusColor = st => {
+        if (st === 'resolved') return colors.success;
+        if (st === 'in-progress') return colors.orange;
+        return colors.danger;
+      };
+
+      return (
+        <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <View style={styles.cardHeader}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
+              <Image source={{ uri: item.avatar_url }} style={styles.avatar} />
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.founderName, { color: colors.textPrimary }]}>{item.student_name}</Text>
+                <Text style={{ fontSize: 11, color: colors.textSecondary, marginTop: 2 }}>{item.category}</Text>
+              </View>
+            </View>
+            <View style={[styles.badge, { backgroundColor: getPriorityColor(item.priority) + '20' }]}>
+              <Text style={[styles.badgeText, { color: getPriorityColor(item.priority) }]}>
+                {item.priority?.toUpperCase()} PRIORITY
+              </Text>
+            </View>
+          </View>
+          
+          <Text style={{ fontSize: 14, fontWeight: '700', color: colors.textPrimary, marginVertical: 6 }}>
+            {item.title}
+          </Text>
+          <Text style={[styles.description, { color: colors.textSecondary }]} numberOfLines={3}>
+            {item.description}
+          </Text>
+
+          <View style={[styles.cardFooter, { marginTop: 12, borderTopColor: colors.border }]}>
+            <Text style={{ fontSize: 11, color: colors.textMuted }}>
+              Opened: {item.created_at ? new Date(item.created_at).toLocaleDateString() : 'N/A'}
+            </Text>
+            <View style={[styles.badge, { backgroundColor: getStatusColor(item.status) + '20' }]}>
+              <Text style={[styles.badgeText, { color: getStatusColor(item.status) }]}>
+                {item.status?.toUpperCase()}
+              </Text>
+            </View>
+          </View>
+        </View>
+      );
+    }
+
     return (
       <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
         <Text style={{ color: colors.textPrimary }}>{JSON.stringify(item)}</Text>

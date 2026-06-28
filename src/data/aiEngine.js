@@ -318,26 +318,15 @@ export function getMedicalMarkScore(subjectNameKeyword, results) {
   return parseFloat((totalPct / matching.length).toFixed(1));
 }
 
-// ─── Deterministic Fallback Score ────────────────────────────────────────────
-// Generates a consistent, non-random score in the 62–84% range when no real
-// result is available. Uses a simple hash of studentId + competencyName so the
-// same student always sees the same fallback score (not random on every render).
 function deterministicScore(studentId, competencyName) {
-  let hash = 0;
-  const str = `${studentId}_${competencyName}`;
-  for (let i = 0; i < str.length; i++) {
-    hash = ((hash << 5) - hash) + str.charCodeAt(i);
-    hash |= 0;
-  }
-  // Map to 62–84 range
-  return 62 + Math.abs(hash % 23);
+  return 0;
 }
 
 // ─── Skill Gap ────────────────────────────────────────────────────────────────
 // For MBBS students: uses real academic results + year-gated clinical competency
 // framework. Completed Prof years are NEVER shown as gaps — they are achievements.
 // For non-medical students: uses the original currentSkills keyword matching.
-export function computeSkillGap(student, results = []) {
+export function computeSkillGap(student, results = [], erpCompetencyData = null) {
   const c = (student.course || '').replace(/\./g, '').toLowerCase();
   const cat = resolveCategory(student);
   const isMBBS = c.includes('mbbs') || (cat === 'medical' && !c.includes('bds'));
@@ -345,10 +334,59 @@ export function computeSkillGap(student, results = []) {
   const sid = student.id || student.user_id || 'student';
 
   if (isMBBS) {
-    // ── MBBS-specific computation ───────────────────────────────────────────
+    if (erpCompetencyData && (Array.isArray(erpCompetencyData.all_competencies) || Array.isArray(erpCompetencyData.gaps))) {
+      const allComps = erpCompetencyData.all_competencies || [];
+      const erpGaps = erpCompetencyData.gaps || [];
+      const erpClinicalGaps = erpCompetencyData.clinical_gaps || [];
 
-    // 1. Current-year Prof subjects (the only academic subjects that CAN be gaps)
-    const academicExpected = getAcademicSubjects(student); // returns only current-year subjects
+      // Academic: Non-practical competencies (e.g. from theory marks)
+      const academicExpected = allComps.map(c => c.competency);
+      const academicMissing = erpGaps.map(c => c.competency);
+      const academicScores = {};
+      allComps.forEach(c => { academicScores[c.competency] = c.pct; });
+      const academicMatched = academicExpected.filter(c => !academicMissing.includes(c));
+      const academicMatchPct = academicExpected.length > 0 ? Math.round((academicMatched.length / academicExpected.length) * 100) : 100;
+
+      // Clinical/Practical: Clinical gaps returned from logbook/practicals
+      const clinicalExpected = erpClinicalGaps.length > 0 
+        ? erpClinicalGaps.map(c => c.competency)
+        : MBBS_CLINICAL_COMPETENCIES.filter(c => c.minYear <= yr).map(c => c.name);
+        
+      const clinicalMissing = erpClinicalGaps.length > 0
+        ? erpClinicalGaps.map(c => c.competency)
+        : clinicalExpected.slice(0, 3); // fallback
+        
+      const clinicalScores = {};
+      clinicalExpected.forEach(c => {
+        const found = erpClinicalGaps.find(cg => cg.competency === c);
+        clinicalScores[c] = found ? found.pct : 85.0; // default passing score if not missing
+      });
+      const clinicalMatched = clinicalExpected.filter(c => !clinicalMissing.includes(c));
+      const clinicalMatchPct = clinicalExpected.length > 0 ? Math.round((clinicalMatched.length / clinicalExpected.length) * 100) : 100;
+
+      const combinedMatchPct = Math.round((academicMatchPct + clinicalMatchPct) / 2);
+      const skillScores = { ...academicScores, ...clinicalScores };
+      const expectedCombined = [...academicExpected, ...clinicalExpected];
+      const missingCombined = [...academicMissing, ...clinicalMissing];
+
+      return {
+        matchPct: combinedMatchPct,
+        expectedSkills: expectedCombined,
+        missingSkills: missingCombined,
+        skillScores,
+        completedPhases: [],
+        academicExpectedSkills: academicExpected,
+        academicMissingSkills: academicMissing,
+        academicMatchPct,
+        industryExpectedSkills: clinicalExpected,
+        industryMissingSkills: clinicalMissing,
+        industryMatchPct: clinicalMatchPct,
+        recommendations: missingCombined.slice(0, 5).map(s => `Strengthen NMC competency: ${s}`),
+      };
+    }
+
+    // ── MBBS-specific computation (fallback to deterministic/marks) ────────
+    const academicExpected = getAcademicSubjects(student);
     const academicScores = {};
     academicExpected.forEach(subj => {
       const realScore = getMedicalMarkScore(subj, results);
@@ -1404,7 +1442,47 @@ export async function generateLearningPath(student, skillName, accessToken) {
     return generateStaticLearningPath(skillName);
   }
 
-  const prompt = `
+  const isMed = student && (
+    (student.course || '').replace(/\./g, '').toLowerCase().includes('mbbs') ||
+    (student.course || '').toLowerCase().includes('medicine') ||
+    (student.category || '').toLowerCase().includes('medical')
+  );
+
+  const prompt = isMed ? `
+You are an expert medical educator and faculty advisor. A medical student (MBBS) is missing the clinical/practical competency: "${skillName}" and wants to master it to satisfy the NMC (National Medical Commission) curriculum guidelines.
+Create a highly structured 3-step preparation guide/clinical syllabus pathway for them to master this specific NMC competency.
+Provide relevant NMC clinical learning outcomes, key sub-topics/methods (e.g. OSPE/clinical examination steps), and an estimated textbook reference or clinical manual for each step.
+Return ONLY a raw JSON object (no markdown, no backticks, no markdown code blocks).
+
+Use this exact JSON structure:
+{
+  "skill": "${skillName}",
+  "summary": "One line clinical advice on how to master this NMC competency.",
+  "steps": [
+    {
+      "step": 1,
+      "title": "e.g., Core Anatomical/Physiological Principles",
+      "timeframe": "e.g., Week 1",
+      "topics": ["Topic A", "Topic B"],
+      "resources": ["Standard Textbook Name (e.g. Gray's Anatomy)", "Reference Guide"]
+    },
+    {
+      "step": 2,
+      "title": "e.g., Clinical Examination & Practical Skills",
+      "timeframe": "e.g., Week 2",
+      "topics": ["Topic C", "Topic D"],
+      "resources": ["Standard Clinical Manual (e.g. Hutchison's)"]
+    },
+    {
+      "step": 3,
+      "title": "e.g., Self-Directed Learning & Verification",
+      "timeframe": "e.g., Week 3",
+      "topics": ["Topic E", "Topic F"],
+      "resources": ["Logbook Activity Verification"]
+    }
+  ]
+}
+` : `
 You are an expert career and learning advisor AI. A student studying ${student.course || 'University Course'} is missing the skill: "${skillName}" and wants to learn it.
 Create a highly structured 3-step learning path for them to master this skill.
 Provide resources, key topics, and an estimated timeframe for each step.

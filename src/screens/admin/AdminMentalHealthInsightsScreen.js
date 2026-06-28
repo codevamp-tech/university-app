@@ -20,19 +20,19 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 const { width } = Dimensions.get('window');
 
-const AdminMentalHealthInsightsScreen = () => {
+const AdminMentalHealthInsightsScreen = ({ navigation }) => {
   const { colors, isDark } = useTheme();
   const { accessToken } = useUser();
   const [data, setData] = useState({
     mood_distribution: {
-      happy: 185,
-      neutral: 120,
-      stressed: 25,
-      at_risk: 4,
+      happy: 0,
+      neutral: 0,
+      stressed: 0,
+      at_risk: 0,
     },
     at_risk_students: [],
-    total_focus_minutes: 450,
-    total_focus_sessions: 15,
+    total_focus_minutes: 0,
+    total_focus_sessions: 0,
   });
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -45,10 +45,10 @@ const AdminMentalHealthInsightsScreen = () => {
         const res = await getMentalHealthAnalytics(accessToken);
         if (res) {
           setData({
-            mood_distribution: res.mood_distribution || { happy: 185, neutral: 120, stressed: 25, at_risk: 4 },
+            mood_distribution: res.mood_distribution || { happy: 0, neutral: 0, stressed: 0, at_risk: 0 },
             at_risk_students: res.at_risk_students || [],
-            total_focus_minutes: res.total_focus_minutes || 450,
-            total_focus_sessions: res.total_focus_sessions || 15,
+            total_focus_minutes: res.total_focus_minutes || 0,
+            total_focus_sessions: res.total_focus_sessions || 0,
           });
         }
       }
@@ -64,16 +64,17 @@ const AdminMentalHealthInsightsScreen = () => {
   }, [accessToken]);
 
   const handleContactStudent = (student, type) => {
-    // Generate contact details based on student roll number / mock domain
-    const email = `${student.roll_no.toLowerCase()}@university.edu`;
-    const phone = '9876543210'; // Demo placeholder
+    const email = `${student.roll_no?.toLowerCase() || 'student'}@srms.ac.in`;
 
     if (type === 'email') {
       Linking.openURL(`mailto:${email}?subject=Wellbeing Support Chat - UniCampus&body=Hello ${student.student_name},\n\nWe wanted to reach out and check in on how you are doing. Feel free to reply or drop by the counseling center anytime.`)
         .catch(() => Alert.alert('Error', 'Unable to launch mail client.'));
     } else {
-      Linking.openURL(`tel:${phone}`)
-        .catch(() => Alert.alert('Error', 'Unable to launch phone dialer.'));
+      Alert.alert(
+        'Call Student',
+        'Phone number not on file. Please contact the student via email or visit their hostel room.',
+        [{ text: 'OK' }]
+      );
     }
   };
 
@@ -133,10 +134,17 @@ const AdminMentalHealthInsightsScreen = () => {
   const renderHeader = () => {
     return (
       <View style={styles.headerSection}>
-        {/* Title */}
-        <View style={styles.header}>
-          <Text style={[styles.title, { color: colors.textPrimary }]}>Wellbeing Insights</Text>
-          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>Monitor overall campus sentiment and mental wellbeing flags</Text>
+        {/* Back Button + Title */}
+        <View style={[styles.header, { flexDirection: 'row', alignItems: 'flex-start' }]}>
+          {navigation && (
+            <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginRight: 12, marginTop: 4 }}>
+              <Feather name="arrow-left" size={22} color={colors.textPrimary} />
+            </TouchableOpacity>
+          )}
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.title, { color: colors.textPrimary }]}>Wellbeing Insights</Text>
+            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>Monitor overall campus sentiment and mental wellbeing flags</Text>
+          </View>
         </View>
 
         {/* Focus Stats Mini Section */}
@@ -316,7 +324,7 @@ const AdminMentalHealthInsightsScreen = () => {
           <View style={styles.detailRow}>
             <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>Source of flag:</Text>
             <Text style={[styles.detailValue, { color: colors.textPrimary }]}>
-              {item.source === 'journal_nlp' ? '📝 Journal sentiment AI flags' : item.source || 'NLP Sentiment Model'}
+              {item.source === 'journal_nlp' ? '📝 Journal Sentiment AI' : item.source || 'Wellbeing System'}
             </Text>
           </View>
           <View style={styles.detailRow}>

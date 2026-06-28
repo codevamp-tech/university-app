@@ -290,6 +290,96 @@ export async function getStudentOutpasses(token) {
   return unwrap(res);
 }
 
+/**
+ * GET /api/v1/erp/results/detailed
+ * Returns grouped results with sessional vs university marks separated.
+ */
+export async function getDetailedResults(token) {
+  const res = await apiCall('/api/v1/erp/results/detailed', {
+    headers: authHeaders(token),
+  });
+  return unwrap(res, []);
+}
+
+/**
+ * GET /api/v1/erp/papers
+ * All exam papers grouped by subject for the current student's batch.
+ */
+export async function getPaperList(token) {
+  const res = await apiCall('/api/v1/erp/papers', {
+    headers: authHeaders(token),
+  });
+  return unwrap(res, []);
+}
+
+/**
+ * GET /api/v1/erp/papers/:paperCode/competencies
+ * Competency-based marks for a specific paper.
+ */
+export async function getPaperCompetencies(token, paperCode) {
+  const res = await apiCall(`/api/v1/erp/papers/${encodeURIComponent(paperCode)}/competencies`, {
+    headers: authHeaders(token),
+  });
+  return unwrap(res, {});
+}
+
+/**
+ * GET /api/v1/erp/papers/:paperCode/attempted
+ * Attempted exam paper with sections, questions and obtained marks.
+ */
+export async function getAttemptedPaper(token, paperCode) {
+  const res = await apiCall(`/api/v1/erp/papers/${encodeURIComponent(paperCode)}/attempted`, {
+    headers: authHeaders(token),
+  });
+  return unwrap(res, []);
+}
+
+/**
+ * GET /api/v1/erp/papers/:paperCode/chart?phase=1
+ * Competency pie chart data for a paper.
+ */
+export async function getCompetencyChart(token, paperCode, phase = '1') {
+  const res = await apiCall(
+    `/api/v1/erp/papers/${encodeURIComponent(paperCode)}/chart?phase=${phase}`,
+    { headers: authHeaders(token) }
+  );
+  return unwrap(res, { data: [] });
+}
+
+/**
+ * GET /api/v1/erp/logbook
+ * UG logbook activities with attempt status and faculty verification.
+ */
+export async function getLogbook(token) {
+  const res = await apiCall('/api/v1/erp/logbook', {
+    headers: authHeaders(token),
+  });
+  return unwrap(res, []);
+}
+
+/**
+ * GET /api/v1/erp/schedule
+ * Student weekly class schedule from ERP timetable.
+ */
+export async function getStudentSchedule(token) {
+  const res = await apiCall('/api/v1/erp/schedule', {
+    headers: authHeaders(token),
+  });
+  return unwrap(res, []);
+}
+
+/**
+ * GET /api/v1/erp/competencies/gaps
+ * Retrieve all competency scores and gaps (<50%) for the current student.
+ */
+export async function getCompetencyGaps(token) {
+  const res = await apiCall('/api/v1/erp/competencies/gaps', {
+    headers: authHeaders(token),
+  });
+  return unwrap(res, { gaps: [], all_competencies: [] });
+}
+
+
 // ─── Wallet ───────────────────────────────────────────────────────────────────
 
 /**

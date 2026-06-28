@@ -9,14 +9,14 @@ import {
   Image,
   TouchableOpacity,
 } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../../hooks/useTheme';
 import { useUser } from '../../context/UserContext';
 import { getSuperAdminAnalytics, getAllStudents } from '../../data/apiService';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SkeletonBlock } from '../../components/SkeletonLoader';
 
-const SuperAdminLeaderboardInsightsScreen = () => {
+const SuperAdminLeaderboardInsightsScreen = ({ navigation }) => {
   const { colors, isDark } = useTheme();
   const { accessToken } = useUser();
   const [data, setData] = useState(null);
@@ -88,10 +88,13 @@ const SuperAdminLeaderboardInsightsScreen = () => {
     return renderSkeleton();
   }
 
-  const lStats = data?.leaderboard || { top_dept: 'Computer Science', avg_social_credits: 0, rewards_claimed: 0 };
+  const lStats = data?.leaderboard || { top_dept: 'Medical', avg_social_credits: 0, rewards_claimed: 0 };
 
-  // Compute leaderboard scores (Matches student/TheHustleScreen.js logic)
-  const computedLeaderboard = students.map(s => {
+  // Only include Medical students
+  const medicalStudents = students.filter(s => s.category === 'medical');
+
+  // Compute leaderboard scores for medical students only
+  const computedLeaderboard = medicalStudents.map(s => {
     const certCount = (s.certsDone || []).filter(c => {
       const cl = c.toLowerCase();
       return cl !== 'yes' && cl !== 'no' && cl !== 'na' && cl !== 'n/a' && cl !== 'none' && cl !== '';
@@ -105,14 +108,7 @@ const SuperAdminLeaderboardInsightsScreen = () => {
     const ambassadorBonus = hasAmbassador ? 5000 : 0;
     const totalScore = (certCount * 500) + (extraCount * 500) + (leadCount * 1000) + academicScore + ambassadorBonus;
 
-    let avatar = s.avatar_url;
-    if (!avatar) {
-      const isFemaleAvatar = s.gender === 'F' || s.gender === 'Female';
-      const hash = s.name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % 99;
-      avatar = isFemaleAvatar
-        ? `https://randomuser.me/api/portraits/women/${hash}.jpg`
-        : `https://randomuser.me/api/portraits/men/${hash}.jpg`;
-    }
+    let avatar = s.avatar_url || null;
 
     return {
       id: s.id,
@@ -148,10 +144,15 @@ const SuperAdminLeaderboardInsightsScreen = () => {
           style={styles.header}
         >
           <View style={styles.headerTop}>
+            {navigation && (
+              <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginRight: 12 }}>
+                <Feather name="arrow-left" size={22} color={colors.textPrimary} />
+              </TouchableOpacity>
+            )}
             <MaterialCommunityIcons name="trophy" size={28} color="#FBBF24" />
             <View style={{ marginLeft: 12 }}>
               <Text style={[styles.title, { color: colors.textPrimary }]}>The Hustle Leaderboard</Text>
-              <Text style={[styles.subtitle, { color: colors.textSecondary }]}>Gamification & social credits insights</Text>
+              <Text style={[styles.subtitle, { color: colors.textSecondary }]}>Medical students — gamification insights</Text>
             </View>
           </View>
         </LinearGradient>
@@ -159,7 +160,7 @@ const SuperAdminLeaderboardInsightsScreen = () => {
 
 
         {/* Dynamic Leaderboard matching student design */}
-        <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Monthly Student Standings</Text>
+        <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Medical Student Standings</Text>
         <View style={[styles.leaderboardCard, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
           {displayLeaderboard.length === 0 ? (
             <Text style={{ padding: 16, textAlign: 'center', color: colors.textSecondary }}>No student leaderboard data found.</Text>

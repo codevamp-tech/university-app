@@ -9,6 +9,7 @@ import ERPResultsScreen from '../screens/student/ERPResultsScreen';
 import ERPFeesScreen from '../screens/student/ERPFeesScreen';
 import ERPDocumentsScreen from '../screens/student/ERPDocumentsScreen';
 import ERPAttendanceScreen from '../screens/student/ERPAttendanceScreen';
+import StudentScheduleScreen from '../screens/student/StudentScheduleScreen';
 import { useTheme } from '../hooks/useTheme';
 
 const Tab = createBottomTabNavigator();
@@ -34,15 +35,18 @@ const CustomTabBar = ({ state, descriptors, navigation }) => {
           } else if (route.name === 'ERPResultsTab') {
             iconName = 'grade';
             label = 'Results';
+          } else if (route.name === 'ERPScheduleTab') {
+            iconName = 'calendar-today';
+            label = 'Schedule';
+          } else if (route.name === 'ERPAttendanceTab') {
+            iconName = 'fact-check';
+            label = 'Attendance';
           } else if (route.name === 'ERPFeesTab') {
             iconName = 'lock';
             label = 'Fees';
           } else if (route.name === 'ERPDocumentsTab') {
             iconName = 'lock';
             label = 'Documents';
-          } else if (route.name === 'ERPAttendanceTab') {
-            iconName = 'fact-check';
-            label = 'Attendance';
           }
 
           const color = isLockedTab ? (isDark ? '#4B5563' : '#9CA3AF') : (isFocused ? colors.primary : colors.textMuted);
@@ -115,6 +119,7 @@ const ERPTabs = () => {
     >
       <Tab.Screen name="ERPHome" component={ERPHubScreen} />
       <Tab.Screen name="ERPResultsTab" component={ERPResultsScreen} />
+      <Tab.Screen name="ERPScheduleTab" component={StudentScheduleScreen} />
       <Tab.Screen name="ERPAttendanceTab" component={ERPAttendanceScreen} />
       <Tab.Screen name="ERPFeesTab" component={ERPFeesScreen} />
       <Tab.Screen name="ERPDocumentsTab" component={ERPDocumentsScreen} />

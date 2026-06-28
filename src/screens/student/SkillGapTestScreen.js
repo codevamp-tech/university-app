@@ -11,6 +11,7 @@ import { useUser } from '../../context/UserContext';
 import { computeSkillGap } from '../../data/aiEngine';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Alert } from 'react-native';
+import { getResults, getCompetencyGaps } from '../../data/apiService';
 
 const { width } = Dimensions.get('window');
 
@@ -269,14 +270,31 @@ const SkillGapTestScreen = ({ navigation }) => {
   const [testMode, setTestMode] = useState(null); // 'academic', 'industry', or 'mixed'
   const micAnim = useRef(new Animated.Value(1)).current;
 
-  const { user, updateSkillScore } = useUser();
+  const { user, updateSkillScore, accessToken } = useUser();
   const isMed = user && (
     user.course?.replace(/\./g, '').toLowerCase().includes('mbbs') ||
     user.course?.replace(/\./g, '').toLowerCase().includes('bds') ||
     user.course?.toLowerCase().includes('medicine') ||
     user.category?.toLowerCase().includes('medical')
   );
-  const gapData = user ? computeSkillGap(user) : { expectedSkills: ['DSA', 'System Design'], missingSkills: ['DSA', 'System Design'], academicMissingSkills: [], academicExpectedSkills: [], industryMissingSkills: [], industryExpectedSkills: [] };
+
+  const [academicResults, setAcademicResults] = useState([]);
+  const [erpCompetencies, setErpCompetencies] = useState(null);
+
+  useEffect(() => {
+    if (!accessToken) return;
+    getResults(accessToken)
+      .then(data => { if (data && data.length > 0) setAcademicResults(data); })
+      .catch(() => {});
+    getCompetencyGaps(accessToken)
+      .then(data => { if (data) setErpCompetencies(data); })
+      .catch(() => {});
+  }, [accessToken]);
+
+  const gapData = React.useMemo(() => {
+    if (!user) return { expectedSkills: ['DSA', 'System Design'], missingSkills: ['DSA', 'System Design'], academicMissingSkills: [], academicExpectedSkills: [], industryMissingSkills: [], industryExpectedSkills: [] };
+    return computeSkillGap(user, academicResults, erpCompetencies);
+  }, [user, academicResults, erpCompetencies]);
   
   // Choose missing or expected based on mode
   let topicsSource = [];

@@ -18,7 +18,7 @@ import { useHealthMetrics } from '../../hooks/useHealthMetrics';
 import { generateAIInsight, generateRoadmap, computeSkillGap, generateDynamicRoadmap, fetchDynamicLLMInsight, enrichRoadmapWithMarks } from '../../data/aiEngine';
 
 import { booksData } from '../student/library/LibraryMainScreen';
-import { listGrievancesAPI, uploadAvatarAPI, createOutpass, getStudentOutpasses, getResults } from '../../data/apiService';
+import { listGrievancesAPI, uploadAvatarAPI, createOutpass, getStudentOutpasses, getResults, getCompetencyGaps } from '../../data/apiService';
 import { getDisplayCourse, isMedicalStudent } from '../../utils/courseDisplay';
 
 const { width } = Dimensions.get('window');
@@ -275,6 +275,7 @@ const DashboardScreen = ({ navigation }) => {
   const [pathwayRetriesLeft, setPathwayRetriesLeft] = React.useState(1);
   const [cachedInsight, setCachedInsight] = React.useState(null);
   const [academicResults, setAcademicResults] = React.useState([]);
+  const [erpCompetencies, setErpCompetencies] = React.useState(null);
 
   React.useEffect(() => {
     if (!user) return;
@@ -298,11 +299,14 @@ const DashboardScreen = ({ navigation }) => {
     loadInsight();
   }, [user, accessToken]);
 
-  // Fetch academic results for competency gap scoring
+  // Fetch academic results and ERP competency gaps for scoring
   React.useEffect(() => {
     if (!accessToken) return;
     getResults(accessToken)
       .then(data => { if (data && data.length > 0) setAcademicResults(data); })
+      .catch(() => {});
+    getCompetencyGaps(accessToken)
+      .then(data => { if (data) setErpCompetencies(data); })
       .catch(() => {});
   }, [accessToken]);
 
@@ -1140,7 +1144,7 @@ const DashboardScreen = ({ navigation }) => {
             </View>
             <Text style={[styles.skillGapTitle, { color: colors.textPrimary }]}>{isMed ? 'Clinical Competency Gap' : 'Skill Gap Analysis'}</Text>
             {user && (() => {
-              const gapData = computeSkillGap(user, academicResults);
+              const gapData = computeSkillGap(user, academicResults, erpCompetencies);
               const targetGoal = user.course?.toLowerCase().includes('medicine') || user.course?.toLowerCase().includes('mbbs')
                 ? 'NEET-PG / NEXT' : user.course?.toLowerCase().includes('computer') || user.course?.toLowerCase().includes('cse')
                   ? 'FAANG' : 'Top Placements';

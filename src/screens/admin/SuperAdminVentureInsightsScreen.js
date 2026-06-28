@@ -6,15 +6,16 @@ import {
   ScrollView,
   SafeAreaView,
   RefreshControl,
+  TouchableOpacity,
 } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../../hooks/useTheme';
 import { useUser } from '../../context/UserContext';
 import { getSuperAdminAnalytics } from '../../data/apiService';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SkeletonBlock } from '../../components/SkeletonLoader';
 
-const SuperAdminVentureInsightsScreen = () => {
+const SuperAdminVentureInsightsScreen = ({ navigation }) => {
   const { colors, isDark } = useTheme();
   const { accessToken } = useUser();
   const [data, setData] = useState(null);
@@ -89,6 +90,11 @@ const SuperAdminVentureInsightsScreen = () => {
           style={styles.header}
         >
           <View style={styles.headerTop}>
+            {navigation && (
+              <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginRight: 12 }}>
+                <Feather name="arrow-left" size={22} color={colors.textPrimary} />
+              </TouchableOpacity>
+            )}
             <MaterialCommunityIcons name="rocket-launch" size={28} color="#3B82F6" />
             <View style={{ marginLeft: 12 }}>
               <Text style={[styles.title, { color: colors.textPrimary }]}>Venture & Innovation</Text>

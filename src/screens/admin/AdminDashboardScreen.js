@@ -414,6 +414,7 @@ const AdminDashboardScreen = ({ navigation }) => {
     const fStats = superStats?.fitness || { very_fit_count: 0, average_focus_minutes: 0 };
     const mhStats = superStats?.mental_health || { happy: 0, tensed: 0, at_risk: 0 };
     const facStats = superStats?.faculty || { active_count: 0, average_attendance: '0%', sessional_marks_upload_pct: 0, active_logins: 0, average_cgpa: 0.0, dept_attendance: [] };
+    const gStats = superStats?.grievance || { pending: 0, in_progress: 0, resolved: 0, total: 0 };
 
     // Segment mappings for visual stacked charts
     const moodSegments = [
@@ -427,12 +428,6 @@ const AdminDashboardScreen = ({ navigation }) => {
       { label: 'Pre-Rev', value: vStats.pre_revenue, color: colors.orange },
       { label: 'Seed', value: vStats.seed, color: colors.success },
       { label: 'Series A', value: vStats.series_a, color: '#8B5CF6' }
-    ];
-
-    const deptChartData = [
-      { label: 'CS', value: 450, color: '#FBBF24' },
-      { label: 'EE', value: 380, color: '#3B82F6' },
-      { label: 'Medical', value: 290, color: '#10B981' }
     ];
 
     return (
@@ -462,6 +457,26 @@ const AdminDashboardScreen = ({ navigation }) => {
             Active startup ideas distributed by validation stage
           </Text>
           {renderVerticalBarChart(ventureChartData)}
+        </TouchableOpacity>
+
+        {/* Grievance Resolution Insights */}
+        <TouchableOpacity
+          style={[styles.insightCard, { backgroundColor: colors.card }]}
+          onPress={() => navigation.navigate('SuperAdminDrilldown', { category: 'grievances', title: 'Student Grievance Logs' })}
+        >
+          <View style={styles.insightHeader}>
+            <MaterialCommunityIcons name="alert-octagon" size={20} color={colors.danger} style={{ marginRight: 8 }} />
+            <Text style={[styles.insightTitle, { color: colors.textPrimary }]}>Grievance Resolution Insights</Text>
+            <Feather name="chevron-right" size={16} color={colors.textMuted} style={{ marginLeft: 'auto' }} />
+          </View>
+          <Text style={[styles.insightBigVal, { color: colors.textPrimary }]}>
+            {gStats.total} Grievances Filed
+          </Text>
+          <View style={styles.insightRow}>
+            <Text style={[styles.insightSubText, { color: colors.danger }]}>Pending: {gStats.pending}</Text>
+            <Text style={[styles.insightSubText, { color: colors.orange }]}>In Progress: {gStats.in_progress}</Text>
+            <Text style={[styles.insightSubText, { color: colors.success }]}>Resolved: {gStats.resolved}</Text>
+          </View>
         </TouchableOpacity>
 
         {/* Campus Mood Index */}
@@ -559,27 +574,35 @@ const AdminDashboardScreen = ({ navigation }) => {
         </TouchableOpacity>
 
         {/* Social Network Insights */}
-        <View style={[styles.insightCard, { backgroundColor: colors.card }]}>
+        <TouchableOpacity
+          style={[styles.insightCard, { backgroundColor: colors.card }]}
+          onPress={() => Alert.alert('Social Network Insights', `Total Social Posts: ${sStats.total_posts}\nActive Student Clubs: ${sStats.active_clubs}\nAverage Engagement: ${sStats.avg_engagement}`)}
+        >
           <View style={styles.insightHeader}>
             <MaterialCommunityIcons name="chat-processing" size={20} color={colors.primary} style={{ marginRight: 8 }} />
             <Text style={[styles.insightTitle, { color: colors.textPrimary }]}>Social Network Insights</Text>
+            <Feather name="chevron-right" size={16} color={colors.textMuted} style={{ marginLeft: 'auto' }} />
           </View>
           <Text style={[styles.insightBigVal, { color: colors.textPrimary }]}>{sStats.total_posts} Social Posts</Text>
           <View style={styles.insightRow}>
             <Text style={[styles.insightSubText, { color: colors.textSecondary }]}>Active Clubs: {sStats.active_clubs}</Text>
             <Text style={[styles.insightSubText, { color: colors.textSecondary }]}>Engagement Rate: {sStats.avg_engagement}</Text>
           </View>
-        </View>
+        </TouchableOpacity>
 
         {/* Marketplace (Shop) Insights */}
-        <View style={[styles.insightCard, { backgroundColor: colors.card }]}>
+        <TouchableOpacity
+          style={[styles.insightCard, { backgroundColor: colors.card }]}
+          onPress={() => Alert.alert('Marketplace Activity Insights', `Active Listings: ${mStats.active_listings}\nCompleted Orders: ${mStats.completed_orders}`)}
+        >
           <View style={styles.insightHeader}>
             <MaterialCommunityIcons name="storefront" size={20} color={colors.orange} style={{ marginRight: 8 }} />
             <Text style={[styles.insightTitle, { color: colors.textPrimary }]}>Marketplace Activity</Text>
+            <Feather name="chevron-right" size={16} color={colors.textMuted} style={{ marginLeft: 'auto' }} />
           </View>
           <Text style={[styles.insightBigVal, { color: colors.textPrimary }]}>{mStats.active_listings} Active Listings</Text>
           <Text style={[styles.insightSubText, { color: colors.textSecondary }]}>{mStats.completed_orders} Completed Orders through peer-to-peer shop</Text>
-        </View>
+        </TouchableOpacity>
 
         {/* CV & Skill Gap Analysis Insights */}
         <TouchableOpacity
@@ -600,14 +623,18 @@ const AdminDashboardScreen = ({ navigation }) => {
         </TouchableOpacity>
 
         {/* Fitness Insights */}
-        <View style={[styles.insightCard, { backgroundColor: colors.card }]}>
+        <TouchableOpacity
+          style={[styles.insightCard, { backgroundColor: colors.card }]}
+          onPress={() => navigation.navigate('FitnessDetail')}
+        >
           <View style={styles.insightHeader}>
             <MaterialCommunityIcons name="heart-pulse" size={20} color="#EF4444" style={{ marginRight: 8 }} />
             <Text style={[styles.insightTitle, { color: colors.textPrimary }]}>Fitness & Focus Insights</Text>
+            <Feather name="chevron-right" size={16} color={colors.textMuted} style={{ marginLeft: 'auto' }} />
           </View>
           <Text style={[styles.insightBigVal, { color: colors.textPrimary }]}>{fStats.very_fit_count} Students are Very Fit</Text>
           <Text style={[styles.insightSubText, { color: colors.textSecondary }]}>Average daily focus: {fStats.average_focus_minutes} focus sessions completed</Text>
-        </View>
+        </TouchableOpacity>
 
         {/* Teacher/Faculty Insights */}
         <TouchableOpacity
@@ -632,6 +659,14 @@ const AdminDashboardScreen = ({ navigation }) => {
           >
             <Feather name="bell" size={18} color="#FFF" style={{ marginRight: 8 }} />
             <Text style={styles.actionBtnText}>Broadcast Announcement</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.actionBtn, { backgroundColor: colors.danger, marginBottom: 10 }]}
+            onPress={() => navigation.navigate('GrievanceManager')}
+          >
+            <MaterialCommunityIcons name="alert-octagon-outline" size={18} color="#FFF" style={{ marginRight: 8 }} />
+            <Text style={styles.actionBtnText}>Review Grievance Inbox</Text>
           </TouchableOpacity>
         </View>
       </View>

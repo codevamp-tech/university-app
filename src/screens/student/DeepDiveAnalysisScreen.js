@@ -10,7 +10,7 @@ import { useUser } from '../../context/UserContext';
 import { computeSkillGap, generateLearningPath } from '../../data/aiEngine';
 import { TimelineSkeleton, SkeletonBlock } from '../../components/SkeletonLoader';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { getResults } from '../../data/apiService';
+import { getResults, getCompetencyGaps } from '../../data/apiService';
 
 const { width } = Dimensions.get('window');
 
@@ -25,20 +25,24 @@ const DeepDiveAnalysisScreen = ({ navigation }) => {
     user.category?.toLowerCase().includes('medical')
   );
 
-  // Fetch academic results to power real-score competency analysis
+  // Fetch academic results and ERP competency gaps
   const [academicResults, setAcademicResults] = useState([]);
+  const [erpCompetencies, setErpCompetencies] = useState(null);
   useEffect(() => {
     if (!accessToken) return;
     getResults(accessToken)
       .then(data => { if (data && data.length > 0) setAcademicResults(data); })
       .catch(() => {});
+    getCompetencyGaps(accessToken)
+      .then(data => { if (data) setErpCompetencies(data); })
+      .catch(() => {});
   }, [accessToken]);
 
-  // Compute gap data reactively whenever results or user changes
+  // Compute gap data reactively whenever results, competency gaps, or user changes
   const gapData = useMemo(() => {
     if (!user) return { matchPct: 0, missingSkills: [], expectedSkills: [], academicExpectedSkills: [], academicMissingSkills: [], academicMatchPct: 0, industryExpectedSkills: [], industryMissingSkills: [], industryMatchPct: 0, skillScores: {}, completedPhases: [] };
-    return computeSkillGap(user, academicResults);
-  }, [user, academicResults]);
+    return computeSkillGap(user, academicResults, erpCompetencies);
+  }, [user, academicResults, erpCompetencies]);
 
   const [activeTab, setActiveTab] = useState('academic');
   const [activeSkill, setActiveSkill] = useState(null);
