@@ -14,7 +14,7 @@ import { useTheme } from '../../hooks/useTheme';
 import { useUser } from '../../context/UserContext';
 import { getWardenPendingOutpasses, getWardenAllOutpasses, actionWardenOutpass } from '../../data/apiService';
 
-const WardenOutpassesScreen = () => {
+const WardenOutpassesScreen = ({ navigation }) => {
   const { colors, isDark } = useTheme();
   const { accessToken } = useUser();
   const [outpasses, setOutpasses] = useState([]);
@@ -162,9 +162,16 @@ const WardenOutpassesScreen = () => {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Page Title */}
-      <View style={styles.header}>
-        <Text style={[styles.title, { color: colors.textPrimary }]}>Outpass Approvals</Text>
-        <Text style={[styles.subtitle, { color: colors.textSecondary }]}>Review hostel entry and exit gatepasses</Text>
+      <View style={[styles.header, { flexDirection: 'row', alignItems: 'flex-start' }]}>
+        {navigation && (
+          <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginRight: 12, marginTop: 4 }}>
+            <Feather name="arrow-left" size={22} color={colors.textPrimary} />
+          </TouchableOpacity>
+        )}
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.title, { color: colors.textPrimary }]}>Outpass Approvals</Text>
+          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>Review hostel entry and exit gatepasses</Text>
+        </View>
       </View>
 
       {/* Tabs */}

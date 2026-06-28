@@ -17,7 +17,7 @@ import { useTheme } from '../../hooks/useTheme';
 import { useUser } from '../../context/UserContext';
 import { getPendingStartups, reviewStartup } from '../../data/apiService';
 
-const AdminVentureReviewScreen = () => {
+const AdminVentureReviewScreen = ({ navigation }) => {
   const { colors, isDark } = useTheme();
   const { accessToken } = useUser();
   const [ventures, setVentures] = useState([]);
@@ -172,9 +172,16 @@ const AdminVentureReviewScreen = () => {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Title */}
-      <View style={styles.header}>
-        <Text style={[styles.title, { color: colors.textPrimary }]}>Startup Approval Hub</Text>
-        <Text style={[styles.subtitle, { color: colors.textSecondary }]}>Review student startup pitches and incubate ideas</Text>
+      <View style={[styles.header, { flexDirection: 'row', alignItems: 'flex-start' }]}>
+        {navigation && (
+          <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginRight: 12, marginTop: 4 }}>
+            <Feather name="arrow-left" size={22} color={colors.textPrimary} />
+          </TouchableOpacity>
+        )}
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.title, { color: colors.textPrimary }]}>Startup Approval Hub</Text>
+          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>Review student startup pitches and incubate ideas</Text>
+        </View>
       </View>
 
       {/* List */}

@@ -18,7 +18,7 @@ import { listGrievancesAPI, updateGrievanceStatusAPI } from '../../data/apiServi
 const CATEGORIES = ['All', 'Hostel', 'Academics', 'Canteen', 'Transport', 'Library', 'Other'];
 const STATUSES = ['all', 'pending', 'in_progress', 'resolved'];
 
-const AdminGrievanceInboxScreen = () => {
+const AdminGrievanceInboxScreen = ({ navigation }) => {
   const { colors, isDark } = useTheme();
   const { accessToken } = useUser();
   const [grievances, setGrievances] = useState([]);
@@ -143,9 +143,16 @@ const AdminGrievanceInboxScreen = () => {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Title */}
-      <View style={styles.header}>
-        <Text style={[styles.title, { color: colors.textPrimary }]}>Grievance Inbox</Text>
-        <Text style={[styles.subtitle, { color: colors.textSecondary }]}>Address support complaints and academic grievances</Text>
+      <View style={[styles.header, { flexDirection: 'row', alignItems: 'flex-start' }]}>
+        {navigation && (
+          <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginRight: 12, marginTop: 4 }}>
+            <Feather name="arrow-left" size={22} color={colors.textPrimary} />
+          </TouchableOpacity>
+        )}
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.title, { color: colors.textPrimary }]}>Grievance Inbox</Text>
+          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>Address support complaints and academic grievances</Text>
+        </View>
       </View>
 
       {/* Category Horizontal Filter List */}

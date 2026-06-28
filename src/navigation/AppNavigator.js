@@ -21,6 +21,9 @@ import ProductDetailScreen from '../screens/student/ProductDetailScreen';
 import AdminBroadcastCenterScreen from '../screens/admin/AdminBroadcastCenterScreen';
 import AdminMentalHealthInsightsScreen from '../screens/admin/AdminMentalHealthInsightsScreen';
 import SuperAdminDrilldownScreen from '../screens/admin/SuperAdminDrilldownScreen';
+import AdminGrievanceInboxScreen from '../screens/admin/AdminGrievanceInboxScreen';
+import AdminVentureReviewScreen from '../screens/admin/AdminVentureReviewScreen';
+import WardenOutpassesScreen from '../screens/admin/WardenOutpassesScreen';
 
 // Campus Food Ordering
 import CampusBitesMenuScreen from '../screens/student/CampusBitesMenuScreen';
@@ -112,6 +115,9 @@ const AppNavigator = () => {
       <Stack.Screen name="AdminBroadcastCenter" component={AdminBroadcastCenterScreen} options={{ animation: 'slide_from_bottom' }} />
       <Stack.Screen name="AdminMentalHealthInsights" component={AdminMentalHealthInsightsScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="SuperAdminDrilldown" component={SuperAdminDrilldownScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="GrievanceManager" component={AdminGrievanceInboxScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="VentureManager" component={AdminVentureReviewScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="OutpassManager" component={WardenOutpassesScreen} options={{ animation: 'slide_from_right' }} />
 
       {/* Guest Flow */}
       <Stack.Screen name="GuestOnboarding" component={GuestOnboardingScreen} options={{ animation: 'slide_from_right' }} />
