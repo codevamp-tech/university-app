@@ -61,6 +61,7 @@ export const UserProvider = ({ children }) => {
             user_id: fac.user_id || null,
             usr_id: fac.usr_id || null,
             avatar_url: dbProfile?.avatar_url || fac.avatar_url || null,
+            phase: dbProfile?.phase || fac.phase || null,
             accessToken: facultyData.access_token,
           };
           setUser(u);

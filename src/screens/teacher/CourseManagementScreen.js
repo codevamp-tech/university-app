@@ -45,6 +45,56 @@ const MEDICAL_CURRICULUM = [
   }
 ];
 
+const PHYSIOLOGY_CURRICULUM = [
+  { 
+    id: '1', 
+    code: 'PY-TH', 
+    name: 'Physiology Theory', 
+    description: 'General physiology, hematology, cardiovascular system, respiration, and renal physiology.', 
+    faculty: 'Dr. Kranthi Kumar Garikapati', 
+    role: 'Associate Professor of Physiology', 
+    progress: 45, 
+    type: 'CORE SUBJECT', 
+    color: '#EA580C' 
+  },
+  { 
+    id: '2', 
+    code: 'PY-PR', 
+    name: 'Physiology Practical', 
+    description: 'Hematology experiments, clinical examination of CVS, respiratory system, and nervous system.', 
+    faculty: 'Dr. Kranthi Kumar Garikapati', 
+    role: 'Practical Instructor', 
+    progress: 30, 
+    type: 'PRACTICAL', 
+    color: '#10B981' 
+  }
+];
+
+const ANATOMY_CURRICULUM = [
+  { 
+    id: '1', 
+    code: 'AN-TH', 
+    name: 'Anatomy Theory', 
+    description: 'Gross anatomy, embryology, histology, and neuroanatomy.', 
+    faculty: 'Anatomy Faculty', 
+    role: 'Professor of Anatomy', 
+    progress: 50, 
+    type: 'CORE SUBJECT', 
+    color: '#EA580C' 
+  },
+  { 
+    id: '2', 
+    code: 'AN-PR', 
+    name: 'Anatomy Dissection / Histology', 
+    description: 'Cadaveric dissection and microscopic study of tissues.', 
+    faculty: 'Anatomy Faculty', 
+    role: 'Dissection Lead', 
+    progress: 40, 
+    type: 'PRACTICAL', 
+    color: '#7C3AED' 
+  }
+];
+
 const CourseManagementScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const { user, accessToken } = useUser();
@@ -100,9 +150,33 @@ const CourseManagementScreen = ({ navigation }) => {
     }
   });
 
-  const curriculumToShow = dynamicCurriculum.length > 0 ? dynamicCurriculum : (isMedical ? MEDICAL_CURRICULUM : DEFAULT_CURRICULUM);
+  const getFallbackCurriculum = () => {
+    const d = String(user?.department).toUpperCase();
+    if (d.includes('PHYSIOLOGY')) return PHYSIOLOGY_CURRICULUM;
+    if (d.includes('ANATOMY')) return ANATOMY_CURRICULUM;
+    return MEDICAL_CURRICULUM;
+  };
+
+  const getRomanPhase = (p, dept) => {
+    const num = parseInt(p, 10);
+    if (num === 1) return 'I';
+    if (num === 2) return 'II';
+    if (num === 3) return 'III';
+    
+    // Fallback based on department string
+    const d = String(dept).toUpperCase();
+    if (d.includes('PHYSIOLOGY') || d.includes('ANATOMY') || d.includes('BIOCHEMISTRY')) {
+      return 'I';
+    }
+    if (d.includes('PHARMACOLOGY') || d.includes('PATHOLOGY') || d.includes('MICROBIOLOGY') || d.includes('FORENSIC')) {
+      return 'II';
+    }
+    return 'III';
+  };
+
+  const curriculumToShow = dynamicCurriculum;
   const courseBadge = isMedical ? 'MBBS PROGRAM' : 'B.TECH CSE';
-  const courseTitle = isMedical ? 'Phase III • Section A' : '3rd Year • Section A';
+  const courseTitle = isMedical ? `Phase ${getRomanPhase(user?.phase, user?.department)} • Section A` : '3rd Year • Section A';
   const enrolledCount = isMedical ? '160 enrolled' : '64 enrolled';
 
   return (

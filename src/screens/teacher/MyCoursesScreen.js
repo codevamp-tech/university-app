@@ -76,6 +76,48 @@ const CSE_COURSES = [
   },
 ];
 
+const PHYSIOLOGY_COURSES = [
+  {
+    id: 1,
+    title: 'Physiology Theory',
+    code: 'PY-101',
+    students: 150,
+    lectures: 'Mon, Tue, Thu',
+    progress: 45,
+    icon: 'heart-pulse',
+  },
+  {
+    id: 2,
+    title: 'Physiology Practical',
+    code: 'PY-102',
+    students: 75,
+    lectures: 'Wed, Fri',
+    progress: 30,
+    icon: 'medical-bag',
+  },
+];
+
+const ANATOMY_COURSES = [
+  {
+    id: 1,
+    title: 'Anatomy Theory',
+    code: 'AN-101',
+    students: 150,
+    lectures: 'Tue, Wed, Fri',
+    progress: 50,
+    icon: 'human-skeleton',
+  },
+  {
+    id: 2,
+    title: 'Anatomy Dissection',
+    code: 'AN-102',
+    students: 75,
+    lectures: 'Mon, Thu',
+    progress: 40,
+    icon: 'hospital-building',
+  },
+];
+
 const MyCoursesScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const { user, accessToken } = useUser();
@@ -90,7 +132,14 @@ const MyCoursesScreen = ({ navigation }) => {
     user?.department?.toUpperCase().includes('MEDICAL') ||
     user?.department?.toUpperCase().includes('DOCTORS');
 
-  const defaultCourses = isMedical ? MEDICAL_COURSES : CSE_COURSES;
+  const getFallbackCourses = () => {
+    const d = String(user?.department).toUpperCase();
+    if (d.includes('PHYSIOLOGY')) return PHYSIOLOGY_COURSES;
+    if (d.includes('ANATOMY')) return ANATOMY_COURSES;
+    return MEDICAL_COURSES;
+  };
+
+  const defaultCourses = isMedical ? getFallbackCourses() : CSE_COURSES;
 
   const loadData = useCallback(async () => {
     if (!accessToken) { setLoading(false); return; }
@@ -139,7 +188,7 @@ const MyCoursesScreen = ({ navigation }) => {
     }
   });
 
-  const coursesToShow = dynamicCourses.length > 0 ? dynamicCourses : defaultCourses;
+  const coursesToShow = dynamicCourses;
   const activeCoursesCount = coursesToShow.length;
   const totalStudentsCount = coursesToShow.reduce((acc, c) => acc + c.students, 0);
 
@@ -183,6 +232,12 @@ const MyCoursesScreen = ({ navigation }) => {
           <View style={{ padding: 20, alignItems: 'center' }}>
             <ActivityIndicator color={Colors.primary} />
             <Text style={{ marginTop: 8, color: Colors.textSecondary }}>Loading courses...</Text>
+          </View>
+        ) : coursesToShow.length === 0 ? (
+          <View style={styles.emptyCard}>
+            <MaterialCommunityIcons name="book-open-blank-variant" size={48} color="#D1D5DB" style={{ marginBottom: 12 }} />
+            <Text style={styles.emptyText}>No Courses Synced</Text>
+            <Text style={styles.emptySub}>Please check back later or login again to sync from SRMS ERP.</Text>
           </View>
         ) : (
           coursesToShow.map((course) => (
@@ -403,6 +458,27 @@ const styles = StyleSheet.create({
     height: '100%',
     backgroundColor: Colors.primary,
     borderRadius: 3,
+  },
+  emptyCard: {
+    backgroundColor: Colors.white,
+    borderRadius: 24,
+    padding: 32,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    marginBottom: 24,
+  },
+  emptyText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: Colors.textPrimary,
+    marginBottom: 4,
+  },
+  emptySub: {
+    fontSize: 12,
+    color: Colors.textMuted,
+    textAlign: 'center',
+    lineHeight: 18,
   },
 });
 

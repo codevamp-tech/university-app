@@ -33,7 +33,7 @@ const AdminBroadcastCenterScreen = ({ navigation }) => {
   const [selectedDepts, setSelectedDepts] = useState([]);
   const [selectedBatches, setSelectedBatches] = useState([]);
   const [sending, setSending] = useState(false);
-  
+
   // History State
   const [stats, setStats] = useState({ total_sent: 0, recent: [] });
   const [loadingStats, setLoadingStats] = useState(true);
@@ -49,7 +49,7 @@ const AdminBroadcastCenterScreen = ({ navigation }) => {
           { id: '3', name: 'B.Tech Mechanical', code: 'ME' },
           { id: '4', name: 'MBBS Medical', code: 'MBBS' },
         ]);
-        
+
         // Fetch recent broadcasts
         const bStats = await getBroadcastStatsAPI(accessToken);
         if (bStats) setStats(bStats);
@@ -107,7 +107,7 @@ const AdminBroadcastCenterScreen = ({ navigation }) => {
         setSelectedDepts([]);
         setSelectedBatches([]);
         setTargetType('all');
-        
+
         // Refresh stats
         const bStats = await getBroadcastStatsAPI(accessToken);
         if (bStats) setStats(bStats);
@@ -204,10 +204,10 @@ const AdminBroadcastCenterScreen = ({ navigation }) => {
                       ]}
                       onPress={() => toggleDept(dept.id)}
                     >
-                      <Feather 
-                        name={isChecked ? 'check-square' : 'square'} 
-                        size={14} 
-                        color={isChecked ? colors.primary : colors.textSecondary} 
+                      <Feather
+                        name={isChecked ? 'check-square' : 'square'}
+                        size={14}
+                        color={isChecked ? colors.primary : colors.textSecondary}
                         style={{ marginRight: 6 }}
                       />
                       <Text style={[styles.checkboxText, { color: isChecked ? colors.primary : colors.textPrimary }]}>
@@ -236,10 +236,10 @@ const AdminBroadcastCenterScreen = ({ navigation }) => {
                       ]}
                       onPress={() => toggleBatch(batch.id)}
                     >
-                      <Feather 
-                        name={isChecked ? 'check-square' : 'square'} 
-                        size={14} 
-                        color={isChecked ? colors.primary : colors.textSecondary} 
+                      <Feather
+                        name={isChecked ? 'check-square' : 'square'}
+                        size={14}
+                        color={isChecked ? colors.primary : colors.textSecondary}
                         style={{ marginRight: 6 }}
                       />
                       <Text style={[styles.checkboxText, { color: isChecked ? colors.primary : colors.textPrimary }]}>
@@ -253,15 +253,15 @@ const AdminBroadcastCenterScreen = ({ navigation }) => {
           )}
 
           {/* Reach Estimate Banner */}
-          <View style={[styles.reachContainer, { backgroundColor: colors.background }]}>
+          {/* <View style={[styles.reachContainer, { backgroundColor: colors.background }]}>
             <Feather name="users" size={16} color={colors.primary} style={{ marginRight: 8 }} />
             <Text style={[styles.reachText, { color: colors.textPrimary }]}>
               Estimated Reach: <Text style={{ fontWeight: '700', color: colors.primary }}>{calculatedReach()}</Text> students.
             </Text>
-          </View>
+          </View> */}
 
           {/* Send Action */}
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.sendBtn, { backgroundColor: colors.primary }]}
             onPress={handleSend}
             disabled={sending}

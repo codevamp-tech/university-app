@@ -85,7 +85,7 @@ const SplashScreen = ({ navigation }) => {
       >
         <View style={styles.logoCard}>
           <Image
-            source={require('../../assets/unicampus-logo.png')}
+            source={require('../../assets/unicampus-icon.png')}
             style={{ width: 100, height: 100, borderRadius: 24 }}
             resizeMode="contain"
           />
