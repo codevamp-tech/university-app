@@ -639,7 +639,7 @@ const AdminDashboardScreen = ({ navigation }) => {
         {/* Fitness Insights */}
         <TouchableOpacity
           style={[styles.insightCard, { backgroundColor: colors.card }]}
-          onPress={() => navigation.navigate('FitnessDetail')}
+          onPress={() => navigation.navigate('SuperAdminDrilldown', { category: 'fitness_students', title: 'Campus Fitness Standings' })}
         >
           <View style={styles.insightHeader}>
             <MaterialCommunityIcons name="heart-pulse" size={20} color="#EF4444" style={{ marginRight: 8 }} />
