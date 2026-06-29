@@ -99,6 +99,8 @@ import OtherTeacherProfileScreen from '../screens/teacher/OtherTeacherProfileScr
 import AdminFacultyDetailScreen from '../screens/admin/AdminFacultyDetailScreen';
 import SalarySlipScreen from '../screens/teacher/SalarySlipScreen';
 import LeaveBalanceScreen from '../screens/teacher/LeaveBalanceScreen';
+import FacultyOfficialChatScreen from '../screens/teacher/FacultyOfficialChatScreen';
+
 
 const Stack = createNativeStackNavigator();
 
@@ -218,6 +220,7 @@ const AppNavigator = () => {
       <Stack.Screen name="TeacherAlerts" component={TeacherAlertsScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="SalarySlip" component={SalarySlipScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="LeaveBalance" component={LeaveBalanceScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="FacultyOfficialChat" component={FacultyOfficialChatScreen} options={{ animation: 'slide_from_right' }} />
     </Stack.Navigator>
   );
 };

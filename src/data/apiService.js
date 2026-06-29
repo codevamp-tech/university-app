@@ -1842,4 +1842,97 @@ export async function getLeaveSummary(empId, month, year) {
   return null;
 }
 
+/**
+ * Fetch list of batches for a faculty member directly from live ERP.
+ */
+export async function getFacultyBatches(empId) {
+  if (!empId) return [];
+  // Parse colgcd from empid structure e.g. "D/11/093" -> "11"
+  const parts = String(empId).split('/');
+  const colgcd = parts.length >= 2 ? parts[1] : '11';
+  const coursecd = '1'; // Default course is MBBS
+
+  try {
+    const response = await fetch('https://myportal.srms.ac.in/SRMSERP/Faculty/GetBatch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ colgcd: String(colgcd), coursecd: String(coursecd) }),
+    });
+    const data = await response.json();
+    if (Array.isArray(data)) {
+      return data.map(b => ({
+        id: String(b.batch_cd),
+        name: String(b.batch_name)
+      }));
+    }
+  } catch (err) {
+    console.warn('[apiService] getFacultyBatches failed:', err);
+  }
+  return [];
+}
+
+/**
+ * Fetch chat message history for an official batch channel from live ERP.
+ */
+export async function getFacultyGroupChats(empId, batchName, phase = '1', subphase = '1') {
+  if (!empId || !batchName) return [];
+  const parts = String(empId).split('/');
+  const colgcd = parts.length >= 2 ? parts[1] : '11';
+  const coursecd = '1';
+
+  // Default curriculum CBME year to batchName - 1
+  let cbmey = '2024';
+  try {
+    const batchYear = parseInt(batchName);
+    if (!isNaN(batchYear)) cbmey = String(batchYear - 1);
+  } catch {}
+
+  try {
+    const response = await fetch('https://myportal.srms.ac.in/SRMSERP/Faculty/getchats', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ChatStudId: String(batchName),
+        ChatFacId: String(empId),
+        chatid: '0',
+        colgcd: String(colgcd),
+        coursecd: String(coursecd),
+        cbmey: String(cbmey),
+        batch: String(batchName),
+        phase: String(phase),
+        subphase: String(subphase),
+        ctype: 'GROUP'
+      }),
+    });
+    const data = await response.json();
+    if (Array.isArray(data)) {
+      return data.map(msg => {
+        let sentDateStr = msg.sentdate || '';
+        // If sent date is /Date(ts)/, parse it
+        const raw_dt = msg.Crt_dt;
+        if (raw_dt && String(raw_dt).includes('/Date(')) {
+          try {
+            const ts = parseInt(String(raw_dt).split('(')[1].split(')')[0]);
+            const d = new Date(ts);
+            sentDateStr = d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) + ', ' + d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+          } catch {}
+        }
+        return {
+          id: String(msg.chatid || Math.random()),
+          text: msg.Chat_Desc || '',
+          sender: msg.classlabel === 'left' ? (msg.FacultyName || 'Faculty') : (msg.StudentName || 'Student'),
+          isMe: msg.classlabel === 'left', // classlabel left is faculty (me)
+          timestamp: sentDateStr,
+          department: msg.department || '',
+          attachment: msg.attachfile || null
+        };
+      });
+    }
+  } catch (err) {
+    console.warn('[apiService] getFacultyGroupChats failed:', err);
+  }
+  return [];
+}
+
+
 

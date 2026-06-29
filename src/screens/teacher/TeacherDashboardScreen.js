@@ -419,7 +419,16 @@ const TeacherDashboardScreen = ({ navigation }) => {
             <Text style={styles.quickActionLabel}>Campus Alerts</Text>
           </TouchableOpacity>
 
-          <View style={[styles.quickActionCard, { backgroundColor: 'transparent', shadowOpacity: 0, elevation: 0, borderWidth: 0 }]} />
+          <TouchableOpacity
+            style={styles.quickActionCard}
+            onPress={() => navigation.navigate('FacultyOfficialChat')}
+            activeOpacity={0.8}
+          >
+            <View style={[styles.quickActionIconBg, { backgroundColor: '#F5F3FF' }]}>
+              <Ionicons name="chatbubbles-outline" size={20} color="#7C3AED" />
+            </View>
+            <Text style={styles.quickActionLabel}>Portal Chats</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Today's Schedule */}
