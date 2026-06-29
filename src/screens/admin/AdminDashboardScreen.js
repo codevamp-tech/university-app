@@ -555,7 +555,15 @@ const AdminDashboardScreen = ({ navigation }) => {
                   <Text style={[styles.glimpseRank, { color: colors.textMuted }, idx === 0 && { color: '#EA580C' }]}>
                     #{idx + 1}
                   </Text>
-                  <Image source={{ uri: item.avatar_url }} style={styles.glimpseAvatar} />
+                  {item.avatar_url ? (
+                    <Image source={{ uri: item.avatar_url }} style={styles.glimpseAvatar} />
+                  ) : (
+                    <View style={[styles.glimpseAvatarInitials, { backgroundColor: colors.primaryLight }]}>
+                      <Text style={[styles.glimpseAvatarText, { color: colors.primary }]}>
+                        {item.student_name ? item.student_name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() : 'ST'}
+                      </Text>
+                    </View>
+                  )}
                   <View style={{ flex: 1 }}>
                     <Text style={[styles.glimpseName, { color: colors.textPrimary }]} numberOfLines={1}>
                       {item.student_name}
@@ -1141,6 +1149,18 @@ const styles = StyleSheet.create({
     height: 32,
     borderRadius: 16,
     marginHorizontal: 8,
+  },
+  glimpseAvatarInitials: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    marginHorizontal: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  glimpseAvatarText: {
+    fontSize: 11,
+    fontWeight: '700',
   },
   glimpseName: {
     fontSize: 14,
