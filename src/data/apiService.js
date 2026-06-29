@@ -1685,28 +1685,161 @@ export async function aiChatCompletionAPI(token, payload) {
 }
 
 /**
- * POST /api/v1/faculty/salary-slip
- * Fetch salary slip for a specific month/year.
+ * Fetch salary slip for a specific month/year directly from live ERP.
  */
-export async function getSalarySlip(token, month, year) {
-  const res = await apiCall('/api/v1/faculty/salary-slip', {
-    method: 'POST',
-    headers: authHeaders(token),
-    body: JSON.stringify({ month, year }),
-  });
-  return unwrap(res, null);
+export async function getSalarySlip(empId, month, year) {
+  if (!empId) return null;
+  try {
+    const response = await fetch('https://myportal.srms.ac.in/ops/Home/GetEmployeeSalaryslip', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ empid: String(empId), month: String(month), year: String(year) }),
+    });
+    const data = await response.json();
+    if (Array.isArray(data) && data.length > 0) {
+      const slip = data[0];
+      return {
+        emp_name: slip.EmpName || '',
+        department: slip.Department || '',
+        designation: slip.Designation || '',
+        category: slip.Categary || '',
+        month: month,
+        year: year,
+        pan_no: slip.PANNo || '',
+        account_no: slip.AcNO || '',
+        uan: slip.UAN || '',
+        basic: slip.EBASIC || 0,
+        da: slip.DA || 0,
+        hra: slip.HRA || 0,
+        other_allowance: slip["OTHER ALLOWANCE"] || 0,
+        overtime: slip["OVERTIME/OTHER EARNING"] || 0,
+        npa: slip.MONTHLYNPA || 0,
+        fix_tf_earning: slip.FIXTFEARN || slip["FIX TF EARNING"] || 0,
+        bonus_earn: slip.Bonus_earn || 0,
+        gratuity_earn: slip.GratityEarn || 0,
+        misc_earn: slip.MISCEARN || 0,
+        dean_student_welfare: slip.DEAN_STUDENT_WELFARE || 0,
+        vice_principal: slip.VICE_PRINCIPAL || 0,
+        dean_pg: slip.DEAN_PG || 0,
+        dean_ug: slip.DEAN_UG || 0,
+        warden: slip.WARDEN || 0,
+        chief_proctor: slip.CHIEF_PROCTOR || 0,
+        exam_controller: slip.EXAM_CONTROLLER || 0,
+        tds: slip.TDS || 0,
+        epf: slip.EPFDEDN || 0,
+        esi: slip.ESIDEDN || 0,
+        swf: slip.SWF || 0,
+        lic: slip.LIC || 0,
+        mobile_bill: slip.MOBILEBILL || 0,
+        transport: slip.TRANSPORT || 0,
+        electricity: slip.ELECTRICITY || 0,
+        fix_tf_dedn: slip["FIX TF DEDN"] || 0,
+        misc_dedn: slip.MISCDEC || 0,
+        gross_salary: slip.GROSS || 0,
+        standard_gross: slip["Standard Gross Salary"] || 0,
+        gross_deductions: slip.GROSSDED || 0,
+        net_salary: slip.NET || 0,
+        due_salary: slip["DUE SALARY"] || 0,
+        working_days: slip.WD || 0,
+        month_days: slip.MnthDays || 0,
+        days_worked: slip.DaysWorked || 0,
+        days_physically_present: slip.DaysPhyPres || 0,
+        lwp: slip.LWP || 0,
+        cl: slip.CL || 0,
+        el: slip.EL || 0,
+        co: slip.CO || 0,
+      };
+    }
+  } catch (err) {
+    console.warn('[apiService] getSalarySlip failed:', err);
+  }
+  return null;
 }
 
 /**
- * POST /api/v1/faculty/leave-summary
- * Fetch leave entitlements, balances, and monthly leave records.
+ * Fetch leave entitlements, balances, and monthly leave records directly from live ERP.
  */
-export async function getLeaveSummary(token, month, year) {
-  const res = await apiCall('/api/v1/faculty/leave-summary', {
-    method: 'POST',
-    headers: authHeaders(token),
-    body: JSON.stringify({ month: month || null, year: year || null }),
-  });
-  return unwrap(res, null);
+export async function getLeaveSummary(empId, month, year) {
+  if (!empId) return null;
+  try {
+    // 1. Get entitlements
+    const resEnt = await fetch('https://myportal.srms.ac.in/ops/Home/GetLeaveEnt', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ empId: String(empId) }),
+    });
+    const dataEnt = await resEnt.json();
+    const entitlements = (Array.isArray(dataEnt) && dataEnt.length > 0) ? dataEnt[0] : {};
+
+    // 2. Get balances for CL=2, PL=1, EL=9
+    const balances = {};
+    for (const [code, name] of [["1", "privilege"], ["2", "casual"], ["9", "earned"]]) {
+      const resBal = await fetch('https://myportal.srms.ac.in/ops/Home/GetLeaveBal', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ empId: String(empId), leavecd: code }),
+      });
+      const dataBal = await resBal.json();
+      const bal = (Array.isArray(dataBal) && dataBal.length > 0) ? dataBal[0] : {};
+      balances[name] = {
+        carry_forward: bal.CF_LV || 0,
+        accrued: bal.AC_LV || 0,
+        total: bal.TOT_LV || 0,
+        opening_balance: bal.OPN_BAL || 0,
+      };
+    }
+
+    // 3. Get monthly history
+    const targetMonth = month || (new Date().getMonth() + 1);
+    const targetYear = year || new Date().getFullYear();
+    const resHist = await fetch('https://myportal.srms.ac.in/ops/Home/GetEmpAdvLv', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ empid: String(empId), month: String(targetMonth), yr: String(targetYear) }),
+    });
+    const dataHist = await resHist.json();
+
+    const leaves_taken = [];
+    if (Array.isArray(dataHist)) {
+      for (const rec of dataHist) {
+        if (!rec.lv_number) continue;
+        let leave_date = null;
+        const raw_dt = rec.leave_dt || rec.leavedt;
+        if (raw_dt && String(raw_dt).includes('/Date(')) {
+          try {
+            const ts = parseInt(String(raw_dt).split('(')[1].split(')')[0]);
+            leave_date = new Date(ts).toISOString().split('T')[0];
+          } catch {}
+        }
+        const leave_cd = String(rec.leave_cd || '');
+        const leave_type_map = { "1": "Privilege Leave", "2": "Casual Leave", "9": "Earned Leave" };
+        leaves_taken.push({
+          date: leave_date,
+          leave_type: leave_type_map[leave_cd] || `Leave (${leave_cd})`,
+          reason: rec.reason_for_leave || '',
+          status: rec.appflg === 1 ? 'Approved' : 'Pending',
+          work_in_charge: rec.workEmpname || '',
+        });
+      }
+    }
+
+    return {
+      entitlements: {
+        casual_leave: entitlements.casuallv || 0,
+        sick_leave: entitlements.sicklv || 0,
+        earned_leave: entitlements.earnedlv || 0,
+        maternity_leave: entitlements.maternitylv || 0,
+        conference_leave: entitlements.conferencelv || 0,
+      },
+      balances,
+      leaves_taken,
+      month: targetMonth,
+      year: targetYear,
+    };
+  } catch (err) {
+    console.warn('[apiService] getLeaveSummary failed:', err);
+  }
+  return null;
 }
+
 

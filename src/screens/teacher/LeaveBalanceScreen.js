@@ -12,7 +12,7 @@ const { width } = Dimensions.get('window');
 
 const LeaveBalanceScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
-  const { accessToken } = useUser();
+  const { user } = useUser();
 
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -32,11 +32,11 @@ const LeaveBalanceScreen = ({ navigation }) => {
   }, []);
 
   const fetchLeaveSummary = useCallback(async () => {
-    if (!accessToken) return;
+    if (!user?.emp_id) return;
     setLoading(true);
     setError(null);
     try {
-      const data = await getLeaveSummary(accessToken);
+      const data = await getLeaveSummary(user.emp_id);
       if (data) {
         setSummary(data);
       } else {
@@ -48,7 +48,7 @@ const LeaveBalanceScreen = ({ navigation }) => {
     } finally {
       setLoading(false);
     }
-  }, [accessToken]);
+  }, [user?.emp_id]);
 
   useEffect(() => {
     fetchLeaveSummary();
