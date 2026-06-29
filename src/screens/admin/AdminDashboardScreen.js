@@ -139,7 +139,13 @@ const AdminDashboardScreen = ({ navigation }) => {
         {/* Premium Fitness Bar */}
         <TouchableOpacity
           style={[styles.fitnessCard, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}
-          onPress={() => navigation.navigate('FitnessDetail')}
+          onPress={() => {
+            if (isSuperAdmin) {
+              navigation.navigate('SuperAdminDrilldown', { category: 'fitness_students', title: 'Campus Fitness Standings' });
+            } else {
+              navigation.navigate('FitnessDetail');
+            }
+          }}
           activeOpacity={0.8}
         >
           <View style={styles.fitnessHeader}>
@@ -535,7 +541,7 @@ const AdminDashboardScreen = ({ navigation }) => {
             onPress={() => navigation.navigate('SuperAdminDrilldown', { category: 'hustle_students', title: 'The Hustle Standings' })}
           >
             <Text style={[styles.insightBigVal, { color: colors.primary, textDecorationLine: 'underline' }]}>
-              Monthly Student Standings →
+              Medical Student Standings →
             </Text>
           </TouchableOpacity>
           <Text style={[styles.insightSubText, { color: colors.textSecondary, marginBottom: 8 }]}>

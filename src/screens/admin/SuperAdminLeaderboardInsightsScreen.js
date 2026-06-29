@@ -174,7 +174,15 @@ const SuperAdminLeaderboardInsightsScreen = ({ navigation }) => {
               ]}>
                 <View style={[styles.boardItemLeft, { flex: 1, marginRight: 8 }]}>
                   <Text style={[styles.boardRank, { color: colors.textMuted }, item.rank <= 3 && { color: '#EA580C' }]}>{item.rank}</Text>
-                  <Image source={{ uri: item.avatar }} style={styles.boardAvatar} />
+                  {item.avatar ? (
+                    <Image source={{ uri: item.avatar }} style={styles.boardAvatar} />
+                  ) : (
+                    <View style={[styles.avatarInitialsContainer, { backgroundColor: colors.primaryLight }]}>
+                      <Text style={[styles.avatarInitialsText, { color: colors.primary }]}>
+                        {item.name ? item.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() : 'ST'}
+                      </Text>
+                    </View>
+                  )}
                   <View style={{ flex: 1 }}>
                     <Text style={[styles.boardName, { color: colors.textPrimary }]} numberOfLines={1}>
                       {item.name}
@@ -307,6 +315,18 @@ const styles = StyleSheet.create({
     height: 44,
     borderRadius: 22,
     marginHorizontal: 12,
+  },
+  avatarInitialsContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    marginHorizontal: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarInitialsText: {
+    fontSize: 14,
+    fontWeight: '700',
   },
   boardName: {
     fontSize: 16,

@@ -16,6 +16,22 @@ import { useUser } from '../../context/UserContext';
 import { getSuperAdminDrilldown } from '../../data/apiService';
 import { SkeletonBlock } from '../../components/SkeletonLoader';
 
+const StudentAvatar = ({ uri, name, colors }) => {
+  if (uri) {
+    return <Image source={{ uri }} style={styles.avatar} />;
+  }
+  const initials = name
+    ? name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
+    : 'ST';
+  return (
+    <View style={[styles.avatar, { backgroundColor: colors.primaryLight, justifyContent: 'center', alignItems: 'center' }]}>
+      <Text style={{ fontSize: 13, fontWeight: '700', color: colors.primary }}>
+        {initials}
+      </Text>
+    </View>
+  );
+};
+
 const SuperAdminDrilldownScreen = ({ route, navigation }) => {
   const { category, title } = route.params || { category: 'ventures', title: 'Details' };
   const { colors, isDark } = useTheme();
@@ -100,7 +116,7 @@ const SuperAdminDrilldownScreen = ({ route, navigation }) => {
         <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <View style={styles.cardHeader}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
-              <Image source={{ uri: item.avatar_url }} style={styles.avatar} />
+              <StudentAvatar uri={item.avatar_url} name={item.student_name} colors={colors} />
               <View style={{ flex: 1 }}>
                 <Text style={[styles.founderName, { color: colors.textPrimary }]}>{item.student_name}</Text>
                 <Text style={[styles.ventureName, { color: colors.textMuted }]}>{item.name}</Text>
@@ -137,7 +153,7 @@ const SuperAdminDrilldownScreen = ({ route, navigation }) => {
         <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <View style={styles.cardHeader}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
-              <Image source={{ uri: item.avatar_url }} style={styles.avatar} />
+              <StudentAvatar uri={item.avatar_url} name={item.student_name} colors={colors} />
               <View style={{ flex: 1 }}>
                 <Text style={[styles.founderName, { color: colors.textPrimary }]}>{item.student_name}</Text>
                 <Text style={[styles.rollnoText, { color: colors.textSecondary }]}>{item.rollno}</Text>
@@ -163,7 +179,7 @@ const SuperAdminDrilldownScreen = ({ route, navigation }) => {
         <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.danger, borderLeftWidth: 4 }]}>
           <View style={styles.cardHeader}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
-              <Image source={{ uri: item.avatar_url }} style={styles.avatar} />
+              <StudentAvatar uri={item.avatar_url} name={item.student_name} colors={colors} />
               <View style={{ flex: 1 }}>
                 <Text style={[styles.founderName, { color: colors.textPrimary }]}>{item.student_name}</Text>
                 <Text style={[styles.rollnoText, { color: colors.textSecondary }]}>{item.rollno}</Text>
@@ -190,7 +206,7 @@ const SuperAdminDrilldownScreen = ({ route, navigation }) => {
     if (category === 'hustle_students') {
       return (
         <View style={[styles.rowCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <Image source={{ uri: item.avatar_url }} style={styles.avatar} />
+          <StudentAvatar uri={item.avatar_url} name={item.student_name} colors={colors} />
           <View style={{ flex: 1, marginLeft: 12 }}>
             <Text style={[styles.founderName, { color: colors.textPrimary }]}>{item.student_name}</Text>
             <Text style={[styles.rollnoText, { color: colors.textSecondary }]}>
@@ -207,7 +223,7 @@ const SuperAdminDrilldownScreen = ({ route, navigation }) => {
     if (category === 'cv_students') {
       return (
         <View style={[styles.rowCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <Image source={{ uri: item.avatar_url }} style={styles.avatar} />
+          <StudentAvatar uri={item.avatar_url} name={item.student_name} colors={colors} />
           <View style={{ flex: 1, marginLeft: 12 }}>
             <Text style={[styles.founderName, { color: colors.textPrimary }]}>{item.student_name}</Text>
             <Text style={[styles.rollnoText, { color: colors.textSecondary }]}>CGPA: {item.cgpa}</Text>
@@ -216,6 +232,23 @@ const SuperAdminDrilldownScreen = ({ route, navigation }) => {
             <Text style={[styles.badgeText, { color: item.cv_status === 'Compiled' ? colors.success : colors.orange }]}>
               {item.cv_status}
             </Text>
+          </View>
+        </View>
+      );
+    }
+
+    if (category === 'fitness_students') {
+      return (
+        <View style={[styles.rowCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <StudentAvatar uri={item.avatar_url} name={item.student_name} colors={colors} />
+          <View style={{ flex: 1, marginLeft: 12 }}>
+            <Text style={[styles.founderName, { color: colors.textPrimary }]}>{item.student_name}</Text>
+            <Text style={[styles.rollnoText, { color: colors.textSecondary }]}>
+              Steps: {item.steps?.toLocaleString() || 0} • Sleep: {item.sleep_hours || 0}h
+            </Text>
+          </View>
+          <View style={[styles.scorePill, { backgroundColor: colors.success + '20' }]}>
+            <Text style={[styles.scoreText, { color: colors.success }]}>{item.kcal || 0} kcal</Text>
           </View>
         </View>
       );
@@ -237,7 +270,7 @@ const SuperAdminDrilldownScreen = ({ route, navigation }) => {
         <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <View style={styles.cardHeader}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
-              <Image source={{ uri: item.avatar_url }} style={styles.avatar} />
+              <StudentAvatar uri={item.avatar_url} name={item.student_name} colors={colors} />
               <View style={{ flex: 1 }}>
                 <Text style={[styles.founderName, { color: colors.textPrimary }]}>{item.student_name}</Text>
                 <Text style={{ fontSize: 11, color: colors.textSecondary, marginTop: 2 }}>{item.category}</Text>
