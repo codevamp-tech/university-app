@@ -77,6 +77,26 @@ const TeacherAttendanceScreen = ({ navigation }) => {
   const checkInToday = todaySorted.length > 0 ? formatTime(todaySorted[0].punch_time) : '—';
   const checkOutToday = todaySorted.length > 1 ? formatTime(todaySorted[todaySorted.length - 1].punch_time) : '—';
 
+  // Group punches by date (YYYY-MM-DD)
+  const groupedPunches = {};
+  punches.forEach((punch) => {
+    if (punch.punch_time) {
+      const dateStr = punch.punch_time.slice(0, 10);
+      if (!groupedPunches[dateStr]) {
+        groupedPunches[dateStr] = [];
+      }
+      groupedPunches[dateStr].push(punch);
+    }
+  });
+
+  // Sort dates descending
+  const sortedDates = Object.keys(groupedPunches).sort((a, b) => new Date(b) - new Date(a));
+  
+  // Sort punches ascending within each day
+  sortedDates.forEach((dStr) => {
+    groupedPunches[dStr].sort((a, b) => new Date(a.punch_time) - new Date(b.punch_time));
+  });
+
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       {/* Header */}
@@ -132,46 +152,54 @@ const TeacherAttendanceScreen = ({ navigation }) => {
           {/* List of Punches */}
           <Text style={styles.sectionTitle}>Punch Logs (Recent First)</Text>
 
-          {punches.length === 0 ? (
+          {sortedDates.length === 0 ? (
             <View style={styles.emptyCard}>
               <Ionicons name="finger-print-outline" size={48} color="#D1D5DB" style={{ marginBottom: 12 }} />
               <Text style={styles.emptyText}>No punch logs found</Text>
               <Text style={styles.emptySub}>Punches will automatically sync from SRMS biometric portal.</Text>
             </View>
           ) : (
-            punches.map((punch, index) => {
-              const punchTimeStr = punch.punch_time;
-              const date = formatDate(punchTimeStr);
-              const time = formatTime(punchTimeStr);
-              const isInOut = String(punch.in_out).toUpperCase();
-              const isEntry = isInOut === 'IN' || isInOut === 'I' || index % 2 === 1; // Fallback helper
+            sortedDates.map((dateStr) => {
+              const dayPunches = groupedPunches[dateStr];
+              const dateLabel = formatDate(dayPunches[0]?.punch_time);
 
               return (
-                <LinearGradient
-                  key={punch.id || index}
-                  colors={['#FFFFFF', '#F9FAFB']}
-                  style={styles.punchCard}
-                >
-                  <View style={[styles.punchStatusCircle, { backgroundColor: isEntry ? '#E0F2FE' : '#FEE2E2' }]}>
-                    <Ionicons
-                      name={isEntry ? 'enter-outline' : 'exit-outline'}
-                      size={20}
-                      color={isEntry ? '#0284C7' : '#EF4444'}
-                    />
+                <View key={dateStr} style={styles.dateGroupContainer}>
+                  <Text style={styles.dateGroupHeader}>{dateLabel}</Text>
+                  <View style={styles.dateGroupCard}>
+                    {dayPunches.map((punch, idx) => {
+                      const time = formatTime(punch.punch_time);
+                      const isInOut = String(punch.in_out).toUpperCase();
+                      const isEntry = isInOut === 'IN' || isInOut === 'I';
+                      
+                      return (
+                        <View key={punch.id || idx} style={[
+                          styles.subPunchRow, 
+                          idx > 0 && { borderTopWidth: 1, borderTopColor: '#F3F4F6', paddingTop: 12, marginTop: 12 }
+                        ]}>
+                          <View style={[styles.punchStatusCircle, { backgroundColor: isEntry ? '#E0F2FE' : '#FEE2E2' }]}>
+                            <Ionicons
+                              name={isEntry ? 'enter-outline' : 'exit-outline'}
+                              size={18}
+                              color={isEntry ? '#0284C7' : '#EF4444'}
+                            />
+                          </View>
+                          <View style={styles.punchInfo}>
+                            <View style={[styles.statusBadge, { backgroundColor: isEntry ? '#F0F9FF' : '#FEF2F2', alignSelf: 'flex-start' }]}>
+                              <Text style={[styles.statusBadgeText, { color: isEntry ? '#0284C7' : '#EF4444' }]}>
+                                {isEntry ? 'PUNCH IN' : 'PUNCH OUT'}
+                              </Text>
+                            </View>
+                            <Text style={styles.punchMeta}>Device Code: {punch.device_cd || '—'}</Text>
+                          </View>
+                          <View style={styles.punchTimeWrap}>
+                            <Text style={styles.punchTime}>{time}</Text>
+                          </View>
+                        </View>
+                      );
+                    })}
                   </View>
-                  <View style={styles.punchInfo}>
-                    <Text style={styles.punchDate}>{date}</Text>
-                    <Text style={styles.punchMeta}>Device Code: {punch.device_cd || '—'}</Text>
-                  </View>
-                  <View style={styles.punchTimeWrap}>
-                    <Text style={styles.punchTime}>{time}</Text>
-                    <View style={[styles.statusBadge, { backgroundColor: isEntry ? '#F0F9FF' : '#FEF2F2' }]}>
-                      <Text style={[styles.statusBadgeText, { color: isEntry ? '#0284C7' : '#EF4444' }]}>
-                        {isEntry ? 'PUNCH IN' : 'PUNCH OUT'}
-                      </Text>
-                    </View>
-                  </View>
-                </LinearGradient>
+                </View>
               );
             })
           )}
@@ -242,6 +270,33 @@ const styles = StyleSheet.create({
   punchTime: { fontSize: 14, fontWeight: '800', color: '#111827', marginBottom: 4 },
   statusBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
   statusBadgeText: { fontSize: 9, fontWeight: '800', letterSpacing: 0.3 },
+  dateGroupContainer: {
+    marginBottom: 20,
+  },
+  dateGroupHeader: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#4B5563',
+    marginBottom: 8,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  dateGroupCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 6,
+    elevation: 1,
+  },
+  subPunchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
 });
 
 export default TeacherAttendanceScreen;
