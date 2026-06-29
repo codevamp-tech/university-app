@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Animated,
 } from 'react-native';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -8,6 +8,79 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { CURRICULUM as DEFAULT_CURRICULUM } from '../../constants/data';
 import { useUser } from '../../context/UserContext';
 import { getFacultyTimetable } from '../../data/apiService';
+
+const SkeletonPlaceholder = ({ width, height, style }) => {
+  const pulseAnim = useRef(new Animated.Value(0.3)).current;
+
+  useEffect(() => {
+    const pulse = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 0.7,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 0.3,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+      ])
+    );
+    pulse.start();
+    return () => pulse.stop();
+  }, [pulseAnim]);
+
+  return (
+    <Animated.View
+      style={[
+        {
+          width: width || '100%',
+          height: height || 20,
+          backgroundColor: '#E5E7EB',
+          borderRadius: 8,
+          opacity: pulseAnim,
+        },
+        style,
+      ]}
+    />
+  );
+};
+
+const SyllabusSkeleton = () => (
+  <View style={{ flex: 1, paddingHorizontal: 20, paddingTop: 20 }}>
+    {/* Course Header Hero Skeleton */}
+    <View style={{ backgroundColor: '#F3F4F6', borderRadius: 24, padding: 24, gap: 12, marginBottom: 24 }}>
+      <SkeletonPlaceholder width="30%" height={16} />
+      <SkeletonPlaceholder width="80%" height={24} />
+      <SkeletonPlaceholder width="40%" height={14} style={{ marginTop: 4 }} />
+    </View>
+
+    <Text style={{ fontSize: 16, fontWeight: '700', color: '#111827', marginBottom: 16, textTransform: 'uppercase', letterSpacing: 1 }}>
+      Curriculum Oversight
+    </Text>
+
+    {/* Syllabus Card Skeletons */}
+    {[1, 2, 3].map((i) => (
+      <View key={i} style={{ backgroundColor: '#FFFFFF', borderRadius: 20, padding: 20, borderWidth: 1, borderColor: '#E5E7EB', gap: 14, marginBottom: 16 }}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+          <SkeletonPlaceholder width="20%" height={14} />
+          <SkeletonPlaceholder width="30%" height={16} style={{ borderRadius: 8 }} />
+        </View>
+        <SkeletonPlaceholder width="60%" height={18} />
+        <SkeletonPlaceholder width="95%" height={12} />
+        <SkeletonPlaceholder width="85%" height={12} />
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8 }}>
+          <SkeletonPlaceholder width={32} height={32} style={{ borderRadius: 16 }} />
+          <View style={{ flex: 1, gap: 4 }}>
+            <SkeletonPlaceholder width="40%" height={12} />
+            <SkeletonPlaceholder width="30%" height={10} />
+          </View>
+        </View>
+      </View>
+    ))}
+  </View>
+);
 
 const MEDICAL_CURRICULUM = [
   { 
@@ -198,110 +271,110 @@ const CourseManagementScreen = ({ navigation }) => {
         <View style={{ width: 40 }} />
       </LinearGradient>
 
-      <ScrollView
-        contentContainerStyle={styles.scroll}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Course Header */}
-        <View style={styles.courseHeader}>
-          <View style={styles.courseBadgeWrapper}>
-            <LinearGradient
-              colors={['#FFF7ED', '#FFEDD5']}
-              style={styles.courseBadge}
-            >
-              <Text style={styles.courseBadgeText}>{courseBadge}</Text>
-            </LinearGradient>
+      {loading ? (
+        <SyllabusSkeleton />
+      ) : (
+        <ScrollView
+          contentContainerStyle={styles.scroll}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Course Header */}
+          <View style={styles.courseHeader}>
+            <View style={styles.courseBadgeWrapper}>
+              <LinearGradient
+                colors={['#FFF7ED', '#FFEDD5']}
+                style={styles.courseBadge}
+              >
+                <Text style={styles.courseBadgeText}>{courseBadge}</Text>
+              </LinearGradient>
+            </View>
+            <Text style={styles.courseTitle}>{courseTitle}</Text>
+            <Text style={styles.courseSubtitle}>Academic Session 2023-24</Text>
           </View>
-          <Text style={styles.courseTitle}>{courseTitle}</Text>
-          <Text style={styles.courseSubtitle}>Academic Session 2023-24</Text>
-        </View>
 
 
-        {/* Curriculum Oversight */}
-        <View style={styles.curriculumHeader}>
-          <Text style={styles.sectionTitle}>Curriculum Oversight</Text>
-          <View style={styles.viewToggle}>
-            <TouchableOpacity style={[styles.toggleBtn, styles.toggleBtnActive]} activeOpacity={0.8}>
-              <Ionicons name="grid-outline" size={18} color="#EA580C" />
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.toggleBtn} activeOpacity={0.8}>
-              <Ionicons name="list-outline" size={18} color="#9CA3AF" />
-            </TouchableOpacity>
+          {/* Curriculum Oversight */}
+          <View style={styles.curriculumHeader}>
+            <Text style={styles.sectionTitle}>Curriculum Oversight</Text>
+            <View style={styles.viewToggle}>
+              <TouchableOpacity style={[styles.toggleBtn, styles.toggleBtnActive]} activeOpacity={0.8}>
+                <Ionicons name="grid-outline" size={18} color="#EA580C" />
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.toggleBtn} activeOpacity={0.8}>
+                <Ionicons name="list-outline" size={18} color="#9CA3AF" />
+              </TouchableOpacity>
+            </View>
           </View>
-        </View>
 
-        {loading ? (
-          <View style={{ padding: 20, alignItems: 'center' }}>
-            <ActivityIndicator color="#EA580C" />
-          </View>
-        ) : curriculumToShow.length === 0 ? (
-          <View style={styles.emptyCard}>
-            <Ionicons name="book-outline" size={48} color="#D1D5DB" style={{ marginBottom: 12 }} />
-            <Text style={styles.emptyText}>No Syllabus Found</Text>
-            <Text style={styles.emptySub}>Please pull-to-refresh on your Attendance tab or login again to sync from SRMS ERP.</Text>
-          </View>
-        ) : (
-          curriculumToShow.map((course) => (
-            <LinearGradient
-              key={course.id}
-              colors={['#FFFFFF', '#F9FAFB']}
-              style={styles.currCard}
-            >
-              <View style={styles.currHeader}>
-                <LinearGradient
-                  colors={[course.color + '12', course.color + '08']}
-                  style={styles.currIcon}
-                >
-                  <Ionicons name="book-outline" size={20} color={course.color} />
-                </LinearGradient>
-                <LinearGradient
-                  colors={[course.color + '12', course.color + '08']}
-                  style={styles.currTypeBadge}
-                >
-                  <Text style={[styles.currTypeText, { color: course.color }]}>{course.type}</Text>
-                </LinearGradient>
-              </View>
-
-              <Text style={styles.currName}>{course.name}</Text>
-              <Text style={styles.currDesc}>{course.description}</Text>
-
-              <View style={styles.facultySection}>
-                <Text style={styles.facultyLabel}>FACULTY ASSIGNED</Text>
-                <View style={styles.facultyInfo}>
+          {curriculumToShow.length === 0 ? (
+            <View style={styles.emptyCard}>
+              <Ionicons name="book-outline" size={48} color="#D1D5DB" style={{ marginBottom: 12 }} />
+              <Text style={styles.emptyText}>No Syllabus Found</Text>
+              <Text style={styles.emptySub}>Please pull-to-refresh on your Attendance tab or login again to sync from SRMS ERP.</Text>
+            </View>
+          ) : (
+            curriculumToShow.map((course) => (
+              <LinearGradient
+                key={course.id}
+                colors={['#FFFFFF', '#F9FAFB']}
+                style={styles.currCard}
+              >
+                <View style={styles.currHeader}>
                   <LinearGradient
-                    colors={['#EA580C', '#9A3412']}
-                    style={styles.facultyAvatar}
+                    colors={[course.color + '12', course.color + '08']}
+                    style={styles.currIcon}
                   >
-                    <Text style={styles.facultyAvatarText}>
-                      {course.faculty.charAt(0)}
-                    </Text>
+                    <Ionicons name="book-outline" size={20} color={course.color} />
                   </LinearGradient>
-                  <View>
-                    <Text style={styles.facultyName}>{course.faculty}</Text>
-                    <Text style={styles.facultyRole}>{course.role}</Text>
+                  <LinearGradient
+                    colors={[course.color + '12', course.color + '08']}
+                    style={styles.currTypeBadge}
+                  >
+                    <Text style={[styles.currTypeText, { color: course.color }]}>{course.type}</Text>
+                  </LinearGradient>
+                </View>
+
+                <Text style={styles.currName}>{course.name}</Text>
+                <Text style={styles.currDesc}>{course.description}</Text>
+
+                <View style={styles.facultySection}>
+                  <Text style={styles.facultyLabel}>FACULTY ASSIGNED</Text>
+                  <View style={styles.facultyInfo}>
+                    <LinearGradient
+                      colors={['#EA580C', '#9A3412']}
+                      style={styles.facultyAvatar}
+                    >
+                      <Text style={styles.facultyAvatarText}>
+                        {course.faculty.charAt(0)}
+                      </Text>
+                    </LinearGradient>
+                    <View>
+                      <Text style={styles.facultyName}>{course.faculty}</Text>
+                      <Text style={styles.facultyRole}>{course.role}</Text>
+                    </View>
                   </View>
                 </View>
-              </View>
 
-              <View style={styles.progressSection}>
-                <View style={styles.progressHeader}>
-                  <Text style={styles.progressLabel}>Syllabus Progress</Text>
-                  <Text style={[styles.progressPercent, { color: course.color }]}>{course.progress}%</Text>
+                <View style={styles.progressSection}>
+                  <View style={styles.progressHeader}>
+                    <Text style={styles.progressLabel}>Syllabus Progress</Text>
+                    <Text style={[styles.progressPercent, { color: course.color }]}>{course.progress}%</Text>
+                  </View>
+                  <View style={styles.progressBarBg}>
+                    <LinearGradient
+                      colors={[course.color, course.color + 'CC']}
+                      style={[styles.progressBarFill, { width: `${course.progress}%` }]}
+                    />
+                  </View>
                 </View>
-                <View style={styles.progressBarBg}>
-                  <LinearGradient
-                    colors={[course.color, course.color + 'CC']}
-                    style={[styles.progressBarFill, { width: `${course.progress}%` }]}
-                  />
-                </View>
-              </View>
-            </LinearGradient>
-          ))
-        )}
+              </LinearGradient>
+            ))
+          )}
 
 
-        <View style={{ height: 40 }} />
-      </ScrollView>
+          <View style={{ height: 40 }} />
+        </ScrollView>
+      )}
     </View>
   );
 };

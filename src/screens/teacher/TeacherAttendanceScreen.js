@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl, Animated,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -8,6 +8,80 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useUser } from '../../context/UserContext';
 import { getFacultyAttendance, syncFacultyData } from '../../data/apiService';
 import { Colors } from '../../constants/colors';
+
+const SkeletonPlaceholder = ({ width, height, style }) => {
+  const pulseAnim = useRef(new Animated.Value(0.3)).current;
+
+  useEffect(() => {
+    const pulse = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 0.7,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 0.3,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+      ])
+    );
+    pulse.start();
+    return () => pulse.stop();
+  }, [pulseAnim]);
+
+  return (
+    <Animated.View
+      style={[
+        {
+          width: width || '100%',
+          height: height || 20,
+          backgroundColor: '#E5E7EB',
+          borderRadius: 8,
+          opacity: pulseAnim,
+        },
+        style,
+      ]}
+    />
+  );
+};
+
+const AttendanceSkeleton = () => (
+  <View style={{ flex: 1, paddingHorizontal: 20, paddingTop: 20 }}>
+    {/* Summary Cards Skeleton */}
+    <View style={{ flexDirection: 'row', gap: 12, marginBottom: 24 }}>
+      <View style={{ flex: 1, backgroundColor: '#E5E7EB', height: 100, borderRadius: 24 }} />
+      <View style={{ flex: 1.2, backgroundColor: '#FFFFFF', height: 100, borderRadius: 24, padding: 16, gap: 10, borderWidth: 1, borderColor: '#E5E7EB' }}>
+        <SkeletonPlaceholder width="75%" height={14} />
+        <SkeletonPlaceholder width="40%" height={10} />
+        <SkeletonPlaceholder width="60%" height={14} />
+      </View>
+    </View>
+
+    <Text style={{ fontSize: 16, fontWeight: '900', color: '#111827', marginBottom: 14 }}>Punch Logs (Recent First)</Text>
+
+    {/* Date Groups Skeleton */}
+    {[1, 2, 3].map((i) => (
+      <View key={i} style={{ marginBottom: 20 }}>
+        <SkeletonPlaceholder width="35%" height={14} style={{ marginBottom: 8 }} />
+        <View style={{ backgroundColor: '#FFFFFF', borderRadius: 20, padding: 16, borderWidth: 1, borderColor: '#E5E7EB', gap: 14 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+            <SkeletonPlaceholder width={36} height={36} style={{ borderRadius: 18 }} />
+            <View style={{ flex: 1, gap: 6 }}>
+              <SkeletonPlaceholder width="50%" height={12} />
+              <SkeletonPlaceholder width="30%" height={10} />
+            </View>
+            <View style={{ alignItems: 'flex-end', gap: 4 }}>
+              <SkeletonPlaceholder width={50} height={12} />
+              <SkeletonPlaceholder width={60} height={14} style={{ borderRadius: 6 }} />
+            </View>
+          </View>
+        </View>
+      </View>
+    ))}
+  </View>
+);
 
 function formatDate(dateStr) {
   if (!dateStr) return '';
@@ -108,10 +182,7 @@ const TeacherAttendanceScreen = ({ navigation }) => {
       </LinearGradient>
 
       {loading ? (
-        <View style={styles.loadingWrap}>
-          <ActivityIndicator size="large" color={Colors.primary} />
-          <Text style={styles.loadingText}>Fetching punch records...</Text>
-        </View>
+        <AttendanceSkeleton />
       ) : (
         <ScrollView
           contentContainerStyle={styles.scroll}
