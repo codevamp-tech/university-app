@@ -97,6 +97,8 @@ import TeacherPrivacyScreen from '../screens/teacher/TeacherPrivacyScreen';
 import TeacherAlertsScreen from '../screens/teacher/TeacherAlertsScreen';
 import OtherTeacherProfileScreen from '../screens/teacher/OtherTeacherProfileScreen';
 import AdminFacultyDetailScreen from '../screens/admin/AdminFacultyDetailScreen';
+import SalarySlipScreen from '../screens/teacher/SalarySlipScreen';
+import LeaveBalanceScreen from '../screens/teacher/LeaveBalanceScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -214,6 +216,8 @@ const AppNavigator = () => {
       <Stack.Screen name="TeacherHelp" component={TeacherHelpCenterScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="TeacherPrivacy" component={TeacherPrivacyScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="TeacherAlerts" component={TeacherAlertsScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="SalarySlip" component={SalarySlipScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="LeaveBalance" component={LeaveBalanceScreen} options={{ animation: 'slide_from_right' }} />
     </Stack.Navigator>
   );
 };

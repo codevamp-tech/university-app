@@ -338,6 +338,41 @@ const TeacherDashboardScreen = ({ navigation }) => {
         <View style={styles.quickActionsContainer}>
           <TouchableOpacity
             style={styles.quickActionCard}
+            onPress={() => navigation.navigate('Syllabus')}
+            activeOpacity={0.8}
+          >
+            <View style={[styles.quickActionIconBg, { backgroundColor: '#FEF3C7' }]}>
+              <Ionicons name="book-outline" size={20} color="#D97706" />
+            </View>
+            <Text style={styles.quickActionLabel}>Syllabus</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.quickActionCard}
+            onPress={() => navigation.navigate('SalarySlip')}
+            activeOpacity={0.8}
+          >
+            <View style={[styles.quickActionIconBg, { backgroundColor: '#ECFDF5' }]}>
+              <Ionicons name="card-outline" size={20} color="#10B981" />
+            </View>
+            <Text style={styles.quickActionLabel}>Payslip</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.quickActionCard}
+            onPress={() => navigation.navigate('LeaveBalance')}
+            activeOpacity={0.8}
+          >
+            <View style={[styles.quickActionIconBg, { backgroundColor: '#EEF2FF' }]}>
+              <Ionicons name="calendar-outline" size={20} color="#4F46E5" />
+            </View>
+            <Text style={styles.quickActionLabel}>Leaves</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={[styles.quickActionsContainer, { marginTop: -12, marginBottom: 24 }]}>
+          <TouchableOpacity
+            style={styles.quickActionCard}
             onPress={() => navigation.navigate('RaiseIssue')}
             activeOpacity={0.8}
           >
@@ -358,16 +393,7 @@ const TeacherDashboardScreen = ({ navigation }) => {
             <Text style={styles.quickActionLabel}>Campus Alerts</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.quickActionCard}
-            onPress={() => navigation.navigate('Syllabus')}
-            activeOpacity={0.8}
-          >
-            <View style={[styles.quickActionIconBg, { backgroundColor: '#FEF3C7' }]}>
-              <Ionicons name="book-outline" size={20} color="#D97706" />
-            </View>
-            <Text style={styles.quickActionLabel}>Syllabus</Text>
-          </TouchableOpacity>
+          <View style={[styles.quickActionCard, { backgroundColor: 'transparent', shadowOpacity: 0, elevation: 0, borderWidth: 0 }]} />
         </View>
 
         {/* Today's Schedule */}

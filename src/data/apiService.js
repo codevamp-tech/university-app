@@ -1683,3 +1683,30 @@ export async function aiChatCompletionAPI(token, payload) {
   });
   return unwrap(res, null);
 }
+
+/**
+ * POST /api/v1/faculty/salary-slip
+ * Fetch salary slip for a specific month/year.
+ */
+export async function getSalarySlip(token, month, year) {
+  const res = await apiCall('/api/v1/faculty/salary-slip', {
+    method: 'POST',
+    headers: authHeaders(token),
+    body: JSON.stringify({ month, year }),
+  });
+  return unwrap(res, null);
+}
+
+/**
+ * POST /api/v1/faculty/leave-summary
+ * Fetch leave entitlements, balances, and monthly leave records.
+ */
+export async function getLeaveSummary(token, month, year) {
+  const res = await apiCall('/api/v1/faculty/leave-summary', {
+    method: 'POST',
+    headers: authHeaders(token),
+    body: JSON.stringify({ month: month || null, year: year || null }),
+  });
+  return unwrap(res, null);
+}
+
