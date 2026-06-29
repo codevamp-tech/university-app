@@ -8,7 +8,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useUser } from '../../context/UserContext';
-import { getFacultyTimetable, getFacultyTopics, uploadAvatarAPI } from '../../data/apiService';
+import { getFacultyTimetable, getFacultyTopics, uploadAvatarAPI, listGrievancesAPI } from '../../data/apiService';
 import ActivityRing from '../../components/ActivityRing';
 import { getAvatarUrl } from '../../utils/avatar';
 import { useHealthMetrics } from '../../hooks/useHealthMetrics';
@@ -56,6 +56,32 @@ const TeacherDashboardScreen = ({ navigation }) => {
   const [showAvatarSetup, setShowAvatarSetup] = useState(false);
   const [selectedAvatarUri, setSelectedAvatarUri] = useState(null);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+
+  const [raisedIssues, setRaisedIssues] = useState([]);
+  const [isLoadingIssues, setIsLoadingIssues] = useState(false);
+
+  const fetchRaisedIssues = useCallback(async () => {
+    if (!accessToken) return;
+    setIsLoadingIssues(true);
+    try {
+      const data = await listGrievancesAPI(accessToken);
+      if (data) {
+        setRaisedIssues(data);
+      }
+    } catch (error) {
+      console.warn('[TeacherDashboard] Failed to fetch issues:', error);
+    } finally {
+      setIsLoadingIssues(false);
+    }
+  }, [accessToken]);
+
+  useEffect(() => {
+    fetchRaisedIssues();
+    const unsubscribe = navigation.addListener('focus', () => {
+      fetchRaisedIssues();
+    });
+    return unsubscribe;
+  }, [navigation, fetchRaisedIssues]);
 
   useEffect(() => {
     if (!user || user.role !== 'teacher') return;
@@ -544,6 +570,112 @@ const TeacherDashboardScreen = ({ navigation }) => {
             </View>
           </>
         )}
+
+        {/* Support Tickets Section */}
+        <View style={{ marginTop: 8, marginBottom: 24 }}>
+          <View style={styles.scheduleHeader}>
+            <View>
+              <Text style={styles.sectionTitle}>🎫 My Support Tickets</Text>
+            </View>
+            <TouchableOpacity onPress={() => navigation.navigate('RaiseIssue')}>
+              <Text style={styles.viewAllText}>+ Raise New</Text>
+            </TouchableOpacity>
+          </View>
+
+          {isLoadingIssues ? (
+            <View style={styles.loadingCard}>
+              <ActivityIndicator color="#EA580C" />
+              <Text style={styles.loadingText}>Loading tickets...</Text>
+            </View>
+          ) : raisedIssues.length === 0 ? (
+            <View style={styles.emptyCard}>
+              <MaterialCommunityIcons name="ticket-confirmation-outline" size={36} color="#9CA3AF" style={{ marginBottom: 8 }} />
+              <Text style={styles.emptyScheduleText}>No issues raised yet</Text>
+            </View>
+          ) : (
+            <View style={styles.issuesList}>
+              {raisedIssues.map((issue) => {
+                const statusLower = (issue.status || '').toLowerCase().replace('-', '_');
+                let statusColor = '#9CA3AF'; // gray
+                if (statusLower === 'pending') statusColor = '#3B82F6'; // blue
+                else if (statusLower === 'open') statusColor = '#EF4444'; // red
+                else if (statusLower === 'in_progress') statusColor = '#F59E0B'; // orange
+                else if (statusLower === 'resolved') statusColor = '#10B981'; // green
+
+                let categoryIcon = 'alert-circle-outline';
+                if (issue.category === 'academic') categoryIcon = 'school-outline';
+                else if (issue.category === 'technical') categoryIcon = 'laptop';
+                else if (issue.category === 'fees') categoryIcon = 'cash-outline';
+                else if (issue.category === 'hostel') categoryIcon = 'bed-outline';
+                else if (issue.category === 'transport') categoryIcon = 'bus-outline';
+                else if (issue.category === 'admin') categoryIcon = 'office-building-outline';
+                else if (issue.category === 'safety') categoryIcon = 'shield-check-outline';
+
+                const extractAttachmentUrl = (desc) => {
+                  if (!desc) return null;
+                  const match = desc.match(/Attachment:\s*(https?:\/\/\S+)/i);
+                  return match ? match[1] : null;
+                };
+                const cleanDescription = (desc) => {
+                  if (!desc) return '';
+                  return desc.replace(/Attachment:\s*https?:\/\/\S+/gi, '').trim();
+                };
+                const attachmentUrl = extractAttachmentUrl(issue.description);
+                const displayDesc = cleanDescription(issue.description);
+
+                return (
+                  <View key={issue.id} style={styles.issueItemCard}>
+                    <View style={styles.issueItemHeader}>
+                      <View style={[styles.issueIconCircle, { backgroundColor: '#FFF7ED' }]}>
+                        <MaterialCommunityIcons name={categoryIcon} size={20} color="#EA580C" />
+                      </View>
+                      <View style={{ flex: 1, marginLeft: 12 }}>
+                        <Text style={styles.issueSubject} numberOfLines={1}>
+                          {issue.subject}
+                        </Text>
+                        <Text style={styles.issueCategoryText}>
+                          Category: {issue.category.toUpperCase()} • Priority: {issue.priority.toUpperCase()}
+                        </Text>
+                      </View>
+                      <View style={[styles.statusBadge, { backgroundColor: statusColor + '20' }]}>
+                        <Text style={[styles.statusBadgeText, { color: statusColor }]}>
+                          {issue.status.replace(/[-_]/g, ' ').toUpperCase()}
+                        </Text>
+                      </View>
+                    </View>
+
+                    <Text style={styles.issueDesc} numberOfLines={2}>
+                      {displayDesc}
+                    </Text>
+
+                    {attachmentUrl && (
+                      <View style={{ marginTop: 4, marginBottom: 12, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                        <Image
+                          source={{ uri: attachmentUrl }}
+                          style={{ width: 80, height: 50, borderRadius: 8, borderWidth: 1, borderColor: '#E5E7EB' }}
+                          resizeMode="cover"
+                        />
+                        <View>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                            <MaterialCommunityIcons name="paperclip" size={14} color="#EA580C" />
+                            <Text style={{ fontSize: 12, fontWeight: '700', color: '#EA580C' }}>Attachment</Text>
+                          </View>
+                          <Text style={{ fontSize: 10, color: '#9CA3AF' }}>Uploaded file</Text>
+                        </View>
+                      </View>
+                    )}
+
+                    <View style={styles.issueFooter}>
+                      <Text style={styles.issueTimeText}>
+                        {new Date(issue.created_at).toLocaleDateString()} {new Date(issue.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </Text>
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
+          )}
+        </View>
 
         <View style={{ height: 40 }} />
       </ScrollView>
@@ -1070,6 +1202,70 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: '#6B7280',
+  },
+  issuesList: {
+    gap: 16,
+    marginTop: 12,
+  },
+  issueItemCard: {
+    padding: 20,
+    borderRadius: 24,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.04,
+    shadowRadius: 10,
+    elevation: 3,
+  },
+  issueItemHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  issueIconCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  issueSubject: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#111827',
+  },
+  issueCategoryText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#9CA3AF',
+    marginTop: 2,
+  },
+  statusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  statusBadgeText: {
+    fontSize: 10,
+    fontWeight: '900',
+  },
+  issueDesc: {
+    fontSize: 13,
+    lineHeight: 18,
+    color: '#4B5563',
+    marginBottom: 12,
+  },
+  issueFooter: {
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(128,128,128,0.1)',
+    paddingTop: 8,
+  },
+  issueTimeText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#9CA3AF',
   },
 });
 
