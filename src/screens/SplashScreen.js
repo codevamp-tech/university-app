@@ -1,6 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Animated, Easing } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { View, Text, StyleSheet, Animated, Easing, Image } from 'react-native';
 import { Colors } from '../constants/colors';
 import { APP_CONFIG } from '../config/appConfig';
 import { useUser } from '../context/UserContext';
@@ -85,9 +84,11 @@ const SplashScreen = ({ navigation }) => {
         ]}
       >
         <View style={styles.logoCard}>
-          <View style={styles.logoCircle}>
-            <Ionicons name="school" size={42} color={Colors.white} />
-          </View>
+          <Image
+            source={require('../../assets/unicampus-logo.png')}
+            style={{ width: 100, height: 100, borderRadius: 24 }}
+            resizeMode="contain"
+          />
         </View>
       </Animated.View>
 

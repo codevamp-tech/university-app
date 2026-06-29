@@ -4,7 +4,7 @@
     "slug": "university-portal",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/unicampus-logo.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "updates": {
@@ -14,7 +14,7 @@
       "policy": "appVersion"
     },
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/unicampus-logo.png",
       "resizeMode": "contain",
       "backgroundColor": "#F0F4FF"
     },
@@ -36,7 +36,7 @@
     "android": {
       "usesCleartextTraffic": true,
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/unicampus-logo.png",
         "backgroundColor": "#F0F4FF"
       },
       "package": "com.university.portal",
@@ -71,7 +71,7 @@
       [
         "expo-notifications",
         {
-          "icon": "./assets/icon.png",
+          "icon": "./assets/unicampus-logo.png",
           "color": "#ffffff"
         }
       ],
