@@ -237,13 +237,16 @@ const DashboardScreen = ({ navigation }) => {
 
   // ── Dynamic featured books — same course-aware sorting as LibraryMainScreen ──
   const featuredBooks = React.useMemo(() => {
-    if (!user) return booksData.slice(0, 4);
+    // Only display books that have a valid pdfUrl
+    const validBooks = booksData.filter(b => !!b.pdfUrl);
+
+    if (!user) return validBooks.slice(0, 4);
 
     const isMed = isMedicalStudent(user) || (user.course || '').toLowerCase().includes('mbbs') || (user.category || '').toLowerCase().includes('medical');
 
     if (isMed) {
       const medCategories = ['Medicine', 'Medical', 'Anatomy', 'Pathology', 'Pharmacology', 'Nutrition', 'Pharmaceutics', 'Physiology'];
-      const filtered = booksData.filter(b => medCategories.includes(b.category));
+      const filtered = validBooks.filter(b => medCategories.includes(b.category));
       const sorted = filtered.sort((a, b) => {
         const aId = parseInt(a.id, 10);
         const bId = parseInt(b.id, 10);
@@ -269,7 +272,7 @@ const DashboardScreen = ({ navigation }) => {
       matchCategories = ['Entrepreneurship', 'Management', 'Finance', 'Business'];
     }
 
-    const sorted = [...booksData].sort((a, b) => {
+    const sorted = [...validBooks].sort((a, b) => {
       const aMatch = matchCategories.includes(a.category);
       const bMatch = matchCategories.includes(b.category);
       if (aMatch && !bMatch) return -1;

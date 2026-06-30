@@ -269,7 +269,17 @@ const LibraryMainScreen = ({ navigation }) => {
 
     try {
       const data = await getEBooks(query, colgcd);
-      setBooks(data || []);
+      
+      // Filter the local static drive books (only those that have a pdfUrl link) by query
+      const driveBooks = booksData.filter(b => {
+        if (!b.pdfUrl) return false;
+        const titleMatch = String(b.title || '').toLowerCase().includes(query.toLowerCase());
+        const authorMatch = String(b.author || '').toLowerCase().includes(query.toLowerCase());
+        return titleMatch || authorMatch;
+      });
+
+      // Merge drive books first followed by ERP search results
+      setBooks([...driveBooks, ...(data || [])]);
     } catch (err) {
       console.warn('[Library] Failed to fetch ebooks:', err);
     } finally {
