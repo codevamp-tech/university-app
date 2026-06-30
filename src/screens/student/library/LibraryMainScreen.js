@@ -7,6 +7,7 @@ import { useTheme } from '../../../hooks/useTheme';
 import { Feather, MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { useUser } from '../../../context/UserContext';
 import { isMedicalStudent } from '../../../utils/courseDisplay';
+import { getEBooks } from '../../../data/apiService';
 
 const { width } = Dimensions.get('window');
 
@@ -253,71 +254,42 @@ export const booksData = [
 
 const LibraryMainScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
-  const { colors, isDark } = useTheme();
+  const { colors } = useTheme();
   const { user } = useUser();
 
-  const sortedBooks = React.useMemo(() => {
-    if (!user) return booksData;
+  const [books, setBooks] = React.useState([]);
+  const [loading, setLoading] = React.useState(true);
+  const [searchText, setSearchText] = React.useState('');
 
-    const isMed = isMedicalStudent(user) || (user.course || '').toLowerCase().includes('mbbs') || (user.category || '').toLowerCase().includes('medical');
+  const fetchBooks = React.useCallback(async (query = '') => {
+    setLoading(true);
+    // Parse colgcd from rollno or emp_id e.g. "2143291" -> default "11"
+    const parts = String(user?.rollno || user?.emp_id || '').split('/');
+    const colgcd = parts.length >= 2 ? parts[1] : '11';
 
-    if (isMed) {
-      const medCategories = ['Medicine', 'Medical', 'Anatomy', 'Pathology', 'Pharmacology', 'Nutrition', 'Pharmaceutics', 'Physiology'];
-      const filtered = booksData.filter(b => medCategories.includes(b.category));
-      return filtered.sort((a, b) => {
-        const aId = parseInt(a.id, 10);
-        const bId = parseInt(b.id, 10);
-        if (aId >= 16 && bId < 16) return -1;
-        if (aId < 16 && bId >= 16) return 1;
-        return aId - bId;
-      });
+    try {
+      const data = await getEBooks(query, colgcd);
+      setBooks(data || []);
+    } catch (err) {
+      console.warn('[Library] Failed to fetch ebooks:', err);
+    } finally {
+      setLoading(false);
     }
-
-    const courseLower = (user.course || '').toLowerCase();
-    const branchLower = (user.branch || '').toLowerCase();
-    const categoryLower = (user.category || '').toLowerCase();
-
-    let matchCategories = [];
-    if (courseLower.includes('pharma')) {
-      // B.Pharma, D.Pharma, M.Pharma — Pharmacology books first
-      matchCategories = ['Pharmacology', 'Pharmaceutics', 'Anatomy', 'Pathology'];
-    } else if (branchLower.includes('computer') || branchLower.includes('cse') || branchLower.includes('it') || courseLower.includes('mca') || courseLower.includes('bca') || branchLower.includes('software')) {
-      matchCategories = ['Programming', 'Software Engineering', 'AI / ML', 'Computer Science'];
-    } else if (branchLower.includes('electronics') || branchLower.includes('ec') || branchLower.includes('ece')) {
-      matchCategories = ['Electronics', 'ECE', 'Digital Systems', 'Circuits'];
-    } else if (courseLower.includes('mba') || courseLower.includes('bba') || courseLower.includes('com') || courseLower.includes('business')) {
-      matchCategories = ['Entrepreneurship', 'Management', 'Finance', 'Business'];
-    }
-
-    return [...booksData].sort((a, b) => {
-      const aMatch = matchCategories.includes(a.category);
-      const bMatch = matchCategories.includes(b.category);
-
-      if (aMatch && !bMatch) return -1;
-      if (!aMatch && bMatch) return 1;
-      return 0; // maintain original order
-    });
   }, [user]);
 
+  React.useEffect(() => {
+    fetchBooks('');
+  }, [fetchBooks]);
+
   const renderBook = ({ item }) => {
-    const isBookUnlocked = parseInt(item.id, 10) >= 16;
+    const isBookUnlocked = true; // All ERP-synced e-books are unlocked for academic use
     return (
       <TouchableOpacity 
-        style={[styles.bookCard, { backgroundColor: colors.card, borderColor: colors.border }, !isBookUnlocked && { opacity: 0.5 }]}
+        style={[styles.bookCard, { backgroundColor: colors.card, borderColor: colors.border }]}
         onPress={() => {
-          if (isBookUnlocked) {
-            navigation.navigate('BookDetail', { book: item });
-          } else {
-            Alert.alert('Premium Feature', 'This feature is locked in the free trial.');
-          }
+          navigation.navigate('BookDetail', { book: item });
         }}
       >
-        {!isBookUnlocked && (
-          <View style={styles.lockBadge}>
-            <MaterialIcons name="lock" size={10} color="#FFFFFF" />
-            <Text style={styles.lockBadgeText}>DEMO LOCK</Text>
-          </View>
-        )}
         <Image source={{ uri: item.cover }} style={styles.bookCover} />
         <View style={styles.bookInfo}>
           <Text style={[styles.bookTitle, { color: colors.textPrimary }]} numberOfLines={2}>{item.title}</Text>
@@ -351,18 +323,38 @@ const LibraryMainScreen = ({ navigation }) => {
             placeholder="Search books, authors..." 
             placeholderTextColor={colors.textMuted}
             style={[styles.searchInput, { color: colors.textPrimary }]}
+            value={searchText}
+            onChangeText={(text) => {
+              setSearchText(text);
+              fetchBooks(text);
+            }}
           />
         </View>
       </View>
 
-      <FlatList
-        data={sortedBooks}
-        renderItem={renderBook}
-        keyExtractor={item => item.id}
-        numColumns={2}
-        contentContainerStyle={styles.list}
-        showsVerticalScrollIndicator={false}
-      />
+      {loading ? (
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color="#4338CA" />
+          <Text style={{ marginTop: 12, color: colors.textSecondary, fontWeight: '600' }}>Fetching library e-books...</Text>
+        </View>
+      ) : books.length === 0 ? (
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 40 }}>
+          <Ionicons name="book-outline" size={48} color={colors.textMuted} />
+          <Text style={{ marginTop: 16, fontSize: 16, fontWeight: '800', color: colors.textPrimary }}>No E-Books Found</Text>
+          <Text style={{ marginTop: 6, fontSize: 13, color: colors.textSecondary, textAlign: 'center' }}>
+            No matching books with readable PDFs found in the ERP database.
+          </Text>
+        </View>
+      ) : (
+        <FlatList
+          data={books}
+          renderItem={renderBook}
+          keyExtractor={item => item.id}
+          numColumns={2}
+          contentContainerStyle={styles.list}
+          showsVerticalScrollIndicator={false}
+        />
+      )}
     </View>
   );
 };

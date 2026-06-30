@@ -1934,5 +1934,85 @@ export async function getFacultyGroupChats(empId, batchName, phase = '1', subpha
   return [];
 }
 
+/**
+ * Fetch and filter live e-books from the ERP library search API.
+ */
+export async function getEBooks(searchQuery = '', colg = '11') {
+  try {
+    const response = await fetch('https://myportal.srms.ac.in/Library/EBook/searchbookbytitle', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        searchvalue: String(searchQuery),
+        colg: String(colg)
+      }),
+    });
+    const data = await response.json();
+    if (Array.isArray(data)) {
+      const validBooks = [];
+      const defaultCovers = [
+        'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?q=80&w=1000&auto=format&fit=crop',
+        'https://images.unsplash.com/photo-1516979187457-637abb4f9353?q=80&w=1000&auto=format&fit=crop',
+        'https://images.unsplash.com/photo-1614741118887-7a4ee193a5fa?q=80&w=1000&auto=format&fit=crop',
+        'https://images.unsplash.com/photo-1541963463532-d68292c34b19?q=80&w=1000&auto=format&fit=crop'
+      ];
+
+      for (let i = 0; i < data.length; i++) {
+        const book = data[i];
+        const link = book.link;
+        const pdf = book.pdf;
+
+        // Skip books without valid reader link or pdf
+        const hasLink = link && String(link).trim() !== '' && String(link) !== '0' && String(link).toLowerCase() !== 'null';
+        const hasPdf = pdf && String(pdf).trim() !== '' && String(pdf) !== '0' && String(pdf).toLowerCase() !== 'null';
+
+        if (!hasLink && !hasPdf) continue;
+
+        // Resolve PDF URL
+        let pdfUrl = null;
+        if (hasPdf) {
+          let cleanPdf = String(pdf).replace(/\\/g, '/');
+          const idx = cleanPdf.toLowerCase().indexOf('/library/cataloguing/');
+          if (idx !== -1) {
+            pdfUrl = 'https://myportal.srms.ac.in' + cleanPdf.substring(idx);
+          } else {
+            pdfUrl = 'https://myportal.srms.ac.in/' + cleanPdf;
+          }
+        } else if (hasLink) {
+          pdfUrl = String(link);
+        }
+
+        // Resolve Cover Page URL
+        let coverUrl = defaultCovers[i % defaultCovers.length];
+        const cover = book.coverpage;
+        if (cover && String(cover).trim() !== '' && String(cover) !== '0' && String(cover).toLowerCase() !== 'null') {
+          let cleanCover = String(cover).replace(/\\/g, '/');
+          const idx = cleanCover.toLowerCase().indexOf('/library/cataloguing/');
+          if (idx !== -1) {
+            coverUrl = 'https://myportal.srms.ac.in' + cleanCover.substring(idx);
+          }
+        }
+
+        validBooks.push({
+          id: book.ttl_id || String(Math.random()),
+          title: book.title || 'Untitled E-Book',
+          author: book.author_name || 'Unknown Author',
+          cover: coverUrl,
+          pdfUrl: pdfUrl,
+          rating: 4.8,
+          category: 'Medical',
+          pages: 650,
+          description: `Official study resources for ${book.title || 'course material'}.`
+        });
+      }
+      return validBooks;
+    }
+  } catch (err) {
+    console.warn('[apiService] getEBooks failed:', err);
+  }
+  return [];
+}
+
+
 
 
