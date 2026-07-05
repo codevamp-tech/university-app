@@ -73,49 +73,85 @@ const AdminDashboardScreen = ({ navigation }) => {
         if (overview) setStats(overview);
 
         if (user?.role === 'super_admin') {
-          const sStats = await getSuperAdminAnalytics(accessToken);
-          if (sStats) {
-            setSuperStats(sStats);
-          }
-          try {
-            const [lList, sList, fitList, teachList] = await Promise.all([
-              getSuperAdminDrilldown(accessToken, 'hustle_students'),
-              getAllStudents(accessToken),
-              getSuperAdminDrilldown(accessToken, 'fitness_students'),
-              getSuperAdminDrilldown(accessToken, 'teachers')
-            ]);
-            if (lList && Array.isArray(lList)) {
-              setLeaderboardGlimpse(lList.slice(0, 3));
-            }
-            if (sList && Array.isArray(sList)) {
-              setStudentsList(sList);
-            }
-            if (fitList && Array.isArray(fitList) && fitList.length > 0) {
-              setFitnessStudentsList(fitList);
-            } else if (sList && Array.isArray(sList)) {
-              const mockFit = sList
-                .filter(s => String(s.category).toLowerCase() === 'medical')
-                .map((s, idx) => {
-                  const steps = 7500 + (idx * 450) % 6500;
-                  const kcal = Math.round(steps / 20);
-                  const sleep = (6.2 + (idx * 0.3) % 2.0).toFixed(1);
-                  return {
-                    id: s.id || s.rollno || String(idx),
-                    student_name: s.full_name || s.username || 'Student',
-                    avatar_url: s.avatar_url,
-                    steps: steps,
-                    sleep_hours: parseFloat(sleep),
-                    kcal: kcal
-                  };
-                });
-              setFitnessStudentsList(mockFit);
-            }
-            if (teachList && Array.isArray(teachList)) {
-              setTeachersList(teachList);
-            }
-          } catch (e) {
-            console.warn('[AdminDashboard] Drilldown/Students/Fitness/Faculty fetch error:', e);
-          }
+          // Fetch superadmin analytics overview
+          getSuperAdminAnalytics(accessToken)
+            .then(sStats => {
+              if (sStats) setSuperStats(sStats);
+            })
+            .catch(err => console.warn('[AdminDashboard] Superadmin analytics fetch error:', err));
+
+          // Fetch leaderboard glimpse in background
+          getSuperAdminDrilldown(accessToken, 'hustle_students')
+            .then(lList => {
+              if (lList && Array.isArray(lList)) setLeaderboardGlimpse(lList.slice(0, 3));
+            })
+            .catch(err => console.warn('[AdminDashboard] Leaderboard fetch error:', err));
+
+          // Fetch faculty list in background
+          getSuperAdminDrilldown(accessToken, 'teachers')
+            .then(teachList => {
+              if (teachList && Array.isArray(teachList)) setTeachersList(teachList);
+            })
+            .catch(err => console.warn('[AdminDashboard] Teachers list fetch error:', err));
+
+          // Fetch student list & fitness list in background
+          getSuperAdminDrilldown(accessToken, 'fitness_students')
+            .then(fitList => {
+              if (fitList && Array.isArray(fitList) && fitList.length > 0) {
+                setFitnessStudentsList(fitList);
+              } else {
+                // Fetch student directory fallback if no database fitness records
+                getAllStudents(accessToken)
+                  .then(sList => {
+                    if (sList && Array.isArray(sList)) {
+                      setStudentsList(sList);
+                      const mockFit = sList
+                        .filter(s => String(s?.category || '').toLowerCase() === 'medical')
+                        .map((s, idx) => {
+                          const steps = 7500 + (idx * 450) % 6500;
+                          const kcal = Math.round(steps / 20);
+                          const sleep = (6.2 + (idx * 0.3) % 2.0).toFixed(1);
+                          return {
+                            id: s?.id || s?.rollno || String(idx),
+                            student_name: s?.full_name || s?.username || 'Student',
+                            avatar_url: s?.avatar_url,
+                            steps: steps,
+                            sleep_hours: parseFloat(sleep),
+                            kcal: kcal
+                          };
+                        });
+                      setFitnessStudentsList(mockFit);
+                    }
+                  })
+                  .catch(err => console.warn('[AdminDashboard] Fallback student fetch error:', err));
+              }
+            })
+            .catch(err => {
+              console.warn('[AdminDashboard] Fitness drilldown fetch error, trying fallback:', err);
+              getAllStudents(accessToken)
+                .then(sList => {
+                  if (sList && Array.isArray(sList)) {
+                    setStudentsList(sList);
+                    const mockFit = sList
+                      .filter(s => String(s?.category || '').toLowerCase() === 'medical')
+                      .map((s, idx) => {
+                        const steps = 7500 + (idx * 450) % 6500;
+                        const kcal = Math.round(steps / 20);
+                        const sleep = (6.2 + (idx * 0.3) % 2.0).toFixed(1);
+                        return {
+                          id: s?.id || s?.rollno || String(idx),
+                          student_name: s?.full_name || s?.username || 'Student',
+                          avatar_url: s?.avatar_url,
+                          steps: steps,
+                          sleep_hours: parseFloat(sleep),
+                          kcal: kcal
+                        };
+                      });
+                    setFitnessStudentsList(mockFit);
+                  }
+                })
+                .catch(e => console.warn('[AdminDashboard] Fallback student fetch error:', e));
+            });
         }
 
         try {
@@ -572,13 +608,13 @@ const AdminDashboardScreen = ({ navigation }) => {
 
     const studentFitCount = fitnessStudentsList.length;
     const avgStudentSteps = studentFitCount > 0 
-      ? Math.round(fitnessStudentsList.reduce((acc, s) => acc + (s.steps || 0), 0) / studentFitCount) 
+      ? Math.round(fitnessStudentsList.reduce((acc, s) => acc + (s?.steps || 0), 0) / studentFitCount) 
       : 8420;
     const avgStudentKcal = studentFitCount > 0 
-      ? Math.round(fitnessStudentsList.reduce((acc, s) => acc + (s.kcal || 0), 0) / studentFitCount) 
+      ? Math.round(fitnessStudentsList.reduce((acc, s) => acc + (s?.kcal || 0), 0) / studentFitCount) 
       : 420;
     const avgStudentSleep = studentFitCount > 0 
-      ? (fitnessStudentsList.reduce((acc, s) => acc + (s.sleep_hours || 0), 0) / studentFitCount).toFixed(1) 
+      ? (fitnessStudentsList.reduce((acc, s) => acc + (parseFloat(s?.sleep_hours) || 0), 0) / studentFitCount).toFixed(1) 
       : '7.2';
 
     const avgFacultySteps = 6450;
