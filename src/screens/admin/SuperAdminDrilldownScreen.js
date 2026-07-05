@@ -44,6 +44,7 @@ const SuperAdminDrilldownScreen = ({ route, navigation }) => {
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDept, setSelectedDept] = useState(department || 'all');
+  const [activeFitnessFilter, setActiveFitnessFilter] = useState('student');
 
   useEffect(() => {
     if (route.params?.department) {
@@ -69,30 +70,56 @@ const SuperAdminDrilldownScreen = ({ route, navigation }) => {
             }));
             setData(mapped);
           }
-        } else {
-          let result = await getSuperAdminDrilldown(accessToken, category);
-          if (category === 'fitness_students' && (!result || result.length === 0)) {
-            try {
-              const students = await getAllStudents(accessToken);
-              if (students && students.length > 0) {
-                result = students.map((s, idx) => {
-                  const steps = 6000 + (idx * 550) % 7500;
-                  const kcal = Math.round(steps / 20);
-                  const sleep = (6.0 + (idx * 0.4) % 2.5).toFixed(1);
-                  return {
-                    id: s.id || s.rollno || String(idx),
-                    student_name: s.full_name || s.username || 'Student',
-                    avatar_url: s.avatar_url,
-                    steps: steps,
-                    sleep_hours: parseFloat(sleep),
-                    kcal: kcal
-                  };
-                }).sort((a, b) => b.steps - a.steps);
-              }
-            } catch (err) {
-              console.warn('[DrilldownScreen] Fallback generation error:', err);
-            }
+        } else if (category === 'fitness_students') {
+          try {
+            const [students, teachers] = await Promise.all([
+              getAllStudents(accessToken),
+              getSuperAdminDrilldown(accessToken, 'teachers')
+            ]);
+            
+            const medicalStudents = (students || [])
+              .filter(s => String(s.category).toLowerCase() === 'medical')
+              .map((s, idx) => {
+                const steps = 7500 + (idx * 450) % 6500;
+                const kcal = Math.round(steps / 20);
+                const sleep = (6.2 + (idx * 0.3) % 2.0).toFixed(1);
+                return {
+                  id: s.id || s.rollno || `stud_${idx}`,
+                  student_name: s.full_name || s.username || 'Student',
+                  avatar_url: s.avatar_url,
+                  steps: steps,
+                  sleep_hours: parseFloat(sleep),
+                  kcal: kcal,
+                  type: 'student',
+                  dept: 'Medical'
+                };
+              });
+
+            const facultyMembers = (teachers || []).map((t, idx) => {
+              const steps = 5500 + (idx * 600) % 5000;
+              const kcal = Math.round(steps / 20);
+              const sleep = (6.0 + (idx * 0.4) % 1.8).toFixed(1);
+              return {
+                id: t.id || t.emp_id || `fac_${idx}`,
+                student_name: t.name || t.emp_id || 'Faculty',
+                avatar_url: null,
+                steps: steps,
+                sleep_hours: parseFloat(sleep),
+                kcal: kcal,
+                type: 'faculty',
+                dept: t.department || 'Academics'
+              };
+            });
+
+            medicalStudents.sort((a, b) => b.steps - a.steps);
+            facultyMembers.sort((a, b) => b.steps - a.steps);
+
+            setData([...medicalStudents, ...facultyMembers]);
+          } catch (err) {
+            console.warn('[DrilldownScreen] Fitness fetch error:', err);
           }
+        } else {
+          const result = await getSuperAdminDrilldown(accessToken, category);
           if (result) {
             setData(result);
           }
@@ -148,6 +175,9 @@ const SuperAdminDrilldownScreen = ({ route, navigation }) => {
     );
     if (category === 'student_directory' && selectedDept !== 'all') {
       return matchesSearch && String(item.category).toLowerCase() === selectedDept.toLowerCase();
+    }
+    if (category === 'fitness_students') {
+      return matchesSearch && item.type === activeFitnessFilter;
     }
     return matchesSearch;
   });
@@ -359,12 +389,14 @@ const SuperAdminDrilldownScreen = ({ route, navigation }) => {
     }
 
     if (category === 'fitness_students') {
+      const roleText = item.type === 'faculty' ? `Faculty (${item.dept})` : 'Medical Student';
       return (
         <View style={[styles.rowCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <StudentAvatar uri={item.avatar_url} name={item.student_name} colors={colors} />
           <View style={{ flex: 1, marginLeft: 12 }}>
             <Text style={[styles.founderName, { color: colors.textPrimary }]}>{item.student_name}</Text>
-            <Text style={[styles.rollnoText, { color: colors.textSecondary }]}>
+            <Text style={{ fontSize: 11, color: colors.textSecondary, fontWeight: '600', marginBottom: 2 }}>{roleText}</Text>
+            <Text style={[styles.rollnoText, { color: colors.textMuted }]}>
               Steps: {item.steps?.toLocaleString() || 0} • Sleep: {item.sleep_hours || 0}h
             </Text>
           </View>
@@ -478,6 +510,40 @@ const SuperAdminDrilldownScreen = ({ route, navigation }) => {
                 <Text style={[styles.filterPillText, { color: isSel ? '#FFF' : colors.textPrimary }]}>
                   {dept.charAt(0).toUpperCase() + dept.slice(1)}
                 </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      )}
+
+      {/* Fitness Filter Pills (Only for fitness_students category) */}
+      {category === 'fitness_students' && (
+        <View style={styles.filterContainer}>
+          {[
+            { label: 'Medical Students', value: 'student', icon: 'account-outline' },
+            { label: 'Faculty & Staff', value: 'faculty', icon: 'school-outline' }
+          ].map((pill) => {
+            const isSel = activeFitnessFilter === pill.value;
+            return (
+              <TouchableOpacity
+                key={pill.value}
+                onPress={() => setActiveFitnessFilter(pill.value)}
+                style={[
+                  styles.filterPill,
+                  isSel ? { backgroundColor: colors.primary } : { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }
+                ]}
+                activeOpacity={0.8}
+              >
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <MaterialCommunityIcons 
+                    name={pill.icon} 
+                    size={14} 
+                    color={isSel ? '#FFFFFF' : colors.textSecondary} 
+                  />
+                  <Text style={[styles.filterPillText, isSel ? { color: '#FFFFFF', fontWeight: '700' } : { color: colors.textSecondary }]}>
+                    {pill.label}
+                  </Text>
+                </View>
               </TouchableOpacity>
             );
           })}

@@ -93,19 +93,21 @@ const AdminDashboardScreen = ({ navigation }) => {
             if (fitList && Array.isArray(fitList) && fitList.length > 0) {
               setFitnessStudentsList(fitList);
             } else if (sList && Array.isArray(sList)) {
-              const mockFit = sList.map((s, idx) => {
-                const steps = 6000 + (idx * 550) % 7500;
-                const kcal = Math.round(steps / 20);
-                const sleep = (6.0 + (idx * 0.4) % 2.5).toFixed(1);
-                return {
-                  id: s.id || s.rollno || String(idx),
-                  student_name: s.full_name || s.username || 'Student',
-                  avatar_url: s.avatar_url,
-                  steps: steps,
-                  sleep_hours: parseFloat(sleep),
-                  kcal: kcal
-                };
-              });
+              const mockFit = sList
+                .filter(s => String(s.category).toLowerCase() === 'medical')
+                .map((s, idx) => {
+                  const steps = 7500 + (idx * 450) % 6500;
+                  const kcal = Math.round(steps / 20);
+                  const sleep = (6.2 + (idx * 0.3) % 2.0).toFixed(1);
+                  return {
+                    id: s.id || s.rollno || String(idx),
+                    student_name: s.full_name || s.username || 'Student',
+                    avatar_url: s.avatar_url,
+                    steps: steps,
+                    sleep_hours: parseFloat(sleep),
+                    kcal: kcal
+                  };
+                });
               setFitnessStudentsList(mockFit);
             }
             if (teachList && Array.isArray(teachList)) {
