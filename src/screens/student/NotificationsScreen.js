@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, FlatList, TouchableOpacity, Image, Alert } from
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useUser } from '../../context/UserContext';
-import { getPendingRequestsAPI, acceptRequestAPI } from '../../data/apiService';
+import { getPendingRequestsAPI, acceptRequestAPI, getAllStudents } from '../../data/apiService';
 import { getAvatarUrl } from '../../utils/avatar';
 import { useTheme } from '../../hooks/useTheme';
 
@@ -12,12 +12,29 @@ const NotificationsScreen = ({ navigation }) => {
   const { accessToken } = useUser();
   const { colors, isDark } = useTheme();
   const [requests, setRequests] = useState([]);
+  const [studentMap, setStudentMap] = useState({});
   const [loading, setLoading] = useState(true);
 
   const fetchRequests = async () => {
     try {
+      setLoading(true);
       const data = await getPendingRequestsAPI(accessToken);
       setRequests(data);
+
+      try {
+        const students = await getAllStudents(accessToken);
+        const map = {};
+        if (Array.isArray(students)) {
+          students.forEach(s => {
+            if (s.username) {
+              map[s.username.toLowerCase()] = s;
+            }
+          });
+        }
+        setStudentMap(map);
+      } catch (err) {
+        console.warn('Failed to load student directory for name lookup', err);
+      }
     } catch (e) {
       console.warn('Failed to load pending requests', e);
     } finally {
@@ -40,23 +57,34 @@ const NotificationsScreen = ({ navigation }) => {
     }
   };
 
-  const renderRequest = ({ item }) => (
-    <View style={[styles.requestCard, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
-      <Image source={{ uri: item.avatar_url || getAvatarUrl(item.username) }} style={styles.avatar} />
-      <View style={styles.info}>
-        <Text style={[styles.username, { color: colors.textPrimary }]}>{item.username}</Text>
-        <Text style={[styles.message, { color: colors.textSecondary }]}>Wants to follow you</Text>
+  const renderRequest = ({ item }) => {
+    const usernameLower = item.username ? item.username.toLowerCase() : '';
+    const displayName = item.full_name || item.name || studentMap[usernameLower]?.name || item.username || 'Student';
+    const avatarUrl = item.avatar_url || studentMap[usernameLower]?.avatar || getAvatarUrl(item.username);
+
+    return (
+      <View style={[styles.requestCard, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
+        <Image source={{ uri: avatarUrl }} style={styles.avatar} />
+        <View style={styles.info}>
+          <Text style={[styles.username, { color: colors.textPrimary }]}>{displayName}</Text>
+          {item.username && item.username !== displayName && (
+            <Text style={{ fontSize: 12, color: colors.textMuted || '#9CA3AF', marginTop: 1 }}>
+              {item.username}
+            </Text>
+          )}
+          <Text style={[styles.message, { color: colors.textSecondary }]}>Wants to follow you</Text>
+        </View>
+        <View style={styles.actions}>
+          <TouchableOpacity 
+            style={[styles.acceptBtn, { backgroundColor: colors.primary }]}
+            onPress={() => handleAccept(item.id)}
+          >
+            <Text style={styles.acceptText}>Accept</Text>
+          </TouchableOpacity>
+        </View>
       </View>
-      <View style={styles.actions}>
-        <TouchableOpacity 
-          style={[styles.acceptBtn, { backgroundColor: colors.primary }]}
-          onPress={() => handleAccept(item.id)}
-        >
-          <Text style={styles.acceptText}>Accept</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
+    );
+  };
 
   return (
     <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
