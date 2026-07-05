@@ -582,9 +582,28 @@ export async function commentOnPost(token, postId, content, parentId = null) {
 }
 
 // ─── Social Connections ────────────────────────────────────────────────────────
-export async function searchUsersAPI(token, query) {
+export async function searchUsersAPI(token, query, filters = {}) {
   try {
-    const res = await apiCall(`/api/v1/social/users/search?q=${encodeURIComponent(query)}`, {
+    const params = new URLSearchParams({ q: query });
+    if (filters.year && filters.year !== 'All') {
+      params.append('year', filters.year);
+    }
+    if (filters.branch && filters.branch !== 'All') {
+      // Map frontend branch to backend department code
+      const branchMap = {
+        'CSE': 'CS',
+        'EE': 'EE',
+        'MBBS': 'MEDIC',
+        'Engineering': 'ENGIN',
+        'Management': 'MANAG'
+      };
+      params.append('branch', branchMap[filters.branch] || filters.branch);
+    }
+    if (filters.status && filters.status !== 'All') {
+      params.append('status', filters.status);
+    }
+
+    const res = await apiCall(`/api/v1/social/users/search?${params.toString()}`, {
       method: 'GET',
       headers: authHeaders(token),
     });
@@ -796,6 +815,56 @@ export async function createShopRequestAPI(token, data) {
   return unwrap(res);
 }
 
+// ─── Shop Admin Moderation ────────────────────────────────────────────────────
+
+/**
+ * GET /api/v1/shop/admin/pending
+ * Returns all listings awaiting admin approval.
+ */
+export async function getAdminPendingListings(token, skip = 0, limit = 50) {
+  const params = new URLSearchParams({ skip, limit, t: Date.now() });
+  const res = await apiCall(`/api/v1/shop/admin/pending?${params}`, {
+    headers: authHeaders(token),
+  });
+  const listings = unwrap(res, []);
+  return listings.map(l => {
+    const rawSeller = l.seller || {};
+    return {
+      ...l,
+      seller: {
+        user_id: rawSeller.id || rawSeller.user_id || '',
+        username: rawSeller.username || 'Student',
+        full_name: rawSeller.full_name || null,
+        avatar_url: rawSeller.avatar_url || null,
+      },
+    };
+  });
+}
+
+/**
+ * POST /api/v1/shop/admin/{listing_id}/approve
+ */
+export async function approveShopListing(token, listingId) {
+  const res = await apiCall(`/api/v1/shop/admin/${listingId}/approve`, {
+    method: 'POST',
+    headers: authHeaders(token),
+  });
+  return unwrap(res);
+}
+
+/**
+ * POST /api/v1/shop/admin/{listing_id}/reject
+ */
+export async function rejectShopListing(token, listingId, notes = null) {
+  const res = await apiCall(`/api/v1/shop/admin/${listingId}/reject`, {
+    method: 'POST',
+    headers: authHeaders(token),
+    body: JSON.stringify({ notes }),
+  });
+  return unwrap(res);
+}
+
+
 // ─── Venture ─────────────────────────────────────────────────────────────────
 
 /**
@@ -876,6 +945,60 @@ export async function triggerCofounderMatch(token) {
   });
   return unwrap(res);
 }
+
+/**
+ * PUT /api/v1/venture/startups/:id
+ */
+export async function updateStartup(token, id, payload) {
+  const res = await apiCall(`/api/v1/venture/startups/${id}`, {
+    method: 'PUT',
+    headers: authHeaders(token),
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) {
+    if (res.status === 401) {
+      throw new Error("Your session has expired. Please log out and log back in to renew your session.");
+    }
+    if (res.json && res.json.error) {
+      throw new Error(res.json.error.message || "Failed to update startup.");
+    }
+    throw new Error(`Server returned error status ${res.status}`);
+  }
+
+  if (res.json && !res.json.success) {
+    throw new Error(res.json.error?.message || "Failed to update startup.");
+  }
+
+  return unwrap(res);
+}
+
+/**
+ * DELETE /api/v1/venture/startups/:id
+ */
+export async function deleteStartup(token, id) {
+  const res = await apiCall(`/api/v1/venture/startups/${id}`, {
+    method: 'DELETE',
+    headers: authHeaders(token),
+  });
+
+  if (!res.ok) {
+    if (res.status === 401) {
+      throw new Error("Your session has expired. Please log out and log back in to renew your session.");
+    }
+    if (res.json && res.json.error) {
+      throw new Error(res.json.error.message || "Failed to delete startup.");
+    }
+    throw new Error(`Server returned error status ${res.status}`);
+  }
+
+  if (res.json && !res.json.success) {
+    throw new Error(res.json.error?.message || "Failed to delete startup.");
+  }
+
+  return unwrap(res);
+}
+
 
 /**
  * GET /api/v1/venture/cofounder/matches
@@ -1116,6 +1239,7 @@ export async function listGrievancesAPI(token, category = '', status = '') {
  * POST /api/v1/grievance
  */
 export async function createGrievanceAPI(token, payload) {
+  console.log('[Grievance API] Calling POST /api/v1/grievance with:', JSON.stringify(payload));
   const res = await apiCall('/api/v1/grievance', {
     method: 'POST',
     headers: authHeaders(token),
@@ -1124,8 +1248,11 @@ export async function createGrievanceAPI(token, payload) {
       subject: payload.subject,
       description: payload.description,
       priority: payload.priority.toLowerCase(), // E.g. 'low', 'medium', 'high'
+      attachment_url: payload.attachment_url,
     }),
   });
+
+  console.log('[Grievance API] Response:', JSON.stringify({ ok: res.ok, status: res.status, networkError: res.networkError }));
 
   if (!res.ok) {
     if (res.status === 401) {
@@ -1139,6 +1266,45 @@ export async function createGrievanceAPI(token, payload) {
 
   if (res.json && !res.json.success) {
     throw new Error(res.json.error?.message || "Failed to raise issue.");
+  }
+
+  return unwrap(res);
+}
+
+export async function updateGrievanceAPI(token, grievanceId, payload) {
+  const res = await apiCall(`/api/v1/grievance/${grievanceId}/student`, {
+    method: 'PATCH',
+    headers: authHeaders(token),
+    body: JSON.stringify({
+      category: payload.category,
+      subject: payload.subject,
+      description: payload.description,
+      priority: payload.priority ? payload.priority.toLowerCase() : undefined,
+      attachment_url: payload.attachment_url,
+    }),
+  });
+
+  if (!res.ok) {
+    if (res.json && res.json.error) {
+      throw new Error(res.json.error.message || "Failed to update issue.");
+    }
+    throw new Error(`Server returned error status ${res.status}`);
+  }
+
+  return unwrap(res);
+}
+
+export async function deleteGrievanceAPI(token, grievanceId) {
+  const res = await apiCall(`/api/v1/grievance/${grievanceId}/student`, {
+    method: 'DELETE',
+    headers: authHeaders(token),
+  });
+
+  if (!res.ok) {
+    if (res.json && res.json.error) {
+      throw new Error(res.json.error.message || "Failed to delete issue.");
+    }
+    throw new Error(`Server returned error status ${res.status}`);
   }
 
   return unwrap(res);
@@ -1219,6 +1385,42 @@ export async function createJournalAPI(token, payload) {
   return unwrap(res, null);
 }
 
+// ==========================================
+// Admin - Analytics
+// ==========================================
+export async function getAdminAnalytics(token) {
+  const res = await apiCall('/api/v1/admin/analytics/overview', {
+    method: 'GET',
+    headers: authHeaders(token),
+  });
+  return unwrap(res, null);
+}
+
+export async function getAdminMentalHealthAnalytics(token) {
+  const res = await apiCall('/api/v1/admin/analytics/mental-health', {
+    method: 'GET',
+    headers: authHeaders(token),
+  });
+  return unwrap(res, null);
+}
+
+export async function logMoodAPI(token, mood) {
+  const res = await apiCall('/api/v1/mental_health/mood', {
+    method: 'POST',
+    headers: authHeaders(token),
+    body: JSON.stringify({ mood, intensity: 3 }),
+  });
+  return unwrap(res, null);
+}
+
+export async function getMoodEntriesAPI(token) {
+  const res = await apiCall('/api/v1/mental_health/mood', {
+    method: 'GET',
+    headers: authHeaders(token),
+  });
+  return unwrap(res, []);
+}
+
 export async function listJournalAPI(token) {
   const res = await apiCall('/api/v1/journal/', {
     method: 'GET',
@@ -1292,11 +1494,11 @@ export async function getWardenAllOutpasses(token) {
   return unwrap(res, []);
 }
 
-export async function actionWardenOutpass(token, outpassId, status) {
+export async function actionWardenOutpass(token, outpassId, status, remarks = "") {
   const res = await apiCall(`/api/v1/erp/outpass/${outpassId}`, {
     method: 'PATCH',
     headers: authHeaders(token),
-    body: JSON.stringify({ status }),
+    body: JSON.stringify({ status, remarks }),
   });
   return unwrap(res);
 }
@@ -1343,6 +1545,17 @@ export async function getSuperAdminDrilldown(token, category) {
     headers: authHeaders(token),
   });
   return unwrap(res, []);
+}
+
+/**
+ * GET /api/v1/admin/faculty/{emp_id}/detail
+ * Admin: fetch a faculty member's profile, punch history, and leave/attendance summary.
+ */
+export async function getAdminFacultyDetail(token, empId) {
+  const res = await apiCall(`/api/v1/admin/faculty/${encodeURIComponent(empId)}/detail`, {
+    headers: authHeaders(token),
+  });
+  return unwrap(res, null);
 }
 
 export async function createBroadcastAPI(token, payload) {
@@ -1436,8 +1649,11 @@ export async function getFacultyTopics(token) {
  * GET /api/v1/faculty/attendance
  * Returns faculty punch history records.
  */
-export async function getFacultyAttendance(token) {
-  const res = await apiCall('/api/v1/faculty/attendance', {
+export async function getFacultyAttendance(token, empId = null) {
+  const url = empId 
+    ? `/api/v1/faculty/attendance?emp_id=${encodeURIComponent(empId)}`
+    : '/api/v1/faculty/attendance';
+  const res = await apiCall(url, {
     headers: authHeaders(token),
   });
   return unwrap(res, []);

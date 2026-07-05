@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, RefreshControl
 } from 'react-native';
 import { Ionicons, MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -21,6 +21,20 @@ const AlertsScreen = ({ navigation }) => {
 
   const [apiAlerts, setApiAlerts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const onRefresh = React.useCallback(async () => {
+    if (!accessToken) return;
+    setRefreshing(true);
+    try {
+      const { data } = await getAlerts(accessToken);
+      setApiAlerts(data || []);
+    } catch (e) {
+      console.log('Error refreshing alerts:', e);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [accessToken]);
 
   useEffect(() => {
     if (!accessToken) { setLoading(false); return; }
@@ -91,17 +105,13 @@ const AlertsScreen = ({ navigation }) => {
 
     if (type === 'marketplace') {
       // Marketplace enquiry / message → DMConversation with marketplace source
-      const senderId = raw.sender_id || raw.from_user_id || null;
-      const senderUsername = raw.sender_username || raw.sender?.username || null;
-      const senderAvatar = raw.sender_avatar || raw.sender?.avatar_url || null;
-      if (senderId) {
+      if (raw.ref_type === 'marketplace_dm' && raw.ref_id) {
         navigation.navigate('Chat');
         setTimeout(() => {
           navigation.navigate('DMConversation', {
             contact: {
-              user_id: senderId,
-              username: senderUsername || senderId,
-              avatar_url: senderAvatar || null,
+              user_id: raw.ref_id,
+              username: 'Student', // Will be fetched inside DMConversationScreen
               is_marketplace: true,
             },
             source: 'marketplace',
@@ -190,6 +200,14 @@ const AlertsScreen = ({ navigation }) => {
       <ScrollView
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.primary}
+            colors={[colors.primary]}
+          />
+        }
       >
         {/* Filter Tabs - Dashboard Style */}
         <View style={styles.tabsContainer}>

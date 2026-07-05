@@ -1,6 +1,6 @@
 import React from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ImageBackground, Dimensions, Alert, Modal, TouchableWithoutFeedback, DeviceEventEmitter
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ImageBackground, Dimensions, Alert, Modal, TouchableWithoutFeedback
 } from 'react-native';
 import { Ionicons, MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -17,7 +17,6 @@ const MarketplaceScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
   const { user, accessToken } = useUser();
-  const avatarUrl = user?.avatar_url || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=1000&auto=format&fit=crop';
 
   const [apiListings, setApiListings] = React.useState([]);
   const [walletBalance, setWalletBalance] = React.useState(0);
@@ -40,33 +39,18 @@ const MarketplaceScreen = ({ navigation }) => {
   useFocusEffect(
     React.useCallback(() => {
       loadMarketplaceData();
-
-      // Load wallet
       if (accessToken) {
         getWalletBalance(accessToken)
           .then(w => setWalletBalance(w.balance))
-          .catch(() => { });
+          .catch(() => {});
       }
     }, [loadMarketplaceData, accessToken])
   );
 
-  React.useEffect(() => {
-    const subProduct = DeviceEventEmitter.addListener('newProductAdded', (item) => {
-      setApiListings(prev => [item, ...prev]);
-    });
-    return () => {
-      subProduct.remove();
-    };
-  }, []);
-
   return (
     <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
-
-
-
       {/* Header */}
       <View style={[styles.header, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
-
         <View style={styles.headerLeft}>
           <LinearGradient
             colors={isDark ? ['#9A3412', '#7C2D12'] : ['#EA580C', '#9A3412']}
@@ -88,14 +72,10 @@ const MarketplaceScreen = ({ navigation }) => {
               ₹{Number(walletBalance).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
             </Text>
           </TouchableOpacity>
-
-
         </View>
       </View>
 
-
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-
         {/* Marketplace Hero Banner */}
         <View style={styles.sectionContainer}>
           <View style={styles.heroCard}>
@@ -116,7 +96,6 @@ const MarketplaceScreen = ({ navigation }) => {
             </ImageBackground>
           </View>
         </View>
-
 
         {/* The Bazaar */}
         <View style={styles.sectionContainer}>
@@ -159,15 +138,15 @@ const MarketplaceScreen = ({ navigation }) => {
         <View style={{ height: 100 }} />
       </ScrollView>
 
-      {/* Sell FAB */}
+      {/* Post FAB */}
       <TouchableOpacity
         style={[
           styles.fab,
           {
             backgroundColor: colors.primary,
             shadowColor: colors.primary,
-            bottom: 120 + (insets.bottom || 0)
-          }
+            bottom: 120 + (insets.bottom || 0),
+          },
         ]}
         activeOpacity={0.9}
         onPress={() => navigation.navigate('AddProduct')}
@@ -178,6 +157,7 @@ const MarketplaceScreen = ({ navigation }) => {
     </View>
   );
 };
+
 
 const styles = StyleSheet.create({
   container: {

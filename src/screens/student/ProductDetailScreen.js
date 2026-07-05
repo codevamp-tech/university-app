@@ -59,7 +59,7 @@ const ProductDetailScreen = ({ route, navigation }) => {
   const handleRequestToBuy = () => {
     if (isOwnListing) return;
     const contactInfo = sellerProfile || seller;
-    navigation.navigate('DMConversation', { contact: contactInfo, source: 'marketplace' });
+    navigation.navigate('DMConversation', { contact: contactInfo, source: 'marketplace', product: product });
   };
 
   return (

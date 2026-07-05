@@ -52,6 +52,8 @@ const LoginScreen = ({ navigation }) => {
     return () => clearInterval(interval);
   }, [loading]);
 
+  console.log("role>>>>globle", role);
+
   const handleLogin = async () => {
     if (!loginId || !securityKey) {
       Alert.alert('Missing Info', 'Please enter your credentials.');
@@ -74,20 +76,33 @@ const LoginScreen = ({ navigation }) => {
     } catch (e) {
       console.warn('Password check failed:', e);
     }
+    let finalRole = role;
+    if (role === 'admin' && loginId.trim().toLowerCase() === 'warden') {
+      finalRole = 'warden';
+    }
 
-    const success = await login(loginId, securityKey, role);
-    setLoading(false);
+    console.log("loginId>>>>", loginId);
+    console.log("securityKey>>>>", securityKey);
+    console.log("finalrole>>>>", finalRole);
+    const success = await login(loginId, securityKey, finalRole);
+
 
     if (success) {
+      console.log("resrole>>>>", success.role);
       const userRole = success.role;
       if (userRole === 'teacher') {
+        console.log("role>>/>>teacher");
         navigation.replace('TeacherMain');
       } else if (userRole === 'admin' || userRole === 'super_admin' || userRole === 'warden') {
+        console.log("role>>/>>admin");
         navigation.replace('AdminMain');
       } else {
+        console.log("role>>/>>student");
         navigation.replace('StudentMain');
       }
     }
+
+    setLoading(false);
   };
 
   const handleGuest = () => {

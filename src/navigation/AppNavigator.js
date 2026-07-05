@@ -23,6 +23,7 @@ import AdminMentalHealthInsightsScreen from '../screens/admin/AdminMentalHealthI
 import SuperAdminDrilldownScreen from '../screens/admin/SuperAdminDrilldownScreen';
 import AdminGrievanceInboxScreen from '../screens/admin/AdminGrievanceInboxScreen';
 import AdminVentureReviewScreen from '../screens/admin/AdminVentureReviewScreen';
+import AdminMarketplaceReviewScreen from '../screens/admin/AdminMarketplaceReviewScreen';
 import WardenOutpassesScreen from '../screens/admin/WardenOutpassesScreen';
 
 // Campus Food Ordering
@@ -37,6 +38,7 @@ import SettingsScreen from '../screens/student/SettingsScreen';
 import HelpCenterScreen from '../screens/student/HelpCenterScreen';
 import PrivacyScreen from '../screens/student/PrivacyScreen';
 import SmartCampusScreen from '../screens/student/SmartCampusScreen';
+import CommunityScreen from '../screens/student/CommunityScreen';
 import MarketplaceScreen from '../screens/student/MarketplaceScreen';
 import AddProductScreen from '../screens/student/AddProductScreen';
 import AddGigScreen from '../screens/student/AddGigScreen';
@@ -46,7 +48,7 @@ import ERPTabs from './ERPTabs';
 import ChatScreen from '../screens/student/ChatScreen';
 import StudentSearchScreen from '../screens/student/StudentSearchScreen';
 import NotificationsScreen from '../screens/student/NotificationsScreen';
-import OtherStudentProfileScreen from '../screens/student/OtherStudentProfileScreen';
+import AdminStudentProfileScreen from '../screens/student/AdminStudentProfileScreen';
 import DMConversationScreen from '../screens/student/DMConversationScreen';
 import RaiseIssueScreen from '../screens/student/RaiseIssueScreen';
 import SkillGapTestScreen from '../screens/student/SkillGapTestScreen';
@@ -93,6 +95,8 @@ import TeacherSettingsScreen from '../screens/teacher/TeacherSettingsScreen';
 import TeacherHelpCenterScreen from '../screens/teacher/TeacherHelpCenterScreen';
 import TeacherPrivacyScreen from '../screens/teacher/TeacherPrivacyScreen';
 import TeacherAlertsScreen from '../screens/teacher/TeacherAlertsScreen';
+import OtherTeacherProfileScreen from '../screens/teacher/OtherTeacherProfileScreen';
+import AdminFacultyDetailScreen from '../screens/admin/AdminFacultyDetailScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -117,7 +121,9 @@ const AppNavigator = () => {
       <Stack.Screen name="SuperAdminDrilldown" component={SuperAdminDrilldownScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="GrievanceManager" component={AdminGrievanceInboxScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="VentureManager" component={AdminVentureReviewScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="MarketplaceManager" component={AdminMarketplaceReviewScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="OutpassManager" component={WardenOutpassesScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="AdminFacultyDetail" component={AdminFacultyDetailScreen} options={{ animation: 'slide_from_right' }} />
 
       {/* Guest Flow */}
       <Stack.Screen name="GuestOnboarding" component={GuestOnboardingScreen} options={{ animation: 'slide_from_right' }} />
@@ -132,6 +138,7 @@ const AppNavigator = () => {
 
       {/* New Student Module Screens */}
       <Stack.Screen name="SmartCampus" component={SmartCampusScreen} options={{ animation: 'fade' }} />
+      <Stack.Screen name="Community" component={CommunityScreen} options={{ animation: 'fade' }} />
       <Stack.Screen name="Marketplace" component={MarketplaceScreen} options={{ animation: 'fade' }} />
       <Stack.Screen name="AddProduct" component={AddProductScreen} options={{ presentation: 'modal' }} />
       <Stack.Screen name="AddGig" component={AddGigScreen} options={{ presentation: 'modal' }} />
@@ -150,7 +157,8 @@ const AppNavigator = () => {
       <Stack.Screen name="Chat" component={ChatScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="StudentSearch" component={StudentSearchScreen} options={{ animation: 'fade', presentation: 'transparentModal' }} />
       <Stack.Screen name="Notifications" component={NotificationsScreen} options={{ animation: 'slide_from_right' }} />
-      <Stack.Screen name="OtherStudentProfile" component={OtherStudentProfileScreen} options={{ animation: 'slide_from_right' }} />
+      {/* Global Modals / Shared Screens */}
+      <Stack.Screen name="OtherStudentProfile" component={AdminStudentProfileScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="DMConversation" component={DMConversationScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="RaiseIssue" component={RaiseIssueScreen} options={{ animation: 'slide_from_bottom' }} />
       <Stack.Screen name="SkillGapTest" component={SkillGapTestScreen} options={{ animation: 'slide_from_bottom' }} />
@@ -201,6 +209,7 @@ const AppNavigator = () => {
       />
       <Stack.Screen name="TeacherCourses" component={MyCoursesScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="FacultyDirectory" component={FacultyDirectoryScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="OtherTeacherProfile" component={OtherTeacherProfileScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="TeacherSettings" component={TeacherSettingsScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="TeacherHelp" component={TeacherHelpCenterScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="TeacherPrivacy" component={TeacherPrivacyScreen} options={{ animation: 'slide_from_right' }} />

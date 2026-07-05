@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-  View, Text, StyleSheet, TextInput, FlatList, TouchableOpacity, Image, Alert
+  View, Text, StyleSheet, TextInput, FlatList, TouchableOpacity, Image, Alert, Modal, ScrollView
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -17,26 +17,24 @@ const StudentSearchScreen = ({ navigation }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [filters, setFilters] = useState({ year: 'All', branch: 'All', status: 'All' });
+  const [showFilterModal, setShowFilterModal] = useState(false);
 
   useEffect(() => {
     const delayDebounceFn = setTimeout(async () => {
-      if (searchQuery.length >= 2) {
-        setLoading(true);
-        try {
-          const results = await searchUsersAPI(accessToken, searchQuery);
-          setUsers(results);
-        } catch(e) {
-          console.warn("Search error:", e);
-        } finally {
-          setLoading(false);
-        }
-      } else {
-        setUsers([]);
+      setLoading(true);
+      try {
+        const results = await searchUsersAPI(accessToken, searchQuery, filters);
+        setUsers(results);
+      } catch(e) {
+        console.warn("Search error:", e);
+      } finally {
+        setLoading(false);
       }
     }, 500);
 
     return () => clearTimeout(delayDebounceFn);
-  }, [searchQuery, accessToken]);
+  }, [searchQuery, accessToken, filters]);
 
   const handleFollow = async (userId) => {
     try {
@@ -107,6 +105,15 @@ const StudentSearchScreen = ({ navigation }) => {
     </TouchableOpacity>
   );
 
+  const FilterPill = ({ label, onRemove }) => (
+    <View style={[styles.filterPill, { backgroundColor: colors.primary + '20', borderColor: colors.primary }]}>
+      <Text style={[styles.filterPillText, { color: colors.primary }]}>{label}</Text>
+      <TouchableOpacity onPress={onRemove} style={{ marginLeft: 4 }}>
+        <Ionicons name="close" size={14} color={colors.primary} />
+      </TouchableOpacity>
+    </View>
+  );
+
   return (
     <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
       <View style={[styles.header, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
@@ -132,8 +139,20 @@ const StudentSearchScreen = ({ navigation }) => {
               <Ionicons name="close-circle" size={20} color={colors.textMuted || "#9CA3AF"} />
             </TouchableOpacity>
           )}
+          <TouchableOpacity onPress={() => setShowFilterModal(true)} style={{ marginLeft: 12, padding: 4 }}>
+            <Ionicons name="options-outline" size={22} color={colors.primary} />
+          </TouchableOpacity>
         </View>
       </View>
+
+      {/* Active Filters */}
+      {(filters.year !== 'All' || filters.branch !== 'All' || filters.status !== 'All') && (
+        <View style={styles.activeFiltersContainer}>
+          {filters.year !== 'All' && <FilterPill label={`Year: ${filters.year}`} onRemove={() => setFilters(f => ({...f, year: 'All'}))} />}
+          {filters.branch !== 'All' && <FilterPill label={`Branch: ${filters.branch}`} onRemove={() => setFilters(f => ({...f, branch: 'All'}))} />}
+          {filters.status !== 'All' && <FilterPill label={`Status: ${filters.status}`} onRemove={() => setFilters(f => ({...f, status: 'All'}))} />}
+        </View>
+      )}
 
       <FlatList
         data={users}
@@ -143,10 +162,58 @@ const StudentSearchScreen = ({ navigation }) => {
         ListEmptyComponent={
           <View style={styles.emptyState}>
             <Ionicons name="search-outline" size={48} color={colors.textMuted || "#D1D5DB"} />
-            <Text style={[styles.emptyStateText, { color: colors.textSecondary }]}>{loading ? "Searching..." : searchQuery.length < 2 ? "Type to search..." : "No students found"}</Text>
+            <Text style={[styles.emptyStateText, { color: colors.textSecondary }]}>{loading ? "Searching..." : "No students found"}</Text>
           </View>
         }
       />
+      <Modal visible={showFilterModal} transparent={true} animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>Filters</Text>
+              <TouchableOpacity onPress={() => setShowFilterModal(false)}>
+                <Ionicons name="close" size={24} color={colors.textPrimary} />
+              </TouchableOpacity>
+            </View>
+            
+            <ScrollView style={styles.modalScroll}>
+              <Text style={[styles.filterSectionTitle, { color: colors.textSecondary }]}>Year</Text>
+              <View style={styles.filterOptions}>
+                {['All', '1', '2', '3', '4'].map(y => (
+                  <TouchableOpacity key={y} onPress={() => setFilters(f => ({...f, year: y}))} style={[styles.filterOption, filters.year === y && { backgroundColor: colors.primary, borderColor: colors.primary }]}>
+                    <Text style={[styles.filterOptionText, { color: filters.year === y ? '#FFF' : colors.textPrimary }]}>{y === 'All' ? 'All Years' : `Year ${y}`}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <Text style={[styles.filterSectionTitle, { color: colors.textSecondary, marginTop: 16 }]}>Branch</Text>
+              <View style={styles.filterOptions}>
+                {['All', 'CSE', 'EE', 'MBBS', 'Engineering', 'Management'].map(b => (
+                  <TouchableOpacity key={b} onPress={() => setFilters(f => ({...f, branch: b}))} style={[styles.filterOption, filters.branch === b && { backgroundColor: colors.primary, borderColor: colors.primary }]}>
+                    <Text style={[styles.filterOptionText, { color: filters.branch === b ? '#FFF' : colors.textPrimary }]}>{b}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <Text style={[styles.filterSectionTitle, { color: colors.textSecondary, marginTop: 16 }]}>Connection Status</Text>
+              <View style={styles.filterOptions}>
+                {['All', 'Connect', 'Pending', 'Connected'].map(s => (
+                  <TouchableOpacity key={s} onPress={() => setFilters(f => ({...f, status: s}))} style={[styles.filterOption, filters.status === s && { backgroundColor: colors.primary, borderColor: colors.primary }]}>
+                    <Text style={[styles.filterOptionText, { color: filters.status === s ? '#FFF' : colors.textPrimary }]}>{s === 'Connect' ? 'Not Connected' : s}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </ScrollView>
+            
+            <TouchableOpacity 
+              style={[styles.applyButton, { backgroundColor: colors.primary }]} 
+              onPress={() => setShowFilterModal(false)}
+            >
+              <Text style={styles.applyButtonText}>Apply Filters</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -250,6 +317,80 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#6B7280',
     fontWeight: '600',
+  },
+  activeFiltersContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+    gap: 8,
+  },
+  filterPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1,
+  },
+  filterPillText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 20,
+    maxHeight: '80%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+  },
+  modalScroll: {
+    marginBottom: 20,
+  },
+  filterSectionTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    marginBottom: 12,
+  },
+  filterOptions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  filterOption: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  filterOptionText: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  applyButton: {
+    paddingVertical: 16,
+    borderRadius: 16,
+    alignItems: 'center',
+  },
+  applyButtonText: {
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: '700',
   },
 });
 

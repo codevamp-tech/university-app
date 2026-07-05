@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert, Dimensions, TextInput } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -24,6 +24,8 @@ const ResumeBuilderScreen = ({ navigation }) => {
 
   const [resumeData, setResumeData] = useState(null);
   const [isGenerating, setIsGenerating] = useState(true);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedData, setEditedData] = useState(null);
 
   useEffect(() => {
     loadResume();
@@ -35,10 +37,10 @@ const ResumeBuilderScreen = ({ navigation }) => {
       setIsGenerating(true);
       const cacheKey = `@ats_resume_${user.id}`;
       const tsKey = `@ats_resume_timestamp_${user.id}`;
-      
+
       const cached = await AsyncStorage.getItem(cacheKey);
       const lastGenStr = await AsyncStorage.getItem(tsKey);
-      
+
       if (cached) {
         setResumeData(JSON.parse(cached));
       }
@@ -191,7 +193,7 @@ const ResumeBuilderScreen = ({ navigation }) => {
           {isMed ? 'AI is compiling your clinical profile...' : 'AI is analyzing your profile...'}
         </Text>
         <Text style={[styles.loadingSub, { color: colors.textSecondary }]}>
-          {isMed 
+          {isMed
             ? 'Structuring a medical CV based on your clinical rotations, ward postings, and exam scores.'
             : `Structuring an ATS-compatible resume based on your ${user?.course} background and ${user?.cgpa} CGPA.`}
         </Text>
@@ -203,95 +205,313 @@ const ResumeBuilderScreen = ({ navigation }) => {
     <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-          <MaterialIcons name="arrow-back" size={24} color={colors.textPrimary} />
+        <TouchableOpacity style={styles.backBtn} onPress={() => {
+          if (isEditing) {
+            setIsEditing(false);
+          } else {
+            navigation.goBack();
+          }
+        }}>
+          <MaterialIcons name={isEditing ? "close" : "arrow-back"} size={24} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>{isMed ? 'Clinical CV' : 'AI Resume'}</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          {!isEditing ? (
+            <>
+              <TouchableOpacity style={{ padding: 8, marginRight: 4 }} onPress={generateNewResume}>
+                <MaterialCommunityIcons name="refresh" size={24} color={colors.primary} />
+              </TouchableOpacity>
+              <TouchableOpacity style={{ padding: 8 }} onPress={() => {
+                if (resumeData) {
+                  setEditedData(JSON.parse(JSON.stringify(resumeData)));
+                  setIsEditing(true);
+                }
+              }}>
+                <MaterialCommunityIcons name="pencil-outline" size={24} color={colors.primary} />
+              </TouchableOpacity>
+            </>
+          ) : (
+            <TouchableOpacity style={{ padding: 8 }} onPress={async () => {
+              setResumeData(editedData);
+              await AsyncStorage.setItem(`@ats_resume_${user.id}`, JSON.stringify(editedData));
+              setIsEditing(false);
+            }}>
+              <MaterialIcons name="check" size={24} color={colors.primary} />
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
 
       {resumeData ? (
         <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
-          
+
           <View style={[styles.resumePaper, { backgroundColor: isDark ? colors.card : '#FFFFFF', borderColor: colors.border }]}>
             {/* Header */}
             <View style={styles.paperHeader}>
-              <Text style={[styles.resumeName, { color: colors.textPrimary }]}>{resumeData.name}</Text>
-              <Text style={[styles.resumeContact, { color: colors.textSecondary }]}>{resumeData.contact}</Text>
+              {isEditing ? (
+                <TextInput
+                  style={[styles.resumeName, { color: colors.textPrimary, textAlign: 'center', borderBottomWidth: 1, borderBottomColor: colors.primary, width: '100%', paddingVertical: 4 }]}
+                  value={editedData.name}
+                  onChangeText={t => setEditedData({...editedData, name: t})}
+                  placeholder="Name"
+                />
+              ) : (
+                <Text style={[styles.resumeName, { color: colors.textPrimary }]}>{resumeData.name}</Text>
+              )}
+              
+              {isEditing ? (
+                <TextInput
+                  style={[styles.resumeContact, { color: colors.textSecondary, textAlign: 'center', borderBottomWidth: 1, borderBottomColor: colors.border, marginTop: 8, width: '100%', paddingVertical: 4 }]}
+                  value={editedData.contact}
+                  onChangeText={t => setEditedData({...editedData, contact: t})}
+                  placeholder="Contact Details"
+                />
+              ) : (
+                <Text style={[styles.resumeContact, { color: colors.textSecondary }]}>{resumeData.contact}</Text>
+              )}
             </View>
 
             {/* Objective */}
             <View style={styles.section}>
               <Text style={[styles.sectionTitle, { color: colors.primary }]}>{isMed ? 'CLINICAL SUMMARY' : 'OBJECTIVE'}</Text>
-              <Text style={[styles.sectionContent, { color: colors.textPrimary }]}>{resumeData.objective}</Text>
+              {isEditing ? (
+                <TextInput
+                  style={[styles.sectionContent, { color: colors.textPrimary, borderBottomWidth: 1, borderBottomColor: colors.border, width: '100%', paddingVertical: 4 }]}
+                  multiline
+                  value={editedData.objective}
+                  onChangeText={t => setEditedData({...editedData, objective: t})}
+                  placeholder="Objective"
+                />
+              ) : (
+                <Text style={[styles.sectionContent, { color: colors.textPrimary }]}>{resumeData.objective}</Text>
+              )}
             </View>
 
             {/* Education */}
             <View style={styles.section}>
               <Text style={[styles.sectionTitle, { color: colors.primary }]}>EDUCATION</Text>
-              {resumeData.education?.map((edu, idx) => (
+              {(isEditing ? editedData.education : resumeData.education)?.map((edu, idx) => (
                 <View key={idx} style={styles.itemContainer}>
-                  <Text style={[styles.itemTitle, { color: colors.textPrimary, marginBottom: 2 }]}>{edu.degree}</Text>
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', flexWrap: 'wrap', marginBottom: 4 }}>
-                    <Text style={[styles.itemSub, { color: colors.textSecondary, marginBottom: 0, flex: 1, marginRight: 8 }]}>{edu.institution}</Text>
-                    <Text style={[styles.itemDate, { color: colors.textSecondary }]}>{edu.duration}</Text>
-                  </View>
-                  <Text style={[styles.itemDesc, { color: colors.textPrimary, marginTop: 4 }]}>{edu.details}</Text>
+                  {isEditing ? (
+                    <>
+                      <TextInput
+                        style={[styles.itemTitle, { color: colors.textPrimary, borderBottomWidth: 1, borderBottomColor: colors.border, paddingVertical: 4, marginBottom: 4 }]}
+                        value={edu.degree}
+                        onChangeText={t => {
+                          const newEdu = [...editedData.education];
+                          newEdu[idx].degree = t;
+                          setEditedData({...editedData, education: newEdu});
+                        }}
+                        placeholder="Degree/Qualification"
+                      />
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
+                        <TextInput
+                          style={[styles.itemSub, { color: colors.textSecondary, flex: 1, marginRight: 8, borderBottomWidth: 1, borderBottomColor: colors.border, paddingVertical: 4 }]}
+                          value={edu.institution}
+                          onChangeText={t => {
+                            const newEdu = [...editedData.education];
+                            newEdu[idx].institution = t;
+                            setEditedData({...editedData, education: newEdu});
+                          }}
+                          placeholder="Institution"
+                        />
+                        <TextInput
+                          style={[styles.itemDate, { color: colors.textSecondary, width: 100, borderBottomWidth: 1, borderBottomColor: colors.border, paddingVertical: 4, textAlign: 'right' }]}
+                          value={edu.duration}
+                          onChangeText={t => {
+                            const newEdu = [...editedData.education];
+                            newEdu[idx].duration = t;
+                            setEditedData({...editedData, education: newEdu});
+                          }}
+                          placeholder="Duration"
+                        />
+                      </View>
+                      <TextInput
+                        style={[styles.itemDesc, { color: colors.textPrimary, borderBottomWidth: 1, borderBottomColor: colors.border, paddingVertical: 4, marginTop: 4 }]}
+                        value={edu.details}
+                        onChangeText={t => {
+                          const newEdu = [...editedData.education];
+                          newEdu[idx].details = t;
+                          setEditedData({...editedData, education: newEdu});
+                        }}
+                        placeholder="Details"
+                        multiline
+                      />
+                    </>
+                  ) : (
+                    <>
+                      <Text style={[styles.itemTitle, { color: colors.textPrimary, marginBottom: 2 }]}>{edu.degree}</Text>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', flexWrap: 'wrap', marginBottom: 4 }}>
+                        <Text style={[styles.itemSub, { color: colors.textSecondary, marginBottom: 0, flex: 1, marginRight: 8 }]}>{edu.institution}</Text>
+                        <Text style={[styles.itemDate, { color: colors.textSecondary }]}>{edu.duration}</Text>
+                      </View>
+                      <Text style={[styles.itemDesc, { color: colors.textPrimary, marginTop: 4 }]}>{edu.details}</Text>
+                    </>
+                  )}
                 </View>
               ))}
             </View>
 
             {/* Experience */}
-            {resumeData.experience && resumeData.experience.length > 0 && (
+            {(isEditing ? editedData.experience : resumeData.experience) && (isEditing ? editedData.experience : resumeData.experience).length > 0 && (
               <View style={styles.section}>
                 <Text style={[styles.sectionTitle, { color: colors.primary }]}>{isMed ? 'CLINICAL POSTINGS & RESIDENCY' : 'EXPERIENCE'}</Text>
-                {resumeData.experience.map((exp, idx) => (
+                {(isEditing ? editedData.experience : resumeData.experience).map((exp, idx) => (
                   <View key={idx} style={styles.itemContainer}>
-                    <Text style={[styles.itemTitle, { color: colors.textPrimary, marginBottom: 2 }]}>{exp.role}</Text>
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', flexWrap: 'wrap', marginBottom: 4 }}>
-                      <Text style={[styles.itemSub, { color: colors.textSecondary, marginBottom: 0, flex: 1, marginRight: 8 }]}>{exp.company}</Text>
-                      <Text style={[styles.itemDate, { color: colors.textSecondary }]}>{exp.duration}</Text>
-                    </View>
-                    {exp.bullets?.map((bullet, bIdx) => (
-                      <View key={bIdx} style={styles.bulletRow}>
-                        <Text style={[styles.bulletPoint, { color: colors.textPrimary }]}>•</Text>
-                        <Text style={[styles.bulletText, { color: colors.textPrimary }]}>{bullet}</Text>
-                      </View>
-                    ))}
+                    {isEditing ? (
+                      <>
+                        <TextInput
+                          style={[styles.itemTitle, { color: colors.textPrimary, borderBottomWidth: 1, borderBottomColor: colors.border, paddingVertical: 4, marginBottom: 4 }]}
+                          value={exp.role}
+                          onChangeText={t => {
+                            const newExp = [...editedData.experience];
+                            newExp[idx].role = t;
+                            setEditedData({...editedData, experience: newExp});
+                          }}
+                          placeholder="Role/Position"
+                        />
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
+                          <TextInput
+                            style={[styles.itemSub, { color: colors.textSecondary, flex: 1, marginRight: 8, borderBottomWidth: 1, borderBottomColor: colors.border, paddingVertical: 4 }]}
+                            value={exp.company}
+                            onChangeText={t => {
+                              const newExp = [...editedData.experience];
+                              newExp[idx].company = t;
+                              setEditedData({...editedData, experience: newExp});
+                            }}
+                            placeholder="Company/Hospital"
+                          />
+                          <TextInput
+                            style={[styles.itemDate, { color: colors.textSecondary, width: 100, borderBottomWidth: 1, borderBottomColor: colors.border, paddingVertical: 4, textAlign: 'right' }]}
+                            value={exp.duration}
+                            onChangeText={t => {
+                              const newExp = [...editedData.experience];
+                              newExp[idx].duration = t;
+                              setEditedData({...editedData, experience: newExp});
+                            }}
+                            placeholder="Duration"
+                          />
+                        </View>
+                        {exp.bullets?.map((bullet, bIdx) => (
+                          <View key={bIdx} style={styles.bulletRow}>
+                            <Text style={[styles.bulletPoint, { color: colors.textPrimary }]}>•</Text>
+                            <TextInput
+                              style={[styles.bulletText, { color: colors.textPrimary, borderBottomWidth: 1, borderBottomColor: colors.border, paddingVertical: 2, flex: 1 }]}
+                              value={bullet}
+                              onChangeText={t => {
+                                const newExp = [...editedData.experience];
+                                const newBullets = [...newExp[idx].bullets];
+                                newBullets[bIdx] = t;
+                                newExp[idx].bullets = newBullets;
+                                setEditedData({...editedData, experience: newExp});
+                              }}
+                              placeholder="Description bullet"
+                              multiline
+                            />
+                          </View>
+                        ))}
+                      </>
+                    ) : (
+                      <>
+                        <Text style={[styles.itemTitle, { color: colors.textPrimary, marginBottom: 2 }]}>{exp.role}</Text>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', flexWrap: 'wrap', marginBottom: 4 }}>
+                          <Text style={[styles.itemSub, { color: colors.textSecondary, marginBottom: 0, flex: 1, marginRight: 8 }]}>{exp.company}</Text>
+                          <Text style={[styles.itemDate, { color: colors.textSecondary }]}>{exp.duration}</Text>
+                        </View>
+                        {exp.bullets?.map((bullet, bIdx) => (
+                          <View key={bIdx} style={styles.bulletRow}>
+                            <Text style={[styles.bulletPoint, { color: colors.textPrimary }]}>•</Text>
+                            <Text style={[styles.bulletText, { color: colors.textPrimary }]}>{bullet}</Text>
+                          </View>
+                        ))}
+                      </>
+                    )}
                   </View>
                 ))}
               </View>
             )}
 
             {/* Projects */}
-            {resumeData.projects && resumeData.projects.length > 0 && (
+            {(isEditing ? editedData.projects : resumeData.projects) && (isEditing ? editedData.projects : resumeData.projects).length > 0 && (
               <View style={styles.section}>
                 <Text style={[styles.sectionTitle, { color: colors.primary }]}>{isMed ? 'CLINICAL CASE STUDIES' : 'PROJECTS'}</Text>
-                {resumeData.projects.map((proj, idx) => (
+                {(isEditing ? editedData.projects : resumeData.projects).map((proj, idx) => (
                   <View key={idx} style={styles.itemContainer}>
-                    <Text style={[styles.itemTitle, { color: colors.textPrimary }]}>{proj.title}</Text>
-                    <Text style={[styles.itemSub, { color: colors.textSecondary }]}>{proj.technologies}</Text>
-                    <Text style={[styles.itemDesc, { color: colors.textPrimary }]}>{proj.description}</Text>
+                    {isEditing ? (
+                      <>
+                        <TextInput
+                          style={[styles.itemTitle, { color: colors.textPrimary, borderBottomWidth: 1, borderBottomColor: colors.border, paddingVertical: 4, marginBottom: 4 }]}
+                          value={proj.title}
+                          onChangeText={t => {
+                            const newProj = [...editedData.projects];
+                            newProj[idx].title = t;
+                            setEditedData({...editedData, projects: newProj});
+                          }}
+                          placeholder="Project Title"
+                        />
+                        <TextInput
+                          style={[styles.itemSub, { color: colors.textSecondary, borderBottomWidth: 1, borderBottomColor: colors.border, paddingVertical: 4, marginBottom: 4 }]}
+                          value={proj.technologies}
+                          onChangeText={t => {
+                            const newProj = [...editedData.projects];
+                            newProj[idx].technologies = t;
+                            setEditedData({...editedData, projects: newProj});
+                          }}
+                          placeholder="Technologies Used"
+                        />
+                        <TextInput
+                          style={[styles.itemDesc, { color: colors.textPrimary, borderBottomWidth: 1, borderBottomColor: colors.border, paddingVertical: 4 }]}
+                          value={proj.description}
+                          onChangeText={t => {
+                            const newProj = [...editedData.projects];
+                            newProj[idx].description = t;
+                            setEditedData({...editedData, projects: newProj});
+                          }}
+                          placeholder="Description"
+                          multiline
+                        />
+                      </>
+                    ) : (
+                      <>
+                        <Text style={[styles.itemTitle, { color: colors.textPrimary }]}>{proj.title}</Text>
+                        <Text style={[styles.itemSub, { color: colors.textSecondary }]}>{proj.technologies}</Text>
+                        <Text style={[styles.itemDesc, { color: colors.textPrimary }]}>{proj.description}</Text>
+                      </>
+                    )}
                   </View>
                 ))}
               </View>
             )}
 
             {/* Skills */}
-            {resumeData.skills && resumeData.skills.length > 0 && (
+            {(isEditing ? editedData.skills : resumeData.skills) && (isEditing ? editedData.skills : resumeData.skills).length > 0 && (
               <View style={styles.section}>
                 <Text style={[styles.sectionTitle, { color: colors.primary }]}>{isMed ? 'CLINICAL SKILLS & COMPETENCIES' : 'SKILLS'}</Text>
-                <View style={styles.skillsGrid}>
-                  {resumeData.skills.map((skill, idx) => (
-                    <View key={idx} style={[styles.skillBadge, { backgroundColor: isDark ? 'rgba(99, 102, 241, 0.1)' : '#EEF2FF' }]}>
-                      <Text style={[styles.skillText, { color: colors.primary }]}>{skill}</Text>
-                    </View>
-                  ))}
-                </View>
+                {isEditing ? (
+                  <TextInput
+                    style={[styles.itemDesc, { color: colors.textPrimary, borderBottomWidth: 1, borderBottomColor: colors.border, paddingVertical: 4 }]}
+                    value={editedData.skills.join(', ')}
+                    onChangeText={t => {
+                      const newSkills = t.split(',').map(s => s.trim());
+                      setEditedData({...editedData, skills: newSkills});
+                    }}
+                    placeholder="Skills (comma separated)"
+                    multiline
+                  />
+                ) : (
+                  <View style={styles.skillsGrid}>
+                    {resumeData.skills.map((skill, idx) => (
+                      <View key={idx} style={[styles.skillBadge, { backgroundColor: isDark ? 'rgba(99, 102, 241, 0.1)' : '#EEF2FF' }]}>
+                        <Text style={[styles.skillText, { color: colors.primary }]}>{skill}</Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
               </View>
             )}
 
           </View>
-          
+
           <View style={{ height: 40 }} />
         </ScrollView>
       ) : (
@@ -481,5 +701,11 @@ const styles = StyleSheet.create({
     borderRadius: 28,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  input: {
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 12,
+    fontSize: 14,
   },
 });

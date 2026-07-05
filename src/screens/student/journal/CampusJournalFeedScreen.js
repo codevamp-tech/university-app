@@ -176,7 +176,7 @@ const CampusJournalFeedScreen = ({ navigation }) => {
             <View style={styles.footerRow}>
               <View style={styles.footerItem}>
                 <Ionicons name="time-outline" size={14} color="#6B7280" />
-                <Text style={styles.footerText}>{formatTime(item.date)}</Text>
+                <Text style={styles.footerText}>{formatDate(item.date)} • {formatTime(item.date)}</Text>
               </View>
               <View style={styles.footerItem}>
                 <Ionicons name="location-outline" size={14} color="#6B7280" />

@@ -9,12 +9,15 @@ import {
   Image,
   SafeAreaView,
   RefreshControl,
+  Linking,
+  Alert,
 } from 'react-native';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../../hooks/useTheme';
 import { useUser } from '../../context/UserContext';
 import { getSuperAdminDrilldown } from '../../data/apiService';
 import { SkeletonBlock } from '../../components/SkeletonLoader';
+import { APP_CONFIG } from '../../config/appConfig';
 
 const StudentAvatar = ({ uri, name, colors }) => {
   if (uri) {
@@ -60,6 +63,29 @@ const SuperAdminDrilldownScreen = ({ route, navigation }) => {
   useEffect(() => {
     fetchData();
   }, [category, accessToken]);
+
+  const handleOpenLink = async (url) => {
+    if (!url) return;
+    let formattedUrl = url;
+    
+    if (formattedUrl.startsWith('/')) {
+        formattedUrl = `${APP_CONFIG.API_BASE_URL}${formattedUrl}`;
+    } else if (!formattedUrl.startsWith('http://') && !formattedUrl.startsWith('https://')) {
+        formattedUrl = 'https://' + formattedUrl;
+    }
+
+    try {
+      const supported = await Linking.canOpenURL(formattedUrl);
+      if (supported) {
+        await Linking.openURL(formattedUrl);
+      } else {
+        Alert.alert('Cannot Open', 'Unable to open this type of link.');
+      }
+    } catch (e) {
+      console.warn('[PitchDeck] Linking failed:', e);
+      Alert.alert('Error', 'An error occurred while trying to open the pitch deck.');
+    }
+  };
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -137,7 +163,10 @@ const SuperAdminDrilldownScreen = ({ route, navigation }) => {
               ● {item.approval_status === 'approved' ? 'Approved' : 'Pending Review'}
             </Text>
             {item.pitch_deck_url ? (
-              <TouchableOpacity style={styles.deckBtn}>
+              <TouchableOpacity 
+                style={styles.deckBtn}
+                onPress={() => handleOpenLink(item.pitch_deck_url)}
+              >
                 <Feather name="file-text" size={14} color={colors.primary} />
                 <Text style={[styles.deckBtnText, { color: colors.primary }]}>View Pitch Deck</Text>
               </TouchableOpacity>
@@ -147,8 +176,20 @@ const SuperAdminDrilldownScreen = ({ route, navigation }) => {
       );
     }
 
-    if (category === 'tensed_students' || category === 'happy_students') {
+    if (category === 'tensed_students' || category === 'happy_students' || category === 'neutral_students') {
       const isStressed = item.mood === 'stressed' || item.mood === 'tensed';
+      const isNeutral = item.mood === 'neutral';
+      
+      let badgeColor = colors.success;
+      let badgeText = '🟢 HAPPY';
+      if (isStressed) {
+        badgeColor = colors.danger;
+        badgeText = '🟡 TENSED';
+      } else if (isNeutral) {
+        badgeColor = colors.warning;
+        badgeText = '⚪ NEUTRAL';
+      }
+
       return (
         <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <View style={styles.cardHeader}>
@@ -159,9 +200,9 @@ const SuperAdminDrilldownScreen = ({ route, navigation }) => {
                 <Text style={[styles.rollnoText, { color: colors.textSecondary }]}>{item.rollno}</Text>
               </View>
             </View>
-            <View style={[styles.badge, { backgroundColor: isStressed ? colors.danger + '20' : colors.success + '20' }]}>
-              <Text style={[styles.badgeText, { color: isStressed ? colors.danger : colors.success }]}>
-                {isStressed ? '🟡 TENSED' : '🟢 HAPPY'}
+            <View style={[styles.badge, { backgroundColor: badgeColor + '20' }]}>
+              <Text style={[styles.badgeText, { color: badgeColor }]}>
+                {badgeText}
               </Text>
             </View>
           </View>
@@ -205,7 +246,10 @@ const SuperAdminDrilldownScreen = ({ route, navigation }) => {
 
     if (category === 'hustle_students') {
       return (
-        <View style={[styles.rowCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <TouchableOpacity 
+          style={[styles.rowCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+          onPress={() => navigation.navigate('OtherStudentProfile', { student: { id: item.user_id || item.student_id || item.id, name: item.student_name, avatar: item.avatar_url } })}
+        >
           <StudentAvatar uri={item.avatar_url} name={item.student_name} colors={colors} />
           <View style={{ flex: 1, marginLeft: 12 }}>
             <Text style={[styles.founderName, { color: colors.textPrimary }]}>{item.student_name}</Text>
@@ -216,13 +260,16 @@ const SuperAdminDrilldownScreen = ({ route, navigation }) => {
           <View style={[styles.scorePill, { backgroundColor: colors.primaryLight }]}>
             <Text style={[styles.scoreText, { color: colors.primary }]}>{item.score} pts</Text>
           </View>
-        </View>
+        </TouchableOpacity>
       );
     }
 
     if (category === 'cv_students') {
       return (
-        <View style={[styles.rowCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <TouchableOpacity 
+          style={[styles.rowCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+          onPress={() => navigation.navigate('OtherStudentProfile', { student: { id: item.user_id || item.student_id || item.id, name: item.student_name, avatar: item.avatar_url } })}
+        >
           <StudentAvatar uri={item.avatar_url} name={item.student_name} colors={colors} />
           <View style={{ flex: 1, marginLeft: 12 }}>
             <Text style={[styles.founderName, { color: colors.textPrimary }]}>{item.student_name}</Text>
@@ -233,7 +280,7 @@ const SuperAdminDrilldownScreen = ({ route, navigation }) => {
               {item.cv_status}
             </Text>
           </View>
-        </View>
+        </TouchableOpacity>
       );
     }
 

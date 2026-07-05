@@ -16,13 +16,15 @@ import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../../hooks/useTheme';
 import { useUser } from '../../context/UserContext';
 import { getPendingStartups, reviewStartup } from '../../data/apiService';
+import { APP_CONFIG } from '../../config/appConfig';
+import * as WebBrowser from 'expo-web-browser';
 
 const AdminVentureReviewScreen = ({ navigation }) => {
   const { colors, isDark } = useTheme();
   const { accessToken } = useUser();
   const [ventures, setVentures] = useState([]);
   const [loading, setLoading] = useState(true);
-  
+
   // Rejection Modal State
   const [rejectModalVisible, setRejectModalVisible] = useState(false);
   const [selectedVentureId, setSelectedVentureId] = useState(null);
@@ -99,16 +101,30 @@ const AdminVentureReviewScreen = ({ navigation }) => {
   };
 
   const handleOpenLink = async (url) => {
+    console.log(url, "********************************")
     if (!url) return;
+    let formattedUrl = url;
+
+    // Check if it's a relative path from backend (e.g. /uploads/...)
+    if (formattedUrl.startsWith('/')) {
+      formattedUrl = `${APP_CONFIG.API_BASE_URL}${formattedUrl}`;
+    } else if (!formattedUrl.startsWith('http://') && !formattedUrl.startsWith('https://')) {
+      formattedUrl = 'https://' + formattedUrl;
+    }
+
+    // Log for debugging
+    console.log('[PitchDeck] Opening URL:', formattedUrl);
+
     try {
-      const supported = await Linking.canOpenURL(url);
+      const supported = await Linking.canOpenURL(formattedUrl);
       if (supported) {
-        await Linking.openURL(url);
+        await Linking.openURL(formattedUrl);
       } else {
-        Alert.alert('Cannot Open Deck', 'This URL is not supported.');
+        Alert.alert('Cannot Open', 'Unable to open this type of link.');
       }
     } catch (e) {
-      Alert.alert('Error', 'Unable to open pitch deck link.');
+      console.warn('[PitchDeck] Linking failed:', e);
+      Alert.alert('Error', 'An error occurred while trying to open the pitch deck.');
     }
   };
 
@@ -138,7 +154,7 @@ const AdminVentureReviewScreen = ({ navigation }) => {
         </View>
 
         {item.pitch_deck_url && (
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.deckLinkBtn, { borderColor: colors.border }]}
             onPress={() => handleOpenLink(item.pitch_deck_url)}
           >
@@ -149,16 +165,16 @@ const AdminVentureReviewScreen = ({ navigation }) => {
         )}
 
         <View style={styles.actions}>
-          <TouchableOpacity 
-            style={[styles.actionBtn, styles.rejectBtn, { backgroundColor: colors.dangerLight }]} 
+          <TouchableOpacity
+            style={[styles.actionBtn, styles.rejectBtn, { backgroundColor: colors.dangerLight }]}
             onPress={() => openRejectModal(item.id)}
           >
             <Feather name="x" size={16} color={colors.danger} style={{ marginRight: 6 }} />
             <Text style={[styles.btnText, { color: colors.danger }]}>Reject</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity 
-            style={[styles.actionBtn, styles.approveBtn, { backgroundColor: colors.success }]} 
+          <TouchableOpacity
+            style={[styles.actionBtn, styles.approveBtn, { backgroundColor: colors.success }]}
             onPress={() => handleApprove(item.id, item.name)}
           >
             <Feather name="check" size={16} color="#FFF" style={{ marginRight: 6 }} />
@@ -219,7 +235,7 @@ const AdminVentureReviewScreen = ({ navigation }) => {
             <Text style={[styles.modalSub, { color: colors.textSecondary }]}>
               Enter constructive feedback. The student will receive this to refine their startup pitch.
             </Text>
-            
+
             <TextInput
               style={[styles.input, { borderColor: colors.border, color: colors.textPrimary, backgroundColor: isDark ? '#1F2937' : '#F9FAFB' }]}
               multiline
@@ -231,16 +247,16 @@ const AdminVentureReviewScreen = ({ navigation }) => {
             />
 
             <View style={styles.modalActions}>
-              <TouchableOpacity 
-                style={[styles.modalBtn, { backgroundColor: colors.border }]} 
+              <TouchableOpacity
+                style={[styles.modalBtn, { backgroundColor: colors.border }]}
                 onPress={() => setRejectModalVisible(false)}
                 disabled={actionInProgress}
               >
                 <Text style={[styles.modalBtnText, { color: colors.textPrimary }]}>Cancel</Text>
               </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={[styles.modalBtn, { backgroundColor: colors.danger }]} 
+
+              <TouchableOpacity
+                style={[styles.modalBtn, { backgroundColor: colors.danger }]}
                 onPress={handleRejectSubmit}
                 disabled={actionInProgress}
               >

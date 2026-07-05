@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import {
-  View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Alert, Image, ActivityIndicator, KeyboardAvoidingView, Platform, Modal, DeviceEventEmitter
+  View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Alert, Image, ActivityIndicator, KeyboardAvoidingView, Platform, Modal
 } from 'react-native';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -82,24 +82,12 @@ const AddProductScreen = ({ navigation }) => {
       if (!response) {
         throw new Error('Failed to create listing');
       }
-      
-      DeviceEventEmitter.emit('newProductAdded', {
-        id: 'local_' + Date.now(),
-        title: title.trim(),
-        description: description.trim(),
-        price: parseFloat(price),
-        category,
-        image_url: finalImageUrl,
-        seller: {
-          username: 'You',
-          avatar_url: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150',
-          status: 'online'
-        }
-      });
-      
-      Alert.alert('Success!', 'Your product is now live on the Hub! Students can now see and purchase your item.', [
-        { text: 'Awesome', onPress: () => navigation.goBack() }
-      ]);
+
+      Alert.alert(
+        '📬 Submitted for Review!',
+        'Your listing has been submitted. The college admin will review and approve it shortly. You will be notified once it goes live.',
+        [{ text: 'Got it!', onPress: () => navigation.goBack() }]
+      );
     } catch (err) {
       Alert.alert('Error', 'Failed to add product. Please try again.');
     } finally {
@@ -229,7 +217,7 @@ const AddProductScreen = ({ navigation }) => {
             {isSubmitting ? (
               <ActivityIndicator color="#FFF" size="small" />
             ) : (
-              <Text style={styles.submitText}>List Product</Text>
+              <Text style={styles.submitText}>Submit for Review</Text>
             )}
           </LinearGradient>
         </TouchableOpacity>
@@ -240,7 +228,7 @@ const AddProductScreen = ({ navigation }) => {
         <View style={styles.loaderOverlay}>
           <View style={[styles.loaderBox, { backgroundColor: colors.card }]}>
             <ActivityIndicator size="large" color={colors.primary} />
-            <Text style={[styles.loaderText, { color: colors.textPrimary }]}>Listing Product...</Text>
+            <Text style={[styles.loaderText, { color: colors.textPrimary }]}>Submitting for Review...</Text>
           </View>
         </View>
       </Modal>

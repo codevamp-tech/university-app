@@ -31,12 +31,13 @@ const AdminMentalHealthInsightsScreen = ({ navigation }) => {
       at_risk: 0,
     },
     at_risk_students: [],
+    today_logs: [],
     total_focus_minutes: 0,
     total_focus_sessions: 0,
   });
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [filterLevel, setFilterLevel] = useState('ALL'); // 'ALL', 'HIGH', 'MEDIUM'
+  const [filterMood, setFilterMood] = useState('ALL'); // 'ALL', 'HAPPY', 'NEUTRAL', 'STRESSED', 'AT_RISK'
 
   const fetchInsights = async () => {
     setLoading(true);
@@ -47,6 +48,7 @@ const AdminMentalHealthInsightsScreen = ({ navigation }) => {
           setData({
             mood_distribution: res.mood_distribution || { happy: 0, neutral: 0, stressed: 0, at_risk: 0 },
             at_risk_students: res.at_risk_students || [],
+            today_logs: res.today_logs || [],
             total_focus_minutes: res.total_focus_minutes || 0,
             total_focus_sessions: res.total_focus_sessions || 0,
           });
@@ -116,14 +118,24 @@ const AdminMentalHealthInsightsScreen = ({ navigation }) => {
   };
 
   // Filter students based on search and level selection
-  const filteredStudents = data.at_risk_students.filter(student => {
-    const matchesSearch = student.student_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          student.roll_no?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          student.department?.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    if (filterLevel === 'ALL') return matchesSearch;
-    return matchesSearch && student.risk_level?.toUpperCase() === filterLevel;
-  });
+  const filteredStudents = filterMood === 'AT_RISK' 
+    ? data.at_risk_students.filter(student => {
+        const matchesSearch = student.student_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                              student.roll_no?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                              student.department?.toLowerCase().includes(searchQuery.toLowerCase());
+        return matchesSearch;
+      })
+    : data.today_logs.filter(student => {
+        const matchesSearch = student.student_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                              student.roll_no?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                              student.department?.toLowerCase().includes(searchQuery.toLowerCase());
+        if (!matchesSearch) return false;
+        if (filterMood === 'ALL') return true;
+        if (filterMood === 'HAPPY') return student.mood === 'happy' || student.mood === 'excited';
+        if (filterMood === 'NEUTRAL') return student.mood === 'neutral';
+        if (filterMood === 'STRESSED') return student.mood === 'stressed';
+        return true;
+      });
 
   const totalMoodCount = 
     data.mood_distribution.happy + 
@@ -189,10 +201,16 @@ const AdminMentalHealthInsightsScreen = ({ navigation }) => {
           <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>Mood Index Distribution</Text>
           
           <View style={styles.barChartContainer}>
-            <View style={[styles.barSegment, { flex: Math.max(data.mood_distribution.happy, 1), backgroundColor: colors.success }]} />
-            <View style={[styles.barSegment, { flex: Math.max(data.mood_distribution.neutral, 1), backgroundColor: colors.warning }]} />
-            <View style={[styles.barSegment, { flex: Math.max(data.mood_distribution.stressed, 1), backgroundColor: colors.orange }]} />
-            <View style={[styles.barSegment, { flex: Math.max(data.mood_distribution.at_risk, 1), backgroundColor: colors.danger }]} />
+            {totalMoodCount === 0 ? (
+              <View style={[styles.barSegment, { flex: 1, backgroundColor: isDark ? '#374151' : '#E5E7EB' }]} />
+            ) : (
+              <>
+                {data.mood_distribution.happy > 0 && <View style={[styles.barSegment, { flex: data.mood_distribution.happy, backgroundColor: colors.success }]} />}
+                {data.mood_distribution.neutral > 0 && <View style={[styles.barSegment, { flex: data.mood_distribution.neutral, backgroundColor: colors.warning }]} />}
+                {data.mood_distribution.stressed > 0 && <View style={[styles.barSegment, { flex: data.mood_distribution.stressed, backgroundColor: colors.orange }]} />}
+                {data.mood_distribution.at_risk > 0 && <View style={[styles.barSegment, { flex: data.mood_distribution.at_risk, backgroundColor: colors.danger }]} />}
+              </>
+            )}
           </View>
 
           <View style={styles.legendGrid}>
@@ -201,7 +219,7 @@ const AdminMentalHealthInsightsScreen = ({ navigation }) => {
               <View>
                 <Text style={[styles.legendText, { color: colors.textPrimary }]}>Happy: {data.mood_distribution.happy}</Text>
                 <Text style={[styles.legendPct, { color: colors.textSecondary }]}>
-                  {((data.mood_distribution.happy / totalMoodCount) * 100).toFixed(0)}%
+                  {totalMoodCount > 0 ? ((data.mood_distribution.happy / totalMoodCount) * 100).toFixed(0) : 0}%
                 </Text>
               </View>
             </View>
@@ -211,7 +229,7 @@ const AdminMentalHealthInsightsScreen = ({ navigation }) => {
               <View>
                 <Text style={[styles.legendText, { color: colors.textPrimary }]}>Neutral: {data.mood_distribution.neutral}</Text>
                 <Text style={[styles.legendPct, { color: colors.textSecondary }]}>
-                  {((data.mood_distribution.neutral / totalMoodCount) * 100).toFixed(0)}%
+                  {totalMoodCount > 0 ? ((data.mood_distribution.neutral / totalMoodCount) * 100).toFixed(0) : 0}%
                 </Text>
               </View>
             </View>
@@ -221,7 +239,7 @@ const AdminMentalHealthInsightsScreen = ({ navigation }) => {
               <View>
                 <Text style={[styles.legendText, { color: colors.textPrimary }]}>Stressed: {data.mood_distribution.stressed}</Text>
                 <Text style={[styles.legendPct, { color: colors.textSecondary }]}>
-                  {((data.mood_distribution.stressed / totalMoodCount) * 100).toFixed(0)}%
+                  {totalMoodCount > 0 ? ((data.mood_distribution.stressed / totalMoodCount) * 100).toFixed(0) : 0}%
                 </Text>
               </View>
             </View>
@@ -231,7 +249,7 @@ const AdminMentalHealthInsightsScreen = ({ navigation }) => {
               <View>
                 <Text style={[styles.legendText, { color: colors.textPrimary }]}>At Risk: {data.mood_distribution.at_risk}</Text>
                 <Text style={[styles.legendPct, { color: colors.textSecondary }]}>
-                  {((data.mood_distribution.at_risk / totalMoodCount) * 100).toFixed(0)}%
+                  {totalMoodCount > 0 ? ((data.mood_distribution.at_risk / totalMoodCount) * 100).toFixed(0) : 0}%
                 </Text>
               </View>
             </View>
@@ -239,7 +257,9 @@ const AdminMentalHealthInsightsScreen = ({ navigation }) => {
         </View>
 
         {/* Risk Filter Buttons and Search */}
-        <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Student Flag Registry ({filteredStudents.length})</Text>
+        <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
+          {filterMood === 'AT_RISK' ? 'Student Flag Registry' : 'Daily Campus Mood Logs'} ({filteredStudents.length})
+        </Text>
         
         <View style={[styles.searchBox, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <Feather name="search" size={16} color={colors.textSecondary} style={{ marginRight: 8 }} />
@@ -259,29 +279,47 @@ const AdminMentalHealthInsightsScreen = ({ navigation }) => {
 
         <View style={styles.filterRow}>
           <TouchableOpacity
-            style={[styles.filterChip, filterLevel === 'ALL' ? { backgroundColor: colors.primary } : { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}
-            onPress={() => setFilterLevel('ALL')}
+            style={[styles.filterChip, filterMood === 'ALL' ? { backgroundColor: colors.primary } : { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}
+            onPress={() => setFilterMood('ALL')}
           >
-            <Text style={[styles.filterChipText, filterLevel === 'ALL' ? { color: '#FFF' } : { color: colors.textSecondary }]}>
-              All Flags
+            <Text style={[styles.filterChipText, filterMood === 'ALL' ? { color: '#FFF' } : { color: colors.textSecondary }]}>
+              All
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.filterChip, filterLevel === 'HIGH' ? { backgroundColor: colors.danger } : { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}
-            onPress={() => setFilterLevel('HIGH')}
+            style={[styles.filterChip, filterMood === 'HAPPY' ? { backgroundColor: colors.success } : { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}
+            onPress={() => setFilterMood('HAPPY')}
           >
-            <Text style={[styles.filterChipText, filterLevel === 'HIGH' ? { color: '#FFF' } : { color: colors.textSecondary }]}>
-              High Risk
+            <Text style={[styles.filterChipText, filterMood === 'HAPPY' ? { color: '#FFF' } : { color: colors.textSecondary }]}>
+              Happy
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.filterChip, filterLevel === 'MEDIUM' ? { backgroundColor: colors.orange } : { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}
-            onPress={() => setFilterLevel('MEDIUM')}
+            style={[styles.filterChip, filterMood === 'NEUTRAL' ? { backgroundColor: colors.warning } : { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}
+            onPress={() => setFilterMood('NEUTRAL')}
           >
-            <Text style={[styles.filterChipText, filterLevel === 'MEDIUM' ? { color: '#FFF' } : { color: colors.textSecondary }]}>
-              Medium Risk
+            <Text style={[styles.filterChipText, filterMood === 'NEUTRAL' ? { color: '#FFF' } : { color: colors.textSecondary }]}>
+              Neutral
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.filterChip, filterMood === 'STRESSED' ? { backgroundColor: colors.orange } : { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}
+            onPress={() => setFilterMood('STRESSED')}
+          >
+            <Text style={[styles.filterChipText, filterMood === 'STRESSED' ? { color: '#FFF' } : { color: colors.textSecondary }]}>
+              Stressed
+            </Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity
+            style={[styles.filterChip, filterMood === 'AT_RISK' ? { backgroundColor: colors.danger } : { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}
+            onPress={() => setFilterMood('AT_RISK')}
+          >
+            <Text style={[styles.filterChipText, filterMood === 'AT_RISK' ? { color: '#FFF' } : { color: colors.textSecondary }]}>
+              At Risk
             </Text>
           </TouchableOpacity>
         </View>
@@ -290,9 +328,25 @@ const AdminMentalHealthInsightsScreen = ({ navigation }) => {
   };
 
   const renderStudentItem = ({ item }) => {
+    const isFlag = !!item.risk_level;
     const isHigh = item.risk_level?.toLowerCase() === 'high';
     const riskColor = isHigh ? colors.danger : colors.orange;
     const riskBg = isHigh ? colors.dangerLight : colors.orangeLight;
+
+    const getMoodColor = (mood) => {
+      if (mood === 'happy' || mood === 'excited') return colors.success;
+      if (mood === 'neutral') return colors.warning;
+      if (mood === 'stressed') return colors.orange;
+      return colors.textSecondary;
+    };
+    
+    const getMoodIcon = (mood) => {
+      if (mood === 'excited') return 'emoticon-excited-outline';
+      if (mood === 'happy') return 'emoticon-happy-outline';
+      if (mood === 'neutral') return 'emoticon-neutral-outline';
+      if (mood === 'stressed') return 'emoticon-sad-outline';
+      return 'emoticon-outline';
+    };
 
     return (
       <View style={[styles.studentCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -311,28 +365,56 @@ const AdminMentalHealthInsightsScreen = ({ navigation }) => {
             </View>
           </View>
           
-          <View style={[styles.riskBadge, { backgroundColor: riskBg }]}>
-            <Text style={[styles.riskBadgeText, { color: riskColor }]}>
-              {item.risk_level?.toUpperCase()}
-            </Text>
-          </View>
+          {isFlag ? (
+            <View style={[styles.riskBadge, { backgroundColor: riskBg }]}>
+              <Text style={[styles.riskBadgeText, { color: riskColor }]}>
+                {item.risk_level?.toUpperCase()}
+              </Text>
+            </View>
+          ) : (
+            <View style={{ alignItems: 'center' }}>
+              <MaterialCommunityIcons name={getMoodIcon(item.mood)} size={28} color={getMoodColor(item.mood)} />
+              <Text style={{ fontSize: 10, color: getMoodColor(item.mood), fontWeight: '600', marginTop: 2 }}>
+                {item.mood?.toUpperCase()}
+              </Text>
+            </View>
+          )}
         </View>
 
         <View style={styles.divider} />
 
         <View style={styles.flagDetails}>
-          <View style={styles.detailRow}>
-            <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>Source of flag:</Text>
-            <Text style={[styles.detailValue, { color: colors.textPrimary }]}>
-              {item.source === 'journal_nlp' ? '📝 Journal Sentiment AI' : item.source || 'Wellbeing System'}
-            </Text>
-          </View>
-          <View style={styles.detailRow}>
-            <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>Flag trigger:</Text>
-            <Text style={[styles.detailValue, { color: colors.textPrimary }]}>
-              {item.created_at ? new Date(item.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Recent'}
-            </Text>
-          </View>
+          {isFlag ? (
+            <>
+              <View style={styles.detailRow}>
+                <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>Source of flag:</Text>
+                <Text style={[styles.detailValue, { color: colors.textPrimary }]}>
+                  {item.source === 'journal_nlp' ? '📝 Journal Sentiment AI' : item.source || 'Wellbeing System'}
+                </Text>
+              </View>
+              <View style={styles.detailRow}>
+                <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>Flag trigger:</Text>
+                <Text style={[styles.detailValue, { color: colors.textPrimary }]}>
+                  {item.created_at ? new Date(item.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Recent'}
+                </Text>
+              </View>
+            </>
+          ) : (
+            <>
+              <View style={styles.detailRow}>
+                <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>Logged At:</Text>
+                <Text style={[styles.detailValue, { color: colors.textPrimary }]}>
+                  {item.created_at ? new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Today'}
+                </Text>
+              </View>
+              {item.notes ? (
+                <View style={styles.detailRow}>
+                  <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>Notes:</Text>
+                  <Text style={[styles.detailValue, { color: colors.textPrimary }]}>"{item.notes}"</Text>
+                </View>
+              ) : null}
+            </>
+          )}
         </View>
 
         <View style={styles.actions}>
@@ -360,13 +442,15 @@ const AdminMentalHealthInsightsScreen = ({ navigation }) => {
             <Text style={[styles.btnText, { color: colors.primary }]}>Escalate</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[styles.actionBtn, { backgroundColor: colors.successLight, borderColor: colors.successLight }]}
-            onPress={() => handleResolve(item.id)}
-          >
-            <Feather name="check" size={14} color={colors.success} style={{ marginRight: 4 }} />
-            <Text style={[styles.btnText, { color: colors.success }]}>Resolve</Text>
-          </TouchableOpacity>
+          {isFlag && (
+            <TouchableOpacity
+              style={[styles.actionBtn, { backgroundColor: colors.successLight, borderColor: colors.successLight }]}
+              onPress={() => handleResolve(item.id)}
+            >
+              <Feather name="check" size={14} color={colors.success} style={{ marginRight: 4 }} />
+              <Text style={[styles.btnText, { color: colors.success }]}>Resolve</Text>
+            </TouchableOpacity>
+          )}
         </View>
       </View>
     );
@@ -389,9 +473,11 @@ const AdminMentalHealthInsightsScreen = ({ navigation }) => {
           ListEmptyComponent={
             <View style={styles.centerEmpty}>
               <MaterialCommunityIcons name="heart-pulse" size={64} color={colors.textMuted} />
-              <Text style={[styles.emptyText, { color: colors.textPrimary, marginTop: 16 }]}>No Active Flagged Students</Text>
-              <Text style={[styles.emptySub, { color: colors.textSecondary, marginTop: 6 }]}>
-                Campus mental health metrics look sound and stable!
+              <Text style={[styles.emptyText, { color: colors.textPrimary, marginTop: 16 }]}>
+                {filterMood === 'AT_RISK' ? 'No Active Flagged Students' : 'No Mood Logs Today'}
+              </Text>
+              <Text style={[styles.emptySub, { color: colors.textSecondary, marginTop: 6, textAlign: 'center' }]}>
+                {filterMood === 'AT_RISK' ? 'Campus mental health metrics look sound and stable!' : 'Check back later as students check in their daily pulse.'}
               </Text>
             </View>
           }

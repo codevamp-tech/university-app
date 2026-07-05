@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -20,7 +20,7 @@ import * as ImagePicker from 'expo-image-picker';
 
 import { useTheme } from '../../hooks/useTheme';
 import { useUser } from '../../context/UserContext';
-import { createGrievanceAPI, uploadAvatarAPI } from '../../data/apiService';
+import { createGrievanceAPI, updateGrievanceAPI, uploadAvatarAPI } from '../../data/apiService';
 
 const { width } = Dimensions.get('window');
 
@@ -35,11 +35,46 @@ const CATEGORIES = [
   { id: 'safety', label: 'Safety', icon: 'shield-check-outline', subs: ['Harassment', 'Theft', 'Emergency', 'Physical Hazard'] },
 ];
 
-const RaiseIssueScreen = ({ navigation }) => {
+const RaiseIssueScreen = ({ navigation, route }) => {
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
   const { accessToken } = useUser();
+  const { editMode, issue } = route.params || {};
 
+  useEffect(() => {
+    if (editMode && issue) {
+      const cat = CATEGORIES.find(c => c.id === issue.category);
+      if (cat) setSelectedCategory(cat);
+      
+      let subCat = '';
+      let title = issue.subject || '';
+      if (issue.subject && issue.subject.includes(' - ')) {
+        const parts = issue.subject.split(' - ');
+        subCat = parts[0];
+        title = parts.slice(1).join(' - ');
+      }
+      setSelectedSubCategory(subCat);
+      setIssueTitle(title);
+      
+      let cleanDesc = issue.description || '';
+      if (cleanDesc.includes('Attachment:')) {
+        cleanDesc = cleanDesc.replace(/Attachment:\s*https?:\/\/\S+/gi, '').trim();
+      }
+      setDescription(cleanDesc);
+      
+      if (issue.priority) {
+        const p = issue.priority.toLowerCase();
+        setPriority(p.charAt(0).toUpperCase() + p.slice(1));
+      }
+      
+      if (issue.attachment_url) {
+        setAttachmentUrl(issue.attachment_url);
+      } else if (issue.description) {
+        const match = issue.description.match(/Attachment:\s*(https?:\/\/\S+)/i);
+        if (match) setAttachmentUrl(match[1]);
+      }
+    }
+  }, [editMode, issue]);
 
   // Form State
   const [selectedCategory, setSelectedCategory] = useState(null);
@@ -105,16 +140,25 @@ const RaiseIssueScreen = ({ navigation }) => {
       const payload = {
         category: selectedCategory.id,
         subject: `${selectedSubCategory} - ${issueTitle}`,
-        description: attachmentUrl ? `${description}\n\nAttachment: ${attachmentUrl}` : description,
+        description: description,
+        attachment_url: attachmentUrl || null,
         priority: priority
       };
-      const result = await createGrievanceAPI(accessToken, payload);
+      console.log('[Grievance] Submitting payload:', JSON.stringify(payload));
+      let result;
+      if (editMode && issue) {
+        result = await updateGrievanceAPI(accessToken, issue.id, payload);
+      } else {
+        result = await createGrievanceAPI(accessToken, payload);
+      }
+      console.log('[Grievance] Submit result:', result);
       if (result) {
         setShowSuccess(true);
       } else {
-        Alert.alert('Submission Failed', 'Could not submit your issue. Please try again.');
+        Alert.alert('Submission Failed', `Could not ${editMode ? 'update' : 'submit'} your issue. Please try again.`);
       }
     } catch (err) {
+      console.error('[Grievance] Submit error:', err);
       Alert.alert('Error', err.message || 'An error occurred during submission.');
     } finally {
       setIsSubmitting(false);
@@ -130,8 +174,8 @@ const RaiseIssueScreen = ({ navigation }) => {
               <Ionicons name="checkmark-done" size={60} color="#FFFFFF" />
             </LinearGradient>
           </LinearGradient>
-          <Text style={[styles.successTitle, { color: colors.textPrimary }]}>Issue Raised Successfully!</Text>
-          <Text style={[styles.successSub, { color: colors.textSecondary }]}>Your support ticket has been created. Our team will reach out to you shortly.</Text>
+          <Text style={[styles.successTitle, { color: colors.textPrimary }]}>Issue {editMode ? 'Updated' : 'Raised'} Successfully!</Text>
+          <Text style={[styles.successSub, { color: colors.textSecondary }]}>Your support ticket has been {editMode ? 'updated' : 'created'}. Our team will reach out to you shortly.</Text>
           <TouchableOpacity style={styles.doneBtn} onPress={() => navigation.goBack()}>
             <LinearGradient colors={['#EA580C', '#9A3412']} style={styles.doneBtnGradient}>
               <Text style={styles.doneBtnText}>Back to Dashboard</Text>
@@ -155,7 +199,7 @@ const RaiseIssueScreen = ({ navigation }) => {
             <Ionicons name="chevron-back" size={24} color={isDark ? '#FB923C' : '#EA580C'} />
           </LinearGradient>
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Raise an Issue</Text>
+        <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>{editMode ? 'Update Issue' : 'Raise an Issue'}</Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -291,9 +335,9 @@ const RaiseIssueScreen = ({ navigation }) => {
                   <ActivityIndicator size="large" color="#EA580C" />
                   <Text style={[styles.uploadTitle, { color: colors.textPrimary, marginTop: 12 }]}>Uploading to Cloudinary...</Text>
                 </View>
-              ) : attachmentUri ? (
+              ) : (attachmentUri || attachmentUrl) ? (
                 <View style={{ alignItems: 'center', paddingVertical: 10 }}>
-                  <Image source={{ uri: attachmentUri }} style={{ width: 80, height: 80, borderRadius: 12, marginBottom: 8 }} />
+                  <Image source={{ uri: attachmentUri || attachmentUrl }} style={{ width: 80, height: 80, borderRadius: 12, marginBottom: 8 }} />
                   <Text style={[styles.uploadTitle, { color: colors.textPrimary }]}>Attachment Uploaded</Text>
                   <Text style={[styles.uploadSub, { color: colors.textSecondary }]}>Tap to replace image</Text>
                 </View>
@@ -358,7 +402,7 @@ const RaiseIssueScreen = ({ navigation }) => {
                 {isSubmitting ? (
                   <Text style={styles.submitBtnText}>Submitting...</Text>
                 ) : (
-                  <Text style={styles.submitBtnText}>Submit Issue</Text>
+                  <Text style={styles.submitBtnText}>{editMode ? 'Update Issue' : 'Submit Issue'}</Text>
                 )}
               </LinearGradient>
             </TouchableOpacity>

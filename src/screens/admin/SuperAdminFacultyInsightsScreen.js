@@ -11,7 +11,7 @@ import {
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../../hooks/useTheme';
 import { useUser } from '../../context/UserContext';
-import { getSuperAdminAnalytics, getSuperAdminDrilldown } from '../../data/apiService';
+import { getSuperAdminAnalytics, getSuperAdminDrilldown, getFacultyAttendance } from '../../data/apiService';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SkeletonBlock } from '../../components/SkeletonLoader';
 
@@ -22,16 +22,19 @@ const SuperAdminFacultyInsightsScreen = ({ navigation }) => {
   const [teachers, setTeachers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [myPunches, setMyPunches] = useState([]);
 
   const loadData = async () => {
     try {
       if (accessToken) {
-        const [stats, teacherList] = await Promise.all([
+        const [stats, teacherList, punches] = await Promise.all([
           getSuperAdminAnalytics(accessToken),
           getSuperAdminDrilldown(accessToken, 'teachers'),
+          getFacultyAttendance(accessToken),
         ]);
         if (stats) setData(stats);
         if (Array.isArray(teacherList)) setTeachers(teacherList);
+        if (Array.isArray(punches)) setMyPunches(punches);
       }
     } catch (err) {
       console.warn('[FacultyInsights] Fetch error:', err);
@@ -63,6 +66,14 @@ const SuperAdminFacultyInsightsScreen = ({ navigation }) => {
     return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
   };
 
+  const formatTime = (dateStr) => {
+    if (!dateStr) return '';
+    try {
+      const d = new Date(dateStr);
+      return d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+    } catch { return ''; }
+  };
+
   const renderSkeleton = () => (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
@@ -92,6 +103,13 @@ const SuperAdminFacultyInsightsScreen = ({ navigation }) => {
     average_cgpa: 0.0,
     dept_attendance: [],
   };
+
+  // Calculate my today's attendance
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayPunches = myPunches.filter(p => p.punch_time && p.punch_time.startsWith(todayStr));
+  const todaySorted = [...todayPunches].sort((a, b) => new Date(a.punch_time) - new Date(b.punch_time));
+  const checkInToday = todaySorted.length > 0 ? formatTime(todaySorted[0].punch_time) : '—';
+  const checkOutToday = todaySorted.length > 1 ? formatTime(todaySorted[todaySorted.length - 1].punch_time) : '—';
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
@@ -213,9 +231,10 @@ const SuperAdminFacultyInsightsScreen = ({ navigation }) => {
             const isActiveToday = t.last_login && (new Date() - new Date(t.last_login)) < 86400000;
 
             return (
-              <View
+              <TouchableOpacity
                 key={t.id}
                 style={[styles.teacherCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+                onPress={() => navigation.navigate('AdminFacultyDetail', { teacher: t })}
               >
                 <View style={[styles.teacherAvatar, { backgroundColor: avatarBg }]}>
                   <Text style={[styles.teacherInitials, { color: avatarColor }]}>{initials}</Text>
@@ -242,7 +261,7 @@ const SuperAdminFacultyInsightsScreen = ({ navigation }) => {
                   )}
                   <Text style={{ fontSize: 10, color: colors.textMuted }}>{formatLastLogin(t.last_login)}</Text>
                 </View>
-              </View>
+              </TouchableOpacity>
             );
           })
         )}

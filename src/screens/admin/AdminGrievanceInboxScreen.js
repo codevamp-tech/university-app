@@ -9,6 +9,7 @@ import {
   Alert,
   Modal,
   SafeAreaView,
+  Image,
 } from 'react-native';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../../hooks/useTheme';
@@ -25,7 +26,7 @@ const AdminGrievanceInboxScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(true);
   const [activeStatus, setActiveStatus] = useState('all');
   const [activeCategory, setActiveCategory] = useState('All');
-  
+
   // Status Update Modal
   const [statusModalVisible, setStatusModalVisible] = useState(false);
   const [selectedGrievance, setSelectedGrievance] = useState(null);
@@ -39,7 +40,7 @@ const AdminGrievanceInboxScreen = ({ navigation }) => {
         const cat = activeCategory === 'All' ? '' : activeCategory.toLowerCase();
         // Map UI status 'all' to empty string for API
         const stat = activeStatus === 'all' ? '' : activeStatus;
-        
+
         const data = await listGrievancesAPI(accessToken, cat, stat);
         setGrievances(data || []);
       }
@@ -87,9 +88,9 @@ const AdminGrievanceInboxScreen = ({ navigation }) => {
 
   const renderItem = ({ item }) => {
     const createdDate = item.created_at ? new Date(item.created_at).toLocaleDateString() : 'Today';
-    
+
     return (
-      <TouchableOpacity 
+      <TouchableOpacity
         style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}
         onPress={() => openStatusModal(item)}
       >
@@ -105,19 +106,19 @@ const AdminGrievanceInboxScreen = ({ navigation }) => {
             </View>
           </View>
           <View style={[
-            styles.statusBadge, 
-            { 
-              backgroundColor: 
-                item.status === 'resolved' ? colors.successLight : 
-                item.status === 'in_progress' ? colors.orangeLight : colors.dangerLight 
+            styles.statusBadge,
+            {
+              backgroundColor:
+                item.status === 'resolved' ? colors.successLight :
+                  item.status === 'in_progress' ? colors.orangeLight : colors.dangerLight
             }
           ]}>
             <Text style={[
-              styles.statusText, 
-              { 
-                color: 
-                  item.status === 'resolved' ? colors.success : 
-                  item.status === 'in_progress' ? colors.orange : colors.danger 
+              styles.statusText,
+              {
+                color:
+                  item.status === 'resolved' ? colors.success :
+                    item.status === 'in_progress' ? colors.orange : colors.danger
               }
             ]}>
               {item.status?.replace('_', ' ')}
@@ -139,6 +140,8 @@ const AdminGrievanceInboxScreen = ({ navigation }) => {
       </TouchableOpacity>
     );
   };
+
+  console.log("selectedGrievance", selectedGrievance);
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
@@ -188,13 +191,13 @@ const AdminGrievanceInboxScreen = ({ navigation }) => {
       {/* Status Filter Tab Bar */}
       <View style={[styles.tabs, { backgroundColor: colors.card, borderColor: colors.border }]}>
         {STATUSES.map((stat) => (
-          <TouchableOpacity 
+          <TouchableOpacity
             key={stat}
             style={[styles.tab, activeStatus === stat && [styles.activeTab, { borderBottomColor: colors.primary }]]}
             onPress={() => setActiveStatus(stat)}
           >
             <Text style={[
-              styles.tabText, 
+              styles.tabText,
               { color: activeStatus === stat ? colors.primary : colors.textSecondary },
               activeStatus === stat && styles.activeTabText
             ]}>
@@ -236,35 +239,42 @@ const AdminGrievanceInboxScreen = ({ navigation }) => {
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>Manage Grievance</Text>
-            
+
             {selectedGrievance && (
               <View style={styles.modalTicketDetails}>
                 <Text style={[styles.modalSubject, { color: colors.textPrimary }]}>{selectedGrievance.subject}</Text>
                 <Text style={[styles.modalDesc, { color: colors.textSecondary }]}>{selectedGrievance.description}</Text>
+                {(selectedGrievance.attachment_url || (selectedGrievance.description && /(https?:\/\/[^\s]+)/i.test(selectedGrievance.description))) && (
+                  <Image
+                    source={{ uri: selectedGrievance.attachment_url || selectedGrievance.description.match(/(https?:\/\/[^\s]+)/i)[0] }}
+                    style={styles.previewImage}
+                    resizeMode="cover"
+                  />
+                )}
               </View>
             )}
 
             <Text style={[styles.modalSectionTitle, { color: colors.textPrimary }]}>Update Resolution Status:</Text>
-            
+
             {actionInProgress ? (
               <ActivityIndicator size="small" color={colors.primary} style={{ marginVertical: 16 }} />
             ) : (
               <View style={styles.statusButtonsContainer}>
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={[styles.statusBtn, { backgroundColor: colors.dangerLight }]}
                   onPress={() => handleUpdateStatus('pending')}
                 >
                   <Text style={[styles.statusBtnText, { color: colors.danger }]}>Mark Pending</Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={[styles.statusBtn, { backgroundColor: colors.orangeLight }]}
                   onPress={() => handleUpdateStatus('in_progress')}
                 >
                   <Text style={[styles.statusBtnText, { color: colors.orange }]}>Move In-Progress</Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={[styles.statusBtn, { backgroundColor: colors.successLight }]}
                   onPress={() => handleUpdateStatus('resolved')}
                 >
@@ -273,8 +283,8 @@ const AdminGrievanceInboxScreen = ({ navigation }) => {
               </View>
             )}
 
-            <TouchableOpacity 
-              style={[styles.modalCloseBtn, { backgroundColor: colors.border }]} 
+            <TouchableOpacity
+              style={[styles.modalCloseBtn, { backgroundColor: colors.border }]}
               onPress={() => setStatusModalVisible(false)}
               disabled={actionInProgress}
             >
@@ -471,6 +481,13 @@ const styles = StyleSheet.create({
   modalDesc: {
     fontSize: 13,
     lineHeight: 18,
+  },
+  previewImage: {
+    width: '100%',
+    height: 180,
+    borderRadius: 8,
+    marginTop: 12,
+    backgroundColor: '#f0f0f0',
   },
   modalSectionTitle: {
     fontSize: 14,

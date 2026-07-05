@@ -10,6 +10,7 @@ import AdminDashboardScreen from '../screens/admin/AdminDashboardScreen';
 import WardenOutpassesScreen from '../screens/admin/WardenOutpassesScreen';
 import AdminVentureReviewScreen from '../screens/admin/AdminVentureReviewScreen';
 import AdminGrievanceInboxScreen from '../screens/admin/AdminGrievanceInboxScreen';
+import AdminMarketplaceReviewScreen from '../screens/admin/AdminMarketplaceReviewScreen';
 import SettingsScreen from '../screens/student/SettingsScreen';
 
 // Superadmin Dedicated Strategic Insights Screens
@@ -50,6 +51,10 @@ const AdminTabs = () => {
             IconLibrary = MaterialCommunityIcons;
             iconName = 'door-open';
             label = 'Outpasses';
+          } else if (route.name === 'MarketplaceManager') {
+            IconLibrary = MaterialCommunityIcons;
+            iconName = 'storefront-outline';
+            label = 'Bazaar';
           } else if (route.name === 'VentureManager') {
             IconLibrary = MaterialCommunityIcons;
             iconName = 'rocket-launch-outline';
@@ -108,6 +113,10 @@ const AdminTabs = () => {
         <Tab.Screen name="OutpassManager" component={WardenOutpassesScreen} />
       )}
       
+      {role === 'admin' && (
+        <Tab.Screen name="MarketplaceManager" component={AdminMarketplaceReviewScreen} />
+      )}
+
       {role === 'admin' && (
         <Tab.Screen name="VentureManager" component={AdminVentureReviewScreen} />
       )}

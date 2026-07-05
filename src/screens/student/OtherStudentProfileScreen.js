@@ -15,7 +15,7 @@ const OtherStudentProfileScreen = ({ route, navigation }) => {
   const { student } = route.params || {};
   const { accessToken } = useUser();
   const { colors, isDark } = useTheme();
-  const [connectionStatus, setConnectionStatus] = useState('Connect'); // 'Connect', 'Pending', 'Connected'
+  const [connectionStatus, setConnectionStatus] = useState('Follow'); // 'Follow', 'Pending', 'Following', 'Follow Back', 'Connected'
 
   const [profile, setProfile] = useState(null);
   const [stats, setStats] = useState({ followers: 0, following: 0, connections: 0 });
@@ -53,12 +53,13 @@ const OtherStudentProfileScreen = ({ route, navigation }) => {
   }, [student?.id, accessToken]);
 
   const handleConnect = async () => {
-    if (connectionStatus === 'Connect' && student?.id) {
+    if ((connectionStatus === 'Follow' || connectionStatus === 'Follow Back') && student?.id) {
+      const prevStatus = connectionStatus;
       setConnectionStatus('Pending');
       try {
         await followUserAPI(accessToken, student.id);
       } catch(e) {
-        setConnectionStatus('Connect');
+        setConnectionStatus(prevStatus);
         console.warn('Follow error', e);
       }
     }
@@ -88,6 +89,8 @@ const OtherStudentProfileScreen = ({ route, navigation }) => {
   const courseTitle = profile?.course 
     ? (profile.branch ? `${profile.course} ${profile.branch}` : profile.course)
     : (student?.course || 'Student');
+
+  const disableActionBtn = connectionStatus === 'Pending' || connectionStatus === 'Following' || connectionStatus === 'Connected';
 
   return (
     <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
@@ -135,27 +138,30 @@ const OtherStudentProfileScreen = ({ route, navigation }) => {
               style={[
                 styles.actionBtnPrimary, 
                 { backgroundColor: colors.primary, shadowColor: colors.primary },
-                connectionStatus === 'Pending' && [styles.actionBtnPending, { backgroundColor: colors.border }]
+                disableActionBtn && [styles.actionBtnPending, { backgroundColor: colors.border }]
               ]}
               onPress={handleConnect}
+              disabled={disableActionBtn}
             >
               <Ionicons 
-                name={connectionStatus === 'Pending' ? "time-outline" : "person-add-outline"} 
+                name={disableActionBtn ? "checkmark-outline" : "person-add-outline"} 
                 size={18} 
-                color={connectionStatus === 'Pending' ? colors.textSecondary : '#FFFFFF'} 
+                color={disableActionBtn ? colors.textSecondary : '#FFFFFF'} 
               />
               <Text style={[
                 styles.actionBtnTextPrimary,
-                connectionStatus === 'Pending' && { color: colors.textSecondary }
+                disableActionBtn && { color: colors.textSecondary }
               ]}>
                 {connectionStatus}
               </Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={[styles.actionBtnSecondary, { backgroundColor: colors.card, borderColor: colors.border }]} onPress={handleMessage}>
-              <Ionicons name="chatbubble-outline" size={18} color={colors.textPrimary} />
-              <Text style={[styles.actionBtnTextSecondary, { color: colors.textPrimary }]}>Message</Text>
-            </TouchableOpacity>
+            {connectionStatus === 'Connected' && (
+              <TouchableOpacity style={[styles.actionBtnSecondary, { backgroundColor: colors.card, borderColor: colors.border }]} onPress={handleMessage}>
+                <Ionicons name="chatbubble-outline" size={18} color={colors.textPrimary} />
+                <Text style={[styles.actionBtnTextSecondary, { color: colors.textPrimary }]}>Message</Text>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
 

@@ -8,6 +8,8 @@ import {
   ActivityIndicator,
   Alert,
   SafeAreaView,
+  Modal,
+  TextInput,
 } from 'react-native';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../../hooks/useTheme';
@@ -20,6 +22,11 @@ const WardenOutpassesScreen = ({ navigation }) => {
   const [outpasses, setOutpasses] = useState([]);
   const [activeTab, setActiveTab] = useState('pending'); // 'pending' or 'history'
   const [loading, setLoading] = useState(true);
+
+  const [modalVisible, setModalVisible] = useState(false);
+  const [actionItem, setActionItem] = useState(null);
+  const [actionType, setActionType] = useState(''); // 'approved' or 'rejected'
+  const [actionRemarks, setActionRemarks] = useState('');
 
   const fetchOutpasses = async () => {
     setLoading(true);
@@ -45,27 +52,24 @@ const WardenOutpassesScreen = ({ navigation }) => {
   }, [activeTab, accessToken]);
 
   const handleAction = (id, status) => {
-    Alert.alert(
-      `${status === 'approved' ? 'Approve' : 'Reject'} Outpass`,
-      `Are you sure you want to mark this outpass as ${status}?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Confirm',
-          onPress: async () => {
-            try {
-              const res = await actionWardenOutpass(accessToken, id, status);
-              if (res) {
-                Alert.alert('Success', `Outpass successfully ${status}.`);
-                fetchOutpasses();
-              }
-            } catch (err) {
-              Alert.alert('Error', err.message || 'Failed to update outpass.');
-            }
-          },
-        },
-      ]
-    );
+    setActionItem(id);
+    setActionType(status);
+    setActionRemarks('');
+    setModalVisible(true);
+  };
+
+  const confirmAction = async () => {
+    if (!actionItem || !actionType) return;
+    try {
+      const res = await actionWardenOutpass(accessToken, actionItem, actionType, actionRemarks);
+      if (res) {
+        setModalVisible(false);
+        Alert.alert('Success', `Outpass successfully ${actionType}.`);
+        fetchOutpasses();
+      }
+    } catch (err) {
+      Alert.alert('Error', err.message || 'Failed to update outpass.');
+    }
   };
 
   const renderItem = ({ item }) => {
@@ -224,6 +228,43 @@ const WardenOutpassesScreen = ({ navigation }) => {
           showsVerticalScrollIndicator={false}
         />
       )}
+
+      {/* Action Modal */}
+      <Modal visible={modalVisible} transparent animationType="fade" onRequestClose={() => setModalVisible(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>
+              {actionType === 'approved' ? 'Approve' : 'Reject'} Outpass
+            </Text>
+            <Text style={[styles.modalSubtitle, { color: colors.textSecondary }]}>
+              Optional: Add a reason or remark for the student.
+            </Text>
+            
+            <TextInput
+              style={[styles.modalInput, { backgroundColor: isDark ? '#1F2937' : '#F9FAFB', borderColor: colors.border, color: colors.textPrimary }]}
+              placeholder="e.g., Have a safe trip..."
+              placeholderTextColor={colors.textSecondary}
+              value={actionRemarks}
+              onChangeText={setActionRemarks}
+              multiline
+              numberOfLines={3}
+            />
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity style={styles.modalBtnCancel} onPress={() => setModalVisible(false)}>
+                <Text style={styles.modalBtnCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.modalBtnConfirm, { backgroundColor: actionType === 'approved' ? colors.success : colors.danger }]}
+                onPress={confirmAction}
+              >
+                <Text style={styles.modalBtnConfirmText}>Confirm</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
     </SafeAreaView>
   );
 };
@@ -377,8 +418,69 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
   },
-  rejectBtn: {},
-  approveBtn: {},
+  emptySubtext: {
+    fontSize: 14,
+    textAlign: 'center',
+    marginTop: 6,
+  },
+  
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    width: '100%',
+    borderRadius: 16,
+    padding: 24,
+    borderWidth: 1,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    marginBottom: 8,
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    marginBottom: 16,
+  },
+  modalInput: {
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 12,
+    fontSize: 15,
+    minHeight: 80,
+    textAlignVertical: 'top',
+    marginBottom: 20,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 12,
+  },
+  modalBtnCancel: {
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+  },
+  modalBtnCancelText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#6B7280',
+  },
+  modalBtnConfirm: {
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+  },
+  modalBtnConfirmText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#FFF',
+  },
 });
 
 export default WardenOutpassesScreen;

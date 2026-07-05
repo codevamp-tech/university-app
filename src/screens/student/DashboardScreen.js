@@ -8,6 +8,7 @@ import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
+import { useFocusEffect } from '@react-navigation/native';
 
 import { useTheme } from '../../hooks/useTheme';
 import { APP_CONFIG } from '../../config/appConfig';
@@ -18,7 +19,7 @@ import { useHealthMetrics } from '../../hooks/useHealthMetrics';
 import { generateAIInsight, generateRoadmap, computeSkillGap, generateDynamicRoadmap, fetchDynamicLLMInsight, enrichRoadmapWithMarks } from '../../data/aiEngine';
 
 import { booksData } from '../student/library/LibraryMainScreen';
-import { listGrievancesAPI, uploadAvatarAPI, createOutpass, getStudentOutpasses, getResults, getCompetencyGaps } from '../../data/apiService';
+import { listGrievancesAPI, deleteGrievanceAPI, uploadAvatarAPI, createOutpass, getStudentOutpasses, getResults, getCompetencyGaps, logMoodAPI, getMoodEntriesAPI } from '../../data/apiService';
 import { getDisplayCourse, isMedicalStudent } from '../../utils/courseDisplay';
 
 const { width } = Dimensions.get('window');
@@ -204,6 +205,28 @@ const DashboardScreen = ({ navigation }) => {
     }
   }, [accessToken]);
 
+  const handleDeleteIssue = React.useCallback((issueId) => {
+    Alert.alert(
+      "Delete Ticket",
+      "Are you sure you want to delete this support ticket?",
+      [
+        { text: "Cancel", style: "cancel" },
+        { 
+          text: "Delete", 
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await deleteGrievanceAPI(accessToken, issueId);
+              fetchRaisedIssues(); // Refresh list
+            } catch (error) {
+              Alert.alert("Error", error.message || "Failed to delete ticket");
+            }
+          }
+        }
+      ]
+    );
+  }, [accessToken, fetchRaisedIssues]);
+
   React.useEffect(() => {
     fetchRaisedIssues();
     const unsubscribe = navigation.addListener('focus', () => {
@@ -259,6 +282,40 @@ const DashboardScreen = ({ navigation }) => {
   const avatarUrl = getAvatarUrl(user?.avatar_url || user?.name);
   const isMed = user && (isMedicalStudent(user) || (user.course || '').toLowerCase().includes('mbbs') || (user.category || '').toLowerCase().includes('medical'));
   const [activeMood, setActiveMood] = React.useState(2);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      if (!accessToken) return;
+      let isMounted = true;
+      const fetchTodayMood = async () => {
+        try {
+          const res = await getMoodEntriesAPI(accessToken);
+          if (isMounted && res && res.length > 0) {
+            const latestMood = res[0];
+            const moodDate = new Date(latestMood.created_at);
+            const today = new Date();
+            if (moodDate.getDate() === today.getDate() && moodDate.getMonth() === today.getMonth() && moodDate.getFullYear() === today.getFullYear()) {
+              const apiValToId = {
+                 'excited': 0,
+                 'happy': 1,
+                 'neutral': 2,
+                 'stressed': 3,
+                 'focused': 0
+              };
+              if (apiValToId[latestMood.mood] !== undefined) {
+                 setActiveMood(apiValToId[latestMood.mood]);
+              }
+            }
+          }
+        } catch(e) {
+          console.warn("Failed to fetch today's mood:", e);
+        }
+      };
+      fetchTodayMood();
+      return () => { isMounted = false; };
+    }, [accessToken])
+  );
+
   const [showProfileMenu, setShowProfileMenu] = React.useState(false);
 
   const [isHostelMode, setIsHostelMode] = React.useState(false);
@@ -964,14 +1021,22 @@ const DashboardScreen = ({ navigation }) => {
 
             <View style={styles.moodRow}>
               {[
-                { id: 0, icon: 'emoticon-excited-outline' },
-                { id: 1, icon: 'emoticon-happy-outline' },
-                { id: 2, icon: 'emoticon-neutral-outline' },
-                { id: 3, icon: 'emoticon-sad-outline' },
+                { id: 0, icon: 'emoticon-excited-outline', apiVal: 'excited' },
+                { id: 1, icon: 'emoticon-happy-outline', apiVal: 'happy' },
+                { id: 2, icon: 'emoticon-neutral-outline', apiVal: 'neutral' },
+                { id: 3, icon: 'emoticon-sad-outline', apiVal: 'stressed' },
               ].map((mood) => (
                 <TouchableOpacity
                   key={mood.id}
-                  onPress={() => setActiveMood(mood.id)}
+                  onPress={async () => {
+                    setActiveMood(mood.id);
+                    try {
+                      await logMoodAPI(accessToken, mood.apiVal);
+                      Alert.alert("Mood Logged", "Your daily vibe check has been recorded. Stay healthy!");
+                    } catch (e) {
+                      console.warn("Failed to log mood:", e);
+                    }
+                  }}
                   style={[
                     styles.moodBtn,
                     { backgroundColor: activeMood === mood.id ? '#EA580C' : isDark ? '#1F2937' : '#F1F5F9' }
@@ -1172,21 +1237,7 @@ const DashboardScreen = ({ navigation }) => {
                     {isMed ? `What clinical competencies are missing for ${targetGoal}?` : `What's missing for ${targetGoal}?`}
                   </Text>
 
-                  {/* Completed Phases Strip — MBBS only */}
-                  {isMed && gapData.completedPhases && gapData.completedPhases.length > 0 && (
-                    <View style={{ marginTop: 12, marginBottom: 4 }}>
-                      <Text style={{ fontSize: 10, fontWeight: '800', color: colors.textSecondary, letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 8 }}>Completed Professional Years</Text>
-                      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                        {gapData.completedPhases.map((cp, idx) => (
-                          <View key={idx} style={{ flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: isDark ? 'rgba(16,185,129,0.12)' : '#D1FAE5', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20, borderWidth: 1, borderColor: isDark ? 'rgba(16,185,129,0.3)' : '#6EE7B7' }}>
-                            <MaterialCommunityIcons name="check-circle" size={12} color="#10B981" />
-                            <Text style={{ fontSize: 11, fontWeight: '800', color: '#10B981' }}>{cp.phase}</Text>
-                            <Text style={{ fontSize: 11, fontWeight: '600', color: isDark ? '#6EE7B7' : '#065F46' }}>Avg {cp.avg}%</Text>
-                          </View>
-                        ))}
-                      </View>
-                    </View>
-                  )}
+
 
                   {/* Category Split Metrics */}
                   <View style={{ flexDirection: 'row', gap: 12, marginTop: 12, marginBottom: 16 }}>
@@ -1593,7 +1644,7 @@ const DashboardScreen = ({ navigation }) => {
                         if (!desc) return '';
                         return desc.replace(/Attachment:\s*https?:\/\/\S+/gi, '').trim();
                       };
-                      const attachmentUrl = extractAttachmentUrl(issue.description);
+                      const attachmentUrl = issue.attachment_url || extractAttachmentUrl(issue.description);
                       const displayDesc = cleanDescription(issue.description);
                       return (
                         <>
@@ -1619,10 +1670,28 @@ const DashboardScreen = ({ navigation }) => {
                         </>
                       );
                     })()}
-                    <View style={styles.issueFooter}>
+                    <View style={[styles.issueFooter, { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 12 }]}>
                       <Text style={[styles.issueTimeText, { color: colors.textMuted }]}>
                         {new Date(issue.created_at).toLocaleDateString()} {new Date(issue.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </Text>
+                      {statusLower === 'pending' && (
+                        <View style={{ flexDirection: 'row', gap: 16 }}>
+                          <TouchableOpacity 
+                            onPress={() => navigation.navigate('RaiseIssue', { editMode: true, issue })}
+                            style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
+                          >
+                            <MaterialIcons name="edit" size={16} color={colors.primary} />
+                            <Text style={{ color: colors.primary, fontSize: 13, fontWeight: '600' }}>Edit</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity 
+                            onPress={() => handleDeleteIssue(issue.id)}
+                            style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
+                          >
+                            <MaterialIcons name="delete-outline" size={16} color="#EF4444" />
+                            <Text style={{ color: '#EF4444', fontSize: 13, fontWeight: '600' }}>Delete</Text>
+                          </TouchableOpacity>
+                        </View>
+                      )}
                     </View>
                   </View>
                 );

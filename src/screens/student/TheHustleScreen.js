@@ -19,8 +19,10 @@ const TheHustleScreen = ({ navigation }) => {
   const { colors, isDark } = useTheme();
   const { user, accessToken } = useUser();
 
-  const [students, setStudents] = useState([]);
+  const [allStudents, setAllStudents] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [filterType, setFilterType] = useState('Medical'); // 'Medical' or 'All'
+  const [viewFullRankings, setViewFullRankings] = useState(false);
 
   useFocusEffect(
     React.useCallback(() => {
@@ -30,8 +32,7 @@ const TheHustleScreen = ({ navigation }) => {
           if (accessToken) {
             const list = await getAllStudents(accessToken);
             if (active) {
-              const medicalList = list.filter(s => isMedicalStudent(s));
-              const mapped = medicalList.map(s => ({
+              const mapped = list.map(s => ({
                 id: s.rollno || s.username || s.id,
                 name: s.full_name || s.username || 'Student',
                 course: s.course,
@@ -45,7 +46,7 @@ const TheHustleScreen = ({ navigation }) => {
                 gender: 'M',
                 avatar_url: s.avatar_url,
               }));
-              setStudents(mapped);
+              setAllStudents(mapped);
             }
           }
         } catch (err) {
@@ -61,8 +62,16 @@ const TheHustleScreen = ({ navigation }) => {
     }, [accessToken])
   );
 
+  // Filter students based on selection
+  const filteredStudents = allStudents.filter(s => {
+    if (filterType === 'Medical') {
+      return isMedicalStudent(s);
+    }
+    return true; // 'All'
+  });
+
   // Compute leaderboard scores
-  const computedLeaderboard = students.map(s => {
+  const computedLeaderboard = filteredStudents.map(s => {
     // 1. Certificates done: 500 pts each
     const certCount = (s.certsDone || []).filter(c => {
       const cl = c.toLowerCase();
@@ -156,8 +165,8 @@ const TheHustleScreen = ({ navigation }) => {
   const progressPercent = Math.min(Math.round((myScore / topScore) * 100), 100);
 
   // Layout list of top students
-  const displayLeaderboard = computedLeaderboard.slice(0, 10);
-  const showMeAtBottom = user && myRank > 10;
+  const displayLeaderboard = viewFullRankings ? computedLeaderboard : computedLeaderboard.slice(0, 10);
+  const showMeAtBottom = user && myRank > 10 && !viewFullRankings;
 
   if (loading) {
     return (
@@ -179,10 +188,11 @@ const TheHustleScreen = ({ navigation }) => {
     );
   }
 
+  console.log(computedLeaderboard, ' Computed leaderboard', myRecord, " myRecord");
   return (
     <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
 
-      
+
       {/* Header */}
       <View style={[styles.header, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -205,19 +215,19 @@ const TheHustleScreen = ({ navigation }) => {
 
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        
+
         {/* Main Pulse Points Card */}
         <View style={styles.sectionContainer}>
           <View style={[styles.pulseCard, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
             <Text style={[styles.pulseTitle, { color: colors.textMuted }]}>PULSE POINTS</Text>
-            
+
             <View style={styles.scoreRow}>
               <Text style={[styles.largeScore, { color: colors.textPrimary }]}>{myScore.toLocaleString()}</Text>
               <View style={[styles.rankBox, { backgroundColor: isDark ? 'rgba(234, 88, 12, 0.15)' : '#FFF7ED', borderColor: colors.border }]}>
                 <Text style={[styles.rankText, { color: colors.primary }]}>#{myRank}</Text>
               </View>
             </View>
-            
+
             <View style={styles.progressContainer}>
               <View style={[styles.progressBarBg, { backgroundColor: colors.border }]}>
                 <View style={[styles.progressBarFill, { width: `${progressPercent}%`, backgroundColor: colors.primary }]} />
@@ -226,7 +236,7 @@ const TheHustleScreen = ({ navigation }) => {
                 {isTop10 ? 'Top 10 Player!' : `${ptsToNext.toLocaleString()} pts to Top 10`}
               </Text>
             </View>
-            
+
             <Text style={[styles.pulseDesc, { backgroundColor: isDark ? colors.background : '#F9FAFB', color: colors.textSecondary }]}>
               You are ranked #{myRank} overall. {isTop10 ? 'You are in the Top 10! Keep maintaining your lead for early access to premium internships.' : `You need ${ptsToNext.toLocaleString()} more points to enter the Top 10 for early access to premium internships.`}
             </Text>
@@ -237,7 +247,7 @@ const TheHustleScreen = ({ navigation }) => {
         {/* The Hustle Grid */}
         <View style={styles.sectionContainer}>
           <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>The Hustle Grid</Text>
-          
+
           <View style={styles.gridContainer}>
             {/* Certifications Card */}
             <View style={[styles.gridCard, { backgroundColor: isDark ? colors.card : '#FFF7ED', borderColor: colors.border }]}>
@@ -245,18 +255,18 @@ const TheHustleScreen = ({ navigation }) => {
                 <MaterialCommunityIcons name="trophy-outline" size={28} color={colors.primary} />
               </View>
               <Text style={[styles.gridTitle, { color: colors.textPrimary }]}>Certifications</Text>
-              <Text style={[styles.gridSub, { color: colors.textSecondary }]}>{myRecord.certCount} Earned Credentials</Text>
-              <Text style={[styles.gridPoints, { color: colors.primary }]}>+{ (myRecord.certCount * 500).toLocaleString() } pts</Text>
+              <Text style={[styles.gridSub, { color: colors.textSecondary }]}>{myRecord.certCount || 0} Earned Credentials</Text>
+              <Text style={[styles.gridPoints, { color: colors.primary }]}>+{((myRecord.certCount || 0) * 500).toLocaleString()} pts</Text>
             </View>
-            
+
             {/* Social & Leadership Card */}
             <View style={[styles.gridCard, { backgroundColor: isDark ? '#0C0A09' : '#F0F9FF', borderColor: isDark ? '#292524' : '#E0F2FE' }]}>
               <View style={[styles.gridIconBox, { backgroundColor: isDark ? 'rgba(2, 132, 199, 0.15)' : '#E0F2FE' }]}>
                 <MaterialCommunityIcons name="account-group-outline" size={28} color="#0284C7" />
               </View>
               <Text style={[styles.gridTitle, { color: colors.textPrimary }]}>Hustle Activity</Text>
-              <Text style={[styles.gridSub, { color: colors.textSecondary }]}>{myRecord.leadCount} Roles • {myRecord.extraCount} Clubs</Text>
-              <Text style={[styles.gridPoints, { color: '#0284C7' }]}>+{ ((myRecord.leadCount * 1000) + (myRecord.extraCount * 500)).toLocaleString() } pts</Text>
+              <Text style={[styles.gridSub, { color: colors.textSecondary }]}>{myRecord.leadCount || 0} Roles • {myRecord.extraCount || 0} Clubs</Text>
+              <Text style={[styles.gridPoints, { color: '#0284C7' }]}>+{(((myRecord.leadCount || 0) * 1000) + ((myRecord.extraCount || 0) * 500)).toLocaleString()} pts</Text>
             </View>
           </View>
         </View>
@@ -266,18 +276,23 @@ const TheHustleScreen = ({ navigation }) => {
         <View style={styles.sectionContainer}>
           <View style={styles.leaderboardHeader}>
             <Text style={[styles.sectionTitle, { color: colors.textPrimary, marginBottom: 0 }]}>Monthly Leaderboard</Text>
-            <TouchableOpacity style={[styles.filterBtn, { backgroundColor: colors.border }]}>
+            <TouchableOpacity 
+              style={[styles.filterBtn, { backgroundColor: colors.border }]}
+              onPress={() => {
+                setFilterType(prev => prev === 'Medical' ? 'All' : 'Medical');
+              }}
+            >
               <Text style={[styles.filterText, { color: colors.textSecondary }]}>
-                {getDisplayCourse(user) || 'B.Tech CS'}
+                {filterType === 'Medical' ? 'Medical Students' : 'All Students'}
               </Text>
-              <MaterialIcons name="keyboard-arrow-down" size={16} color={colors.textSecondary} />
+              <MaterialIcons name="swap-vert" size={16} color={colors.textSecondary} />
             </TouchableOpacity>
           </View>
-          
+
           <View style={[styles.leaderboardCard, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
             {displayLeaderboard.map((item, index) => (
               <View key={item.id} style={[
-                styles.boardItem, 
+                styles.boardItem,
                 item.isMe && [styles.boardItemActive, { backgroundColor: isDark ? 'rgba(234, 88, 12, 0.2)' : '#FFF7ED' }],
                 index === displayLeaderboard.length - 1 && !showMeAtBottom && { borderBottomWidth: 0 },
                 { borderBottomColor: colors.border }
@@ -331,9 +346,14 @@ const TheHustleScreen = ({ navigation }) => {
               </>
             )}
           </View>
-          
-          <TouchableOpacity style={[styles.viewFullBtn, { backgroundColor: colors.border }]}>
-            <Text style={[styles.viewFullText, { color: colors.textSecondary }]}>View Full Rankings</Text>
+
+          <TouchableOpacity 
+            style={[styles.viewFullBtn, { backgroundColor: colors.border }]}
+            onPress={() => setViewFullRankings(!viewFullRankings)}
+          >
+            <Text style={[styles.viewFullText, { color: colors.textSecondary }]}>
+              {viewFullRankings ? 'Show Top 10 Only' : 'View Full Rankings'}
+            </Text>
           </TouchableOpacity>
         </View>
 

@@ -36,6 +36,8 @@ const SplashScreen = ({ navigation }) => {
       if (user) {
         if (user.role === 'teacher') {
           navigation.replace('TeacherMain');
+        } else if (['admin', 'warden', 'super_admin'].includes(user.role)) {
+          navigation.replace('AdminMain');
         } else {
           navigation.replace('StudentMain');
         }

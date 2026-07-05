@@ -25,7 +25,12 @@ const DMConversationScreen = ({ route, navigation }) => {
   const { colors, isDark } = useTheme();
   const contact = route.params?.contact || {};
   const dmSource = route.params?.source || 'social'; // 'marketplace' | 'social'
-  const [text, setText] = React.useState('');
+  const product = route.params?.product;
+  
+  const initialText = dmSource === 'marketplace' && product 
+    ? `Hi, I'm interested in your marketplace listing: ${product.title} (₹${product.price}).` 
+    : '';
+  const [text, setText] = React.useState(initialText);
   const [contactName, setContactName] = React.useState(contact.username || 'Student');
 
   useEffect(() => {

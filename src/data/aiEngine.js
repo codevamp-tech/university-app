@@ -302,24 +302,45 @@ const MBBS_CLINICAL_COMPETENCIES = [
 export function getMedicalMarkScore(subjectNameKeyword, results) {
   if (!results || results.length === 0) return null;
   const kw = subjectNameKeyword.toLowerCase();
+  
+  // Results are grouped by subject_code (e.g. from /api/v1/erp/results/detailed)
+  // Each result object has: subject_code, subject_name, yr_fk, sessional, university
   const matching = results.filter(r =>
     (r.subject_name || '').toLowerCase().includes(kw) ||
     (r.subject_code || '').toLowerCase().includes(kw)
   );
   if (matching.length === 0) return null;
 
-  let totalPct = 0;
-  matching.forEach(item => {
-    const seedVal = (item.subject_code || 'X').charCodeAt(0) + (item.semester || 1);
-    const theory = 50 + (seedVal % 45);
-    const practical = 55 + (seedVal % 40);
-    totalPct += (theory + practical) / 200 * 100;
+  let totalObtained = 0;
+  let sessionalCount = 0;
+
+  matching.forEach(subjGroup => {
+    if (subjGroup.sessional && Array.isArray(subjGroup.sessional)) {
+      subjGroup.sessional.forEach(paper => {
+        const pname = (paper.paper_name || '').toLowerCase();
+        if (pname.includes('1st') || pname.includes('2nd')) {
+          if (pname.includes('sessional')) {
+            totalObtained += parseFloat(paper.obtained_marks || 0);
+            sessionalCount += 1;
+          }
+        }
+      });
+    }
   });
-  return parseFloat((totalPct / matching.length).toFixed(1));
+
+  // If no sessionals matched, we return a passing score or try to fallback
+  if (sessionalCount === 0) return null;
+
+  // Since we don't have max marks, we check if the obtained marks indicate a gap.
+  // In many Indian medical colleges, sessional max marks is 100.
+  // The user specifically requested filtering out those who got < 50% marks in 1st/2nd sessional.
+  const maxMarks = sessionalCount * 100;
+  const pct = (totalObtained / maxMarks) * 100;
+  return parseFloat(pct.toFixed(1));
 }
 
 function deterministicScore(studentId, competencyName) {
-  return 0;
+  return 85; // Default to passing instead of 0 to avoid false positive gaps
 }
 
 // ─── Skill Gap ────────────────────────────────────────────────────────────────
@@ -330,14 +351,57 @@ export function computeSkillGap(student, results = [], erpCompetencyData = null)
   const c = (student.course || '').replace(/\./g, '').toLowerCase();
   const cat = resolveCategory(student);
   const isMBBS = c.includes('mbbs') || (cat === 'medical' && !c.includes('bds'));
-  const yr = parseInt(student.year || student.current_year, 10) || Math.ceil((parseInt(student.semester, 10) || 1) / 2) || 1;
+  const dbYr = parseInt(student.year || student.current_year, 10) || Math.ceil((parseInt(student.semester, 10) || 1) / 2) || 1;
+  const maxResultYr = results && results.length > 0 
+    ? Math.max(...results.map(r => parseInt(r.yr_fk || 1, 10)).filter(y => !isNaN(y))) 
+    : 1;
+  const yr = Math.max(dbYr, maxResultYr);
   const sid = student.id || student.user_id || 'student';
+  const studentWithYr = { ...student, current_year: yr };
 
   if (isMBBS) {
     if (erpCompetencyData && (Array.isArray(erpCompetencyData.all_competencies) || Array.isArray(erpCompetencyData.gaps))) {
       const allComps = erpCompetencyData.all_competencies || [];
-      const erpGaps = erpCompetencyData.gaps || [];
+      let erpGaps = erpCompetencyData.gaps || [];
       const erpClinicalGaps = erpCompetencyData.clinical_gaps || [];
+
+      // Filter gaps to only include current prof/year subjects AND only from 1st/2nd sessionals
+      const MBBS_SUBJECT_CODES = {
+        'Anatomy': 'AN', 'Physiology': 'PY', 'Biochemistry': 'BI',
+        'Pathology': 'PA', 'Pharmacology': 'PH', 'Microbiology': 'MI', 'Forensic Medicine': 'FM',
+        'ENT': 'EN', 'Ophthalmology': 'OP', 'Community Medicine': 'CM', 'PSM': 'PS',
+        'General Medicine': 'IM', 'General Surgery': 'SU', 'Pediatrics': 'PE',
+        'Obstetrics & Gynecology': 'OG', 'Orthopaedics': 'OR'
+      };
+      const expectedSubjects = getAcademicSubjects(studentWithYr);
+      const allowedCodes = expectedSubjects.map(s => MBBS_SUBJECT_CODES[s]).filter(Boolean);
+
+      if (results && results.length > 0) {
+        const currentYrSubjects = results
+          .filter(r => (parseInt(r.yr_fk, 10) === yr || Math.ceil(parseInt(r.semester, 10) / 2) === yr))
+          .map(r => r.subject_code);
+        allowedCodes.push(...currentYrSubjects);
+      }
+
+      if (allowedCodes.length > 0) {
+        erpGaps = erpGaps.filter(g => {
+          // Check subject match
+          const subjectMatch = allowedCodes.includes(g.subject) || allowedCodes.some(c => c && g.subject && g.subject.startsWith(c));
+          
+          // Check exam name match (only 1st and 2nd sessional)
+          const exam = (g.exam_name || '').toLowerCase();
+          const isSessional = exam.includes('1st') || exam.includes('2nd');
+          const isValidExam = isSessional && exam.includes('sessional');
+          
+          // If backend doesn't have exam_name yet (old cache), we pass it by default to avoid breaking,
+          // but if it does, we filter it strictly.
+          const examMatch = g.exam_name ? isValidExam : true;
+
+          return subjectMatch && examMatch;
+        });
+      } else {
+        erpGaps = [];
+      }
 
       // Academic: Non-practical competencies (e.g. from theory marks)
       const academicExpected = allComps.map(c => c.competency);

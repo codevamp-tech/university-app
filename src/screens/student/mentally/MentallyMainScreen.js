@@ -296,26 +296,6 @@ const MentallyMainScreen = ({ navigation }) => {
           </View>
         </View>
 
-        {/* Progress Section */}
-        <View style={styles.section}>
-          <View style={[styles.progressCard, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
-            <View style={styles.progressIconBg}>
-              <MaterialCommunityIcons name="spa" size={32} color={isDark ? '#2DD4BF' : '#006666'} />
-            </View>
-            <Text style={[styles.progressTitle, { color: colors.textPrimary }]}>You're doing great, {user?.name || 'Student'}</Text>
-            <Text style={[styles.progressDesc, { color: colors.textSecondary }]}>
-              You have completed {totalSessions} mindfulness breaks so far. Keep prioritizing your headspace!
-            </Text>
-
-            <TouchableOpacity 
-              style={[styles.viewProgressBtn, { backgroundColor: colors.primary, shadowColor: colors.primary }]}
-              onPress={() => setShowProgressModal(true)}
-            >
-              <Text style={styles.viewProgressText}>View My Progress</Text>
-            </TouchableOpacity>
-
-          </View>
-        </View>
 
         <View style={{ height: 100 }} />
       </ScrollView>

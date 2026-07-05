@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Dimensions, TextInput, Alert, ActivityIndicator
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Dimensions, TextInput, Alert, ActivityIndicator, Modal
 } from 'react-native';
 import { Ionicons, MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -8,7 +8,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../hooks/useTheme';
 import { APP_CONFIG } from '../../config/appConfig';
 import { useUser } from '../../context/UserContext';
-import { getStartups, createStartup, submitPitch, triggerCofounderMatch, uploadDocumentAPI } from '../../data/apiService';
+import { getStartups, createStartup, submitPitch, triggerCofounderMatch, uploadDocumentAPI, updateStartup, deleteStartup } from '../../data/apiService';
 import { getAvatarUrl } from '../../utils/avatar';
 import * as DocumentPicker from 'expo-document-picker';
 
@@ -82,6 +82,16 @@ const VentureScreen = ({ navigation }) => {
 
   const [proposalFile, setProposalFile] = useState(null);
 
+  // Edit form states
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [editingStartup, setEditingStartup] = useState(null);
+  const [editVName, setEditVName] = useState('');
+  const [editVPitch, setEditVPitch] = useState('');
+  const [editVCategory, setEditVCategory] = useState('');
+  const [editVLookingFor, setEditVLookingFor] = useState('');
+  const [editProposalFile, setEditProposalFile] = useState(null);
+  const [editSubmitting, setEditSubmitting] = useState(false);
+
   const handlePickDocument = async () => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
@@ -100,6 +110,104 @@ const VentureScreen = ({ navigation }) => {
     } catch (err) {
       console.warn('Error picking document:', err);
       Alert.alert('Error', 'Failed to select document.');
+    }
+  };
+
+  const handlePickEditDocument = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: 'application/pdf',
+        copyToCacheDirectory: true,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const pickedFile = result.assets[0];
+        setEditProposalFile({
+          uri: pickedFile.uri,
+          name: pickedFile.name,
+          size: pickedFile.size,
+        });
+      }
+    } catch (err) {
+      console.warn('Error picking edit document:', err);
+      Alert.alert('Error', 'Failed to select document.');
+    }
+  };
+
+  const handleOpenEditModal = (startup) => {
+    setEditingStartup(startup);
+    setEditVName(startup.name);
+    setEditVPitch(startup.tagline || startup.description || '');
+    setEditVCategory(startup.category || '');
+    setEditVLookingFor((startup.looking_for || []).join(', '));
+    setEditProposalFile(startup.pitch_deck_url ? { name: 'Current Pitch Deck / Proposal PDF', isExisting: true, uri: startup.pitch_deck_url } : null);
+    setEditModalVisible(true);
+  };
+
+  const handleDeleteStartup = (id) => {
+    Alert.alert(
+      isMed ? 'Delete Proposal' : 'Delete Venture',
+      isMed ? 'Are you sure you want to delete this clinical proposal?' : 'Are you sure you want to delete this venture pitch?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteStartup(accessToken, id);
+              Alert.alert('Success', isMed ? 'Proposal deleted successfully.' : 'Venture deleted successfully.');
+              fetchAllStartups();
+              fetchMyStartups();
+            } catch (err) {
+              Alert.alert('Error', err.message || 'Failed to delete.');
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const handleUpdateStartup = async () => {
+    if (!editVName.trim() || !editVPitch.trim()) {
+      Alert.alert('Validation Error', isMed ? 'Study / Proposal Name and Clinical Hypothesis are required.' : 'Venture Name and One-Sentence Pitch are required.');
+      return;
+    }
+
+    setEditSubmitting(true);
+    try {
+      let deckUrl = editingStartup.pitch_deck_url;
+
+      if (editProposalFile && !editProposalFile.isExisting) {
+        const uploadRes = await uploadDocumentAPI(accessToken, editProposalFile.uri, editProposalFile.name);
+        if (uploadRes.ok && uploadRes.json?.success) {
+          deckUrl = uploadRes.json.data.document_url;
+        } else {
+          throw new Error(uploadRes.json?.message || "Failed to upload document to Cloudinary");
+        }
+      } else if (!editProposalFile) {
+        deckUrl = null;
+      }
+
+      const payload = {
+        name: editVName.trim(),
+        tagline: editVPitch.trim(),
+        description: editVPitch.trim(),
+        category: editVCategory,
+        looking_for: editVLookingFor.split(',').map(s => s.trim()).filter(Boolean),
+        pitch_deck_url: deckUrl
+      };
+
+      await updateStartup(accessToken, editingStartup.id, payload);
+
+      Alert.alert('Success', isMed ? 'Proposal updated successfully.' : 'Venture updated successfully.');
+      setEditModalVisible(false);
+      fetchAllStartups();
+      fetchMyStartups();
+    } catch (err) {
+      Alert.alert('Error', err.message || 'Failed to update.');
+    } finally {
+      setEditSubmitting(false);
     }
   };
 
@@ -167,7 +275,7 @@ const VentureScreen = ({ navigation }) => {
       await triggerCofounderMatch(accessToken);
       Alert.alert(
         isMed ? 'AI Research Matchmaking' : 'AI Matchmaking Triggered',
-        isMed 
+        isMed
           ? 'We have analyzed profiles and triggered background collaboration matches. Check back soon for connections!'
           : 'We have analyzed student profiles and triggered background matches. Check back soon for connections!'
       );
@@ -201,7 +309,7 @@ const VentureScreen = ({ navigation }) => {
       };
 
       const newVenture = await createStartup(accessToken, payload);
-      
+
       // 2. Upload and submit the pitch deck
       if (newVenture && newVenture.id) {
         let deckUrl = `https://university.edu/decks/${encodeURIComponent(vName.trim().replace(/\s+/g, '_'))}_deck.pdf`;
@@ -222,12 +330,12 @@ const VentureScreen = ({ navigation }) => {
       }
 
       Alert.alert('Success', isMed ? 'Your research proposal has been registered and clinical outline submitted successfully!' : 'Your venture has been registered and pitch deck submitted successfully!');
-      
+
       // Reset form fields
       setVName('');
       setVPitch('');
       setProposalFile(null);
-      
+
       // Refresh list
       fetchAllStartups();
       fetchMyStartups();
@@ -255,13 +363,6 @@ const VentureScreen = ({ navigation }) => {
         </View>
 
         <View style={styles.headerRight}>
-          <TouchableOpacity 
-            style={[styles.headerIconBtn, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : colors.card, borderColor: colors.border, borderWidth: 1 }]}
-            onPress={() => navigation.navigate('SuggestWithAI')}
-          >
-            <MaterialIcons name="auto-awesome" size={22} color={colors.primary} />
-          </TouchableOpacity>
-
           <Image
             source={{ uri: avatarUrl }}
             style={[styles.avatarSmall, { borderColor: colors.primary }]}
@@ -312,7 +413,7 @@ const VentureScreen = ({ navigation }) => {
                 <Text style={{ fontSize: 9, color: '#FFFFFF', fontWeight: '800' }}>+42</Text>
               </View>
             </View>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[
                 styles.startMatchBtn,
                 isMed && {
@@ -442,7 +543,7 @@ const VentureScreen = ({ navigation }) => {
                   <Text style={[styles.myStartupDescText, { color: colors.textSecondary }]}>
                     {startup.tagline || startup.description}
                   </Text>
-                  
+
                   <View style={styles.myProgressSection}>
                     <View style={styles.myProgressHeader}>
                       <Text style={[styles.myProgressLabel, { color: colors.textMuted }]}>Milestone Progress</Text>
@@ -451,6 +552,23 @@ const VentureScreen = ({ navigation }) => {
                     <View style={[styles.myProgressBarBg, { backgroundColor: isDark ? '#1F2937' : '#F3F4F6' }]}>
                       <View style={[styles.myProgressBarFill, { width: `${milestone}%`, backgroundColor: colors.primary }]} />
                     </View>
+                  </View>
+
+                  <View style={styles.myStartupActions}>
+                    <TouchableOpacity
+                      style={[styles.actionBtn, { borderColor: colors.primary }]}
+                      onPress={() => handleOpenEditModal(startup)}
+                    >
+                      <MaterialIcons name="edit" size={14} color={colors.primary} />
+                      <Text style={[styles.actionBtnText, { color: colors.primary }]}>Edit</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.actionBtn, { borderColor: '#EF4444' }]}
+                      onPress={() => handleDeleteStartup(startup.id)}
+                    >
+                      <MaterialIcons name="delete-outline" size={14} color="#EF4444" />
+                      <Text style={[styles.actionBtnText, { color: '#EF4444' }]}>Delete</Text>
+                    </TouchableOpacity>
                   </View>
                 </View>
               );
@@ -465,10 +583,10 @@ const VentureScreen = ({ navigation }) => {
 
           <View style={styles.inputGroup}>
             <Text style={[styles.label, { color: colors.textSecondary }]}>{isMed ? 'STUDY / PROPOSAL NAME' : 'VENTURE NAME'}</Text>
-            <TextInput 
-              style={[styles.input, { backgroundColor: isDark ? colors.background : '#FFFFFF', color: colors.textPrimary, borderColor: colors.border, borderWidth: 1 }]} 
-              placeholder={isMed ? 'e.g. NutriClinic AI Study' : `e.g. ${APP_CONFIG.UNIVERSITY_SHORT_NAME} AI`} 
-              placeholderTextColor={isDark ? 'rgba(255,255,255,0.3)' : '#9CA3AF'} 
+            <TextInput
+              style={[styles.input, { backgroundColor: isDark ? colors.background : '#FFFFFF', color: colors.textPrimary, borderColor: colors.border, borderWidth: 1 }]}
+              placeholder={isMed ? 'e.g. NutriClinic AI Study' : `e.g. ${APP_CONFIG.UNIVERSITY_SHORT_NAME} AI`}
+              placeholderTextColor={isDark ? 'rgba(255,255,255,0.3)' : '#9CA3AF'}
               value={vName}
               onChangeText={setVName}
             />
@@ -476,11 +594,11 @@ const VentureScreen = ({ navigation }) => {
 
           <View style={styles.inputGroup}>
             <Text style={[styles.label, { color: colors.textSecondary }]}>{isMed ? 'CLINICAL HYPOTHESIS & OBJECTIVE' : 'ONE-SENTENCE PITCH'}</Text>
-            <TextInput 
-              style={[styles.input, { backgroundColor: isDark ? colors.background : '#FFFFFF', color: colors.textPrimary, borderColor: colors.border, borderWidth: 1, height: 80, textAlignVertical: 'top' }]} 
-              placeholder={isMed ? 'What clinical problem or research question are you addressing?' : 'What problem are you solving?'} 
-              placeholderTextColor={isDark ? 'rgba(255,255,255,0.3)' : '#9CA3AF'} 
-              multiline 
+            <TextInput
+              style={[styles.input, { backgroundColor: isDark ? colors.background : '#FFFFFF', color: colors.textPrimary, borderColor: colors.border, borderWidth: 1, height: 80, textAlignVertical: 'top' }]}
+              placeholder={isMed ? 'What clinical problem or research question are you addressing?' : 'What problem are you solving?'}
+              placeholderTextColor={isDark ? 'rgba(255,255,255,0.3)' : '#9CA3AF'}
+              multiline
               value={vPitch}
               onChangeText={setVPitch}
             />
@@ -488,10 +606,10 @@ const VentureScreen = ({ navigation }) => {
 
           <View style={styles.inputGroup}>
             <Text style={[styles.label, { color: colors.textSecondary }]}>{isMed ? 'SPECIALTY & FIELD (e.g. Cardiology, Pediatrics, Pharma)' : 'CATEGORY (e.g. Agriculture, Education, Pharma, Tech)'}</Text>
-            <TextInput 
-              style={[styles.input, { backgroundColor: isDark ? colors.background : '#FFFFFF', color: colors.textPrimary, borderColor: colors.border, borderWidth: 1 }]} 
-              placeholder={isMed ? 'e.g. Cardiology' : 'e.g. Pharma'} 
-              placeholderTextColor={isDark ? 'rgba(255,255,255,0.3)' : '#9CA3AF'} 
+            <TextInput
+              style={[styles.input, { backgroundColor: isDark ? colors.background : '#FFFFFF', color: colors.textPrimary, borderColor: colors.border, borderWidth: 1 }]}
+              placeholder={isMed ? 'e.g. Cardiology' : 'e.g. Pharma'}
+              placeholderTextColor={isDark ? 'rgba(255,255,255,0.3)' : '#9CA3AF'}
               value={vCategory}
               onChangeText={setVCategory}
             />
@@ -499,34 +617,34 @@ const VentureScreen = ({ navigation }) => {
 
           <View style={styles.inputGroup}>
             <Text style={[styles.label, { color: colors.textSecondary }]}>{isMed ? 'COLLABORATORS NEEDED (comma separated)' : 'LOOKING FOR (comma separated)'}</Text>
-            <TextInput 
-              style={[styles.input, { backgroundColor: isDark ? colors.background : '#FFFFFF', color: colors.textPrimary, borderColor: colors.border, borderWidth: 1 }]} 
-              placeholder={isMed ? 'e.g. Statistician, Lab Tech, Clinical Lead' : 'e.g. Developer, Marketing, Co-founder'} 
-              placeholderTextColor={isDark ? 'rgba(255,255,255,0.3)' : '#9CA3AF'} 
+            <TextInput
+              style={[styles.input, { backgroundColor: isDark ? colors.background : '#FFFFFF', color: colors.textPrimary, borderColor: colors.border, borderWidth: 1 }]}
+              placeholder={isMed ? 'e.g. Statistician, Lab Tech, Clinical Lead' : 'e.g. Developer, Marketing, Co-founder'}
+              placeholderTextColor={isDark ? 'rgba(255,255,255,0.3)' : '#9CA3AF'}
               value={vLookingFor}
               onChangeText={setVLookingFor}
             />
           </View>
 
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[
-              styles.uploadArea, 
-              { 
-                borderColor: proposalFile ? colors.primary : colors.border, 
-                backgroundColor: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)' 
+              styles.uploadArea,
+              {
+                borderColor: proposalFile ? colors.primary : colors.border,
+                backgroundColor: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)'
               }
             ]}
             onPress={handlePickDocument}
           >
             <MaterialIcons name={proposalFile ? "check-circle" : "upload-file"} size={24} color={proposalFile ? colors.primary : colors.textSecondary} />
             <Text style={[styles.uploadText, { color: proposalFile ? colors.primary : colors.textSecondary }]}>
-              {proposalFile 
+              {proposalFile
                 ? `${proposalFile.name} (${(proposalFile.size / (1024 * 1024)).toFixed(2)} MB)`
                 : (isMed ? 'UPLOAD RESEARCH PROPOSAL / HYPOTHESIS (PDF)' : 'UPLOAD PITCH DECK (PDF)')}
             </Text>
             {proposalFile && (
-              <TouchableOpacity 
-                style={{ marginTop: 8 }} 
+              <TouchableOpacity
+                style={{ marginTop: 8 }}
                 onPress={(e) => {
                   e.stopPropagation();
                   setProposalFile(null);
@@ -537,7 +655,7 @@ const VentureScreen = ({ navigation }) => {
             )}
           </TouchableOpacity>
 
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.submitBtn, { backgroundColor: colors.primary, shadowColor: colors.primary }]}
             onPress={handleSubmitPitch}
             disabled={submitting}
@@ -551,6 +669,131 @@ const VentureScreen = ({ navigation }) => {
         </View>
         <View style={{ height: 100 }} />
       </ScrollView>
+
+      {/* Edit Proposal Modal */}
+      <Modal
+        visible={editModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setEditModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>
+                {isMed ? 'Edit Clinical Proposal' : 'Edit Venture Pitch'}
+              </Text>
+              <TouchableOpacity onPress={() => setEditModalVisible(false)}>
+                <Ionicons name="close" size={24} color={colors.textPrimary} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView contentContainerStyle={styles.modalScroll} showsVerticalScrollIndicator={false}>
+              <View style={styles.inputGroup}>
+                <Text style={[styles.label, { color: colors.textSecondary }]}>
+                  {isMed ? 'STUDY / PROPOSAL NAME' : 'VENTURE NAME'}
+                </Text>
+                <TextInput
+                  style={[styles.input, { backgroundColor: isDark ? colors.background : '#F3F4F6', color: colors.textPrimary, borderColor: colors.border, borderWidth: 1 }]}
+                  placeholder={isMed ? 'e.g. NutriClinic AI Study' : 'e.g. Acme Tech'}
+                  placeholderTextColor={isDark ? 'rgba(255,255,255,0.3)' : '#9CA3AF'}
+                  value={editVName}
+                  onChangeText={setEditVName}
+                />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={[styles.label, { color: colors.textSecondary }]}>
+                  {isMed ? 'CLINICAL HYPOTHESIS & OBJECTIVE' : 'ONE-SENTENCE PITCH'}
+                </Text>
+                <TextInput
+                  style={[styles.input, { backgroundColor: isDark ? colors.background : '#F3F4F6', color: colors.textPrimary, borderColor: colors.border, borderWidth: 1, height: 100, textAlignVertical: 'top' }]}
+                  placeholder={isMed ? 'What clinical problem or research question are you addressing?' : 'What problem are you solving?'}
+                  placeholderTextColor={isDark ? 'rgba(255,255,255,0.3)' : '#9CA3AF'}
+                  multiline
+                  value={editVPitch}
+                  onChangeText={setEditVPitch}
+                />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={[styles.label, { color: colors.textSecondary }]}>
+                  {isMed ? 'SPECIALTY & FIELD (e.g. Cardiology, Pediatrics, Pharma)' : 'CATEGORY (e.g. Agriculture, Education, Pharma, Tech)'}
+                </Text>
+                <TextInput
+                  style={[styles.input, { backgroundColor: isDark ? colors.background : '#F3F4F6', color: colors.textPrimary, borderColor: colors.border, borderWidth: 1 }]}
+                  placeholder={isMed ? 'e.g. Cardiology' : 'e.g. Pharma'}
+                  placeholderTextColor={isDark ? 'rgba(255,255,255,0.3)' : '#9CA3AF'}
+                  value={editVCategory}
+                  onChangeText={setEditVCategory}
+                />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={[styles.label, { color: colors.textSecondary }]}>
+                  {isMed ? 'COLLABORATORS NEEDED (comma separated)' : 'LOOKING FOR (comma separated)'}
+                </Text>
+                <TextInput
+                  style={[styles.input, { backgroundColor: isDark ? colors.background : '#F3F4F6', color: colors.textPrimary, borderColor: colors.border, borderWidth: 1 }]}
+                  placeholder={isMed ? 'e.g. Statistician, Lab Tech, Clinical Lead' : 'e.g. Developer, Marketing, Co-founder'}
+                  placeholderTextColor={isDark ? 'rgba(255,255,255,0.3)' : '#9CA3AF'}
+                  value={editVLookingFor}
+                  onChangeText={setEditVLookingFor}
+                />
+              </View>
+
+              <TouchableOpacity
+                style={[
+                  styles.uploadArea,
+                  {
+                    borderColor: editProposalFile ? colors.primary : colors.border,
+                    backgroundColor: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)'
+                  }
+                ]}
+                onPress={handlePickEditDocument}
+              >
+                <MaterialIcons name={editProposalFile ? "check-circle" : "upload-file"} size={24} color={editProposalFile ? colors.primary : colors.textSecondary} />
+                <Text style={[styles.uploadText, { color: editProposalFile ? colors.primary : colors.textSecondary }]}>
+                  {editProposalFile
+                    ? `${editProposalFile.name}`
+                    : (isMed ? 'UPLOAD NEW RESEARCH PROPOSAL / HYPOTHESIS (PDF)' : 'UPLOAD NEW PITCH DECK (PDF)')}
+                </Text>
+                {editProposalFile && (
+                  <TouchableOpacity
+                    style={{ marginTop: 8 }}
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      setEditProposalFile(null);
+                    }}
+                  >
+                    <Text style={{ color: '#EF4444', fontWeight: '800', fontSize: 11 }}>REMOVE FILE</Text>
+                  </TouchableOpacity>
+                )}
+              </TouchableOpacity>
+
+              <View style={styles.modalBtns}>
+                <TouchableOpacity
+                  style={[styles.modalCancelBtn, { borderColor: colors.border, borderWidth: 1 }]}
+                  onPress={() => setEditModalVisible(false)}
+                >
+                  <Text style={[styles.modalCancelBtnText, { color: colors.textSecondary }]}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.modalSaveBtn, { backgroundColor: colors.primary }]}
+                  onPress={handleUpdateStartup}
+                  disabled={editSubmitting}
+                >
+                  {editSubmitting ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <Text style={styles.modalSaveBtnText}>Save Changes</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -1007,6 +1250,82 @@ const styles = StyleSheet.create({
   myProgressBarFill: {
     height: '100%',
     borderRadius: 3,
+  },
+  myStartupActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 12,
+    marginTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(128,128,128,0.1)',
+    paddingTop: 12,
+  },
+  actionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  actionBtnText: {
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    paddingHorizontal: 24,
+    paddingTop: 24,
+    paddingBottom: 40,
+    maxHeight: '90%',
+    borderWidth: 1,
+    borderBottomWidth: 0,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  modalTitle: {
+    fontSize: 22,
+    fontWeight: '950',
+  },
+  modalScroll: {
+    paddingBottom: 24,
+  },
+  modalBtns: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 24,
+  },
+  modalCancelBtn: {
+    flex: 1,
+    paddingVertical: 16,
+    borderRadius: 16,
+    alignItems: 'center',
+  },
+  modalCancelBtnText: {
+    fontWeight: '800',
+    fontSize: 15,
+  },
+  modalSaveBtn: {
+    flex: 2,
+    paddingVertical: 16,
+    borderRadius: 16,
+    alignItems: 'center',
+  },
+  modalSaveBtnText: {
+    color: '#FFFFFF',
+    fontWeight: '800',
+    fontSize: 15,
   },
 });
 
