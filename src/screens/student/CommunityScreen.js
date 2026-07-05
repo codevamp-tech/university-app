@@ -695,6 +695,10 @@ const CommunityScreen = ({ navigation }) => {
       if (pData.avatar) avatarUrl = pData.avatar;
     }
 
+    if (displayName === 'Admin' || displayName === 'admin' || posterUsername === 'admin' || targetPost.user?.role === 'super_admin' || targetPost.user?.role === 'admin') {
+      displayName = 'Super Admin (Aditya Murti)';
+    }
+
     let repostAuthorName = 'User';
     if (isOriginal) {
       const repUsername = post.user?.username;
@@ -705,6 +709,9 @@ const CommunityScreen = ({ navigation }) => {
         repostAuthorName = studentMap[repUsername.toLowerCase()].name || repUsername;
       } else {
         repostAuthorName = post.user?.full_name || repUsername || 'User';
+      }
+      if (repostAuthorName === 'Admin' || repostAuthorName === 'admin' || repUsername === 'admin' || post.user?.role === 'super_admin' || post.user?.role === 'admin') {
+        repostAuthorName = 'Super Admin (Aditya Murti)';
       }
     }
 
