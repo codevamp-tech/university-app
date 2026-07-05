@@ -20,6 +20,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { SkeletonBlock } from '../../components/SkeletonLoader';
 import ActivityRing from '../../components/ActivityRing';
 import { useHealthMetrics } from '../../hooks/useHealthMetrics';
+import { APP_CONFIG } from '../../config/appConfig';
 
 const { width } = Dimensions.get('window');
 
