@@ -47,11 +47,12 @@ export function useHealthMetrics() {
     try {
       const dbGoals = await getFitnessGoalsAPI(accessToken);
       if (dbGoals) {
+        const calGoal = dbGoals.target_calories || 500;
         setGoals({
-          steps: dbGoals.target_steps,
-          calories: dbGoals.target_calories,
-          sleep: dbGoals.target_sleep_hours,
-          focus: dbGoals.target_focus_minutes
+          steps: dbGoals.target_steps || (calGoal * 20),
+          calories: calGoal,
+          sleep: dbGoals.target_sleep_hours || 8.0,
+          focus: dbGoals.target_focus_minutes || 60
         });
       }
     } catch (err) {
@@ -60,7 +61,10 @@ export function useHealthMetrics() {
   }, [accessToken]);
 
   const updateGoal = async (key, value) => {
-    const updated = { ...goals, [key]: value };
+    let updated = { ...goals, [key]: value };
+    if (key === 'calories') {
+      updated.steps = value * 20;
+    }
     setGoals(updated);
     if (!accessToken) return;
     
@@ -73,7 +77,11 @@ export function useHealthMetrics() {
     };
     
     try {
-      await updateFitnessGoalsAPI(accessToken, { [payloadMap[key]]: value });
+      const payload = { [payloadMap[key]]: value };
+      if (key === 'calories') {
+        payload.target_steps = value * 20;
+      }
+      await updateFitnessGoalsAPI(accessToken, payload);
     } catch (err) {
       console.warn(err);
     }
