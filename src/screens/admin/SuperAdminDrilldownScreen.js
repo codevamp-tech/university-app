@@ -58,15 +58,15 @@ const SuperAdminDrilldownScreen = ({ route, navigation }) => {
         if (category === 'student_directory') {
           const result = await getAllStudents(accessToken);
           if (result) {
-            const mapped = result.map(s => ({
-              id: s.rollno || s.username || s.id,
-              student_name: s.full_name || s.username || 'Student',
-              rollno: s.rollno,
-              course: s.course,
-              branch: s.branch,
-              category: s.category || 'general',
-              cgpa: s.cgpa || 0.0,
-              avatar_url: s.avatar_url,
+            const mapped = (result || []).map(s => ({
+              id: s?.rollno || s?.username || s?.id,
+              student_name: s?.full_name || s?.username || 'Student',
+              rollno: s?.rollno,
+              course: s?.course,
+              branch: s?.branch,
+              category: s?.category || 'general',
+              cgpa: s?.cgpa || 0.0,
+              avatar_url: s?.avatar_url,
             }));
             setData(mapped);
           }
@@ -78,15 +78,15 @@ const SuperAdminDrilldownScreen = ({ route, navigation }) => {
             ]);
             
             const medicalStudents = (students || [])
-              .filter(s => String(s.category).toLowerCase() === 'medical')
+              .filter(s => String(s?.category || '').toLowerCase() === 'medical')
               .map((s, idx) => {
                 const steps = 7500 + (idx * 450) % 6500;
                 const kcal = Math.round(steps / 20);
                 const sleep = (6.2 + (idx * 0.3) % 2.0).toFixed(1);
                 return {
-                  id: s.id || s.rollno || `stud_${idx}`,
-                  student_name: s.full_name || s.username || 'Student',
-                  avatar_url: s.avatar_url,
+                  id: s?.id || s?.rollno || `stud_${idx}`,
+                  student_name: s?.full_name || s?.username || 'Student',
+                  avatar_url: s?.avatar_url,
                   steps: steps,
                   sleep_hours: parseFloat(sleep),
                   kcal: kcal,
@@ -100,14 +100,14 @@ const SuperAdminDrilldownScreen = ({ route, navigation }) => {
               const kcal = Math.round(steps / 20);
               const sleep = (6.0 + (idx * 0.4) % 1.8).toFixed(1);
               return {
-                id: t.id || t.emp_id || `fac_${idx}`,
-                student_name: t.name || t.emp_id || 'Faculty',
+                id: t?.id || t?.emp_id || `fac_${idx}`,
+                student_name: t?.name || t?.emp_id || 'Faculty',
                 avatar_url: null,
                 steps: steps,
                 sleep_hours: parseFloat(sleep),
                 kcal: kcal,
                 type: 'faculty',
-                dept: t.department || 'Academics'
+                dept: t?.department || 'Academics'
               };
             });
 
@@ -168,16 +168,16 @@ const SuperAdminDrilldownScreen = ({ route, navigation }) => {
   const filteredData = data.filter(item => {
     const q = searchQuery.toLowerCase();
     const matchesSearch = (
-      (item.student_name && item.student_name.toLowerCase().includes(q)) ||
-      (item.rollno && item.rollno.toLowerCase().includes(q)) ||
-      (item.name && item.name.toLowerCase().includes(q)) ||
-      (item.tagline && item.tagline.toLowerCase().includes(q))
+      (item?.student_name && item.student_name.toLowerCase().includes(q)) ||
+      (item?.rollno && item.rollno.toLowerCase().includes(q)) ||
+      (item?.name && item.name.toLowerCase().includes(q)) ||
+      (item?.tagline && item.tagline.toLowerCase().includes(q))
     );
     if (category === 'student_directory' && selectedDept !== 'all') {
-      return matchesSearch && String(item.category).toLowerCase() === selectedDept.toLowerCase();
+      return matchesSearch && String(item?.category || '').toLowerCase() === selectedDept.toLowerCase();
     }
     if (category === 'fitness_students') {
-      return matchesSearch && item.type === activeFitnessFilter;
+      return matchesSearch && item?.type === activeFitnessFilter;
     }
     return matchesSearch;
   });
@@ -348,21 +348,21 @@ const SuperAdminDrilldownScreen = ({ route, navigation }) => {
       return (
         <TouchableOpacity 
           style={[styles.rowCard, { backgroundColor: colors.card, borderColor: colors.border }]}
-          onPress={() => navigation.navigate('OtherStudentProfile', { student: { id: item.id || item.user_id || item.student_id, name: item.student_name, avatar: item.avatar_url } })}
+          onPress={() => navigation.navigate('OtherStudentProfile', { student: { id: item?.id || item?.user_id || item?.student_id, name: item?.student_name, avatar: item?.avatar_url } })}
           activeOpacity={0.7}
         >
-          <StudentAvatar uri={item.avatar_url} name={item.student_name} colors={colors} />
+          <StudentAvatar uri={item?.avatar_url} name={item?.student_name} colors={colors} />
           <View style={{ flex: 1, marginLeft: 12 }}>
-            <Text style={[styles.founderName, { color: colors.textPrimary }]}>{item.student_name}</Text>
+            <Text style={[styles.founderName, { color: colors.textPrimary }]}>{item?.student_name}</Text>
             <Text style={[styles.rollnoText, { color: colors.textSecondary }]}>
-              {item.rollno} • {item.course} ({item.branch})
+              {item?.rollno} • {item?.course} ({item?.branch})
             </Text>
             <Text style={{ fontSize: 11, color: colors.primary, fontWeight: '700', textTransform: 'uppercase', marginTop: 3 }}>
-              {item.category}
+              {item?.category}
             </Text>
           </View>
           <View style={[styles.scorePill, { backgroundColor: colors.primaryLight }]}>
-            <Text style={[styles.scoreText, { color: colors.primary }]}>CGPA: {item.cgpa}</Text>
+            <Text style={[styles.scoreText, { color: colors.primary }]}>CGPA: {item?.cgpa}</Text>
           </View>
         </TouchableOpacity>
       );
@@ -423,33 +423,33 @@ const SuperAdminDrilldownScreen = ({ route, navigation }) => {
         <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <View style={styles.cardHeader}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
-              <StudentAvatar uri={item.avatar_url} name={item.student_name} colors={colors} />
+              <StudentAvatar uri={item?.avatar_url} name={item?.student_name} colors={colors} />
               <View style={{ flex: 1 }}>
-                <Text style={[styles.founderName, { color: colors.textPrimary }]}>{item.student_name}</Text>
-                <Text style={{ fontSize: 11, color: colors.textSecondary, marginTop: 2 }}>{item.category}</Text>
+                <Text style={[styles.founderName, { color: colors.textPrimary }]}>{item?.student_name}</Text>
+                <Text style={{ fontSize: 11, color: colors.textSecondary, marginTop: 2 }}>{item?.category}</Text>
               </View>
             </View>
-            <View style={[styles.badge, { backgroundColor: getPriorityColor(item.priority) + '20' }]}>
-              <Text style={[styles.badgeText, { color: getPriorityColor(item.priority) }]}>
-                {item.priority?.toUpperCase()} PRIORITY
+            <View style={[styles.badge, { backgroundColor: getPriorityColor(item?.priority) + '20' }]}>
+              <Text style={[styles.badgeText, { color: getPriorityColor(item?.priority) }]}>
+                {item?.priority?.toUpperCase()} PRIORITY
               </Text>
             </View>
           </View>
           
           <Text style={{ fontSize: 14, fontWeight: '700', color: colors.textPrimary, marginVertical: 6 }}>
-            {item.title}
+            {item?.title}
           </Text>
           <Text style={[styles.description, { color: colors.textSecondary }]} numberOfLines={3}>
-            {item.description}
+            {item?.description}
           </Text>
 
           <View style={[styles.cardFooter, { marginTop: 12, borderTopColor: colors.border }]}>
             <Text style={{ fontSize: 11, color: colors.textMuted }}>
-              Opened: {item.created_at ? new Date(item.created_at).toLocaleDateString() : 'N/A'}
+              Opened: {item?.created_at ? new Date(item?.created_at).toLocaleDateString() : 'N/A'}
             </Text>
-            <View style={[styles.badge, { backgroundColor: getStatusColor(item.status) + '20' }]}>
-              <Text style={[styles.badgeText, { color: getStatusColor(item.status) }]}>
-                {item.status?.toUpperCase()}
+            <View style={[styles.badge, { backgroundColor: getStatusColor(item?.status) + '20' }]}>
+              <Text style={[styles.badgeText, { color: getStatusColor(item?.status) }]}>
+                {item?.status?.toUpperCase()}
               </Text>
             </View>
           </View>
