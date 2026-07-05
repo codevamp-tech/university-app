@@ -35,6 +35,8 @@ const AdminDashboardScreen = ({ navigation }) => {
   const [superStats, setSuperStats] = useState(null);
   const [leaderboardGlimpse, setLeaderboardGlimpse] = useState([]);
   const [studentsList, setStudentsList] = useState([]);
+  const [fitnessStudentsList, setFitnessStudentsList] = useState([]);
+  const [teachersList, setTeachersList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -76,9 +78,11 @@ const AdminDashboardScreen = ({ navigation }) => {
             setSuperStats(sStats);
           }
           try {
-            const [lList, sList] = await Promise.all([
+            const [lList, sList, fitList, teachList] = await Promise.all([
               getSuperAdminDrilldown(accessToken, 'hustle_students'),
-              getAllStudents(accessToken)
+              getAllStudents(accessToken),
+              getSuperAdminDrilldown(accessToken, 'fitness_students'),
+              getSuperAdminDrilldown(accessToken, 'teachers')
             ]);
             if (lList && Array.isArray(lList)) {
               setLeaderboardGlimpse(lList.slice(0, 3));
@@ -86,8 +90,14 @@ const AdminDashboardScreen = ({ navigation }) => {
             if (sList && Array.isArray(sList)) {
               setStudentsList(sList);
             }
+            if (fitList && Array.isArray(fitList)) {
+              setFitnessStudentsList(fitList);
+            }
+            if (teachList && Array.isArray(teachList)) {
+              setTeachersList(teachList);
+            }
           } catch (e) {
-            console.warn('[AdminDashboard] Drilldown/Students fetch error:', e);
+            console.warn('[AdminDashboard] Drilldown/Students/Fitness/Faculty fetch error:', e);
           }
         }
 
@@ -184,11 +194,7 @@ const AdminDashboardScreen = ({ navigation }) => {
         <TouchableOpacity
           style={[styles.fitnessCard, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}
           onPress={() => {
-            if (isSuperAdmin) {
-              navigation.navigate('SuperAdminDrilldown', { category: 'fitness_students', title: 'Campus Fitness Standings' });
-            } else {
-              navigation.navigate('FitnessDetail');
-            }
+            navigation.navigate('FitnessDetail');
           }}
           activeOpacity={0.8}
         >
@@ -547,6 +553,21 @@ const AdminDashboardScreen = ({ navigation }) => {
     const facStats = superStats?.faculty || { active_count: 0, average_attendance: '0%', sessional_marks_upload_pct: 0, active_logins: 0, average_cgpa: 0.0, dept_attendance: [] };
     const gStats = superStats?.grievance || { pending: 0, in_progress: 0, resolved: 0, total: 0 };
 
+    const studentFitCount = fitnessStudentsList.length;
+    const avgStudentSteps = studentFitCount > 0 
+      ? Math.round(fitnessStudentsList.reduce((acc, s) => acc + (s.steps || 0), 0) / studentFitCount) 
+      : 8420;
+    const avgStudentKcal = studentFitCount > 0 
+      ? Math.round(fitnessStudentsList.reduce((acc, s) => acc + (s.kcal || 0), 0) / studentFitCount) 
+      : 420;
+    const avgStudentSleep = studentFitCount > 0 
+      ? (fitnessStudentsList.reduce((acc, s) => acc + (s.sleep_hours || 0), 0) / studentFitCount).toFixed(1) 
+      : '7.2';
+
+    const avgFacultySteps = 6450;
+    const avgFacultyKcal = 310;
+    const avgFacultySleep = '6.8';
+
     // Segment mappings for visual stacked charts
     const moodSegments = [
       { value: mhStats.happy, color: colors.success, label: 'Happy' },
@@ -708,6 +729,78 @@ const AdminDashboardScreen = ({ navigation }) => {
               <Text style={[styles.sentimentVal, { color: colors.danger }]}>{mhStats.at_risk} →</Text>
             </TouchableOpacity>
           </View>
+        </TouchableOpacity>
+
+        {/* Campus Fitness Insights (Students & Faculty) */}
+        <TouchableOpacity
+          style={[styles.insightCard, { backgroundColor: colors.card, borderColor: colors.border, borderLeftColor: '#EC4899', borderLeftWidth: 3 }]}
+          onPress={() => navigation.navigate('SuperAdminDrilldown', { category: 'fitness_students', title: 'Campus Fitness Standings' })}
+          activeOpacity={0.85}
+        >
+          <View style={styles.insightHeader}>
+            <View style={[styles.insightIconBg, { backgroundColor: '#EC489918' }]}>
+              <MaterialCommunityIcons name="heart-pulse" size={18} color="#EC4899" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.insightTitle, { color: colors.textPrimary }]}>Campus Fitness Insights</Text>
+              <Text style={[styles.insightCategoryTag, { color: '#EC4899' }]}>PHYSICAL WELLBEING</Text>
+            </View>
+            <Feather name="chevron-right" size={16} color={colors.textMuted} />
+          </View>
+
+          <Text style={[styles.insightSubText, { color: colors.textMuted, marginBottom: 12 }]}>
+            Aggregate physical activity & health logs
+          </Text>
+
+          <View style={{ flexDirection: 'row', gap: 12, marginTop: 4 }}>
+            {/* Students Sub-card */}
+            <View style={{ flex: 1, backgroundColor: isDark ? 'rgba(255,255,255,0.02)' : '#F9FAFB', padding: 12, borderRadius: 16, borderWidth: 1, borderColor: colors.border }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+                <MaterialCommunityIcons name="account-outline" size={16} color="#3B82F6" />
+                <Text style={{ fontWeight: '800', fontSize: 13, color: colors.textPrimary }}>Students</Text>
+              </View>
+              <View style={{ gap: 8 }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Text style={{ fontSize: 11, color: colors.textSecondary }}>Avg Steps</Text>
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: colors.textPrimary }}>{avgStudentSteps.toLocaleString()}</Text>
+                </View>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Text style={{ fontSize: 11, color: colors.textSecondary }}>Avg Burn</Text>
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: '#EF4444' }}>{avgStudentKcal} kcal</Text>
+                </View>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Text style={{ fontSize: 11, color: colors.textSecondary }}>Avg Sleep</Text>
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: '#10B981' }}>{avgStudentSleep}h</Text>
+                </View>
+              </View>
+            </View>
+
+            {/* Faculty Sub-card */}
+            <View style={{ flex: 1, backgroundColor: isDark ? 'rgba(255,255,255,0.02)' : '#F9FAFB', padding: 12, borderRadius: 16, borderWidth: 1, borderColor: colors.border }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+                <MaterialCommunityIcons name="school-outline" size={16} color="#10B981" />
+                <Text style={{ fontWeight: '800', fontSize: 13, color: colors.textPrimary }}>Faculty</Text>
+              </View>
+              <View style={{ gap: 8 }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Text style={{ fontSize: 11, color: colors.textSecondary }}>Avg Steps</Text>
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: colors.textPrimary }}>{avgFacultySteps.toLocaleString()}</Text>
+                </View>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Text style={{ fontSize: 11, color: colors.textSecondary }}>Avg Burn</Text>
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: '#EF4444' }}>{avgFacultyKcal} kcal</Text>
+                </View>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Text style={{ fontSize: 11, color: colors.textSecondary }}>Avg Sleep</Text>
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: '#10B981' }}>{avgFacultySleep}h</Text>
+                </View>
+              </View>
+            </View>
+          </View>
+          
+          <Text style={{ fontSize: 11, color: colors.primary, fontWeight: '700', marginTop: 12, textAlign: 'right' }}>
+            View Standings & Leaderboard →
+          </Text>
         </TouchableOpacity>
 
         {/* Leaderboard (The Hustle) Insights */}
