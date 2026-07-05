@@ -28,6 +28,8 @@ const AdminBroadcastCenterScreen = ({ navigation }) => {
   const { accessToken } = useUser();
   const [title, setTitle] = useState('');
   const [message, setMessage] = useState('');
+  const [recipientRole, setRecipientRole] = useState('student'); // 'student', 'faculty', 'college_admin', 'warden'
+  const [showRoleDropdown, setShowRoleDropdown] = useState(false);
   const [targetType, setTargetType] = useState('all'); // 'all', 'department', 'batch', 'custom'
   const [departments, setDepartments] = useState([]);
   const [selectedDepts, setSelectedDepts] = useState([]);
@@ -94,9 +96,9 @@ const AdminBroadcastCenterScreen = ({ navigation }) => {
         body: message.trim(),
         urgency: 'high',
         type: 'announcement',
-        target_type: targetType,
-        target_department_ids: targetType === 'department' || targetType === 'custom' ? selectedDepts : null,
-        target_batch_years: targetType === 'batch' || targetType === 'custom' ? selectedBatches : null,
+        target_type: recipientRole === 'student' ? targetType : recipientRole,
+        target_department_ids: recipientRole === 'student' && (targetType === 'department' || targetType === 'custom') ? selectedDepts : null,
+        target_batch_years: recipientRole === 'student' && (targetType === 'batch' || targetType === 'custom') ? selectedBatches : null,
       };
 
       const res = await createBroadcastAPI(accessToken, payload);
@@ -107,6 +109,7 @@ const AdminBroadcastCenterScreen = ({ navigation }) => {
         setSelectedDepts([]);
         setSelectedBatches([]);
         setTargetType('all');
+        setRecipientRole('student');
 
         // Refresh stats
         const bStats = await getBroadcastStatsAPI(accessToken);
@@ -120,6 +123,9 @@ const AdminBroadcastCenterScreen = ({ navigation }) => {
   };
 
   const calculatedReach = () => {
+    if (recipientRole === 'faculty') return '45';
+    if (recipientRole === 'college_admin') return '12';
+    if (recipientRole === 'warden') return '8';
     if (targetType === 'all') return '~350';
     let base = 0;
     if (targetType === 'department') base += selectedDepts.length * 60;
@@ -163,119 +169,189 @@ const AdminBroadcastCenterScreen = ({ navigation }) => {
             value={message}
             onChangeText={setMessage}
           />
+
+          <Text style={[styles.inputLabel, { color: colors.textPrimary, marginTop: 4 }]}>RECIPIENT GROUP</Text>
+          <TouchableOpacity
+            style={[styles.dropdownBtn, { borderColor: colors.border, backgroundColor: colors.background }]}
+            onPress={() => setShowRoleDropdown(p => !p)}
+            activeOpacity={0.8}
+          >
+            <Text style={{ color: colors.textPrimary, fontWeight: '700', fontSize: 13 }}>
+              {recipientRole === 'student' ? '🎓 Students' :
+               recipientRole === 'faculty' ? '🏫 Faculty & Staff' :
+               recipientRole === 'college_admin' ? '🏢 College Admins' :
+               '🛡️ Wardens & Security'}
+            </Text>
+            <Feather name={showRoleDropdown ? 'chevron-up' : 'chevron-down'} size={16} color={colors.textSecondary} />
+          </TouchableOpacity>
+
+          {showRoleDropdown && (
+            <View style={[styles.dropdownList, { borderColor: colors.border, backgroundColor: colors.card }]}>
+              {[
+                { label: '🎓 Students', value: 'student' },
+                { label: '🏫 Faculty & Staff', value: 'faculty' },
+                { label: '🏢 College Admins', value: 'college_admin' },
+                { label: '🛡️ Wardens & Security', value: 'warden' }
+              ].map((roleOpt) => (
+                <TouchableOpacity
+                  key={roleOpt.value}
+                  style={[styles.dropdownItem, { borderBottomColor: colors.border }, recipientRole === roleOpt.value && { backgroundColor: colors.primary + '15' }]}
+                  onPress={() => {
+                    setRecipientRole(roleOpt.value);
+                    setShowRoleDropdown(false);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={{ color: recipientRole === roleOpt.value ? colors.primary : colors.textPrimary, fontWeight: recipientRole === roleOpt.value ? '700' : '500', fontSize: 13 }}>
+                    {roleOpt.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
         </View>
 
         {/* Targeting Selector */}
-        <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Target Audience</Text>
-        <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <View style={styles.targetingTabs}>
-            {['all', 'department', 'batch', 'custom'].map((t) => (
-              <TouchableOpacity
-                key={t}
-                style={[
-                  styles.targetTab,
-                  targetType === t && [styles.activeTargetTab, { backgroundColor: colors.primary }]
-                ]}
-                onPress={() => setTargetType(t)}
-              >
-                <Text style={[
-                  styles.targetTabText,
-                  { color: targetType === t ? '#FFF' : colors.textPrimary }
-                ]}>
-                  {t.toUpperCase()}
+        {recipientRole === 'student' && (
+          <>
+            <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Target Audience</Text>
+            <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <View style={styles.targetingTabs}>
+                {['all', 'department', 'batch', 'custom'].map((t) => (
+                  <TouchableOpacity
+                    key={t}
+                    style={[
+                      styles.targetTab,
+                      targetType === t && [styles.activeTargetTab, { backgroundColor: colors.primary }]
+                    ]}
+                    onPress={() => setTargetType(t)}
+                  >
+                    <Text style={[
+                      styles.targetTabText,
+                      { color: targetType === t ? '#FFF' : colors.textPrimary }
+                    ]}>
+                      {t.toUpperCase()}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {/* Department Picker */}
+              {(targetType === 'department' || targetType === 'custom') && (
+                <View style={styles.filterSection}>
+                  <Text style={[styles.filterTitle, { color: colors.textPrimary }]}>Select Departments:</Text>
+                  <View style={styles.checkboxContainer}>
+                    {departments.map((dept) => {
+                      const isChecked = selectedDepts.includes(dept.id);
+                      return (
+                        <TouchableOpacity
+                          key={dept.id}
+                          style={[
+                            styles.checkboxChip,
+                            isChecked ? { backgroundColor: colors.primaryLight, borderColor: colors.primary } : { borderColor: colors.border }
+                          ]}
+                          onPress={() => toggleDept(dept.id)}
+                        >
+                          <Feather
+                            name={isChecked ? 'check-square' : 'square'}
+                            size={14}
+                            color={isChecked ? colors.primary : colors.textSecondary}
+                            style={{ marginRight: 6 }}
+                          />
+                          <Text style={[styles.checkboxText, { color: isChecked ? colors.primary : colors.textPrimary }]}>
+                            {dept.code || dept.name}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                </View>
+              )}
+
+              {/* Batch Year Picker */}
+              {(targetType === 'batch' || targetType === 'custom') && (
+                <View style={styles.filterSection}>
+                  <Text style={[styles.filterTitle, { color: colors.textPrimary }]}>Select Batch Years:</Text>
+                  <View style={styles.checkboxContainer}>
+                    {BATCHES.map((batch) => {
+                      const isChecked = selectedBatches.includes(batch.id);
+                      return (
+                        <TouchableOpacity
+                          key={batch.id}
+                          style={[
+                            styles.checkboxChip,
+                            isChecked ? { backgroundColor: colors.primaryLight, borderColor: colors.primary } : { borderColor: colors.border }
+                          ]}
+                          onPress={() => toggleBatch(batch.id)}
+                        >
+                          <Feather
+                            name={isChecked ? 'check-square' : 'square'}
+                            size={14}
+                            color={isChecked ? colors.primary : colors.textSecondary}
+                            style={{ marginRight: 6 }}
+                          />
+                          <Text style={[styles.checkboxText, { color: isChecked ? colors.primary : colors.textPrimary }]}>
+                            {batch.label}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                </View>
+              )}
+
+              {/* Reach Estimate Banner */}
+              <View style={[styles.reachContainer, { backgroundColor: colors.background, marginBottom: 16 }]}>
+                <Feather name="users" size={16} color={colors.primary} style={{ marginRight: 8 }} />
+                <Text style={[styles.reachText, { color: colors.textPrimary }]}>
+                  Estimated Reach: <Text style={{ fontWeight: '700', color: colors.primary }}>{calculatedReach()}</Text> students.
                 </Text>
+              </View>
+
+              {/* Send Action */}
+              <TouchableOpacity
+                style={[styles.sendBtn, { backgroundColor: colors.primary }]}
+                onPress={handleSend}
+                disabled={sending}
+              >
+                {sending ? (
+                  <ActivityIndicator size="small" color="#FFF" />
+                ) : (
+                  <>
+                    <Feather name="send" size={16} color="#FFF" style={{ marginRight: 8 }} />
+                    <Text style={styles.sendBtnText}>Dispatch Broadcast Alert</Text>
+                  </>
+                )}
               </TouchableOpacity>
-            ))}
+            </View>
+          </>
+        )}
+
+        {recipientRole !== 'student' && (
+          <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <View style={[styles.reachContainer, { backgroundColor: colors.background, marginBottom: 16 }]}>
+              <Feather name="users" size={16} color={colors.primary} style={{ marginRight: 8 }} />
+              <Text style={[styles.reachText, { color: colors.textPrimary }]}>
+                Estimated Reach: <Text style={{ fontWeight: '700', color: colors.primary }}>{calculatedReach()}</Text> recipients.
+              </Text>
+            </View>
+
+            <TouchableOpacity
+              style={[styles.sendBtn, { backgroundColor: colors.primary }]}
+              onPress={handleSend}
+              disabled={sending}
+            >
+              {sending ? (
+                <ActivityIndicator size="small" color="#FFF" />
+              ) : (
+                <>
+                  <Feather name="send" size={16} color="#FFF" style={{ marginRight: 8 }} />
+                  <Text style={styles.sendBtnText}>Dispatch Broadcast Alert</Text>
+                </>
+              )}
+            </TouchableOpacity>
           </View>
-
-          {/* Department Picker */}
-          {(targetType === 'department' || targetType === 'custom') && (
-            <View style={styles.filterSection}>
-              <Text style={[styles.filterTitle, { color: colors.textPrimary }]}>Select Departments:</Text>
-              <View style={styles.checkboxContainer}>
-                {departments.map((dept) => {
-                  const isChecked = selectedDepts.includes(dept.id);
-                  return (
-                    <TouchableOpacity
-                      key={dept.id}
-                      style={[
-                        styles.checkboxChip,
-                        isChecked ? { backgroundColor: colors.primaryLight, borderColor: colors.primary } : { borderColor: colors.border }
-                      ]}
-                      onPress={() => toggleDept(dept.id)}
-                    >
-                      <Feather
-                        name={isChecked ? 'check-square' : 'square'}
-                        size={14}
-                        color={isChecked ? colors.primary : colors.textSecondary}
-                        style={{ marginRight: 6 }}
-                      />
-                      <Text style={[styles.checkboxText, { color: isChecked ? colors.primary : colors.textPrimary }]}>
-                        {dept.code || dept.name}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            </View>
-          )}
-
-          {/* Batch Year Picker */}
-          {(targetType === 'batch' || targetType === 'custom') && (
-            <View style={styles.filterSection}>
-              <Text style={[styles.filterTitle, { color: colors.textPrimary }]}>Select Batch Years:</Text>
-              <View style={styles.checkboxContainer}>
-                {BATCHES.map((batch) => {
-                  const isChecked = selectedBatches.includes(batch.id);
-                  return (
-                    <TouchableOpacity
-                      key={batch.id}
-                      style={[
-                        styles.checkboxChip,
-                        isChecked ? { backgroundColor: colors.primaryLight, borderColor: colors.primary } : { borderColor: colors.border }
-                      ]}
-                      onPress={() => toggleBatch(batch.id)}
-                    >
-                      <Feather
-                        name={isChecked ? 'check-square' : 'square'}
-                        size={14}
-                        color={isChecked ? colors.primary : colors.textSecondary}
-                        style={{ marginRight: 6 }}
-                      />
-                      <Text style={[styles.checkboxText, { color: isChecked ? colors.primary : colors.textPrimary }]}>
-                        {batch.label}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            </View>
-          )}
-
-          {/* Reach Estimate Banner */}
-          {/* <View style={[styles.reachContainer, { backgroundColor: colors.background }]}>
-            <Feather name="users" size={16} color={colors.primary} style={{ marginRight: 8 }} />
-            <Text style={[styles.reachText, { color: colors.textPrimary }]}>
-              Estimated Reach: <Text style={{ fontWeight: '700', color: colors.primary }}>{calculatedReach()}</Text> students.
-            </Text>
-          </View> */}
-
-          {/* Send Action */}
-          <TouchableOpacity
-            style={[styles.sendBtn, { backgroundColor: colors.primary }]}
-            onPress={handleSend}
-            disabled={sending}
-          >
-            {sending ? (
-              <ActivityIndicator size="small" color="#FFF" />
-            ) : (
-              <>
-                <Feather name="send" size={16} color="#FFF" style={{ marginRight: 8 }} />
-                <Text style={styles.sendBtnText}>Dispatch Broadcast Alert</Text>
-              </>
-            )}
-          </TouchableOpacity>
-        </View>
+        )}
 
         {/* History Stats Section */}
         <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Recent Dispatches ({stats.total_sent})</Text>
@@ -466,6 +542,28 @@ const styles = StyleSheet.create({
   metaSentText: {
     fontSize: 11,
     fontWeight: '500',
+  },
+  dropdownBtn: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    marginBottom: 16,
+  },
+  dropdownList: {
+    borderWidth: 1,
+    borderRadius: 8,
+    marginTop: -8,
+    marginBottom: 16,
+    overflow: 'hidden',
+  },
+  dropdownItem: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
 });
 
