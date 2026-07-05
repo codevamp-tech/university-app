@@ -12,45 +12,6 @@ import { Colors } from '../../constants/colors';
 const { width } = Dimensions.get('window');
 const TABS = ['All Updates', 'Announcements', 'Deadlines'];
 
-const getFallbackFacultyAlerts = () => [
-  {
-    id: 'f1',
-    type: 'announcement',
-    title: 'Urgent: Mid-Term Syllabus Completion',
-    body: 'All faculty members are requested to complete their respective mid-term syllabus by the end of this week. Extra classes may be scheduled if necessary.',
-    is_read: false,
-    urgency: 'high',
-    created_at: new Date(Date.now() - 3600000 * 2).toISOString(), // 2 hours ago
-  },
-  {
-    id: 'f2',
-    type: 'deadline',
-    title: 'Submission of Sessional Marks',
-    body: 'Deadline for uploading sessional-I marks on the ERP portal is July 10, 2026. Please ensure all student records are updated.',
-    is_read: false,
-    urgency: 'high',
-    created_at: new Date(Date.now() - 3600000 * 12).toISOString(), // 12 hours ago
-  },
-  {
-    id: 'f3',
-    type: 'announcement',
-    title: 'Departmental Research Meeting',
-    body: 'The monthly departmental research progress meeting will be held tomorrow at 11:30 AM in Conference Room A.',
-    is_read: true,
-    urgency: 'medium',
-    created_at: new Date(Date.now() - 3600000 * 24).toISOString(), // 1 day ago
-  },
-  {
-    id: 'f4',
-    type: 'announcement',
-    title: 'Campus Anti-Ragging Committee Notice',
-    body: 'All faculty members assigned to the anti-ragging squad must report to their respective duty blocks as per the roster.',
-    is_read: true,
-    urgency: 'medium',
-    created_at: new Date(Date.now() - 3600000 * 48).toISOString(), // 2 days ago
-  }
-];
-
 const TeacherAlertsScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const { accessToken } = useUser();
@@ -65,15 +26,9 @@ const TeacherAlertsScreen = ({ navigation }) => {
     if (!isRefresh) setLoading(true);
     try {
       const res = await getAlerts(accessToken);
-      // If server returns empty alerts or hits a 403 permission error, fall back to mock data
-      if (res?.data && res.data.length > 0) {
-        setAlerts(res.data);
-      } else {
-        setAlerts(getFallbackFacultyAlerts());
-      }
+      setAlerts(res?.data || []);
     } catch (e) {
       console.warn('[TeacherAlertsScreen] failed to load alerts:', e);
-      setAlerts(getFallbackFacultyAlerts());
     } finally {
       setLoading(false);
       setRefreshing(false);

@@ -1159,18 +1159,6 @@ const AdminDashboardScreen = ({ navigation }) => {
         {isWarden && renderWardenDashboard()}
         {isAdmin && renderAdminDashboard()}
         {isSuperAdmin && renderSuperAdminDashboard()}
-
-        {/* Temporary Diagnostic Debug Card */}
-        <View style={{ padding: 12, marginVertical: 12, backgroundColor: isDark ? '#1E293B' : '#F1F5F9', borderRadius: 8, borderWidth: 1, borderColor: colors.border }}>
-          <Text style={{ fontSize: 12, fontWeight: '700', color: colors.textPrimary, marginBottom: 4 }}>[Diagnostic Info]</Text>
-          <Text style={{ fontSize: 10, color: colors.textSecondary }}>Role: {user?.role || 'N/A'}</Text>
-          <Text style={{ fontSize: 10, color: colors.textSecondary }}>Token: {accessToken ? `${accessToken.substring(0, 15)}...` : 'N/A'}</Text>
-          <Text style={{ fontSize: 10, color: colors.textSecondary }}>Stats keys: {Object.keys(stats || {}).join(', ')}</Text>
-          <Text style={{ fontSize: 10, color: colors.textSecondary }}>Stats: {JSON.stringify(stats)}</Text>
-          <Text style={{ fontSize: 10, color: colors.textSecondary }}>SuperStats: {JSON.stringify(superStats)}</Text>
-          <Text style={{ fontSize: 10, color: colors.textSecondary }}>URL: {APP_CONFIG.API_BASE_URL}</Text>
-        </View>
-
         {/* Padding for absolute bottom tab bar */}
         <View style={{ height: 80 }} />
       </ScrollView>
