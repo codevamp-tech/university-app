@@ -96,7 +96,11 @@ const AdminBroadcastCenterScreen = ({ navigation }) => {
         body: message.trim(),
         urgency: 'high',
         type: 'announcement',
-        target_type: recipientRole === 'student' ? targetType : recipientRole,
+        target_type: recipientRole === 'student' ? targetType : (
+          recipientRole === 'faculty' ? 'teacher' : (
+            recipientRole === 'college_admin' ? 'admin' : 'warden'
+          )
+        ),
         target_department_ids: recipientRole === 'student' && (targetType === 'department' || targetType === 'custom') ? selectedDepts : null,
         target_batch_years: recipientRole === 'student' && (targetType === 'batch' || targetType === 'custom') ? selectedBatches : null,
       };
@@ -366,7 +370,13 @@ const AdminBroadcastCenterScreen = ({ navigation }) => {
                 <Text style={[styles.historyTitle, { color: colors.textPrimary }]}>{item.title}</Text>
                 <View style={styles.historyMeta}>
                   <View style={styles.metaBadge}>
-                    <Text style={[styles.metaBadgeText, { color: colors.textSecondary }]}>Target: {item.target_type?.toUpperCase()}</Text>
+                    <Text style={[styles.metaBadgeText, { color: colors.textSecondary }]}>
+                      Target: {
+                        item.target_type === 'teacher' ? 'FACULTY' :
+                        item.target_type === 'admin' ? 'COLLEGE ADMIN' :
+                        item.target_type?.toUpperCase()
+                      }
+                    </Text>
                   </View>
                   <Text style={[styles.metaSentText, { color: colors.textMuted }]}>
                     Sent to: {item.sent_count} | Opened: {item.opened_count || 0}
