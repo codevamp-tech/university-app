@@ -697,6 +697,7 @@ const CommunityScreen = ({ navigation }) => {
 
     if (displayName === 'Admin' || displayName === 'admin' || posterUsername === 'admin' || targetPost.user?.role === 'super_admin' || targetPost.user?.role === 'admin') {
       displayName = 'Super Admin (Aditya Murti)';
+      courseYearStr = 'Campus Administration';
     }
 
     let repostAuthorName = 'User';
