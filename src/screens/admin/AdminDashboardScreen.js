@@ -49,28 +49,41 @@ const AdminDashboardScreen = ({ navigation }) => {
   const focusProgress = goals.focus > 0 ? Math.min(metrics.focusMinutes / goals.focus, 1) : 0;
 
   const fetchDashboardData = async () => {
+    // Set loading false immediately to prevent any network block from keeping the app in skeleton state
+    setLoading(false);
+
     try {
       if (accessToken) {
-        // Fetch Today's Mood
-        try {
-          const moodRes = await getMoodEntriesAPI(accessToken);
-          if (moodRes && moodRes.length > 0) {
-            const latestMood = moodRes[0];
-            const moodDate = new Date(latestMood.created_at);
-            const today = new Date();
-            if (moodDate.getDate() === today.getDate() && moodDate.getMonth() === today.getMonth() && moodDate.getFullYear() === today.getFullYear()) {
-              const apiValToId = { 'excited': 0, 'happy': 1, 'neutral': 2, 'stressed': 3, 'focused': 0 };
-              if (apiValToId[latestMood.mood] !== undefined) {
-                 setActiveMood(apiValToId[latestMood.mood]);
+        // Fetch Today's Mood in background
+        getMoodEntriesAPI(accessToken)
+          .then(moodRes => {
+            if (moodRes && moodRes.length > 0) {
+              const latestMood = moodRes[0];
+              const moodDate = new Date(latestMood.created_at);
+              const today = new Date();
+              if (moodDate.getDate() === today.getDate() && moodDate.getMonth() === today.getMonth() && moodDate.getFullYear() === today.getFullYear()) {
+                const apiValToId = { 'excited': 0, 'happy': 1, 'neutral': 2, 'stressed': 3, 'focused': 0 };
+                if (apiValToId[latestMood.mood] !== undefined) {
+                   setActiveMood(apiValToId[latestMood.mood]);
+                }
               }
             }
-          }
-        } catch(e) {
-          console.warn("Failed to fetch admin's mood:", e);
-        }
+          })
+          .catch(e => console.warn("[AdminDashboard] Failed to fetch mood:", e));
 
-        const overview = await getAdminOverviewStats(accessToken);
-        if (overview) setStats(overview);
+        // Fetch Overview stats in background
+        getAdminOverviewStats(accessToken)
+          .then(overview => {
+            if (overview) setStats(overview);
+          })
+          .catch(e => console.warn("[AdminDashboard] Failed to fetch overview stats:", e));
+
+        // Fetch Mental Health stats in background
+        getAdminMentalHealthAnalytics(accessToken)
+          .then(mStats => {
+            if (mStats) setMentalStats(mStats);
+          })
+          .catch(e => console.warn("[AdminDashboard] Failed to fetch mental health stats:", e));
 
         if (user?.role === 'super_admin') {
           // Fetch superadmin analytics overview
@@ -153,20 +166,10 @@ const AdminDashboardScreen = ({ navigation }) => {
                 .catch(e => console.warn('[AdminDashboard] Fallback student fetch error:', e));
             });
         }
-
-        try {
-          const mStats = await getAdminMentalHealthAnalytics(accessToken);
-          if (mStats && mStats.mood_distribution) {
-            setMentalStats(mStats);
-          }
-        } catch (e) {
-          console.warn('[AdminDashboard] Mental stats fetch error:', e);
-        }
       }
     } catch (err) {
       console.warn('[AdminDashboard] Fetch stats error:', err);
     } finally {
-      setLoading(false);
       setRefreshing(false);
     }
   };
