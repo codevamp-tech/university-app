@@ -189,14 +189,6 @@ const SuperAdminVentureInsightsScreen = ({ navigation }) => {
           <Feather name="activity" size={18} color={colors.textSecondary} />
         </View>
         <View style={styles.grid}>
-          <View style={[styles.gridCard, { backgroundColor: colors.card, shadowColor: colors.shadow }]}>
-            <LinearGradient colors={['rgba(59, 130, 246, 0.1)', 'rgba(59, 130, 246, 0.05)']} style={styles.iconBox}>
-              <MaterialCommunityIcons name="account-group" size={26} color="#3B82F6" />
-            </LinearGradient>
-            <Text style={[styles.cardVal, { color: colors.textPrimary }]}>{vStats.cofounder_requests_count}</Text>
-            <Text style={[styles.cardLabel, { color: colors.textSecondary }]}>Active Cofounder Match Requests</Text>
-          </View>
-
           <TouchableOpacity
             style={[styles.gridCard, { backgroundColor: colors.card, shadowColor: colors.shadow }]}
             onPress={() => navigation.navigate('SuperAdminDrilldown', { category: 'ventures', title: 'Submitted Pitch Decks' })}
