@@ -12,6 +12,7 @@ import AdminVentureReviewScreen from '../screens/admin/AdminVentureReviewScreen'
 import AdminGrievanceInboxScreen from '../screens/admin/AdminGrievanceInboxScreen';
 import AdminMarketplaceReviewScreen from '../screens/admin/AdminMarketplaceReviewScreen';
 import SettingsScreen from '../screens/student/SettingsScreen';
+import CommunityScreen from '../screens/student/CommunityScreen';
 
 // Superadmin Dedicated Strategic Insights Screens
 import SuperAdminVentureInsightsScreen from '../screens/admin/SuperAdminVentureInsightsScreen';
@@ -63,6 +64,9 @@ const AdminTabs = () => {
             IconLibrary = MaterialCommunityIcons;
             iconName = 'alert-octagon-outline';
             label = 'Support';
+          } else if (route.name === 'Community') {
+            iconName = 'message-square';
+            label = 'Social';
           } else if (route.name === 'VentureInsights') {
             IconLibrary = MaterialCommunityIcons;
             iconName = 'rocket-launch';
@@ -132,6 +136,10 @@ const AdminTabs = () => {
 
       {role === 'super_admin' && (
         <Tab.Screen name="LeaderboardInsights" component={SuperAdminLeaderboardInsightsScreen} />
+      )}
+
+      {role === 'super_admin' && (
+        <Tab.Screen name="Community" component={CommunityScreen} />
       )}
 
       {role === 'super_admin' && (
