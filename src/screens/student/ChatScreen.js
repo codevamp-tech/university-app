@@ -42,6 +42,8 @@ const ChatScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const { accessToken, user } = useUser();
   const { colors, isDark } = useTheme();
+  const isSuperAdmin = user?.role === 'super_admin';
+  const [selectedBatch, setSelectedBatch] = useState(user?.batch_year || user?.batch || '2025');
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [channels, setChannels] = useState(DEFAULT_CHANNELS);
   const [activeChannel, setActiveChannel] = useState(DEFAULT_CHANNELS[0]);
@@ -121,7 +123,7 @@ const ChatScreen = ({ navigation }) => {
     }
     setLoadingPortal(true);
     try {
-      const batchYear = user?.batch_year || user?.batch || '2025';
+      const batchYear = isSuperAdmin ? selectedBatch : (user?.batch_year || user?.batch || '2025');
       console.log('[ChatScreen] Fetching chats for batch:', batchYear, 'subject:', activePortalSubject.name, 'facultyId:', activePortalSubject.facultyId);
       let history = await getFacultyGroupChats(
         activePortalSubject.facultyId,
@@ -151,13 +153,13 @@ const ChatScreen = ({ navigation }) => {
     } finally {
       setLoadingPortal(false);
     }
-  }, [accessToken, activeChannel, activePortalSubject, user]);
+  }, [accessToken, activeChannel, activePortalSubject, user, selectedBatch, isSuperAdmin]);
 
   useEffect(() => {
     if (activeChannel?.id === 'official-batch-chat') {
       loadPortalMessages(true);
     }
-  }, [activeChannel?.id, activePortalSubject, loadPortalMessages]);
+  }, [activeChannel?.id, activePortalSubject, selectedBatch, loadPortalMessages]);
 
   useEffect(() => {
     if (activeChannel?.id !== 'official-batch-chat') return;
@@ -165,7 +167,7 @@ const ChatScreen = ({ navigation }) => {
       loadPortalMessages(false);
     }, 10000);
     return () => clearInterval(interval);
-  }, [activeChannel?.id, activePortalSubject, loadPortalMessages]);
+  }, [activeChannel?.id, activePortalSubject, selectedBatch, loadPortalMessages]);
 
   // ── Drawer animation ──────────────────────────────────────────────────────
   const toggleDrawer = () => {
@@ -198,7 +200,7 @@ const ChatScreen = ({ navigation }) => {
     if (activeChannel.id === 'official-batch-chat') {
       setSendingPortalMessage(true);
       try {
-        const batchYear = user?.batch_year || user?.batch || '2025';
+        const batchYear = isSuperAdmin ? selectedBatch : (user?.batch_year || user?.batch || '2025');
         const colgcd = user?.emp_id ? (user.emp_id.split('/')[1] || '11') : '11';
         const isFaculty = user?.role === 'teacher';
 
@@ -251,7 +253,7 @@ const ChatScreen = ({ navigation }) => {
       avatar_url: user?.avatar_url,
     });
     setInputText('');
-  }, [inputText, activeChannel, sendChannelMessage, user, activePortalSubject, loadPortalMessages]);
+  }, [inputText, activeChannel, sendChannelMessage, user, activePortalSubject, loadPortalMessages, selectedBatch, isSuperAdmin]);
 
   // Current channel messages from socket or REST
   const messages = activeChannel?.id === 'official-batch-chat'
@@ -378,6 +380,34 @@ const ChatScreen = ({ navigation }) => {
                   >
                     <Text style={[styles.subjectPillText, { color: isSel ? '#FFFFFF' : colors.textPrimary }]}>
                       {sub.name} ({sub.subcode})
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
+        )}
+
+        {activeChannel?.id === 'official-batch-chat' && isSuperAdmin && (
+          <View style={[styles.batchSelector, { borderBottomColor: colors.border, backgroundColor: isDark ? colors.card : '#FAFAFA' }]}>
+            <Text style={[styles.batchTitle, { color: colors.textSecondary }]}>Batch:</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.subjectScrollContent}>
+              {['2022', '2023', '2024', '2025', '2026'].map((b) => {
+                const isSel = selectedBatch === b;
+                return (
+                  <TouchableOpacity
+                    key={b}
+                    style={[
+                      styles.subjectPill,
+                      {
+                        backgroundColor: isSel ? colors.primary : (isDark ? '#1F2937' : '#FFFFFF'),
+                        borderColor: isSel ? colors.primary : colors.border
+                      }
+                    ]}
+                    onPress={() => setSelectedBatch(b)}
+                  >
+                    <Text style={[styles.subjectPillText, { color: isSel ? '#FFFFFF' : colors.textPrimary }]}>
+                      {b}
                     </Text>
                   </TouchableOpacity>
                 );
@@ -725,6 +755,17 @@ const styles = StyleSheet.create({
   subjectSelector: {
     paddingVertical: 8,
     borderBottomWidth: 1,
+  },
+  batchSelector: {
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  batchTitle: {
+    fontSize: 12,
+    fontWeight: '800',
+    marginLeft: 12,
   },
   subjectScrollContent: {
     paddingHorizontal: 12,
