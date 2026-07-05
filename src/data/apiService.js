@@ -1924,7 +1924,22 @@ export async function getFacultyGroupChats(empId, batchName, phase = '1', subpha
           isMe: msg.classlabel === 'left', // classlabel left is faculty (me)
           timestamp: sentDateStr,
           department: msg.department || '',
-          attachment: msg.attachfile || null
+          attachment: msg.attachfile || null,
+          // Raw ERP fields
+          chatid: msg.chatid,
+          ChatFacId: msg.ChatFacId,
+          FacultyName: msg.FacultyName,
+          ChatStudId: msg.ChatStudId,
+          StudentName: msg.StudentName,
+          classlabel: msg.classlabel,
+          colgcd: msg.colgcd,
+          course_cd: msg.course_cd,
+          cbme: msg.cbme,
+          batch: msg.batch,
+          phase: msg.phase,
+          sub_phase: msg.sub_phase,
+          sub_phase_part: msg.sub_phase_part,
+          subcode: msg.subcode,
         };
       });
     }
@@ -1933,6 +1948,25 @@ export async function getFacultyGroupChats(empId, batchName, phase = '1', subpha
   }
   return [];
 }
+
+/**
+ * Send a message to the legacy ERP portal group chat.
+ */
+export async function sendPortalChatMessage(payload) {
+  try {
+    const response = await fetch('https://myportal.srms.ac.in/SRMSERP/Faculty/lmschat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await response.json();
+    return data;
+  } catch (err) {
+    console.warn('[apiService] sendPortalChatMessage failed:', err);
+    throw err;
+  }
+}
+
 
 /**
  * Fetch and filter live e-books from the ERP library search API.

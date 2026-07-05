@@ -197,13 +197,17 @@ const SuperAdminVentureInsightsScreen = ({ navigation }) => {
             <Text style={[styles.cardLabel, { color: colors.textSecondary }]}>Active Cofounder Match Requests</Text>
           </View>
 
-          <View style={[styles.gridCard, { backgroundColor: colors.card, shadowColor: colors.shadow }]}>
+          <TouchableOpacity
+            style={[styles.gridCard, { backgroundColor: colors.card, shadowColor: colors.shadow }]}
+            onPress={() => navigation.navigate('SuperAdminDrilldown', { category: 'ventures', title: 'Submitted Pitch Decks' })}
+            activeOpacity={0.8}
+          >
             <LinearGradient colors={['rgba(16, 185, 129, 0.1)', 'rgba(16, 185, 129, 0.05)']} style={styles.iconBox}>
               <MaterialCommunityIcons name="file-document-outline" size={26} color="#10B981" />
             </LinearGradient>
             <Text style={[styles.cardVal, { color: colors.textPrimary }]}>{vStats.pitched_ideas}</Text>
             <Text style={[styles.cardLabel, { color: colors.textSecondary }]}>Total Pitch Decks Uploaded</Text>
-          </View>
+          </TouchableOpacity>
         </View>
 
         {/* Department Distribution */}

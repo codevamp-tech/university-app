@@ -14,7 +14,7 @@ import {
 import { Feather, MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
 import { useTheme } from '../../hooks/useTheme';
 import { useUser } from '../../context/UserContext';
-import { getAdminOverviewStats, getSuperAdminAnalytics, getSuperAdminDrilldown, getAdminMentalHealthAnalytics, logMoodAPI, getMoodEntriesAPI } from '../../data/apiService';
+import { getAdminOverviewStats, getSuperAdminAnalytics, getSuperAdminDrilldown, getAdminMentalHealthAnalytics, logMoodAPI, getMoodEntriesAPI, getAllStudents } from '../../data/apiService';
 import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SkeletonBlock } from '../../components/SkeletonLoader';
@@ -34,6 +34,7 @@ const AdminDashboardScreen = ({ navigation }) => {
   });
   const [superStats, setSuperStats] = useState(null);
   const [leaderboardGlimpse, setLeaderboardGlimpse] = useState([]);
+  const [studentsList, setStudentsList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -75,12 +76,18 @@ const AdminDashboardScreen = ({ navigation }) => {
             setSuperStats(sStats);
           }
           try {
-            const lList = await getSuperAdminDrilldown(accessToken, 'hustle_students');
+            const [lList, sList] = await Promise.all([
+              getSuperAdminDrilldown(accessToken, 'hustle_students'),
+              getAllStudents(accessToken)
+            ]);
             if (lList && Array.isArray(lList)) {
               setLeaderboardGlimpse(lList.slice(0, 3));
             }
+            if (sList && Array.isArray(sList)) {
+              setStudentsList(sList);
+            }
           } catch (e) {
-            console.warn('[AdminDashboard] Drilldown fetch error:', e);
+            console.warn('[AdminDashboard] Drilldown/Students fetch error:', e);
           }
         }
 
@@ -831,41 +838,70 @@ const AdminDashboardScreen = ({ navigation }) => {
           </View>
         </TouchableOpacity>
 
-        {/* CV & Skill Gap Analysis Insights */}
-        <TouchableOpacity
+        {/* Student Insights (Medical, Engineering, Management) */}
+        <View
           style={[styles.insightCard, { backgroundColor: colors.card, borderColor: colors.border, borderLeftColor: '#3B82F6', borderLeftWidth: 3 }]}
-          onPress={() => navigation.navigate('SuperAdminDrilldown', { category: 'cv_students', title: 'CV & Skill Building' })}
-          activeOpacity={0.85}
         >
           <View style={styles.insightHeader}>
             <View style={[styles.insightIconBg, { backgroundColor: '#3B82F618' }]}>
-              <MaterialCommunityIcons name="file-document-outline" size={18} color="#3B82F6" />
+              <MaterialCommunityIcons name="account-group-outline" size={18} color="#3B82F6" />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={[styles.insightTitle, { color: colors.textPrimary }]}>CV & Skill Gap Analytics</Text>
-              <Text style={[styles.insightCategoryTag, { color: '#3B82F6' }]}>CAREER READINESS</Text>
+              <Text style={[styles.insightTitle, { color: colors.textPrimary }]}>Student Insights</Text>
+              <Text style={[styles.insightCategoryTag, { color: '#3B82F6' }]}>COLLEGE DIRECTORY</Text>
             </View>
-            <Feather name="chevron-right" size={16} color={colors.textMuted} />
+            <TouchableOpacity 
+              onPress={() => navigation.navigate('SuperAdminDrilldown', { category: 'student_directory', title: 'Student Directory', department: 'all' })}
+              activeOpacity={0.7}
+            >
+              <Feather name="chevron-right" size={16} color={colors.textMuted} />
+            </TouchableOpacity>
           </View>
+          
           <Text style={[styles.insightBigVal, { color: colors.textPrimary }]}>
-            {cStats.cvs_created}{' '}
-            <Text style={[styles.insightBigValSub, { color: colors.textSecondary }]}>CVs Created</Text>
+            {studentsList.length}{' '}
+            <Text style={[styles.insightBigValSub, { color: colors.textSecondary }]}>Total Students</Text>
           </Text>
-          <View style={[styles.bulletList, { marginTop: 10 }]}>
-            <View style={styles.bulletItemRow}>
-              <View style={[styles.bulletDot, { backgroundColor: '#3B82F6' }]} />
-              <Text style={[styles.bulletItem, { color: colors.textSecondary, flex: 1 }]}>{sgStats.improved_skills_count} students improved skills via gap analysis</Text>
-            </View>
-            <View style={styles.bulletItemRow}>
-              <View style={[styles.bulletDot, { backgroundColor: '#3B82F6' }]} />
-              <Text style={[styles.bulletItem, { color: colors.textSecondary, flex: 1 }]}>{cStats.career_roadmaps_delivered} students received career roadmap</Text>
-            </View>
-            <View style={styles.bulletItemRow}>
-              <View style={[styles.bulletDot, { backgroundColor: '#3B82F6' }]} />
-              <Text style={[styles.bulletItem, { color: colors.textSecondary, flex: 1 }]}>{cStats.skill_gap_tests_taken} students took skill gap test</Text>
-            </View>
+          <Text style={[styles.insightSubText, { color: colors.textMuted, marginBottom: 12 }]}>
+            Student distribution by department. Tap a department to view directory.
+          </Text>
+
+          <View style={{ gap: 10, marginTop: 8 }}>
+            {[
+              { name: 'Medical', count: studentsList.filter(s => String(s.category).toLowerCase() === 'medical').length, color: '#EF4444', value: 'medical' },
+              { name: 'Engineering', count: studentsList.filter(s => String(s.category).toLowerCase() === 'engineering').length, color: '#3B82F6', value: 'engineering' },
+              { name: 'Management', count: studentsList.filter(s => String(s.category).toLowerCase() === 'management').length, color: '#10B981', value: 'management' }
+            ].map((dept) => {
+              const total = studentsList.length || 1;
+              const pct = Math.round((dept.count / total) * 100);
+              return (
+                <TouchableOpacity
+                  key={dept.value}
+                  onPress={() => navigation.navigate('SuperAdminDrilldown', { category: 'student_directory', title: `${dept.name} Students`, department: dept.value })}
+                  style={{
+                    backgroundColor: isDark ? 'rgba(255,255,255,0.02)' : '#F9FAFB',
+                    padding: 12,
+                    borderRadius: 12,
+                    borderWidth: 1,
+                    borderColor: colors.border
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                      <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: dept.color }} />
+                      <Text style={{ fontWeight: '700', fontSize: 13, color: colors.textPrimary }}>{dept.name}</Text>
+                    </View>
+                    <Text style={{ fontWeight: '800', fontSize: 12, color: dept.color }}>{dept.count} Students ({pct}%)</Text>
+                  </View>
+                  <View style={{ height: 6, backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#E5E7EB', borderRadius: 3, overflow: 'hidden' }}>
+                    <View style={{ width: `${pct}%`, height: '100%', backgroundColor: dept.color, borderRadius: 3 }} />
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
           </View>
-        </TouchableOpacity>
+        </View>
 
         {/* Teacher/Faculty Insights */}
         <TouchableOpacity

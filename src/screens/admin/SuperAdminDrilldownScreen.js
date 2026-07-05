@@ -15,7 +15,7 @@ import {
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../../hooks/useTheme';
 import { useUser } from '../../context/UserContext';
-import { getSuperAdminDrilldown } from '../../data/apiService';
+import { getSuperAdminDrilldown, getAllStudents } from '../../data/apiService';
 import { SkeletonBlock } from '../../components/SkeletonLoader';
 import { APP_CONFIG } from '../../config/appConfig';
 
@@ -36,20 +36,44 @@ const StudentAvatar = ({ uri, name, colors }) => {
 };
 
 const SuperAdminDrilldownScreen = ({ route, navigation }) => {
-  const { category, title } = route.params || { category: 'ventures', title: 'Details' };
+  const { category, title, department } = route.params || { category: 'ventures', title: 'Details', department: 'all' };
   const { colors, isDark } = useTheme();
   const { accessToken } = useUser();
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedDept, setSelectedDept] = useState(department || 'all');
+
+  useEffect(() => {
+    if (route.params?.department) {
+      setSelectedDept(route.params.department);
+    }
+  }, [route.params?.department]);
 
   const fetchData = async () => {
     try {
       if (accessToken) {
-        const result = await getSuperAdminDrilldown(accessToken, category);
-        if (result) {
-          setData(result);
+        if (category === 'student_directory') {
+          const result = await getAllStudents(accessToken);
+          if (result) {
+            const mapped = result.map(s => ({
+              id: s.rollno || s.username || s.id,
+              student_name: s.full_name || s.username || 'Student',
+              rollno: s.rollno,
+              course: s.course,
+              branch: s.branch,
+              category: s.category || 'general',
+              cgpa: s.cgpa || 0.0,
+              avatar_url: s.avatar_url,
+            }));
+            setData(mapped);
+          }
+        } else {
+          const result = await getSuperAdminDrilldown(accessToken, category);
+          if (result) {
+            setData(result);
+          }
         }
       }
     } catch (err) {
@@ -94,12 +118,16 @@ const SuperAdminDrilldownScreen = ({ route, navigation }) => {
 
   const filteredData = data.filter(item => {
     const q = searchQuery.toLowerCase();
-    return (
+    const matchesSearch = (
       (item.student_name && item.student_name.toLowerCase().includes(q)) ||
       (item.rollno && item.rollno.toLowerCase().includes(q)) ||
       (item.name && item.name.toLowerCase().includes(q)) ||
       (item.tagline && item.tagline.toLowerCase().includes(q))
     );
+    if (category === 'student_directory' && selectedDept !== 'all') {
+      return matchesSearch && String(item.category).toLowerCase() === selectedDept.toLowerCase();
+    }
+    return matchesSearch;
   });
 
   const renderSkeleton = () => (
@@ -264,6 +292,30 @@ const SuperAdminDrilldownScreen = ({ route, navigation }) => {
       );
     }
 
+    if (category === 'student_directory') {
+      return (
+        <TouchableOpacity 
+          style={[styles.rowCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+          onPress={() => navigation.navigate('OtherStudentProfile', { student: { id: item.id || item.user_id || item.student_id, name: item.student_name, avatar: item.avatar_url } })}
+          activeOpacity={0.7}
+        >
+          <StudentAvatar uri={item.avatar_url} name={item.student_name} colors={colors} />
+          <View style={{ flex: 1, marginLeft: 12 }}>
+            <Text style={[styles.founderName, { color: colors.textPrimary }]}>{item.student_name}</Text>
+            <Text style={[styles.rollnoText, { color: colors.textSecondary }]}>
+              {item.rollno} • {item.course} ({item.branch})
+            </Text>
+            <Text style={{ fontSize: 11, color: colors.primary, fontWeight: '700', textTransform: 'uppercase', marginTop: 3 }}>
+              {item.category}
+            </Text>
+          </View>
+          <View style={[styles.scorePill, { backgroundColor: colors.primaryLight }]}>
+            <Text style={[styles.scoreText, { color: colors.primary }]}>CGPA: {item.cgpa}</Text>
+          </View>
+        </TouchableOpacity>
+      );
+    }
+
     if (category === 'cv_students') {
       return (
         <TouchableOpacity 
@@ -385,6 +437,30 @@ const SuperAdminDrilldownScreen = ({ route, navigation }) => {
           </TouchableOpacity>
         ) : null}
       </View>
+
+      {/* Department Filter Pills (Only for student_directory category) */}
+      {category === 'student_directory' && (
+        <View style={styles.filterContainer}>
+          {['all', 'medical', 'engineering', 'management'].map((dept) => {
+            const isSel = selectedDept.toLowerCase() === dept.toLowerCase();
+            return (
+              <TouchableOpacity
+                key={dept}
+                style={[
+                  styles.filterPill,
+                  isSel ? { backgroundColor: colors.primary } : { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }
+                ]}
+                onPress={() => setSelectedDept(dept)}
+                activeOpacity={0.8}
+              >
+                <Text style={[styles.filterPillText, { color: isSel ? '#FFF' : colors.textPrimary }]}>
+                  {dept.charAt(0).toUpperCase() + dept.slice(1)}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      )}
 
       {loading ? (
         renderSkeleton()
@@ -561,6 +637,23 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 14,
     fontWeight: '500',
+  },
+  filterContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+    gap: 8,
+  },
+  filterPill: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  filterPillText: {
+    fontSize: 12,
+    fontWeight: '700',
   },
 });
 

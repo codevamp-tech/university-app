@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
-  View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Dimensions, TextInput
+  View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Dimensions, TextInput, Alert, KeyboardAvoidingView, Platform
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useUser } from '../../context/UserContext';
-import { getFacultyBatches, getFacultyGroupChats } from '../../data/apiService';
+import { getFacultyBatches, getFacultyGroupChats, sendPortalChatMessage } from '../../data/apiService';
 
 const { width } = Dimensions.get('window');
 
@@ -21,6 +21,8 @@ const FacultyOfficialChatScreen = ({ navigation }) => {
   const [loadingChats, setLoadingChats] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [showBatchDropdown, setShowBatchDropdown] = useState(false);
+  const [inputText, setInputText] = useState('');
+  const [sendingMessage, setSendingMessage] = useState(false);
 
   const flatListRef = useRef(null);
 
@@ -70,6 +72,65 @@ const FacultyOfficialChatScreen = ({ navigation }) => {
     fetchChats(true);
   };
 
+  useEffect(() => {
+    if (messages.length > 0) {
+      setTimeout(() => {
+        flatListRef.current?.scrollToEnd({ animated: true });
+      }, 100);
+    }
+  }, [messages.length]);
+
+  const handleSend = async () => {
+    const textVal = inputText.trim();
+    if (!textVal || !selectedBatch || !user?.emp_id) return;
+    setSendingMessage(true);
+    try {
+      const parts = String(user.emp_id).split('/');
+      const colgcd = parts.length >= 2 ? parts[1] : '11';
+      const batchName = selectedBatch.name;
+      
+      const formatCrtDt = (date) => {
+        const pad = (n) => String(n).padStart(2, '0');
+        return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+      };
+
+      const payload = {
+        chatid: 0,
+        ChatFacId: String(user.emp_id),
+        FacultyName: String(user.name || 'Faculty'),
+        ChatStudId: String(batchName),
+        StudentName: String(batchName),
+        Chat_Desc: textVal,
+        classlabel: 'left',
+        Crt_dt: formatCrtDt(new Date()),
+        colgcd: String(colgcd),
+        course_cd: '1',
+        cbme: String(parseInt(batchName) - 1),
+        batch: String(batchName),
+        phase: '1',
+        sub_phase: '1',
+        sub_phase_part: '1',
+        department: String(user.department || 'PHYSIOLOGY'),
+        attachfile: '',
+        subcode: 'PY',
+        msgflg: 0
+      };
+
+      const res = await sendPortalChatMessage(payload);
+      if (res && res.Mess === 'Success') {
+        setInputText('');
+        fetchChats(true);
+      } else {
+        Alert.alert('Send Failed', res?.Mess || 'An error occurred.');
+      }
+    } catch (err) {
+      console.warn('[FacultyOfficialChatScreen] Send error:', err);
+      Alert.alert('Send Failed', 'Failed to connect to the portal server.');
+    } finally {
+      setSendingMessage(false);
+    }
+  };
+
   const renderMessageItem = ({ item }) => {
     const isMe = item.isMe;
     return (
@@ -106,7 +167,11 @@ const FacultyOfficialChatScreen = ({ navigation }) => {
   };
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <KeyboardAvoidingView
+      style={[styles.container, { paddingTop: insets.top }]}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={0}
+    >
       {/* Header */}
       <LinearGradient
         colors={['#1E1B4B', '#312E81']}
@@ -188,14 +253,35 @@ const FacultyOfficialChatScreen = ({ navigation }) => {
         />
       )}
 
-      {/* Official notice box at the bottom */}
-      <View style={[styles.bottomInfo, { paddingBottom: insets.bottom + 8 }]}>
-        <Ionicons name="information-circle-outline" size={16} color="#4B5563" />
-        <Text style={styles.bottomInfoText}>
-          This is a read-only sync of the legacy portal channel. Use the portal website to post new messages.
-        </Text>
+      {/* Input Bar */}
+      <View style={[
+        styles.inputBar,
+        { borderTopColor: '#E5E7EB', paddingBottom: Math.max(insets.bottom, 12) }
+      ]}>
+        <TextInput
+          style={styles.textInput}
+          value={inputText}
+          onChangeText={setInputText}
+          placeholder={selectedBatch ? `Post to Batch of ${selectedBatch.name}...` : 'Select a batch first...'}
+          placeholderTextColor="#9CA3AF"
+          multiline
+          maxLength={1000}
+          editable={!!selectedBatch}
+        />
+        <TouchableOpacity
+          style={[styles.sendBtn, { backgroundColor: (inputText.trim() && !sendingMessage) ? '#EA580C' : '#E5E7EB' }]}
+          onPress={handleSend}
+          disabled={!inputText.trim() || sendingMessage || !selectedBatch}
+          activeOpacity={0.8}
+        >
+          {sendingMessage ? (
+            <ActivityIndicator size="small" color="#FFFFFF" />
+          ) : (
+            <Ionicons name="send" size={18} color={inputText.trim() ? '#FFFFFF' : '#9CA3AF'} />
+          )}
+        </TouchableOpacity>
       </View>
-    </View>
+    </KeyboardAvoidingView>
   );
 };
 
@@ -318,6 +404,34 @@ const styles = StyleSheet.create({
     borderTopWidth: 1, borderTopColor: '#FEF3C7',
   },
   bottomInfoText: { flex: 1, fontSize: 11, color: '#D97706', lineHeight: 16, fontWeight: '500' },
+  inputBar: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    paddingHorizontal: 12,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    backgroundColor: '#FFFFFF',
+    gap: 8,
+  },
+  textInput: {
+    flex: 1,
+    minHeight: 40,
+    maxHeight: 100,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    paddingBottom: 10,
+    fontSize: 14,
+    color: '#1F2937',
+  },
+  sendBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
 });
 
 export default FacultyOfficialChatScreen;

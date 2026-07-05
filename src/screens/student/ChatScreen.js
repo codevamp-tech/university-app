@@ -2,7 +2,7 @@ import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, Image,
   Animated, Pressable, Dimensions, Platform, Alert,
-  FlatList, TextInput, KeyboardAvoidingView,
+  FlatList, TextInput, KeyboardAvoidingView, ActivityIndicator, ScrollView,
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -14,6 +14,8 @@ import {
   getChatChannelsAPI,
   getChannelHistoryAPI,
   getDMContactsAPI,
+  getFacultyGroupChats,
+  sendPortalChatMessage,
 } from '../../data/apiService';
 import { getAvatarUrl } from '../../utils/avatar';
 import { useTheme } from '../../hooks/useTheme';
@@ -21,8 +23,16 @@ import { useTheme } from '../../hooks/useTheme';
 const { width } = Dimensions.get('window');
 const DRAWER_WIDTH = width * 0.78;
 
+const PORTAL_SUBJECTS = [
+  { id: 'Physiology-BinduGarg', name: 'Physiology', subcode: 'PY', department: 'PHYSIOLOGY', facultyId: '202314130', facultyName: 'BINDU GARG' },
+  { id: 'Physiology-KranthiKumar', name: 'Physiology (Lab/Clinical)', subcode: 'PY', department: 'PHYSIOLOGY', facultyId: 'D/11/093', facultyName: 'KRANTHI KUMAR GARIKAPATI' },
+  { id: 'Anatomy-AnandKumar', name: 'Anatomy', subcode: 'AN', department: 'ANATOMY', facultyId: 'D/11/094', facultyName: 'ANAND KUMAR' },
+  { id: 'Biochemistry-ShaliniGupta', name: 'Biochemistry', subcode: 'BI', department: 'BIOCHEMISTRY', facultyId: 'D/11/095', facultyName: 'SHALINI GUPTA' }
+];
+
 // ── Default channels shown before API loads ──────────────────────────────────
 const DEFAULT_CHANNELS = [
+  { id: 'official-batch-chat', name: 'Official Batch Chat', slug: 'official-batch-chat', icon: 'chat-outline', desc: 'Sync of ERP Official Batch Chat 🏛️' },
   { id: null, name: 'Campus Pulse',    slug: 'campus-pulse',    icon: 'lightning-bolt', desc: 'Daily campus life & vibes 🎓' },
   { id: null, name: 'Career Launchpad',slug: 'career-launchpad', icon: 'rocket-launch',  desc: 'Placements, internships & prep 🚀' },
   { id: null, name: "Maker's Den",     slug: 'makers-den',      icon: 'hammer-wrench',  desc: 'Hackathons & side projects 🛠️' },
@@ -37,6 +47,10 @@ const ChatScreen = ({ navigation }) => {
   const [activeChannel, setActiveChannel] = useState(DEFAULT_CHANNELS[0]);
   const [dmContacts, setDmContacts] = useState([]);
   const [inputText, setInputText] = useState('');
+  const [portalMessages, setPortalMessages] = useState([]);
+  const [loadingPortal, setLoadingPortal] = useState(false);
+  const [sendingPortalMessage, setSendingPortalMessage] = useState(false);
+  const [activePortalSubject, setActivePortalSubject] = useState(PORTAL_SUBJECTS[0]);
   const slideAnim = useRef(new Animated.Value(0)).current;
 
   const {
@@ -59,7 +73,11 @@ const ChatScreen = ({ navigation }) => {
           getDMContactsAPI(accessToken),
         ]);
         if (chs?.length) {
-          setChannels(chs);
+          const merged = [
+            { id: 'official-batch-chat', name: 'Official Batch Chat', slug: 'official-batch-chat', icon: 'chat-outline', desc: 'Sync of ERP Official Batch Chat 🏛️' },
+            ...chs
+          ];
+          setChannels(merged);
           // Auto-switch activeChannel to the real channel matching the current slug
           // (default channels have id: null, so we upgrade to the real API channel)
           setActiveChannel(prev => {
@@ -85,11 +103,69 @@ const ChatScreen = ({ navigation }) => {
   // ── Join channel & load history when active channel changes ───────────────
   useEffect(() => {
     if (!activeChannel?.id) return;
+    if (activeChannel.id === 'official-batch-chat') return; // Bypass WebSocket for portal chat
     joinChannel(activeChannel.id);
     getChannelHistoryAPI(accessToken, activeChannel.id).then((history) => {
       if (history?.length) loadChannelHistory(activeChannel.id, history);
     }).catch(() => {});
   }, [activeChannel?.id]);
+
+  // ── Load legacy portal messages ───────────────────────────────────────────
+  const loadPortalMessages = useCallback(async (clearFirst = false) => {
+    if (!accessToken || activeChannel?.id !== 'official-batch-chat') {
+      console.log('[ChatScreen] loadPortalMessages skipped. activeChannel.id:', activeChannel?.id);
+      return;
+    }
+    if (clearFirst) {
+      setPortalMessages([]);
+    }
+    setLoadingPortal(true);
+    try {
+      const batchYear = user?.batch_year || user?.batch || '2025';
+      console.log('[ChatScreen] Fetching chats for batch:', batchYear, 'subject:', activePortalSubject.name, 'facultyId:', activePortalSubject.facultyId);
+      let history = await getFacultyGroupChats(
+        activePortalSubject.facultyId,
+        String(batchYear),
+        '1', // phase
+        '1'  // subphase
+      );
+      console.log('[ChatScreen] Received portal history length:', history?.length);
+      // Real production behavior: load only messages of the logged-in student's batch
+      const mappedHistory = (history || [])
+        .map(msg => {
+          const isMeUser = user?.role === 'teacher'
+            ? msg.classlabel === 'left'
+            : msg.classlabel !== 'left';
+          return {
+            ...msg,
+            isMe: isMeUser
+          };
+        })
+        .filter(msg => {
+          return String(msg.subcode || 'PY').trim().toUpperCase() === String(activePortalSubject.subcode).trim().toUpperCase();
+        });
+      console.log('[ChatScreen] Mapped and filtered history length:', mappedHistory.length);
+      setPortalMessages([...mappedHistory].reverse());
+    } catch (e) {
+      console.warn('[ChatScreen] error loading portal messages:', e);
+    } finally {
+      setLoadingPortal(false);
+    }
+  }, [accessToken, activeChannel, activePortalSubject, user]);
+
+  useEffect(() => {
+    if (activeChannel?.id === 'official-batch-chat') {
+      loadPortalMessages(true);
+    }
+  }, [activeChannel?.id, activePortalSubject, loadPortalMessages]);
+
+  useEffect(() => {
+    if (activeChannel?.id !== 'official-batch-chat') return;
+    const interval = setInterval(() => {
+      loadPortalMessages(false);
+    }, 10000);
+    return () => clearInterval(interval);
+  }, [activeChannel?.id, activePortalSubject, loadPortalMessages]);
 
   // ── Drawer animation ──────────────────────────────────────────────────────
   const toggleDrawer = () => {
@@ -115,9 +191,59 @@ const ChatScreen = ({ navigation }) => {
   }, [lastError]);
 
   // ── Send message ──────────────────────────────────────────────────────────
-  const handleSend = useCallback(() => {
+  const handleSend = useCallback(async () => {
     const textVal = inputText.trim();
     if (!textVal || !activeChannel?.id) return;
+
+    if (activeChannel.id === 'official-batch-chat') {
+      setSendingPortalMessage(true);
+      try {
+        const batchYear = user?.batch_year || user?.batch || '2025';
+        const colgcd = user?.emp_id ? (user.emp_id.split('/')[1] || '11') : '11';
+        const isFaculty = user?.role === 'teacher';
+
+        const formatCrtDt = (date) => {
+          const pad = (n) => String(n).padStart(2, '0');
+          return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+        };
+
+        const payload = {
+          chatid: 0,
+          ChatFacId: activePortalSubject.facultyId,
+          FacultyName: activePortalSubject.facultyName,
+          ChatStudId: String(batchYear),
+          StudentName: isFaculty ? String(batchYear) : (user?.name || user?.id || 'Student'),
+          Chat_Desc: textVal,
+          classlabel: isFaculty ? 'left' : 'right',
+          Crt_dt: formatCrtDt(new Date()),
+          colgcd: colgcd,
+          course_cd: '1',
+          cbme: String(parseInt(batchYear) - 1),
+          batch: String(batchYear),
+          phase: '1',
+          sub_phase: '1',
+          sub_phase_part: '1',
+          department: activePortalSubject.department,
+          attachfile: '',
+          subcode: activePortalSubject.subcode,
+          msgflg: 0
+        };
+
+        const res = await sendPortalChatMessage(payload);
+        if (res && res.Mess === 'Success') {
+          setInputText('');
+          loadPortalMessages();
+        } else {
+          Alert.alert('Send Failed', res?.Mess || 'An error occurred while sending message to portal.');
+        }
+      } catch (err) {
+        Alert.alert('Send Failed', 'Failed to connect to the portal server.');
+      } finally {
+        setSendingPortalMessage(false);
+      }
+      return;
+    }
+
     sendChannelMessage(activeChannel.id, textVal, {
       id: user?.id,
       name: user?.name,
@@ -125,10 +251,12 @@ const ChatScreen = ({ navigation }) => {
       avatar_url: user?.avatar_url,
     });
     setInputText('');
-  }, [inputText, activeChannel, sendChannelMessage, user]);
+  }, [inputText, activeChannel, sendChannelMessage, user, activePortalSubject, loadPortalMessages]);
 
-  // Current channel messages from socket
-  const messages = (activeChannel?.id ? channelMessages[activeChannel.id] : []) || [];
+  // Current channel messages from socket or REST
+  const messages = activeChannel?.id === 'official-batch-chat'
+    ? portalMessages
+    : (activeChannel?.id ? channelMessages[activeChannel.id] : []) || [];
 
   const socialDMs = dmContacts.filter(dm => !dm.is_marketplace);
   const marketplaceDMs = dmContacts.filter(dm => dm.is_marketplace);
@@ -141,15 +269,30 @@ const ChatScreen = ({ navigation }) => {
   }, [messages.length]);
 
   const renderMessage = ({ item }) => {
-    const isMe = item.user?._id === user?.user_id || 
-                 item.user?._id === user?.id || 
-                 item.user?.user_id === user?.user_id || 
-                 item.user?.user_id === user?.id;
+    let isMe, senderName, messageText, timeText, avatarSource;
+
+    if (activeChannel?.id === 'official-batch-chat') {
+      isMe = item.isMe;
+      senderName = item.sender || 'Portal User';
+      messageText = item.text || '';
+      timeText = item.timestamp || '';
+      avatarSource = { uri: getAvatarUrl(item.ChatFacId || item.StudentName || 'u') };
+    } else {
+      isMe = item.user?._id === user?.user_id || 
+             item.user?._id === user?.id || 
+             item.user?.user_id === user?.user_id || 
+             item.user?.user_id === user?.id;
+      senderName = item.user?.name || 'Student';
+      messageText = item.text || '';
+      timeText = item.createdAt ? new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+      avatarSource = { uri: getAvatarUrl(item.user?.avatar || item.user?._id || 'u') };
+    }
+
     return (
       <View style={[styles.msgRow, isMe ? styles.msgRowRight : styles.msgRowLeft]}>
         {!isMe && (
           <Image
-            source={{ uri: getAvatarUrl(item.user?.avatar || item.user?._id || 'u') }}
+            source={avatarSource}
             style={styles.msgAvatar}
           />
         )}
@@ -160,11 +303,21 @@ const ChatScreen = ({ navigation }) => {
             : [styles.bubbleLeft, { backgroundColor: isDark ? colors.card : '#F3F4F6' }]
         ]}>
           {!isMe && (
-            <Text style={[styles.bubbleSender, { color: colors.primary }]}>{item.user?.name || 'Student'}</Text>
+            <Text style={[styles.bubbleSender, { color: colors.primary }]}>
+              {senderName} {activeChannel?.id === 'official-batch-chat' && item.department ? `(${item.department})` : ''}
+            </Text>
           )}
-          <Text style={[styles.bubbleText, { color: isMe ? '#FFFFFF' : colors.textPrimary }]}>{item.text}</Text>
+          <Text style={[styles.bubbleText, { color: isMe ? '#FFFFFF' : colors.textPrimary }]}>{messageText}</Text>
+          {item.attachment ? (
+            <TouchableOpacity style={styles.attachmentButton} activeOpacity={0.8}>
+              <Ionicons name="document-attach-outline" size={16} color={isMe ? '#FFF' : colors.primary} />
+              <Text style={{ color: isMe ? '#FFF' : colors.primary, fontSize: 12, fontWeight: '700' }} numberOfLines={1}>
+                {item.attachment.split('/').pop() || 'Attachment'}
+              </Text>
+            </TouchableOpacity>
+          ) : null}
           <Text style={[styles.bubbleTime, { color: isMe ? 'rgba(255,255,255,0.6)' : colors.textSecondary }]}>
-            {item.createdAt ? new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+            {timeText}
           </Text>
         </View>
       </View>
@@ -208,26 +361,57 @@ const ChatScreen = ({ navigation }) => {
             {onlineUsers.length} online
           </Text>
         </View>
+
+        {activeChannel?.id === 'official-batch-chat' && (
+          <View style={[styles.subjectSelector, { borderBottomColor: colors.border, backgroundColor: isDark ? colors.card : '#F3F4F6' }]}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.subjectScrollContent}>
+              {PORTAL_SUBJECTS.map((sub) => {
+                const isSel = activePortalSubject.id === sub.id;
+                return (
+                  <TouchableOpacity
+                    key={sub.id}
+                    style={[
+                      styles.subjectPill,
+                      { backgroundColor: isSel ? colors.primary : (isDark ? '#1F2937' : '#FFFFFF'), borderColor: isSel ? colors.primary : colors.border }
+                    ]}
+                    onPress={() => setActivePortalSubject(sub)}
+                  >
+                    <Text style={[styles.subjectPillText, { color: isSel ? '#FFFFFF' : colors.textPrimary }]}>
+                      {sub.name} ({sub.subcode})
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
+        )}
       </View>
 
       {/* Messages */}
-      <FlatList
-        ref={flatListRef}
-        data={messages}
-        keyExtractor={(item) => item._id?.toString() || Math.random().toString()}
-        renderItem={renderMessage}
-        inverted
-        contentContainerStyle={{ padding: 12 }}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="interactive"
-        ListEmptyComponent={
-          <View style={{ alignItems: 'center', paddingTop: 60 }}>
-            <MaterialCommunityIcons name="chat-outline" size={48} color={colors.textSecondary} />
-            <Text style={{ color: colors.textSecondary, marginTop: 12, fontSize: 14 }}>No messages yet. Say hi! 👋</Text>
-          </View>
-        }
-      />
+      {activeChannel?.id === 'official-batch-chat' && loadingPortal && portalMessages.length === 0 ? (
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={{ color: colors.textSecondary, marginTop: 12, fontSize: 14 }}>Fetching portal messages...</Text>
+        </View>
+      ) : (
+        <FlatList
+          ref={flatListRef}
+          data={messages}
+          keyExtractor={(item) => (item.id || item._id || Math.random()).toString()}
+          renderItem={renderMessage}
+          inverted
+          contentContainerStyle={{ padding: 12 }}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="interactive"
+          ListEmptyComponent={
+            <View style={{ alignItems: 'center', paddingTop: 60 }}>
+              <MaterialCommunityIcons name="chat-outline" size={48} color={colors.textSecondary} />
+              <Text style={{ color: colors.textSecondary, marginTop: 12, fontSize: 14 }}>No messages yet. Say hi! 👋</Text>
+            </View>
+          }
+        />
+      )}
 
       {/* Input Bar */}
       <View style={[
@@ -241,7 +425,7 @@ const ChatScreen = ({ navigation }) => {
           ]}
           value={inputText}
           onChangeText={setInputText}
-          placeholder={`Message #${activeChannel?.slug || 'campus-pulse'}`}
+          placeholder={activeChannel?.id === 'official-batch-chat' ? `Message Dr. ${activePortalSubject.facultyName.toLowerCase().split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}...` : `Message #${activeChannel?.slug || 'campus-pulse'}`}
           placeholderTextColor={colors.textSecondary}
           multiline
           maxLength={1000}
@@ -251,12 +435,16 @@ const ChatScreen = ({ navigation }) => {
           autoCapitalize="sentences"
         />
         <TouchableOpacity
-          style={[styles.sendBtn, { backgroundColor: inputText.trim() ? colors.primary : (isDark ? '#374151' : '#E5E7EB') }]}
+          style={[styles.sendBtn, { backgroundColor: (inputText.trim() && !sendingPortalMessage) ? colors.primary : (isDark ? '#374151' : '#E5E7EB') }]}
           onPress={handleSend}
-          disabled={!inputText.trim()}
+          disabled={!inputText.trim() || sendingPortalMessage}
           activeOpacity={0.8}
         >
-          <MaterialIcons name="send" size={20} color={inputText.trim() ? '#FFFFFF' : (isDark ? '#6B7280' : '#9CA3AF')} />
+          {sendingPortalMessage ? (
+            <ActivityIndicator size="small" color="#FFFFFF" />
+          ) : (
+            <MaterialIcons name="send" size={20} color={inputText.trim() ? '#FFFFFF' : (isDark ? '#6B7280' : '#9CA3AF')} />
+          )}
         </TouchableOpacity>
       </View>
 
@@ -534,6 +722,36 @@ const styles = StyleSheet.create({
   footerText: { fontSize: 13, fontWeight: '700', color: '#6B7280' },
   newBadge: { backgroundColor: '#EA580C', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
   newBadgeText: { color: '#FFFFFF', fontSize: 8, fontWeight: '900' },
+  subjectSelector: {
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+  },
+  subjectScrollContent: {
+    paddingHorizontal: 12,
+    gap: 8,
+    flexDirection: 'row',
+  },
+  subjectPill: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1,
+  },
+  subjectPillText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  attachmentButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(0,0,0,0.08)',
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    marginTop: 6,
+    alignSelf: 'flex-start',
+  },
 });
 
 export default ChatScreen;
