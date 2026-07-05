@@ -174,6 +174,12 @@ const AdminDashboardScreen = ({ navigation }) => {
     }
   };
 
+  useEffect(() => {
+    if (accessToken) {
+      fetchDashboardData();
+    }
+  }, [accessToken]);
+
   useFocusEffect(
     useCallback(() => {
       let isMounted = true;
