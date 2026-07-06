@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, RefreshControl
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, RefreshControl, Modal, Pressable
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons, MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -23,6 +23,7 @@ const AlertsScreen = ({ navigation }) => {
   const [apiAlerts, setApiAlerts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [selectedAnnouncement, setSelectedAnnouncement] = useState(null);
 
   const loadAlerts = React.useCallback(async (isRefresh = false) => {
     if (!accessToken) { setLoading(false); setRefreshing(false); return; }
@@ -96,7 +97,12 @@ const AlertsScreen = ({ navigation }) => {
       }
       setApiAlerts(prev => prev.map(a => a.id === notif.id ? { ...a, is_read: true } : a));
     }
-    navigateAlert(notif);
+    
+    if (String(notif.id).startsWith('erp-announcement-')) {
+      setSelectedAnnouncement(notif);
+    } else {
+      navigateAlert(notif);
+    }
   };
 
   const navigateAlert = (notif) => {
@@ -291,56 +297,122 @@ const AlertsScreen = ({ navigation }) => {
             <View style={{ padding: 40, alignItems: 'center' }}>
               <MaterialIcons name="notifications-none" size={48} color={colors.textMuted} style={{ marginBottom: 16 }} />
               <Text style={{ color: colors.textSecondary, fontSize: 16, fontWeight: '600' }}>No {activeTab === 'All Updates' ? '' : activeTab.toLowerCase() + ' '}updates yet</Text>
-            </View>
-          ) : (
-            filteredNotifs.map((notif, index) => (
-              <TouchableOpacity key={notif.id} onPress={() => handleAlertTap(notif)}>
-                <LinearGradient
-                  colors={[colors.card, colors.card]}
-                  style={[styles.notifCard, { borderColor: notif.isNew ? colors.primary + '40' : colors.border }, index === filteredNotifs.length - 1 && styles.lastNotifCard]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 0, y: 1 }}
-                >
-                  <View style={[styles.notifIcon, { backgroundColor: notif.color + '15' }]}>
-                    <Ionicons name={notif.icon} size={22} color={notif.color} />
-                    {notif.isNew && <View style={[styles.newDot, { borderColor: colors.card }]} />}
-                  </View>
-                  <View style={styles.notifContent}>
-                    <View style={styles.notifHeader}>
-                      <Text style={[styles.notifTitle, { color: colors.textPrimary }]} numberOfLines={1}>{notif.title}</Text>
-                      <Text style={[styles.notifTime, { color: colors.textSecondary }]}>{notif.time}</Text>
+                  ) : (
+            filteredNotifs.map((notif, index) => {
+              const isErp = String(notif.id).startsWith('erp-announcement-');
+              const cardBgColors = isErp
+                ? (isDark ? ['#3B2314', '#26140A'] : ['#FFF7ED', '#FFEFD6'])
+                : [colors.card, colors.card];
+              const cardBorderColor = isErp
+                ? '#F97316'
+                : (notif.isNew ? colors.primary + '40' : colors.border);
+
+              return (
+                <TouchableOpacity key={notif.id} onPress={() => handleAlertTap(notif)}>
+                  <LinearGradient
+                    colors={cardBgColors}
+                    style={[styles.notifCard, { borderColor: cardBorderColor }, index === filteredNotifs.length - 1 && styles.lastNotifCard]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 0, y: 1 }}
+                  >
+                    <View style={[styles.notifIcon, { backgroundColor: isErp ? '#EA580C20' : notif.color + '15' }]}>
+                      <Ionicons name={isErp ? 'megaphone' : notif.icon} size={22} color={isErp ? '#EA580C' : notif.color} />
+                      {notif.isNew && <View style={[styles.newDot, { borderColor: isErp ? '#FFF7ED' : colors.card }]} />}
                     </View>
-                    <Text style={[styles.notifDesc, { color: colors.textSecondary }]} numberOfLines={2}>{notif.description}</Text>
-                    {/* Tap hint for actionable alerts */}
-                    {(notif.type === 'social' || notif.type === 'marketplace') && (
-                      <View style={styles.tapHint}>
-                        <Ionicons
-                          name={
-                            notif.type === 'marketplace' ? 'chatbubble-ellipses-outline' :
-                            (notif.subType === 'like' || notif.subType === 'comment' || notif.subType === 'reaction') ? 'open-outline' :
-                            'chatbubble-outline'
-                          }
-                          size={11}
-                          color={notif.color}
-                        />
-                        <Text style={[styles.tapHintText, { color: notif.color }]}>
-                          {notif.type === 'marketplace' ? 'Open chat →' :
-                           (notif.subType === 'like' || notif.subType === 'comment' || notif.subType === 'reaction') ? 'View post →' :
-                           (notif.subType === 'dm' || notif.subType === 'message') ? 'Open message →' :
-                           'View →'}
+                    <View style={styles.notifContent}>
+                      <View style={styles.notifHeader}>
+                        <Text style={[styles.notifTitle, { color: colors.textPrimary }]} numberOfLines={1}>
+                          {notif.title}
                         </Text>
+                        <Text style={[styles.notifTime, { color: colors.textSecondary }]}>{notif.time}</Text>
                       </View>
-                    )}
-                  </View>
-                </LinearGradient>
-              </TouchableOpacity>
-            ))
+                      <Text style={[styles.notifDesc, { color: colors.textSecondary }]} numberOfLines={2}>{notif.description}</Text>
+                      
+                      {isErp && (
+                        <View style={styles.tapHint}>
+                          <Ionicons name="eye-outline" size={12} color="#EA580C" />
+                          <Text style={[styles.tapHintText, { color: '#EA580C' }]}>Tap to read notice →</Text>
+                        </View>
+                      )}
+
+                      {/* Tap hint for actionable alerts */}
+                      {!isErp && (notif.type === 'social' || notif.type === 'marketplace') && (
+                        <View style={styles.tapHint}>
+                          <Ionicons
+                            name={
+                              notif.type === 'marketplace' ? 'chatbubble-ellipses-outline' :
+                              (notif.subType === 'like' || notif.subType === 'comment' || notif.subType === 'reaction') ? 'open-outline' :
+                              'chatbubble-outline'
+                            }
+                            size={11}
+                            color={notif.color}
+                          />
+                          <Text style={[styles.tapHintText, { color: notif.color }]}>
+                            {notif.type === 'marketplace' ? 'Open chat →' :
+                             (notif.subType === 'like' || notif.subType === 'comment' || notif.subType === 'reaction') ? 'View post →' :
+                             (notif.subType === 'dm' || notif.subType === 'message') ? 'Open message →' :
+                             'View →'}
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+                  </LinearGradient>
+                </TouchableOpacity>
+              );
+            })
           )}
         </View>
 
-
         <View style={{ height: 100 }} />
       </ScrollView>
+
+      {/* ERP Announcement Modal Overlay */}
+      <Modal
+        visible={!!selectedAnnouncement}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setSelectedAnnouncement(null)}
+      >
+        <Pressable
+          style={styles.modalOverlay}
+          onPress={() => setSelectedAnnouncement(null)}
+        >
+          <View style={[styles.modalContent, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
+            <View style={styles.modalHeader}>
+              <View style={[styles.modalIconBg, { backgroundColor: '#EA580C15' }]}>
+                <Ionicons name="megaphone" size={24} color="#EA580C" />
+              </View>
+              <View style={{ flex: 1, marginLeft: 12 }}>
+                <Text style={[styles.modalTitle, { color: colors.textPrimary }]} numberOfLines={1}>
+                  {selectedAnnouncement?.title}
+                </Text>
+                <Text style={[styles.modalTime, { color: colors.textSecondary }]}>
+                  Date Posted: {selectedAnnouncement?.time}
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => setSelectedAnnouncement(null)}
+                style={[styles.closeButton, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : '#F3F4F6' }]}
+              >
+                <Ionicons name="close" size={20} color={colors.textPrimary} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
+              <Text style={[styles.modalBodyText, { color: colors.textPrimary }]}>
+                {selectedAnnouncement?.description}
+              </Text>
+            </ScrollView>
+
+            <TouchableOpacity
+              style={[styles.modalCloseAction, { backgroundColor: colors.primary }]}
+              onPress={() => setSelectedAnnouncement(null)}
+            >
+              <Text style={styles.modalCloseActionText}>Dismiss Notice</Text>
+            </TouchableOpacity>
+          </View>
+        </Pressable>
+      </Modal>
     </View>
   );
 };
@@ -604,6 +676,74 @@ const styles = StyleSheet.create({
   },
   notifLink: {
     fontSize: 13,
+    fontWeight: '700',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  modalContent: {
+    width: '100%',
+    maxHeight: '75%',
+    borderRadius: 28,
+    padding: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.2,
+    shadowRadius: 16,
+    elevation: 10,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  modalIconBg: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    letterSpacing: -0.3,
+  },
+  modalTime: {
+    fontSize: 11,
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  closeButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalBody: {
+    marginBottom: 24,
+    maxHeight: 300,
+  },
+  modalBodyText: {
+    fontSize: 15,
+    lineHeight: 24,
+    fontWeight: '500',
+  },
+  modalCloseAction: {
+    borderRadius: 20,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 2,
+  },
+  modalCloseActionText: {
+    color: '#FFFFFF',
+    fontSize: 15,
     fontWeight: '700',
   },
 });
