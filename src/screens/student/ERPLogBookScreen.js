@@ -281,10 +281,14 @@ const ERPLogBookScreen = ({ navigation }) => {
 
     // Filter by verification status
     let matchesStatus = true;
-    if (activeFilter === 'VERIFIED') {
+    if (activeFilter === 'FAC_VERIFIED') {
       matchesStatus = entry.verified;
-    } else if (activeFilter === 'PENDING') {
+    } else if (activeFilter === 'FAC_PENDING') {
       matchesStatus = !entry.verified;
+    } else if (activeFilter === 'STUD_VERIFIED') {
+      matchesStatus = entry.student_verified;
+    } else if (activeFilter === 'STUD_PENDING') {
+      matchesStatus = !entry.student_verified;
     }
 
     // Filter by Category
@@ -376,11 +380,17 @@ const ERPLogBookScreen = ({ navigation }) => {
             </View>
 
             {/* Verification Status Filter pills */}
-            <View style={styles.filtersContainer}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ gap: 8, paddingBottom: 4 }}
+            >
               {[
                 ['ALL', 'All Statuses'],
-                ['VERIFIED', 'Verified Only'],
-                ['PENDING', 'Pending Only']
+                ['FAC_VERIFIED', 'Faculty Verified'],
+                ['FAC_PENDING', 'Faculty Pending'],
+                ['STUD_VERIFIED', 'Student Verified'],
+                ['STUD_PENDING', 'Student Pending']
               ].map(([key, label]) => {
                 const isActive = activeFilter === key;
                 return (
@@ -399,7 +409,7 @@ const ERPLogBookScreen = ({ navigation }) => {
                   </TouchableOpacity>
                 );
               })}
-            </View>
+            </ScrollView>
           </View>
 
           {/* Category Filter Pills (Horizontal Scroll) */}
