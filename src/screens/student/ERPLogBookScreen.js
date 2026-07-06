@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl,
-  TextInput, Dimensions, Animated, Platform, ActivityIndicator
+  TextInput, Dimensions, Animated, Platform, ActivityIndicator, Alert
 } from 'react-native';
 import { MaterialIcons, MaterialCommunityIcons, Feather, Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -38,6 +38,7 @@ const FALLBACK_LOGBOOK = [
     activity: "Pediatric History Taking & Case Sheet Recording",
     competency: "PE1.1",
     verified: true,
+    student_verified: true,
     a1: "C", a2: "M", a3: "-",
     faculty: "Dr. Sandhya Chauhan",
     date: "2026-06-20",
@@ -48,6 +49,7 @@ const FALLBACK_LOGBOOK = [
     activity: "Observation of Normal Spontaneous Vaginal Delivery (NSVD)",
     competency: "OG2.4",
     verified: true,
+    student_verified: false,
     a1: "F", a2: "C", a3: "-",
     faculty: "Dr. Renu Gupta",
     date: "2026-06-22",
@@ -58,6 +60,7 @@ const FALLBACK_LOGBOOK = [
     activity: "Basic Life Support (BLS) & Cardiopulmonary Resuscitation (CPR)",
     competency: "CM4.2",
     verified: true,
+    student_verified: true,
     a1: "C", a2: "M", a3: "-",
     faculty: "Dr. Anil Sharma",
     date: "2026-06-24",
@@ -68,6 +71,7 @@ const FALLBACK_LOGBOOK = [
     activity: "Gram Staining Technique & Microscopy Observation",
     competency: "MI1.8",
     verified: true,
+    student_verified: false,
     a1: "B", a2: "C", a3: "-",
     faculty: "Dr. V. K. Singh",
     date: "2026-06-25",
@@ -78,6 +82,7 @@ const FALLBACK_LOGBOOK = [
     activity: "Preparation of Blood Smear & Differential Leukocyte Count (DLC)",
     competency: "PH1.3",
     verified: false,
+    student_verified: false,
     a1: "B", a2: "-", a3: "-",
     faculty: "Dr. Shalini Saxena",
     date: "Pending",
@@ -88,6 +93,7 @@ const FALLBACK_LOGBOOK = [
     activity: "Anatomy of Inguinal Hernia & Surgical Correlation",
     competency: "AN4.1",
     verified: true,
+    student_verified: true,
     a1: "C", a2: "-", a3: "-",
     faculty: "Dr. K. P. Singh (Surgery Department)",
     date: "2026-06-26",
@@ -98,6 +104,7 @@ const FALLBACK_LOGBOOK = [
     activity: "Webinar on Recent Advances in Anti-Retroviral Therapy (ART)",
     competency: "PH2.9",
     verified: true,
+    student_verified: false,
     a1: "P", a2: "-", a3: "-",
     faculty: "Dr. Mohit Rastogi",
     date: "2026-06-28",
@@ -108,6 +115,7 @@ const FALLBACK_LOGBOOK = [
     activity: "Case Presentation on Pulmonary Tuberculosis & DOTS Therapy",
     competency: "CM2.1",
     verified: false,
+    student_verified: false,
     a1: "-", a2: "-", a3: "-",
     faculty: "Dr. Sunil Kumar",
     date: "Pending",
@@ -118,6 +126,7 @@ const FALLBACK_LOGBOOK = [
     activity: "Clinical Rotation in Neonatal Intensive Care Unit (NICU)",
     competency: "PE3.4",
     verified: true,
+    student_verified: true,
     a1: "C", a2: "M", a3: "-",
     faculty: "Dr. Anurag Agarwal",
     date: "2026-06-30",
@@ -128,6 +137,7 @@ const FALLBACK_LOGBOOK = [
     activity: "Observational Visit to Dialysis & Renal Care Unit",
     competency: "MD3.8",
     verified: false,
+    student_verified: false,
     a1: "P", a2: "-", a3: "-",
     faculty: "Dr. Preeti Sharma",
     date: "Pending",
@@ -225,6 +235,7 @@ const ERPLogBookScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
   const { user, accessToken } = useUser();
+  const isFaculty = user && user.role === 'teacher';
 
   const [logbook, setLogbook] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -276,7 +287,8 @@ const ERPLogBookScreen = ({ navigation }) => {
                 faculty: act.VerifiedBy ? act.VerifiedBy.trim() : 'Faculty Desk',
                 date: dateStr,
                 category: catName,
-                department: deptName
+                department: deptName,
+                student_verified: false
               });
             });
           });
@@ -306,6 +318,22 @@ const ERPLogBookScreen = ({ navigation }) => {
   const handleRefresh = () => {
     setRefreshing(true);
     loadLogbook(false);
+  };
+
+  const handleFacultySignOff = (index) => {
+    const updated = [...logbook];
+    updated[index].verified = true;
+    updated[index].faculty = user?.name || 'Dr. Subhra Kumari';
+    updated[index].date = new Date().toISOString().split('T')[0];
+    setLogbook(updated);
+    Alert.alert('Success', 'Faculty verification completed successfully.');
+  };
+
+  const handleStudentSignOff = (index) => {
+    const updated = [...logbook];
+    updated[index].student_verified = true;
+    setLogbook(updated);
+    Alert.alert('Success', 'Logbook entry verified and locked by student.');
   };
 
   const filteredLogbook = logbook.filter(entry => {
@@ -530,7 +558,7 @@ const ERPLogBookScreen = ({ navigation }) => {
               filteredLogbook.map((entry, i) => {
                 const catInfo = CATEGORY_MAP[entry.category] || CATEGORY_MAP['default'];
                 return (
-                  <View key={i} style={[styles.logbookCard, { backgroundColor: colors.card, borderColor: entry.verified ? '#86EFAC' : colors.border }]}>
+                  <View key={i} style={[styles.logbookCard, { backgroundColor: colors.card, borderColor: (entry.verified && entry.student_verified) ? '#86EFAC' : colors.border }]}>
                     {/* Category Label at Top of Card */}
                     <View style={styles.cardHeader}>
                       <View style={[styles.categoryBadge, { backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : '#F8FAFC', borderColor: colors.border }]}>
@@ -543,18 +571,50 @@ const ERPLogBookScreen = ({ navigation }) => {
                           {catInfo.label}
                         </Text>
                       </View>
-                      <View style={[styles.verifiedBadge, { backgroundColor: entry.verified ? '#D1FAE5' : isDark ? 'rgba(255,255,255,0.05)' : '#F3F4F6' }]}>
-                        <MaterialIcons name={entry.verified ? 'verified' : 'pending'} size={13} color={entry.verified ? '#059669' : '#9CA3AF'} />
-                        <Text style={{ fontSize: 9, fontWeight: '800', color: entry.verified ? '#059669' : '#9CA3AF', marginLeft: 4 }}>
-                          {entry.verified ? 'VERIFIED' : 'PENDING'}
-                        </Text>
+                      
+                      <View style={{ flexDirection: 'row', gap: 6 }}>
+                        {/* Faculty Verification Badge */}
+                        <View style={[
+                          styles.statusBadge,
+                          { backgroundColor: entry.verified ? (isDark ? 'rgba(5, 150, 105, 0.15)' : '#D1FAE5') : (isDark ? 'rgba(255,255,255,0.05)' : '#F3F4F6') }
+                        ]}>
+                          <MaterialIcons 
+                            name={entry.verified ? 'check' : 'pending'} 
+                            size={10} 
+                            color={entry.verified ? '#059669' : '#9CA3AF'} 
+                          />
+                          <Text style={[
+                            styles.statusBadgeText, 
+                            { color: entry.verified ? '#059669' : '#9CA3AF' }
+                          ]}>
+                            FACULTY: {entry.verified ? 'VERIFIED' : 'PENDING'}
+                          </Text>
+                        </View>
+
+                        {/* Student Verification Badge */}
+                        <View style={[
+                          styles.statusBadge,
+                          { backgroundColor: entry.student_verified ? (isDark ? 'rgba(16, 185, 129, 0.15)' : '#ECFDF5') : (isDark ? 'rgba(255,255,255,0.05)' : '#F3F4F6') }
+                        ]}>
+                          <MaterialIcons 
+                            name={entry.student_verified ? 'done-all' : 'pending'} 
+                            size={10} 
+                            color={entry.student_verified ? '#10B981' : '#9CA3AF'} 
+                          />
+                          <Text style={[
+                            styles.statusBadgeText, 
+                            { color: entry.student_verified ? '#10B981' : '#9CA3AF' }
+                          ]}>
+                            STUDENT: {entry.student_verified ? 'VERIFIED' : 'PENDING'}
+                          </Text>
+                        </View>
                       </View>
                     </View>
 
                     <View style={styles.logbookBody}>
                       <Text style={[styles.logbookActivity, { color: colors.textPrimary }]}>{entry.activity}</Text>
                       <View style={[styles.logCompBadge, { backgroundColor: isDark ? 'rgba(20,184,166,0.1)' : '#CCFBF1' }]}>
-                        <Text style={[styles.logCompText, { color: '#14B8A6' }]}>{entry.competency}</Text>
+                        <Text style={[styles.logCompText, { color: '#14B8A6' }]}>{entry.competency} • {entry.department}</Text>
                       </View>
                     </View>
 
@@ -569,6 +629,41 @@ const ERPLogBookScreen = ({ navigation }) => {
                         <Text style={{ fontSize: 11, color: colors.textMuted }}>Faculty Sign-off</Text>
                         <Text style={{ fontSize: 12, fontWeight: '700', color: colors.textSecondary, marginTop: 2 }}>{entry.faculty}</Text>
                         <Text style={{ fontSize: 10, color: colors.textMuted, marginTop: 2 }}>Date: {entry.date}</Text>
+                      </View>
+                    </View>
+
+                    {/* Verification Actions at Bottom of Card */}
+                    <View style={[styles.verificationActionRow, { borderTopWidth: 1, borderTopColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)', paddingTop: 12 }]}>
+                      <Text style={{ fontSize: 10, color: colors.textMuted, fontStyle: 'italic' }}>
+                        {(entry.verified && entry.student_verified) ? 'Locked & finalized' : 'Requires verification'}
+                      </Text>
+                      <View style={{ flexDirection: 'row', gap: 8 }}>
+                        {isFaculty && !entry.verified && (
+                          <TouchableOpacity 
+                            style={[styles.actionButton, { backgroundColor: colors.primary }]}
+                            onPress={() => handleFacultySignOff(i)}
+                            activeOpacity={0.8}
+                          >
+                            <MaterialIcons name="check" size={13} color="#FFF" />
+                            <Text style={styles.actionButtonText}>Verify as Faculty</Text>
+                          </TouchableOpacity>
+                        )}
+                        {!isFaculty && entry.verified && !entry.student_verified && (
+                          <TouchableOpacity 
+                            style={[styles.actionButton, { backgroundColor: '#10B981' }]}
+                            onPress={() => handleStudentSignOff(i)}
+                            activeOpacity={0.8}
+                          >
+                            <MaterialIcons name="border-color" size={11} color="#FFF" />
+                            <Text style={styles.actionButtonText}>Verify Log entry</Text>
+                          </TouchableOpacity>
+                        )}
+                        {entry.verified && entry.student_verified && (
+                          <View style={styles.fullyLockedBadge}>
+                            <MaterialIcons name="lock" size={12} color="#10B981" />
+                            <Text style={styles.fullyLockedText}>LOCKED</Text>
+                          </View>
+                        )}
                       </View>
                     </View>
                   </View>
@@ -786,6 +881,53 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '700',
     flex: 1,
+  },
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    height: 22,
+    borderRadius: 6,
+    gap: 4,
+  },
+  statusBadgeText: {
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 0.2,
+  },
+  verificationActionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 10,
+  },
+  actionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    height: 30,
+    borderRadius: 8,
+    gap: 4,
+  },
+  actionButtonText: {
+    color: '#FFF',
+    fontSize: 10,
+    fontWeight: '800',
+  },
+  fullyLockedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    paddingHorizontal: 8,
+    height: 24,
+    borderRadius: 6,
+    gap: 4,
+  },
+  fullyLockedText: {
+    color: '#10B981',
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 0.5,
   }
 });
 
