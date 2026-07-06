@@ -135,9 +135,16 @@ const ChatScreen = ({ navigation }) => {
       // Real production behavior: load only messages of the logged-in student's batch
       const mappedHistory = (history || [])
         .map(msg => {
-          const isMeUser = user?.role === 'teacher'
-            ? msg.classlabel === 'left'
-            : msg.classlabel !== 'left';
+          let isMeUser = false;
+          if (user?.role === 'teacher') {
+            isMeUser = msg.classlabel === 'left' && String(msg.ChatFacId || '').trim().toUpperCase() === String(user?.emp_id || '').trim().toUpperCase();
+          } else if (user?.role === 'super_admin') {
+            isMeUser = msg.classlabel === 'left' && String(msg.ChatFacId || '').trim().toUpperCase() === String(user?.emp_id || user?.id || '').trim().toUpperCase();
+          } else {
+            // Student: Check if classlabel is right/non-left and student's name matches logged-in user name
+            const loggedName = String(user?.name || user?.id || '').trim().toLowerCase();
+            isMeUser = msg.classlabel !== 'left' && String(msg.StudentName || '').trim().toLowerCase() === loggedName;
+          }
           return {
             ...msg,
             isMe: isMeUser

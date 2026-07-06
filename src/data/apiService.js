@@ -1927,7 +1927,7 @@ export async function getFacultyGroupChats(empId, batchName, phase = '1', subpha
           id: String(msg.chatid || Math.random()),
           text: msg.Chat_Desc || '',
           sender: msg.classlabel === 'left' ? (msg.FacultyName || 'Faculty') : (msg.StudentName || 'Student'),
-          isMe: msg.classlabel === 'left', // classlabel left is faculty (me)
+          isMe: msg.classlabel === 'left' && String(msg.ChatFacId || '').trim().toUpperCase() === String(empId || '').trim().toUpperCase(),
           timestamp: sentDateStr,
           department: msg.department || '',
           attachment: msg.attachfile || null,
