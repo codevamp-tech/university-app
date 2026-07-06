@@ -28,7 +28,6 @@ import {
   getDetailedResults,
   getPaperList,
   getPaperCompetencies,
-  getAttemptedPaper,
   getCompetencyChart,
   getLogbook,
 } from '../../data/apiService';
@@ -364,9 +363,8 @@ const SubjectDetailModal = ({ visible, subject, onClose, accessToken }) => {
     }
 
     try {
-      const [compData, attemptedData, chartResp, logData] = await Promise.allSettled([
+      const [compData, chartResp, logData] = await Promise.allSettled([
         getPaperCompetencies(accessToken, pcode),
-        getAttemptedPaper(accessToken, pcode),
         getCompetencyChart(accessToken, pcode),
         getLogbook(accessToken),
       ]);
@@ -388,15 +386,24 @@ const SubjectDetailModal = ({ visible, subject, onClose, accessToken }) => {
       setCompetencies(nextComps);
 
       let nextAttempted = [];
-      if (attemptedData.status === 'fulfilled') {
-        const raw = attemptedData.value?.data || attemptedData.value || [];
-        if (Array.isArray(raw) && raw.length > 0) {
-          const rollno = String(user?.username || '2143089');
+      try {
+        const rollno = String(user?.username || '2143089');
+        const mainResp = await fetch('https://myportal.srms.ac.in/SRMSERP/Faculty/printdetailpaperTheoryResult', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'User-Agent': 'Mozilla/5.0'
+          },
+          body: JSON.stringify({
+            papercode: String(pcode),
+            stud_rollno: rollno
+          })
+        });
+        const mainData = await mainResp.json();
+        
+        if (Array.isArray(mainData) && mainData.length > 0) {
           const enrichedRaw = await Promise.all(
-            raw.map(async (mq) => {
-              if (mq.subquestions && mq.subquestions.length > 0) {
-                return mq;
-              }
+            mainData.map(async (mq) => {
               try {
                 const response = await fetch('https://myportal.srms.ac.in/SRMSERP/Faculty/printdetailpaperTheorySubQuestionResultcheck', {
                   method: 'POST',
@@ -459,6 +466,8 @@ const SubjectDetailModal = ({ visible, subject, onClose, accessToken }) => {
           });
           nextAttempted = Object.values(sectionsMap);
         }
+      } catch (err) {
+        console.warn('[ResultsScreen] Direct attempted paper fetch failed:', err);
       }
       setAttempted(nextAttempted);
 
