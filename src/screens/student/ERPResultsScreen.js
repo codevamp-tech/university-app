@@ -387,25 +387,26 @@ const SubjectDetailModal = ({ visible, subject, onClose, accessToken }) => {
 
       let nextAttempted = [];
       try {
-        const rollno = String(user?.username || '2143089');
-        const mainResp = await fetch('https://myportal.srms.ac.in/SRMSERP/Faculty/printdetailpaperTheoryResult', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'User-Agent': 'Mozilla/5.0'
-          },
-          body: JSON.stringify({
-            papercode: String(pcode),
-            stud_rollno: rollno
-          })
-        });
-        const mainData = await mainResp.json();
-        
-        if (Array.isArray(mainData) && mainData.length > 0) {
-          const enrichedRaw = await Promise.all(
-            mainData.map(async (mq) => {
-              try {
-                const response = await fetch('https://myportal.srms.ac.in/SRMSERP/Faculty/printdetailpaperTheorySubQuestionResultcheck', {
+        const rollno = String(user?.username || '');
+        if (rollno) {
+          const mainResp = await fetch('https://myportal.srms.ac.in/SRMSERP/Faculty/printdetailpaperTheoryResult', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'User-Agent': 'Mozilla/5.0'
+            },
+            body: JSON.stringify({
+              papercode: String(pcode),
+              stud_rollno: rollno
+            })
+          });
+          const mainData = await mainResp.json();
+          
+          if (Array.isArray(mainData) && mainData.length > 0) {
+            const enrichedRaw = await Promise.all(
+              mainData.map(async (mq) => {
+                try {
+                  const response = await fetch('https://myportal.srms.ac.in/SRMSERP/Faculty/printdetailpaperTheorySubQuestionResultcheck', {
                   method: 'POST',
                   headers: {
                     'Content-Type': 'application/json',
@@ -466,9 +467,10 @@ const SubjectDetailModal = ({ visible, subject, onClose, accessToken }) => {
           });
           nextAttempted = Object.values(sectionsMap);
         }
-      } catch (err) {
-        console.warn('[ResultsScreen] Direct attempted paper fetch failed:', err);
       }
+    } catch (err) {
+      console.warn('[ResultsScreen] Direct attempted paper fetch failed:', err);
+    }
       setAttempted(nextAttempted);
 
       let nextChart = [];
