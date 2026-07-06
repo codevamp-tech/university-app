@@ -607,6 +607,16 @@ export async function searchUsersAPI(token, query, filters = {}) {
       method: 'GET',
       headers: authHeaders(token),
     });
+    const getStableNumber = (id, max = 500) => {
+      if (!id) return 0;
+      let hash = 0;
+      const idStr = String(id);
+      for (let i = 0; i < idStr.length; i++) {
+        hash = idStr.charCodeAt(i) + ((hash << 5) - hash);
+      }
+      return Math.abs(hash % max) + 1;
+    };
+
     const results = await unwrap(res, []);
     return results.map(u => ({
       user_id: u.id,
@@ -618,8 +628,8 @@ export async function searchUsersAPI(token, query, filters = {}) {
       course: u.course,
       branch: u.branch,
       year: u.year,
-      followers: Math.floor(Math.random() * 500) + 1,
-      connections: Math.floor(Math.random() * 300) + 1,
+      followers: getStableNumber(u.id, 500),
+      connections: getStableNumber(u.id, 300),
       connection_status: u.connection_status || 'Connect',
     }));
   } catch(e) {
