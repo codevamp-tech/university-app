@@ -112,8 +112,8 @@ const DeepDiveAnalysisScreen = ({ navigation }) => {
     }
   };
 
-  const listExpected = activeTab === 'academic' ? gapData.academicExpectedSkills : gapData.industryExpectedSkills;
-  const listMissing = activeTab === 'academic' ? gapData.academicMissingSkills : gapData.industryMissingSkills;
+  const listExpected = activeTab === 'academic' ? gapData.academicMissingSkills : gapData.industryMissingSkills;
+  const listMissing = listExpected;
 
   return (
     <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
@@ -216,78 +216,88 @@ const DeepDiveAnalysisScreen = ({ navigation }) => {
             : (isMed ? 'Clinical Competency Gaps' : 'Career Skill Gaps')}
         </Text>
 
-        {listExpected.map((skill, index) => {
-          const isMissing = listMissing.includes(skill);
-          // Use the precomputed score from gapData.skillScores (derived from real marks or
-          // deterministic hash fallback). Never show 0% for MBBS students.
-          const score = gapData.skillScores?.[skill] ??
-            (isMissing ? 62 : 90); // safe fallback if skillScores missing
-          const color = score >= 75 ? '#10B981' : score >= 50 ? '#F59E0B' : '#EF4444';
-          const priority = isMissing ? (score < 50 ? 'HIGH' : 'MEDIUM') : 'LOW';
+        {listExpected.length === 0 ? (
+          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40, backgroundColor: colors.card, borderRadius: 24, borderWidth: 1, borderColor: colors.border, marginTop: 12 }}>
+            <MaterialCommunityIcons name="shield-check-outline" size={48} color="#10B981" />
+            <Text style={{ fontSize: 16, fontWeight: '800', color: colors.textPrimary, marginTop: 16 }}>All Clear!</Text>
+            <Text style={{ fontSize: 13, color: colors.textSecondary, textAlign: 'center', marginTop: 6, lineHeight: 20 }}>
+              {isMed ? 'No sessional competency gaps (<50%) detected.' : 'No skills gaps identified for your profile.'}
+            </Text>
+          </View>
+        ) : (
+          listExpected.map((skill, index) => {
+            const isMissing = listMissing.includes(skill);
+            // Use the precomputed score from gapData.skillScores (derived from real marks or
+            // deterministic hash fallback). Never show 0% for MBBS students.
+            const score = gapData.skillScores?.[skill] ??
+              (isMissing ? 62 : 90); // safe fallback if skillScores missing
+            const color = score >= 75 ? '#10B981' : score >= 50 ? '#F59E0B' : '#EF4444';
+            const priority = isMissing ? (score < 50 ? 'HIGH' : 'MEDIUM') : 'LOW';
 
-          return (
-            <View key={index} style={[styles.skillCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-              <View style={styles.skillHeader}>
-                <View>
-                  <Text style={[styles.skillTitle, { color: colors.textPrimary }]}>{skill}</Text>
-                  <View style={[styles.priorityBadge, { backgroundColor: color + '20' }]}>
-                    <Text style={[styles.priorityText, { color: color }]}>{priority} PRIORITY</Text>
+            return (
+              <View key={index} style={[styles.skillCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                <View style={styles.skillHeader}>
+                  <View>
+                    <Text style={[styles.skillTitle, { color: colors.textPrimary }]}>{skill}</Text>
+                    <View style={[styles.priorityBadge, { backgroundColor: color + '20' }]}>
+                      <Text style={[styles.priorityText, { color: color }]}>{priority} PRIORITY</Text>
+                    </View>
+                  </View>
+                  <View style={styles.scoreBox}>
+                    <Text style={[styles.scoreVal, { color: color }]}>{score}%</Text>
                   </View>
                 </View>
-                <View style={styles.scoreBox}>
-                  <Text style={[styles.scoreVal, { color: color }]}>{score}%</Text>
+
+                <View style={[styles.progressBg, { backgroundColor: isDark ? colors.background : '#F3F4F6' }]}>
+                  <View style={[styles.progressFill, { width: `${score}%`, backgroundColor: color }]} />
                 </View>
-              </View>
 
-              <View style={[styles.progressBg, { backgroundColor: isDark ? colors.background : '#F3F4F6' }]}>
-                <View style={[styles.progressFill, { width: `${score}%`, backgroundColor: color }]} />
-              </View>
-
-              <View style={styles.gapSection}>
-                <Text style={[styles.gapLabel, { color: colors.textSecondary }]}>Status:</Text>
-                <View style={styles.gapItem}>
-                  <MaterialCommunityIcons 
-                    name={isMissing ? "alert-circle-outline" : "check-circle-outline"} 
-                    size={16} 
-                    color={color} 
-                  />
-                  <Text style={[styles.gapText, { color: colors.textPrimary }]}>
-                    {isMissing 
-                      ? (activeTab === 'academic' 
-                          ? (isMed ? "This subject is currently a gap in your professional preparation." : "This subject is currently a gap in your academic syllabus.") 
-                          : (isMed ? "This clinical skill is currently a gap in your clinical competency." : "This skill is currently a gap in your career readiness."))
-                      : (activeTab === 'academic' 
-                          ? (isMed ? "You have completed this professional subject." : "You have completed this subject syllabus.") 
-                          : (isMed ? "You have verified clinical proficiency." : "You have verified proficiency in this skill."))
-                    }
-                  </Text>
-                </View>
-              </View>
-
-              {isMissing && (() => {
-                const isViewed = viewedSkills[skill];
-                const btnBorderColor = isViewed ? '#10B981' : '#EA580C';
-                const btnTextColor = isViewed ? '#10B981' : '#EA580C';
-                const btnText = isViewed 
-                  ? 'View'
-                  : (activeTab === 'academic' 
-                      ? (isMed ? 'Explore Clinical Syllabus Guide' : 'Explore Syllabus Guide') 
-                      : (isMed ? 'Explore Clinical Pathway' : 'Explore Learning Path'));
-
-                return (
-                  <TouchableOpacity 
-                    style={[styles.learnBtn, { borderColor: btnBorderColor }]}
-                    onPress={() => handleExplorePath(skill)}
-                  >
-                    <Text style={[styles.learnBtnText, { color: btnTextColor }]}>
-                      {btnText}
+                <View style={styles.gapSection}>
+                  <Text style={[styles.gapLabel, { color: colors.textSecondary }]}>Status:</Text>
+                  <View style={styles.gapItem}>
+                    <MaterialCommunityIcons 
+                      name={isMissing ? "alert-circle-outline" : "check-circle-outline"} 
+                      size={16} 
+                      color={color} 
+                    />
+                    <Text style={[styles.gapText, { color: colors.textPrimary }]}>
+                      {isMissing 
+                        ? (activeTab === 'academic' 
+                            ? (isMed ? "This subject is currently a gap in your professional preparation." : "This subject is currently a gap in your academic syllabus.") 
+                            : (isMed ? "This clinical skill is currently a gap in your clinical competency." : "This skill is currently a gap in your career readiness."))
+                        : (activeTab === 'academic' 
+                            ? (isMed ? "You have completed this professional subject." : "You have completed this subject syllabus.") 
+                            : (isMed ? "You have verified clinical proficiency." : "You have verified proficiency in this skill."))
+                      }
                     </Text>
-                  </TouchableOpacity>
-                );
-              })()}
-            </View>
-          );
-        })}
+                  </View>
+                </View>
+
+                {isMissing && (() => {
+                  const isViewed = viewedSkills[skill];
+                  const btnBorderColor = isViewed ? '#10B981' : '#EA580C';
+                  const btnTextColor = isViewed ? '#10B981' : '#EA580C';
+                  const btnText = isViewed 
+                    ? 'View'
+                    : (activeTab === 'academic' 
+                        ? (isMed ? 'Explore Clinical Syllabus Guide' : 'Explore Syllabus Guide') 
+                        : (isMed ? 'Explore Clinical Pathway' : 'Explore Learning Path'));
+
+                  return (
+                    <TouchableOpacity 
+                      style={[styles.learnBtn, { borderColor: btnBorderColor }]}
+                      onPress={() => handleExplorePath(skill)}
+                    >
+                      <Text style={[styles.learnBtnText, { color: btnTextColor }]}>
+                        {btnText}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })()}
+              </View>
+            );
+          })
+        )}
 
         <View style={{ height: 100 }} />
       </ScrollView>
