@@ -79,12 +79,44 @@ const StudentSearchScreen = ({ navigation }) => {
       </View>
       <View style={styles.studentInfo}>
         <Text style={[styles.studentName, { color: colors.textPrimary, fontSize: 16 }]}>{item.name || item.username}</Text>
-        <Text style={[styles.studentCourse, { color: colors.textSecondary, fontSize: 13, marginTop: 2 }]}>
-          {item.course || 'Student'} {item.branch ? `• ${item.branch}` : ''}
-        </Text>
-        <Text style={{ color: colors.textMuted, fontSize: 12, marginTop: 2 }}>
-          {item.year ? `Year ${item.year} ` : ''}• {item.followers || 0} followers
-        </Text>
+        {(() => {
+          const isMed = String(item.course || '').toUpperCase().includes('MBBS') || 
+                        String(item.branch || '').toUpperCase().includes('MBBS');
+          
+          let formattedYear = '';
+          if (item.year) {
+            const y = parseInt(item.year);
+            if (y === 1) formattedYear = '1st Prof';
+            else if (y === 2) formattedYear = '2nd Prof';
+            else if (y === 3) formattedYear = '3rd Prof';
+            else if (y === 4) formattedYear = '4th Prof';
+            else formattedYear = `${item.year} Prof`;
+          }
+
+          if (isMed) {
+            return (
+              <>
+                <Text style={[styles.studentCourse, { color: colors.textSecondary, fontSize: 13, marginTop: 2 }]}>
+                  {formattedYear ? `${formattedYear} • ` : ''}MBBS
+                </Text>
+                <Text style={{ color: colors.textMuted, fontSize: 12, marginTop: 2 }}>
+                  {item.followers || 0} followers
+                </Text>
+              </>
+            );
+          }
+
+          return (
+            <>
+              <Text style={[styles.studentCourse, { color: colors.textSecondary, fontSize: 13, marginTop: 2 }]}>
+                {item.course || 'Student'} {item.branch ? `• ${item.branch}` : ''}
+              </Text>
+              <Text style={{ color: colors.textMuted, fontSize: 12, marginTop: 2 }}>
+                {item.year ? `Year ${item.year} ` : ''}• {item.followers || 0} followers
+              </Text>
+            </>
+          );
+        })()}
       </View>
       <TouchableOpacity 
         style={{ 
