@@ -1087,7 +1087,7 @@ const ERPResultsScreen = ({ navigation }) => {
           if (yr === '4') return 'Final Prof';
         }
 
-        const name = paperName.toLowerCase();
+        const name = String(paperName || '').toLowerCase();
         if (name.includes('1st prof') || name.includes('1prof')) return '1st Prof';
         if (name.includes('2nd prof') || name.includes('2prof') || name.includes('2nd professional')) return '2nd Prof';
         if (name.includes('3rd prof') || name.includes('3prof') || name.includes('3rd professional')) {
