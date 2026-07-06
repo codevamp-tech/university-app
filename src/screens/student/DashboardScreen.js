@@ -337,6 +337,36 @@ const DashboardScreen = ({ navigation }) => {
   const [academicResults, setAcademicResults] = React.useState([]);
   const [erpCompetencies, setErpCompetencies] = React.useState(null);
 
+  // Load stored interests and check daily limit status on mount
+  React.useEffect(() => {
+    if (!user) return;
+    
+    const loadSavedPathway = async () => {
+      try {
+        const interestsKey = `@pathway_interests_${user.id}`;
+        const stored = await AsyncStorage.getItem(interestsKey);
+        if (stored) {
+          setActiveInterests(stored);
+          setInterestsInput(stored);
+        }
+
+        const lastRefined = await AsyncStorage.getItem('@pathway_last_refined');
+        if (lastRefined) {
+          const daysSince = (Date.now() - parseInt(lastRefined, 10)) / (1000 * 60 * 60 * 24);
+          if (daysSince < 1) {
+            setPathwayRetriesLeft(0);
+          } else {
+            setPathwayRetriesLeft(1);
+          }
+        }
+      } catch (e) {
+        console.warn('Error loading pathway state:', e);
+      }
+    };
+
+    loadSavedPathway();
+  }, [user]);
+
   React.useEffect(() => {
     if (!user) return;
     const loadInsight = async () => {
@@ -1546,6 +1576,9 @@ const DashboardScreen = ({ navigation }) => {
                         setPathwayRetriesLeft(0);
                         return;
                       }
+                    }
+                    if (user?.id) {
+                      await AsyncStorage.setItem(`@pathway_interests_${user.id}`, interestsInput);
                     }
                     await AsyncStorage.setItem('@pathway_last_refined', Date.now().toString());
                     setPathwayRetriesLeft(0);
