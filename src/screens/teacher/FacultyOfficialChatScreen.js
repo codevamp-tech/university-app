@@ -188,61 +188,64 @@ const FacultyOfficialChatScreen = ({ navigation }) => {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={0}
     >
-      {/* Header */}
-      <LinearGradient
-        colors={['#1E1B4B', '#312E81']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.headerGradient}
-      >
-        <View style={styles.headerRow}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-            <Ionicons name="arrow-back" size={22} color="#FFF" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>ERP Batch Channels</Text>
-          <TouchableOpacity onPress={handleRefresh} style={styles.refreshBtn}>
-            <Ionicons name="sync" size={20} color="#FFF" />
-          </TouchableOpacity>
-        </View>
-
-        {/* Batch Selector Dropdown */}
-        {loadingBatches ? (
-          <ActivityIndicator color="#FFF" style={{ marginTop: 12 }} />
-        ) : batches.length > 0 ? (
-          <View style={styles.dropdownContainer}>
-            <TouchableOpacity
-              style={styles.dropdownTrigger}
-              onPress={() => setShowBatchDropdown(!showBatchDropdown)}
-              activeOpacity={0.8}
-            >
-              <Ionicons name="people-outline" size={18} color="#EA580C" />
-              <Text style={styles.dropdownText}>
-                Active Batch: {selectedBatch ? selectedBatch.name : 'Select Batch'}
-              </Text>
-              <Ionicons name={showBatchDropdown ? 'chevron-up' : 'chevron-down'} size={18} color="#4B5563" />
+      {/* Header Container wrapping LinearGradient and Dropdown to manage relative overlay layering */}
+      <View style={{ zIndex: 10, position: 'relative' }}>
+        <LinearGradient
+          colors={['#1E1B4B', '#312E81']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.headerGradient}
+        >
+          <View style={styles.headerRow}>
+            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+              <Ionicons name="arrow-back" size={22} color="#FFF" />
             </TouchableOpacity>
-
-            {showBatchDropdown && (
-              <View style={styles.dropdownList}>
-                {batches.map((batch) => (
-                  <TouchableOpacity
-                    key={batch.id}
-                    style={styles.dropdownItem}
-                    onPress={() => {
-                      setSelectedBatch(batch);
-                      setShowBatchDropdown(false);
-                    }}
-                  >
-                    <Text style={styles.dropdownItemText}>Batch of {batch.name}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            )}
+            <Text style={styles.headerTitle}>ERP Batch Channels</Text>
+            <TouchableOpacity onPress={handleRefresh} style={styles.refreshBtn}>
+              <Ionicons name="sync" size={20} color="#FFF" />
+            </TouchableOpacity>
           </View>
-        ) : (
-          <Text style={styles.noBatchesText}>No batches assigned to your account.</Text>
+
+          {/* Batch Selector Dropdown Trigger */}
+          {loadingBatches ? (
+            <ActivityIndicator color="#FFF" style={{ marginTop: 12 }} />
+          ) : batches.length > 0 ? (
+            <View style={styles.dropdownContainer}>
+              <TouchableOpacity
+                style={styles.dropdownTrigger}
+                onPress={() => setShowBatchDropdown(!showBatchDropdown)}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="people-outline" size={18} color="#EA580C" />
+                <Text style={styles.dropdownText}>
+                  Active Batch: {selectedBatch ? selectedBatch.name : 'Select Batch'}
+                </Text>
+                <Ionicons name={showBatchDropdown ? 'chevron-up' : 'chevron-down'} size={18} color="#4B5563" />
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <Text style={styles.noBatchesText}>No batches assigned to your account.</Text>
+          )}
+        </LinearGradient>
+
+        {/* Dropdown Options List (Rendered outside the gradient bounds to bypass native container clipping) */}
+        {showBatchDropdown && batches.length > 0 && (
+          <View style={styles.dropdownList}>
+            {batches.map((batch) => (
+              <TouchableOpacity
+                key={batch.id}
+                style={styles.dropdownItem}
+                onPress={() => {
+                  setSelectedBatch(batch);
+                  setShowBatchDropdown(false);
+                }}
+              >
+                <Text style={styles.dropdownItemText}>Batch of {batch.name}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
         )}
-      </LinearGradient>
+      </View>
 
       {/* Message Area */}
       {loadingChats ? (
@@ -350,7 +353,7 @@ const styles = StyleSheet.create({
   dropdownText: { flex: 1, fontSize: 14, fontWeight: '700', color: '#1F2937' },
   dropdownList: {
     position: 'absolute',
-    top: 46,
+    top: 108,
     left: 16,
     right: 16,
     backgroundColor: '#FFFFFF',
@@ -361,9 +364,9 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.1,
     shadowRadius: 12,
-    elevation: 5,
+    elevation: 10,
     overflow: 'hidden',
-    zIndex: 300,
+    zIndex: 999,
   },
   dropdownItem: {
     padding: 14,
