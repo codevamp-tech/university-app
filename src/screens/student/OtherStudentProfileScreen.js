@@ -6,10 +6,11 @@ import { Ionicons, MaterialIcons, MaterialCommunityIcons } from '@expo/vector-ic
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { APP_CONFIG } from '../../config/appConfig';
-import { followUserAPI, getPublicProfile, connectionStatsAPI } from '../../data/apiService';
+import { followUserAPI, getPublicProfile, connectionStatsAPI, getConnectionList } from '../../data/apiService';
 import { getAvatarUrl } from '../../utils/avatar';
 import { useTheme } from '../../hooks/useTheme';
 import { useUser } from '../../context/UserContext';
+import { Modal } from 'react-native';
 const OtherStudentProfileScreen = ({ route, navigation }) => {
   const insets = useSafeAreaInsets();
   const { student } = route.params || {};
@@ -20,6 +21,29 @@ const OtherStudentProfileScreen = ({ route, navigation }) => {
   const [profile, setProfile] = useState(null);
   const [stats, setStats] = useState({ followers: 0, following: 0, connections: 0 });
   const [loading, setLoading] = useState(true);
+
+  const [showConnectionsModal, setShowConnectionsModal] = useState(false);
+  const [connectionsModalType, setConnectionsModalType] = useState('followers'); // 'followers' or 'connections'
+  const [connectionsList, setConnectionsList] = useState([]);
+  const [loadingConnections, setLoadingConnections] = useState(false);
+
+  const handleOpenConnectionsModal = async (type) => {
+    setConnectionsModalType(type);
+    setShowConnectionsModal(true);
+    setLoadingConnections(true);
+    try {
+      const data = await getConnectionList(accessToken, student?.id);
+      if (type === 'followers') {
+        setConnectionsList(data.followers || []);
+      } else {
+        setConnectionsList(data.connections || []);
+      }
+    } catch (e) {
+      console.warn("Error loading connection list:", e);
+    } finally {
+      setLoadingConnections(false);
+    }
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -122,14 +146,14 @@ const OtherStudentProfileScreen = ({ route, navigation }) => {
           <Text style={[styles.batchSubText, { color: colors.textSecondary }]}>Batch of {profile?.batch_year || '2025'} • {profile?.rollno || student.rollNo}</Text>
           
           <View style={styles.capsuleRow}>
-            <View style={[styles.capsule, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <TouchableOpacity style={[styles.capsule, { backgroundColor: colors.card, borderColor: colors.border }]} onPress={() => handleOpenConnectionsModal('followers')}>
               <Text style={styles.capsuleLabel}>FOLLOWERS</Text>
               <Text style={[styles.capsuleValue, { color: colors.textPrimary }]}>{stats.followers}</Text>
-            </View>
-            <View style={[styles.capsule, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.capsule, { backgroundColor: colors.card, borderColor: colors.border }]} onPress={() => handleOpenConnectionsModal('connections')}>
               <Text style={styles.capsuleLabel}>CONNECTIONS</Text>
               <Text style={[styles.capsuleValue, { color: colors.textPrimary }]}>{stats.connections}</Text>
-            </View>
+            </TouchableOpacity>
           </View>
 
           {/* Action Buttons */}
@@ -192,6 +216,43 @@ const OtherStudentProfileScreen = ({ route, navigation }) => {
 
         <View style={{ height: 100 }} />
       </ScrollView>
+
+      {/* Connections/Followers list Modal */}
+      <Modal visible={showConnectionsModal} transparent animationType="slide" onRequestClose={() => setShowConnectionsModal(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>
+                {connectionsModalType === 'followers' ? 'Followers' : 'Connections'} ({connectionsList.length})
+              </Text>
+              <TouchableOpacity onPress={() => setShowConnectionsModal(false)} style={styles.modalCloseBtn}>
+                <Ionicons name="close" size={24} color={colors.textPrimary} />
+              </TouchableOpacity>
+            </View>
+
+            {loadingConnections ? (
+              <ActivityIndicator size="large" color={colors.primary} style={{ marginVertical: 40 }} />
+            ) : connectionsList.length === 0 ? (
+              <View style={styles.emptyConnections}>
+                <Ionicons name="people-outline" size={48} color={colors.textMuted} />
+                <Text style={[styles.emptyConnectionsText, { color: colors.textSecondary }]}>No users found</Text>
+              </View>
+            ) : (
+              <ScrollView contentContainerStyle={{ gap: 12 }} showsVerticalScrollIndicator={false}>
+                {connectionsList.map((item) => (
+                  <View key={item.id} style={[styles.connectionItem, { borderBottomColor: colors.border }]}>
+                    <Image source={{ uri: getAvatarUrl(item.avatar_url || item.username) }} style={styles.connectionAvatar} />
+                    <View style={{ flex: 1, marginLeft: 12 }}>
+                      <Text style={[styles.connectionName, { color: colors.textPrimary }]}>{item.full_name || item.username}</Text>
+                      <Text style={[styles.connectionUsername, { color: colors.textMuted }]}>@{item.username}</Text>
+                    </View>
+                  </View>
+                ))}
+              </ScrollView>
+            )}
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -392,6 +453,59 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#1F2937',
     fontWeight: '600',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
+    maxHeight: '75%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+  },
+  modalCloseBtn: {
+    padding: 4,
+  },
+  emptyConnections: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60,
+  },
+  emptyConnectionsText: {
+    fontSize: 15,
+    marginTop: 12,
+    fontWeight: '600',
+  },
+  connectionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+  },
+  connectionAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+  },
+  connectionName: {
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  connectionUsername: {
+    fontSize: 12,
+    marginTop: 2,
   },
 });
 

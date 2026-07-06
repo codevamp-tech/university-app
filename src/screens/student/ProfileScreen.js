@@ -9,7 +9,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { APP_CONFIG } from '../../config/appConfig';
 import { useUser } from '../../context/UserContext';
 import { getPersonaBadge } from '../../data/aiEngine';
-import { uploadAvatarAPI, connectionStatsAPI, getStartups } from '../../data/apiService';
+import { uploadAvatarAPI, connectionStatsAPI, getStartups, getConnectionList } from '../../data/apiService';
 import { getAvatarUrl } from '../../utils/avatar';
 import { isMedicalStudent, getDisplayCourse, getMBBSProfLabel } from '../../utils/courseDisplay';
 
@@ -23,6 +23,29 @@ const ProfileScreen = () => {
   const [isUploading, setIsUploading] = React.useState(false);
   const [myStartups, setMyStartups] = React.useState([]);
   const [loadingStartups, setLoadingStartups] = React.useState(true);
+
+  const [showConnectionsModal, setShowConnectionsModal] = React.useState(false);
+  const [connectionsModalType, setConnectionsModalType] = React.useState('followers'); // 'followers' or 'connections'
+  const [connectionsList, setConnectionsList] = React.useState([]);
+  const [loadingConnections, setLoadingConnections] = React.useState(false);
+
+  const handleOpenConnectionsModal = async (type) => {
+    setConnectionsModalType(type);
+    setShowConnectionsModal(true);
+    setLoadingConnections(true);
+    try {
+      const data = await getConnectionList(accessToken);
+      if (type === 'followers') {
+        setConnectionsList(data.followers || []);
+      } else {
+        setConnectionsList(data.connections || []);
+      }
+    } catch (e) {
+      console.warn("Error loading connection list:", e);
+    } finally {
+      setLoadingConnections(false);
+    }
+  };
 
   const isMed = user ? isMedicalStudent(user) : false;
 
@@ -191,14 +214,14 @@ const ProfileScreen = () => {
               );
             })()}
             <View style={[styles.infoCapsuleRow, { marginTop: 8 }]}>
-              <View style={styles.infoCapsule}>
+              <TouchableOpacity style={styles.infoCapsule} onPress={() => handleOpenConnectionsModal('followers')}>
                 <Text style={styles.infoLabel}>FOLLOWERS</Text>
                 <Text style={styles.infoValue}>{stats.followers}</Text>
-              </View>
-              <View style={styles.infoCapsule}>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.infoCapsule} onPress={() => handleOpenConnectionsModal('connections')}>
                 <Text style={styles.infoLabel}>CONNECTIONS</Text>
                 <Text style={styles.infoValue}>{stats.connections}</Text>
-              </View>
+              </TouchableOpacity>
             </View>
           </View>
         </View>
@@ -360,6 +383,43 @@ const ProfileScreen = () => {
 
         <View style={{ height: 100 }} />
       </ScrollView>
+
+      {/* Connections/Followers list Modal */}
+      <Modal visible={showConnectionsModal} transparent animationType="slide" onRequestClose={() => setShowConnectionsModal(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: '#FFFFFF' }]}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>
+                {connectionsModalType === 'followers' ? 'Followers' : 'Connections'} ({connectionsList.length})
+              </Text>
+              <TouchableOpacity onPress={() => setShowConnectionsModal(false)} style={styles.modalCloseBtn}>
+                <Ionicons name="close" size={24} color="#1F2937" />
+              </TouchableOpacity>
+            </View>
+
+            {loadingConnections ? (
+              <ActivityIndicator size="large" color="#EA580C" style={{ marginVertical: 40 }} />
+            ) : connectionsList.length === 0 ? (
+              <View style={styles.emptyConnections}>
+                <Ionicons name="people-outline" size={48} color="#9CA3AF" />
+                <Text style={styles.emptyConnectionsText}>No users found</Text>
+              </View>
+            ) : (
+              <ScrollView contentContainerStyle={{ gap: 12 }} showsVerticalScrollIndicator={false}>
+                {connectionsList.map((item) => (
+                  <View key={item.id} style={styles.connectionItem}>
+                    <Image source={{ uri: getAvatarUrl(item.avatar_url || item.username) }} style={styles.connectionAvatar} />
+                    <View style={{ flex: 1, marginLeft: 12 }}>
+                      <Text style={styles.connectionName}>{item.full_name || item.username}</Text>
+                      <Text style={styles.connectionUsername}>@{item.username}</Text>
+                    </View>
+                  </View>
+                ))}
+              </ScrollView>
+            )}
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -805,6 +865,64 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#6B7280',
     marginTop: 4,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
+    maxHeight: '75%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#1F2937',
+  },
+  modalCloseBtn: {
+    padding: 4,
+  },
+  emptyConnections: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60,
+  },
+  emptyConnectionsText: {
+    fontSize: 15,
+    color: '#6B7280',
+    marginTop: 12,
+    fontWeight: '600',
+  },
+  connectionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  connectionAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+  },
+  connectionName: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#1F2937',
+  },
+  connectionUsername: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 2,
   },
 });
 

@@ -2074,6 +2074,17 @@ export async function getAdminGeneralNotifications() {
           }
         } catch {}
 
+        let attachmentUrl = null;
+        const attachmentRaw = item.Attachment || item.attachment;
+        if (attachmentRaw && String(attachmentRaw).trim() !== '' && String(attachmentRaw) !== '0' && String(attachmentRaw).toLowerCase() !== 'null') {
+          const cleanAttach = String(attachmentRaw).replace(/\\/g, '/');
+          if (cleanAttach.startsWith('http')) {
+            attachmentUrl = cleanAttach;
+          } else {
+            attachmentUrl = 'https://myportal.srms.ac.in' + (cleanAttach.startsWith('/') ? '' : '/') + cleanAttach;
+          }
+        }
+
         return {
           id: `erp-announcement-${index}-${item.formatted_date}`,
           title: `[ERP] ${item.FacultyName || 'Administration'}`,
@@ -2082,6 +2093,8 @@ export async function getAdminGeneralNotifications() {
           urgency: 'medium',
           is_read: false,
           created_at: rawDate.toISOString(),
+          attachment: attachmentUrl,
+          batch: item.batch ? String(item.batch) : null,
         };
       });
     }
@@ -2089,6 +2102,22 @@ export async function getAdminGeneralNotifications() {
     console.warn('[apiService] getAdminGeneralNotifications failed:', err);
   }
   return [];
+}
+
+export async function getConnectionList(token, userId = null) {
+  try {
+    const url = userId 
+      ? `/api/v1/social/connections/list?user_id=${userId}`
+      : `/api/v1/social/connections/list`;
+    const res = await apiCall(url, {
+      method: 'GET',
+      headers: authHeaders(token),
+    });
+    return await unwrap(res, { followers: [], following: [], connections: [] });
+  } catch (e) {
+    console.error("getConnectionList failed:", e);
+    return { followers: [], following: [], connections: [] };
+  }
 }
 
 

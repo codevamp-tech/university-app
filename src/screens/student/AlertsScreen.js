@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, RefreshControl, Modal, Pressable
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, RefreshControl, Modal, Pressable, Linking
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons, MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -18,7 +18,7 @@ const AlertsScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState('All Updates');
   const { colors, isDark } = useTheme();
-  const { accessToken } = useUser();
+  const { accessToken, user } = useUser();
 
   const [apiAlerts, setApiAlerts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -41,10 +41,20 @@ const AlertsScreen = ({ navigation }) => {
         readErpIds = JSON.parse(await AsyncStorage.getItem('read_erp_announcements') || '[]');
       } catch {}
 
-      const mappedErp = erpAnnouncements.map(a => ({
-        ...a,
-        is_read: readErpIds.includes(a.id)
-      }));
+      const studentBatch = String(user?.batch_year || user?.batch || '').trim();
+
+      const mappedErp = erpAnnouncements
+        .filter(a => {
+          const targetBatch = String(a.batch || '').trim();
+          if (!targetBatch || targetBatch === '0' || targetBatch.toLowerCase() === 'null') {
+            return true;
+          }
+          return studentBatch ? (targetBatch === studentBatch) : true;
+        })
+        .map(a => ({
+          ...a,
+          is_read: readErpIds.includes(a.id)
+        }));
 
       // 3. Combine and sort by date descending
       const combined = [...backendAlerts, ...mappedErp].sort((a, b) => {
@@ -60,7 +70,7 @@ const AlertsScreen = ({ navigation }) => {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [accessToken]);
+  }, [accessToken, user]);
 
   const onRefresh = React.useCallback(() => {
     loadAlerts(true);
@@ -403,6 +413,20 @@ const AlertsScreen = ({ navigation }) => {
               <Text style={[styles.modalBodyText, { color: colors.textPrimary }]}>
                 {selectedAnnouncement?.description}
               </Text>
+              
+              {selectedAnnouncement?.raw?.attachment && (
+                <TouchableOpacity
+                  style={styles.attachmentButton}
+                  onPress={() => {
+                    Linking.openURL(selectedAnnouncement.raw.attachment).catch(err => {
+                      console.warn("Could not open attachment URL", err);
+                    });
+                  }}
+                >
+                  <Ionicons name="document-attach-outline" size={18} color="#EA580C" style={{ marginRight: 8 }} />
+                  <Text style={styles.attachmentButtonText}>View Attachment</Text>
+                </TouchableOpacity>
+              )}
             </ScrollView>
 
             <TouchableOpacity
@@ -746,6 +770,22 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 15,
     fontWeight: '700',
+  },
+  attachmentButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: '#EA580C10',
+    marginTop: 16,
+    borderColor: '#EA580C30',
+    borderWidth: 1,
+  },
+  attachmentButtonText: {
+    color: '#EA580C',
+    fontWeight: '700',
+    fontSize: 14,
   },
 });
 
