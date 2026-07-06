@@ -72,49 +72,21 @@ const SuperAdminDrilldownScreen = ({ route, navigation }) => {
           }
         } else if (category === 'fitness_students') {
           try {
-            const [students, teachers] = await Promise.all([
-              getAllStudents(accessToken),
-              getSuperAdminDrilldown(accessToken, 'teachers')
-            ]);
-            
-            const medicalStudents = (students || [])
-              .filter(s => String(s?.category || '').toLowerCase() === 'medical')
-              .map((s, idx) => {
-                const steps = 7500 + (idx * 450) % 6500;
-                const kcal = Math.round(steps / 20);
-                const sleep = (6.2 + (idx * 0.3) % 2.0).toFixed(1);
-                return {
-                  id: s?.id || s?.rollno || `stud_${idx}`,
-                  student_name: s?.full_name || s?.username || 'Student',
-                  avatar_url: s?.avatar_url,
-                  steps: steps,
-                  sleep_hours: parseFloat(sleep),
-                  kcal: kcal,
-                  type: 'student',
-                  dept: 'Medical'
-                };
-              });
-
-            const facultyMembers = (teachers || []).map((t, idx) => {
-              const steps = 5500 + (idx * 600) % 5000;
-              const kcal = Math.round(steps / 20);
-              const sleep = (6.0 + (idx * 0.4) % 1.8).toFixed(1);
-              return {
-                id: t?.id || t?.emp_id || `fac_${idx}`,
-                student_name: t?.name || t?.emp_id || 'Faculty',
-                avatar_url: null,
-                steps: steps,
-                sleep_hours: parseFloat(sleep),
-                kcal: kcal,
-                type: 'faculty',
-                dept: t?.department || 'Academics'
-              };
-            });
-
-            medicalStudents.sort((a, b) => b.steps - a.steps);
-            facultyMembers.sort((a, b) => b.steps - a.steps);
-
-            setData([...medicalStudents, ...facultyMembers]);
+            const result = await getSuperAdminDrilldown(accessToken, 'fitness_students');
+            if (result && result.data) {
+              const mapped = (result.data || []).map(item => ({
+                id: item.id || item.user_id,
+                student_name: item.student_name,
+                avatar_url: item.avatar_url,
+                steps: item.steps || 0,
+                sleep_hours: parseFloat(item.sleep_hours || 0.0),
+                kcal: item.kcal || 0,
+                type: item.type || 'student',
+                dept: item.branch || 'Medical'
+              }));
+              mapped.sort((a, b) => b.steps - a.steps);
+              setData(mapped);
+            }
           } catch (err) {
             console.warn('[DrilldownScreen] Fitness fetch error:', err);
           }

@@ -121,7 +121,7 @@ const SuperAdminVentureInsightsScreen = ({ navigation }) => {
           <Feather name="bar-chart-2" size={18} color={colors.textSecondary} />
         </View>
         
-        <View style={[styles.card, { backgroundColor: colors.card, shadowColor: colors.shadow }]}>
+        <View style={[styles.card, { backgroundColor: colors.card, shadowColor: colors.shadow, overflow: 'hidden' }]}>
           {/* Series A */}
           <View style={styles.funnelRow}>
             <LinearGradient
@@ -180,6 +180,23 @@ const SuperAdminVentureInsightsScreen = ({ navigation }) => {
               </View>
             </LinearGradient>
             <Text style={[styles.funnelDesc, { color: colors.textSecondary }]}>Early concepts</Text>
+          </View>
+
+          {/* Premium Feature Lock Overlay */}
+          <View style={{
+            position: 'absolute',
+            top: 0, left: 0, right: 0, bottom: 0,
+            backgroundColor: isDark ? 'rgba(0,0,0,0.7)' : 'rgba(15, 23, 42, 0.65)',
+            justifyContent: 'center',
+            alignItems: 'center',
+            paddingHorizontal: 24,
+            zIndex: 20
+          }}>
+            <MaterialCommunityIcons name="lock" size={36} color="#FFFFFF" />
+            <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '800', marginTop: 8 }}>Premium Feature</Text>
+            <Text style={{ color: 'rgba(255,255,255,0.75)', fontSize: 11, textAlign: 'center', marginTop: 4, lineHeight: 15 }}>
+              Startup Stage Funnel is locked for your current plan. Contact admin to upgrade.
+            </Text>
           </View>
         </View>
 
