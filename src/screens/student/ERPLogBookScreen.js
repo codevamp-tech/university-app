@@ -8,7 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../hooks/useTheme';
 import { useUser } from '../../context/UserContext';
-import { getLogbook, verifyLogbookActivity } from '../../data/apiService';
+import { getLogbook } from '../../data/apiService';
 
 const { width } = Dimensions.get('window');
 
@@ -226,23 +226,35 @@ const ERPLogBookScreen = ({ navigation }) => {
   const handleStudentSignOff = async (index) => {
     const entry = logbook[index];
     try {
+      const rollNumber = String(user?.username || '2162354');
+      const batchYear = String(user?.batch_year || user?.year || '2024');
+
       const payload = {
-        category: entry.category || 'PracticalStudentLab',
-        comp_code: entry.comp_code || entry.competency || '',
-        actmstid: String(entry.actmstid || '8289'),
-        cbmeyear: String(entry.cbmeyear || '2024'),
-        received: 1
+        LMS_LogBook_ActivityData: {
+          rollno: rollNumber,
+          lbtype: entry.category || 'PracticalStudentLab',
+          comp_code: entry.comp_code || entry.competency || '',
+          actmstid: String(entry.actmstid || '8289'),
+          cbmeyear: String(entry.cbmeyear || batchYear),
+          received: 1
+        }
       };
 
-      const res = await verifyLogbookActivity(accessToken, payload);
+      const response = await fetch('https://myportal.srms.ac.in/SRMSERP/PGMBBS/updateReceivedstud', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'User-Agent': 'Mozilla/5.0'
+        },
+        body: JSON.stringify(payload)
+      });
+
+      const res = await response.json();
       const isSuccess = res && (
         res.success || 
         res.message === 'Success' || 
         res.Mess === 'Update' || 
-        res.message === 'Update' || 
-        res.data?.success || 
-        res.data?.message === 'Success' || 
-        res.data?.Mess === 'Update'
+        res.message === 'Update'
       );
 
       if (isSuccess) {
@@ -255,7 +267,7 @@ const ERPLogBookScreen = ({ navigation }) => {
       }
     } catch (err) {
       console.warn('[LogBookScreen] Error signing off:', err);
-      Alert.alert('Error', 'An error occurred while communicating with the server.');
+      Alert.alert('Error', 'An error occurred while communicating with the ERP.');
     }
   };
 
