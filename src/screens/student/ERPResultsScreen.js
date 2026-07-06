@@ -312,8 +312,8 @@ const SubjectDetailModal = ({ visible, subject, onClose, accessToken }) => {
   const [paperCache, setPaperCache] = useState({});
   const slideAnim = useRef(new Animated.Value(0)).current;
 
-  const tabs = ['Competencies', 'Attempted Paper', 'Progress Chart', 'Clinical'];
-  const tabIcons = ['assignment', 'description', 'pie-chart', 'local-hospital'];
+  const tabs = ['Competencies', 'Attempted Paper', 'Progress Chart'];
+  const tabIcons = ['assignment', 'description', 'pie-chart'];
 
   useEffect(() => {
     if (visible && subject) {
@@ -606,7 +606,7 @@ const SubjectDetailModal = ({ visible, subject, onClose, accessToken }) => {
           ))}
         </ScrollView>
       );
-    } else if (activeTab === 2) {
+    } else {
       return (
         <ScrollView style={{ padding: 16 }} contentContainerStyle={{ alignItems: 'center' }} showsVerticalScrollIndicator={false}>
           <SkeletonCircle isDark={isDark} />
@@ -615,14 +615,6 @@ const SubjectDetailModal = ({ visible, subject, onClose, accessToken }) => {
               <SkeletonLegendRow key={idx} isDark={isDark} />
             ))}
           </View>
-        </ScrollView>
-      );
-    } else {
-      return (
-        <ScrollView style={{ padding: 16 }} showsVerticalScrollIndicator={false}>
-          {[1, 2, 3].map(idx => (
-            <SkeletonLogbookCard key={idx} isDark={isDark} />
-          ))}
         </ScrollView>
       );
     }
@@ -990,7 +982,6 @@ const SubjectDetailModal = ({ visible, subject, onClose, accessToken }) => {
                   {activeTab === 0 && renderCompetencies()}
                   {activeTab === 1 && renderAttemptedPaper()}
                   {activeTab === 2 && renderChart()}
-                  {activeTab === 3 && renderLogbook()}
                 </View>
               )}
             </>

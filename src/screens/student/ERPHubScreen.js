@@ -454,6 +454,30 @@ const ERPHubScreen = ({ navigation }) => {
             </View>
           </TouchableOpacity>
 
+          {/* Log Book */}
+          <TouchableOpacity
+            style={[styles.essentialCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+            onPress={() => navigation.navigate('ERPLogBookTab')}
+            activeOpacity={0.85}
+          >
+            <LinearGradient colors={isDark ? ['#0F766E', '#115E59'] : ['#E6FDF9', '#CCFBF1']} style={styles.essentialIconBg}>
+              <MaterialIcons name="local-hospital" size={22} color={isDark ? '#2DD4BF' : '#0D9488'} />
+            </LinearGradient>
+            <View style={styles.essentialContent}>
+              <Text style={[styles.essentialCardTitle, { color: colors.textPrimary }]}>Log Book</Text>
+              <Text style={[styles.essentialCardDesc, { color: colors.textSecondary }]}>
+                Track your clinical postings, rotations, and case records.
+              </Text>
+
+              <View style={styles.essentialFooter}>
+                <View style={[styles.dueBadge, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.2)' : '#E6FDF9' }]}>
+                  <Text style={[styles.dueText, { color: isDark ? '#2DD4BF' : '#0D9488' }]}>Clinical</Text>
+                </View>
+                <MaterialIcons name="chevron-right" size={20} color={colors.textMuted} />
+              </View>
+            </View>
+          </TouchableOpacity>
+
 
         </View>
 

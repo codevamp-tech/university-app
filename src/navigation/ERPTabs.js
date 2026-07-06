@@ -1,15 +1,14 @@
 import React from 'react';
-import { View, Text, StyleSheet, Platform, TouchableOpacity, Alert } from 'react-native';
-import { createBottomTabNavigator, BottomTabBar } from '@react-navigation/bottom-tabs';
+import { View, Text, StyleSheet, Platform, TouchableOpacity } from 'react-native';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { MaterialIcons } from '@expo/vector-icons';
 
 // ERP Screens
 import ERPHubScreen from '../screens/student/ERPHubScreen';
 import ERPResultsScreen from '../screens/student/ERPResultsScreen';
-import ERPFeesScreen from '../screens/student/ERPFeesScreen';
-import ERPDocumentsScreen from '../screens/student/ERPDocumentsScreen';
 import ERPAttendanceScreen from '../screens/student/ERPAttendanceScreen';
 import StudentScheduleScreen from '../screens/student/StudentScheduleScreen';
+import ERPLogBookScreen from '../screens/student/ERPLogBookScreen';
 import { useTheme } from '../hooks/useTheme';
 
 const Tab = createBottomTabNavigator();
@@ -27,7 +26,6 @@ const CustomTabBar = ({ state, descriptors, navigation }) => {
 
           let iconName;
           let label;
-          const isLockedTab = route.name === 'ERPFeesTab' || route.name === 'ERPDocumentsTab';
 
           if (route.name === 'ERPHome') {
             iconName = 'home';
@@ -41,26 +39,14 @@ const CustomTabBar = ({ state, descriptors, navigation }) => {
           } else if (route.name === 'ERPAttendanceTab') {
             iconName = 'fact-check';
             label = 'Attendance';
-          } else if (route.name === 'ERPFeesTab') {
-            iconName = 'lock';
-            label = 'Fees';
-          } else if (route.name === 'ERPDocumentsTab') {
-            iconName = 'lock';
-            label = 'Documents';
+          } else if (route.name === 'ERPLogBookTab') {
+            iconName = 'local-hospital';
+            label = 'Log book';
           }
 
-          const color = isLockedTab ? (isDark ? '#4B5563' : '#9CA3AF') : (isFocused ? colors.primary : colors.textMuted);
+          const color = isFocused ? colors.primary : colors.textMuted;
 
           const onPress = () => {
-            if (route.name === 'ERPFeesTab') {
-              Alert.alert('🔒 Premium Feature', 'Fees & Payments module is locked in this demo. Contact admin to unlock.');
-              return;
-            }
-            if (route.name === 'ERPDocumentsTab') {
-              Alert.alert('🔒 Premium Feature', 'Document Vault is locked in this demo. Contact admin to unlock.');
-              return;
-            }
-
             const event = navigation.emit({
               type: 'tabPress',
               target: route.key,
@@ -121,8 +107,7 @@ const ERPTabs = () => {
       <Tab.Screen name="ERPResultsTab" component={ERPResultsScreen} />
       <Tab.Screen name="ERPScheduleTab" component={StudentScheduleScreen} />
       <Tab.Screen name="ERPAttendanceTab" component={ERPAttendanceScreen} />
-      <Tab.Screen name="ERPFeesTab" component={ERPFeesScreen} />
-      <Tab.Screen name="ERPDocumentsTab" component={ERPDocumentsScreen} />
+      <Tab.Screen name="ERPLogBookTab" component={ERPLogBookScreen} />
     </Tab.Navigator>
   );
 };
