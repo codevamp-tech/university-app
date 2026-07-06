@@ -16,6 +16,100 @@ import { getAttendance } from '../../data/apiService';
 
 const { width } = Dimensions.get('window');
 
+// ─── Attendance Skeleton Component ─────────────────────────────────────────────
+const AnimatedSkeleton = ({ style, isDark }) => {
+  const animatedValue = React.useRef(new Animated.Value(0)).current;
+
+  React.useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(animatedValue, {
+          toValue: 1,
+          duration: 900,
+          useNativeDriver: true,
+        }),
+        Animated.timing(animatedValue, {
+          toValue: 0,
+          duration: 900,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+  }, []);
+
+  const opacity = animatedValue.interpolate({
+    inputRange: [0, 1],
+    outputRange: isDark ? [0.06, 0.18] : [0.08, 0.22],
+  });
+
+  return (
+    <Animated.View style={[{ backgroundColor: isDark ? '#FFF' : '#000', opacity }, style]} />
+  );
+};
+
+const SkeletonOverallCard = ({ isDark }) => (
+  <View style={{
+    padding: 24,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: isDark ? 'rgba(255,255,255,0.05)' : '#E5E7EB',
+    backgroundColor: isDark ? '#1E293B' : '#FFF',
+    gap: 16,
+    marginBottom: 20
+  }}>
+    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+      <AnimatedSkeleton style={{ width: 120, height: 16, borderRadius: 8 }} isDark={isDark} />
+      <AnimatedSkeleton style={{ width: 24, height: 24, borderRadius: 12 }} isDark={isDark} />
+    </View>
+    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+      <AnimatedSkeleton style={{ width: 90, height: 48, borderRadius: 12 }} isDark={isDark} />
+      <View style={{ flexDirection: 'row', gap: 12 }}>
+        <View style={{ alignItems: 'center', gap: 6 }}>
+          <AnimatedSkeleton style={{ width: 40, height: 16, borderRadius: 8 }} isDark={isDark} />
+          <AnimatedSkeleton style={{ width: 50, height: 12, borderRadius: 6 }} isDark={isDark} />
+        </View>
+        <View style={{ alignItems: 'center', gap: 6 }}>
+          <AnimatedSkeleton style={{ width: 40, height: 16, borderRadius: 8 }} isDark={isDark} />
+          <AnimatedSkeleton style={{ width: 50, height: 12, borderRadius: 6 }} isDark={isDark} />
+        </View>
+      </View>
+    </View>
+    <View style={{ height: 8, borderRadius: 4, backgroundColor: isDark ? '#334155' : '#F3F4F6' }}>
+      <AnimatedSkeleton style={{ width: '100%', height: '100%', borderRadius: 4 }} isDark={isDark} />
+    </View>
+    <AnimatedSkeleton style={{ width: '70%', height: 12, borderRadius: 6 }} isDark={isDark} />
+  </View>
+);
+
+const SkeletonPhaseRow = ({ isDark }) => (
+  <View style={{
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: isDark ? 'rgba(255,255,255,0.05)' : '#E5E7EB',
+    backgroundColor: isDark ? '#1E293B' : '#FFF',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12
+  }}>
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+      <AnimatedSkeleton style={{ width: 48, height: 48, borderRadius: 24 }} isDark={isDark} />
+      <View style={{ gap: 6 }}>
+        <AnimatedSkeleton style={{ width: 100, height: 16, borderRadius: 8 }} isDark={isDark} />
+        <AnimatedSkeleton style={{ width: 80, height: 12, borderRadius: 6 }} isDark={isDark} />
+      </View>
+    </View>
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+      <View style={{ alignItems: 'flex-end', gap: 4 }}>
+        <AnimatedSkeleton style={{ width: 40, height: 10, borderRadius: 5 }} isDark={isDark} />
+        <AnimatedSkeleton style={{ width: 35, height: 16, borderRadius: 8 }} isDark={isDark} />
+      </View>
+      <AnimatedSkeleton style={{ width: 24, height: 24, borderRadius: 12 }} isDark={isDark} />
+    </View>
+  </View>
+);
+
 const getParentSubjectName = (name) => {
   const n = name.trim();
   const lower = n.toLowerCase();
@@ -263,9 +357,14 @@ const ERPAttendanceScreen = ({ navigation }) => {
       </View>
 
       {loading ? (
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <ActivityIndicator size="large" color={colors.primary} />
-        </View>
+        <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+          <View style={{ paddingHorizontal: 20, marginTop: 24 }}>
+            <SkeletonOverallCard isDark={isDark} />
+            <SkeletonPhaseRow isDark={isDark} />
+            <SkeletonPhaseRow isDark={isDark} />
+            <SkeletonPhaseRow isDark={isDark} />
+          </View>
+        </ScrollView>
       ) : (
         <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
           {/* Hero Section */}
