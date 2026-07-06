@@ -235,13 +235,23 @@ const ERPLogBookScreen = ({ navigation }) => {
       };
 
       const res = await verifyLogbookActivity(accessToken, payload);
-      if (res && (res.success || res.message === 'Success' || res.data?.success || res.data?.message === 'Success')) {
+      const isSuccess = res && (
+        res.success || 
+        res.message === 'Success' || 
+        res.Mess === 'Update' || 
+        res.message === 'Update' || 
+        res.data?.success || 
+        res.data?.message === 'Success' || 
+        res.data?.Mess === 'Update'
+      );
+
+      if (isSuccess) {
         const updated = [...logbook];
         updated[index].student_verified = true;
         setLogbook(updated);
         Alert.alert('Success', 'Logbook entry verified and locked by student.');
       } else {
-        Alert.alert('Error', res?.message || 'Failed to verify log entry on ERP.');
+        Alert.alert('Error', res?.Mess || res?.message || 'Failed to verify log entry on ERP.');
       }
     } catch (err) {
       console.warn('[LogBookScreen] Error signing off:', err);
