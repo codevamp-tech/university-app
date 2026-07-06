@@ -163,7 +163,7 @@ const ERPLogBookScreen = ({ navigation }) => {
                   dateStr = dt.toISOString().split('T')[0];
                 }
               }
-              
+
               const isVerified = act.VerifiedBy ? true : false;
 
               flattened.push({
@@ -177,7 +177,7 @@ const ERPLogBookScreen = ({ navigation }) => {
                 date: dateStr,
                 category: catName,
                 department: deptName,
-                student_verified: false
+                student_verified: false // make it dynamic
               });
             });
           });
@@ -381,24 +381,24 @@ const ERPLogBookScreen = ({ navigation }) => {
                   >
                     {pill.key !== 'ALL' && (
                       catInfo.iconType === 'materialcommunity' ? (
-                        <MaterialCommunityIcons 
-                          name={catInfo.icon} 
-                          size={13} 
-                          color={isActive ? '#FFF' : accentColor} 
-                          style={{ marginRight: 6 }} 
+                        <MaterialCommunityIcons
+                          name={catInfo.icon}
+                          size={13}
+                          color={isActive ? '#FFF' : accentColor}
+                          style={{ marginRight: 6 }}
                         />
                       ) : (
-                        <MaterialIcons 
-                          name={catInfo.icon} 
-                          size={13} 
-                          color={isActive ? '#FFF' : accentColor} 
-                          style={{ marginRight: 6 }} 
+                        <MaterialIcons
+                          name={catInfo.icon}
+                          size={13}
+                          color={isActive ? '#FFF' : accentColor}
+                          style={{ marginRight: 6 }}
                         />
                       )
                     )}
                     <Text style={[
-                      styles.catFilterText, 
-                      { color: colors.textSecondary }, 
+                      styles.catFilterText,
+                      { color: colors.textSecondary },
                       isActive && { color: '#FFF', fontWeight: '800' }
                     ]}>
                       {pill.label}
@@ -460,20 +460,20 @@ const ERPLogBookScreen = ({ navigation }) => {
                           {catInfo.label}
                         </Text>
                       </View>
-                      
-                      <View style={{ flexDirection: 'row', gap: 6 }}>
+
+                      <View style={{ alignItems: 'flex-end', gap: 4, flexShrink: 0 }}>
                         {/* Faculty Verification Badge */}
                         <View style={[
                           styles.statusBadge,
                           { backgroundColor: entry.verified ? (isDark ? 'rgba(5, 150, 105, 0.15)' : '#D1FAE5') : (isDark ? 'rgba(255,255,255,0.05)' : '#F3F4F6') }
                         ]}>
-                          <MaterialIcons 
-                            name={entry.verified ? 'check' : 'pending'} 
-                            size={10} 
-                            color={entry.verified ? '#059669' : '#9CA3AF'} 
+                          <MaterialIcons
+                            name={entry.verified ? 'check' : 'pending'}
+                            size={10}
+                            color={entry.verified ? '#059669' : '#9CA3AF'}
                           />
                           <Text style={[
-                            styles.statusBadgeText, 
+                            styles.statusBadgeText,
                             { color: entry.verified ? '#059669' : '#9CA3AF' }
                           ]}>
                             FACULTY: {entry.verified ? 'VERIFIED' : 'PENDING'}
@@ -485,13 +485,13 @@ const ERPLogBookScreen = ({ navigation }) => {
                           styles.statusBadge,
                           { backgroundColor: entry.student_verified ? (isDark ? 'rgba(16, 185, 129, 0.15)' : '#ECFDF5') : (isDark ? 'rgba(255,255,255,0.05)' : '#F3F4F6') }
                         ]}>
-                          <MaterialIcons 
-                            name={entry.student_verified ? 'done-all' : 'pending'} 
-                            size={10} 
-                            color={entry.student_verified ? '#10B981' : '#9CA3AF'} 
+                          <MaterialIcons
+                            name={entry.student_verified ? 'done-all' : 'pending'}
+                            size={10}
+                            color={entry.student_verified ? '#10B981' : '#9CA3AF'}
                           />
                           <Text style={[
-                            styles.statusBadgeText, 
+                            styles.statusBadgeText,
                             { color: entry.student_verified ? '#10B981' : '#9CA3AF' }
                           ]}>
                             STUDENT: {entry.student_verified ? 'VERIFIED' : 'PENDING'}
@@ -528,7 +528,7 @@ const ERPLogBookScreen = ({ navigation }) => {
                       </Text>
                       <View style={{ flexDirection: 'row', gap: 8 }}>
                         {isFaculty && !entry.verified && (
-                          <TouchableOpacity 
+                          <TouchableOpacity
                             style={[styles.actionButton, { backgroundColor: colors.primary }]}
                             onPress={() => handleFacultySignOff(i)}
                             activeOpacity={0.8}
@@ -538,7 +538,7 @@ const ERPLogBookScreen = ({ navigation }) => {
                           </TouchableOpacity>
                         )}
                         {!isFaculty && entry.verified && !entry.student_verified && (
-                          <TouchableOpacity 
+                          <TouchableOpacity
                             style={[styles.actionButton, { backgroundColor: '#10B981' }]}
                             onPress={() => handleStudentSignOff(i)}
                             activeOpacity={0.8}
@@ -694,7 +694,7 @@ const styles = StyleSheet.create({
   cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
   },
   categoryBadge: {
     flexDirection: 'row',
@@ -704,6 +704,8 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     gap: 4,
+    flexShrink: 1,
+    marginRight: 8,
   },
   categoryBadgeText: { fontSize: 10, fontWeight: '700' },
   verifiedBadge: {
