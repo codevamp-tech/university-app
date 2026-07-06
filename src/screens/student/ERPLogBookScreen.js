@@ -161,6 +161,9 @@ const AttemptBadge = ({ val }) => {
   } else if (val === 'A') {
     bg = '#E2E8F0';
     color = '#475569';
+  } else if (val === 'R') {
+    bg = '#FFF7ED';
+    color = '#EA580C';
   }
   return (
     <View style={{ paddingHorizontal: 6, height: 28, minWidth: 28, borderRadius: 8, backgroundColor: bg, justifyContent: 'center', alignItems: 'center' }}>
@@ -489,6 +492,30 @@ const ERPLogBookScreen = ({ navigation }) => {
             </ScrollView>
           </View>
 
+          {/* Attempt Legend */}
+          <View style={{ paddingHorizontal: 16, marginTop: 16 }}>
+            <View style={[styles.attemptLegend, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <Text style={[styles.legendTitle, { color: colors.textPrimary }]}>Attempt Status Legend</Text>
+              <View style={styles.legendGrid}>
+                {[
+                  ['F', 'First Attempt'],
+                  ['M', 'Mastered'],
+                  ['C', 'Competent'],
+                  ['B', 'Below Expectation'],
+                  ['Re', 'Remedial'],
+                  ['R', 'Repeated'],
+                  ['P', 'Present'],
+                  ['A', 'Absent']
+                ].map(([val, label]) => (
+                  <View key={val} style={styles.legendItem}>
+                    <AttemptBadge val={val} />
+                    <Text style={[styles.legendItemText, { color: colors.textSecondary }]} numberOfLines={1}>{label}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          </View>
+
           {/* Logbook entries list */}
           <View style={{ padding: 16, gap: 12 }}>
             {filteredLogbook.length === 0 ? (
@@ -730,6 +757,35 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     padding: 16,
     borderWidth: 1,
+  },
+  attemptLegend: {
+    borderRadius: 20,
+    padding: 16,
+    borderWidth: 1,
+    gap: 12,
+  },
+  legendTitle: {
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 0.2,
+    textTransform: 'uppercase',
+  },
+  legendGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    width: '47%',
+    marginVertical: 2,
+  },
+  legendItemText: {
+    fontSize: 10,
+    fontWeight: '700',
+    flex: 1,
   }
 });
 
