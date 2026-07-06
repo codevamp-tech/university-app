@@ -392,34 +392,35 @@ const SubjectDetailModal = ({ visible, subject, onClose, accessToken }) => {
         const raw = attemptedData.value?.data || attemptedData.value || [];
         if (Array.isArray(raw) && raw.length > 0) {
           const sectionsMap = {};
-          raw.forEach((q, idx) => {
-            const secName = q.section || 'General Section';
+          raw.forEach((mq, idx) => {
+            const secName = mq.section || 'General Section';
             if (!sectionsMap[secName]) {
-              sectionsMap[secName] = { section: secName, questions: [] };
+              sectionsMap[secName] = { section: secName, mainQuestions: [] };
             }
 
-            let op1 = q.op1 || q.op_1;
-            let op2 = q.op2 || q.op_2;
-            let op3 = q.op3 || q.op_3;
-            let op4 = q.op4 || q.op_4;
-            let ans = q.ans || q.answer;
-            let student_ans = q.student_ans || q.student_answer;
+            const subquestions = (mq.subquestions || []).map((sq) => {
+              return {
+                id: sq.subquesid,
+                no: sq.optno || '',
+                type: sq.QType || 'DESC',
+                text: sq.ques || '',
+                op1: sq.optionA || '',
+                op2: sq.optionB || '',
+                op3: sq.optionC || '',
+                op4: sq.optionD || '',
+                obtained: parseFloat(sq.obtainedmarks || 0),
+                total: parseFloat(sq.ques_wtg || 0),
+                correct: sq.QType === 'MCQ' ? parseFloat(sq.obtainedmarks) > 0 : undefined
+              };
+            });
 
-            sectionsMap[secName].questions.push({
-              no: q.qno || q.mqno || String(idx + 1),
-              competency: q.qcomp || q.dcomp || q.QType || (secName.includes('PART A') ? 'MCQ' : 'DESC'),
-              obtained: parseFloat(q.obtainedmarks || 0),
-              total: parseFloat(q.ques_wtg || 10),
-              text: q.Main_question || q.ques || 'Question details',
-              correct: (q.QType === 'MCQ' || secName.includes('PART A')) && parseFloat(q.ques_wtg) === 1
-                ? (parseFloat(q.obtainedmarks) === 1)
-                : undefined,
-              op1,
-              op2,
-              op3,
-              op4,
-              ans,
-              student_ans
+            sectionsMap[secName].mainQuestions.push({
+              no: mq.mqno || String(idx + 1),
+              text: mq.Main_question || mq.ques || 'Question details',
+              quescode: mq.quescode,
+              obtained: parseFloat(mq.obtainedmarks || 0),
+              total: parseFloat(mq.totalmarks || mq.ques_wtg || 0),
+              subquestions
             });
           });
           nextAttempted = Object.values(sectionsMap);
@@ -705,105 +706,87 @@ const SubjectDetailModal = ({ visible, subject, onClose, accessToken }) => {
             <View style={[styles.sectionHeader, { backgroundColor: isDark ? 'rgba(99,102,241,0.15)' : '#EEF2FF' }]}>
               <Text style={[styles.sectionTitle, { color: '#6366F1' }]}>{sec.section}</Text>
             </View>
-            {(sec.questions || []).map((q, qi) => {
-              const qPct = q.total > 0 ? (q.obtained / q.total) * 100 : 0;
-              const isFail = qPct < 50;
-              return (
-                <View key={qi} style={[styles.questionRow, {
-                  backgroundColor: colors.card,
-                  borderLeftWidth: 3,
-                  borderLeftColor: q.correct === false ? '#EF4444' : q.correct === true ? '#10B981' : (isFail ? '#F59E0B' : '#10B981'),
-                }]}>
-                  <View style={styles.questionTop}>
-                    <View style={styles.questionMeta}>
-                      <Text style={[styles.questionNo, { color: colors.textSecondary }]}>Q{q.no}.</Text>
-                      <View style={[styles.qCompBadge, { backgroundColor: isDark ? 'rgba(99,102,241,0.1)' : '#EEF2FF' }]}>
-                        <Text style={styles.qCompText}>{q.competency}</Text>
-                      </View>
-                    </View>
-                    <View style={[styles.marksChip, {
-                      backgroundColor: isFail ? '#FEE2E2' : '#D1FAE5',
-                    }]}>
-                      <Text style={[styles.marksChipText, { color: isFail ? '#DC2626' : '#059669' }]}>
-                        {q.obtained}/{q.total}
-                      </Text>
-                    </View>
+
+            {/* Main Questions */}
+            {(sec.mainQuestions || []).map((mq, mqi) => (
+              <View key={mqi} style={[styles.mainQuestionCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                {/* Main Question Header */}
+                <View style={styles.mainQuestionHeader}>
+                  <Text style={[styles.mainQuestionNo, { color: colors.textSecondary }]}>Q{mq.no}.</Text>
+                  <View style={[styles.mainQuestionScoreBadge, { backgroundColor: isDark ? 'rgba(245,158,11,0.1)' : '#FEF3C7' }]}>
+                    <Text style={{ fontSize: 11, fontWeight: '800', color: '#D97706' }}>
+                      Section Score: {mq.obtained} / {mq.total} Marks
+                    </Text>
                   </View>
-                  <Text style={[styles.questionText, { color: colors.textPrimary, marginBottom: q.op1 ? 8 : 0 }]}>{q.text}</Text>
+                </View>
 
-                  {/* MCQ Options */}
-                  {q.op1 && (
-                    <View style={{ marginTop: 8, gap: 6 }}>
-                      {['op1', 'op2', 'op3', 'op4'].map((opKey, opIdx) => {
-                        const opText = q[opKey];
-                        if (!opText) return null;
-                        const isCorrectOption = q.ans === opKey;
-                        const isSelectedOption = q.student_ans === opKey;
+                {/* Main Question Text */}
+                <Text style={[styles.mainQuestionText, { color: colors.textPrimary }]}>{mq.text}</Text>
 
-                        let opBg = colors.card;
-                        let opBorderColor = colors.border;
-                        let opTextColor = colors.textPrimary;
-
-                        if (isCorrectOption) {
-                          opBg = isDark ? 'rgba(16,185,129,0.1)' : '#D1FAE5';
-                          opBorderColor = '#10B981';
-                          opTextColor = isDark ? '#34D399' : '#065F46';
-                        } else if (isSelectedOption && !isCorrectOption) {
-                          opBg = isDark ? 'rgba(239,68,68,0.1)' : '#FEE2E2';
-                          opBorderColor = '#EF4444';
-                          opTextColor = isDark ? '#F87171' : '#991B1B';
-                        }
-
-                        return (
-                          <View
-                            key={opIdx}
-                            style={{
-                              flexDirection: 'row',
-                              alignItems: 'center',
-                              padding: 10,
-                              borderRadius: 8,
-                              backgroundColor: opBg,
-                              borderWidth: 1,
-                              borderColor: opBorderColor,
-                              gap: 8,
-                            }}
-                          >
-                            <View style={{
-                              width: 18,
-                              height: 18,
-                              borderRadius: 9,
-                              backgroundColor: isCorrectOption ? '#10B981' : isSelectedOption ? '#EF4444' : (isDark ? 'rgba(255,255,255,0.1)' : '#E5E7EB'),
-                              justifyContent: 'center',
-                              alignItems: 'center'
-                            }}>
-                              <Text style={{ fontSize: 10, fontWeight: '800', color: isCorrectOption || isSelectedOption ? '#FFF' : colors.textSecondary }}>
-                                {String.fromCharCode(65 + opIdx)}
+                {/* Sub Questions */}
+                {mq.subquestions && mq.subquestions.length > 0 && (
+                  <View style={{ marginTop: 12, gap: 12, borderTopWidth: 1, borderTopColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)', paddingTop: 12 }}>
+                    {mq.subquestions.map((sq, sqi) => {
+                      const sqPct = sq.total > 0 ? (sq.obtained / sq.total) * 100 : 0;
+                      const isFail = sqPct < 50;
+                      return (
+                        <View key={sqi} style={[styles.subQuestionRow, { backgroundColor: isDark ? 'rgba(255,255,255,0.02)' : '#F8FAFC', borderColor: colors.border }]}>
+                          {/* Sub Question Header */}
+                          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                              <Text style={{ fontSize: 11, fontWeight: '800', color: colors.textSecondary }}>Sub Q {sq.no}.</Text>
+                              <View style={[styles.qCompBadge, { backgroundColor: sq.type === 'MCQ' ? '#DBEAFE' : '#CCFBF1' }]}>
+                                <Text style={[styles.qCompText, { color: sq.type === 'MCQ' ? '#1E40AF' : '#0F766E' }]}>{sq.type}</Text>
+                              </View>
+                            </View>
+                            <View style={[styles.marksChip, { backgroundColor: isFail ? '#FEE2E2' : '#D1FAE5' }]}>
+                              <Text style={[styles.marksChipText, { color: isFail ? '#DC2626' : '#059669' }]}>
+                                {sq.obtained}/{sq.total}
                               </Text>
                             </View>
-                            <Text style={{ fontSize: 13, fontWeight: '600', color: opTextColor, flex: 1 }}>
-                              {opText}
-                            </Text>
                           </View>
-                        );
-                      })}
-                    </View>
-                  )}
 
-                  {q.correct !== undefined && (
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 }}>
-                      <MaterialIcons
-                        name={q.correct ? 'check-circle' : 'cancel'}
-                        size={16}
-                        color={q.correct ? '#10B981' : '#EF4444'}
-                      />
-                      <Text style={{ fontSize: 12, color: q.correct ? '#10B981' : '#EF4444', fontWeight: '700' }}>
-                        {q.correct ? 'Correct' : 'Incorrect'}
-                      </Text>
-                    </View>
-                  )}
-                </View>
-              );
-            })}
+                          {/* Sub Question Text */}
+                          <Text style={[styles.subQuestionText, { color: colors.textPrimary }]}>{sq.text}</Text>
+
+                          {/* MCQ Options Rendering */}
+                          {sq.type === 'MCQ' && (
+                            <View style={{ marginTop: 6, gap: 6 }}>
+                              {[sq.op1, sq.op2, sq.op3, sq.op4].map((opVal, opIdx) => {
+                                if (!opVal) return null;
+                                return (
+                                  <View key={opIdx} style={[styles.mcqOptionCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                                    <View style={styles.mcqOptionCircle}>
+                                      <Text style={{ fontSize: 9, fontWeight: '800', color: colors.textSecondary }}>
+                                        {String.fromCharCode(65 + opIdx)}
+                                      </Text>
+                                    </View>
+                                    <Text style={{ fontSize: 12, color: colors.textPrimary, flex: 1 }}>{opVal}</Text>
+                                  </View>
+                                );
+                              })}
+                            </View>
+                          )}
+
+                          {sq.type === 'MCQ' && sq.correct !== undefined && (
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                              <MaterialIcons
+                                name={sq.correct ? 'check-circle' : 'cancel'}
+                                size={14}
+                                color={sq.correct ? '#10B981' : '#EF4444'}
+                              />
+                              <Text style={{ fontSize: 11, color: sq.correct ? '#10B981' : '#EF4444', fontWeight: '700' }}>
+                                {sq.correct ? 'Correct Answer' : 'Incorrect Answer'}
+                              </Text>
+                            </View>
+                          )}
+                        </View>
+                      );
+                    })}
+                  </View>
+                )}
+              </View>
+            ))}
           </View>
         ))}
         <View style={{ height: 40 }} />
@@ -1551,17 +1534,21 @@ const styles = StyleSheet.create({
   paperMetaText: { fontSize: 12, fontWeight: '600' },
   paperDivider: { height: 1, marginVertical: 12 },
   paperInst: { fontSize: 11, lineHeight: 16, fontStyle: 'italic' },
-  sectionHeader: { padding: 10, borderRadius: 10, marginBottom: 8 },
+  sectionHeader: { padding: 10, borderRadius: 10, marginBottom: 12 },
   sectionTitle: { fontSize: 13, fontWeight: '800' },
-  questionRow: { padding: 14, borderRadius: 14, marginBottom: 8 },
-  questionTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
-  questionMeta: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  questionNo: { fontSize: 13, fontWeight: '800' },
+  mainQuestionCard: { borderRadius: 16, padding: 16, borderWidth: 1, marginBottom: 16, gap: 10 },
+  mainQuestionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  mainQuestionNo: { fontSize: 13, fontWeight: '900' },
+  mainQuestionScoreBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
+  mainQuestionText: { fontSize: 13, fontWeight: '800', lineHeight: 19 },
+  subQuestionRow: { borderRadius: 12, padding: 12, borderWidth: 1, gap: 8, marginTop: 4 },
+  subQuestionText: { fontSize: 12, lineHeight: 17, fontWeight: '750' },
+  mcqOptionCard: { flexDirection: 'row', alignItems: 'center', padding: 8, borderRadius: 8, borderWidth: 1, gap: 8 },
+  mcqOptionCircle: { width: 18, height: 18, borderRadius: 9, backgroundColor: '#E5E7EB', justifyContent: 'center', alignItems: 'center' },
   qCompBadge: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
   qCompText: { fontSize: 10, fontWeight: '700', color: '#6366F1' },
   marksChip: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
-  marksChipText: { fontSize: 12, fontWeight: '800' },
-  questionText: { fontSize: 13, lineHeight: 19 },
+  marksChipText: { fontSize: 11, fontWeight: '800' },
 
   // Chart Tab
   chartTitle: { fontSize: 18, fontWeight: '800', textAlign: 'center' },
