@@ -456,6 +456,15 @@ const SubjectDetailModal = ({ visible, subject, onClose, accessToken }) => {
               };
             });
 
+            subquestions.sort((a, b) => {
+              const numA = parseInt(a.no, 10);
+              const numB = parseInt(b.no, 10);
+              if (!isNaN(numA) && !isNaN(numB)) {
+                return numA - numB;
+              }
+              return String(a.no).localeCompare(String(b.no));
+            });
+
             sectionsMap[secName].mainQuestions.push({
               no: mq.mqno || String(idx + 1),
               text: mq.Main_question || mq.ques || 'Question details',
@@ -775,9 +784,50 @@ const SubjectDetailModal = ({ visible, subject, onClose, accessToken }) => {
                       const sqPct = sq.total > 0 ? (sq.obtained / sq.total) * 100 : 0;
                       const isFail = sqPct < 50;
                       return (
-                        <View key={sqi} style={[styles.subQuestionRow, { backgroundColor: isDark ? 'rgba(255,255,255,0.02)' : '#F8FAFC', borderColor: colors.border }]}>
+                        <View
+                          key={sqi}
+                          style={[
+                            styles.subQuestionRow,
+                            {
+                              backgroundColor: isDark ? 'rgba(255,255,255,0.02)' : '#F8FAFC',
+                              borderColor: colors.border,
+                              position: 'relative',
+                              overflow: 'hidden'
+                            }
+                          ]}
+                        >
+                          {/* Background human-like checking mark */}
+                          <View
+                            pointerEvents="none"
+                            style={{
+                              position: 'absolute',
+                              right: 20,
+                              top: 0,
+                              bottom: 0,
+                              justifyContent: 'center',
+                              alignItems: 'center',
+                              zIndex: 0
+                            }}
+                          >
+                            {sq.obtained > 0 ? (
+                              <Feather
+                                name="check"
+                                size={110}
+                                color="#10B981"
+                                style={{ opacity: isDark ? 0.08 : 0.12, transform: [{ rotate: '-18deg' }] }}
+                              />
+                            ) : (
+                              <Feather
+                                name="x"
+                                size={110}
+                                color="#EF4444"
+                                style={{ opacity: isDark ? 0.08 : 0.12, transform: [{ rotate: '12deg' }] }}
+                              />
+                            )}
+                          </View>
+
                           {/* Sub Question Header */}
-                          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', zIndex: 1 }}>
                             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                               <Text style={{ fontSize: 11, fontWeight: '800', color: colors.textSecondary }}>Sub Q {sq.no}.</Text>
                               <View style={[styles.qCompBadge, { backgroundColor: sq.type === 'MCQ' ? '#DBEAFE' : '#CCFBF1' }]}>
@@ -792,11 +842,11 @@ const SubjectDetailModal = ({ visible, subject, onClose, accessToken }) => {
                           </View>
 
                           {/* Sub Question Text */}
-                          <Text style={[styles.subQuestionText, { color: colors.textPrimary }]}>{sq.text}</Text>
+                          <Text style={[styles.subQuestionText, { color: colors.textPrimary, zIndex: 1 }]}>{sq.text}</Text>
 
                           {/* MCQ Options Rendering */}
                           {sq.type === 'MCQ' && (
-                            <View style={{ marginTop: 6, gap: 6 }}>
+                            <View style={{ marginTop: 6, gap: 6, zIndex: 1 }}>
                               {[sq.op1, sq.op2, sq.op3, sq.op4].map((opVal, opIdx) => {
                                 if (!opVal) return null;
                                 return (
@@ -814,7 +864,7 @@ const SubjectDetailModal = ({ visible, subject, onClose, accessToken }) => {
                           )}
 
                           {sq.type === 'MCQ' && sq.correct !== undefined && (
-                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4, zIndex: 1 }}>
                               <MaterialIcons
                                 name={sq.correct ? 'check-circle' : 'cancel'}
                                 size={14}
