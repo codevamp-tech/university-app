@@ -407,7 +407,12 @@ export function computeSkillGap(student, results = [], erpCompetencyData = null)
       const academicExpected = allComps.map(c => c.competency);
       const academicMissing = erpGaps.map(c => c.competency);
       const academicScores = {};
-      allComps.forEach(c => { academicScores[c.competency] = c.pct; });
+      allComps.forEach(c => {
+        const existing = academicScores[c.competency];
+        if (existing === undefined || c.pct < existing) {
+          academicScores[c.competency] = c.pct;
+        }
+      });
       const academicMatched = academicExpected.filter(c => !academicMissing.includes(c));
       const academicMatchPct = academicExpected.length > 0 ? Math.round((academicMatched.length / academicExpected.length) * 100) : 100;
 
