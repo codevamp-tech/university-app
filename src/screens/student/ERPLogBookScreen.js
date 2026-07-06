@@ -8,7 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../hooks/useTheme';
 import { useUser } from '../../context/UserContext';
-import { getLogbook } from '../../data/apiService';
+import { getLogbook, verifyLogbookActivity } from '../../data/apiService';
 
 const { width } = Dimensions.get('window');
 
@@ -166,10 +166,13 @@ const ERPLogBookScreen = ({ navigation }) => {
 
               const isVerified = act.VerifiedBy ? true : false;
 
+              const isStudentVerified = act.received === 1 || act.student_verified === 1 || false;
+
               flattened.push({
                 activity: act.activityName || 'Clinical Rotation',
                 competency: act.compCode || act.code || 'MB1.1',
                 verified: isVerified,
+                student_verified: isStudentVerified,
                 a1: act.A1 || '-',
                 a2: act.A2 || '-',
                 a3: act.A3 || '-',
@@ -177,7 +180,9 @@ const ERPLogBookScreen = ({ navigation }) => {
                 date: dateStr,
                 category: catName,
                 department: deptName,
-                student_verified: false // make it dynamic
+                comp_code: act.compCode || act.code || '',
+                actmstid: act.actmstid || '8289',
+                cbmeyear: act.cbmeyear || '2024'
               });
             });
           });
@@ -218,11 +223,30 @@ const ERPLogBookScreen = ({ navigation }) => {
     Alert.alert('Success', 'Faculty verification completed successfully.');
   };
 
-  const handleStudentSignOff = (index) => {
-    const updated = [...logbook];
-    updated[index].student_verified = true;
-    setLogbook(updated);
-    Alert.alert('Success', 'Logbook entry verified and locked by student.');
+  const handleStudentSignOff = async (index) => {
+    const entry = logbook[index];
+    try {
+      const payload = {
+        category: entry.category || 'PracticalStudentLab',
+        comp_code: entry.comp_code || entry.competency || '',
+        actmstid: String(entry.actmstid || '8289'),
+        cbmeyear: String(entry.cbmeyear || '2024'),
+        received: 1
+      };
+
+      const res = await verifyLogbookActivity(accessToken, payload);
+      if (res && (res.success || res.message === 'Success' || res.data?.success || res.data?.message === 'Success')) {
+        const updated = [...logbook];
+        updated[index].student_verified = true;
+        setLogbook(updated);
+        Alert.alert('Success', 'Logbook entry verified and locked by student.');
+      } else {
+        Alert.alert('Error', res?.message || 'Failed to verify log entry on ERP.');
+      }
+    } catch (err) {
+      console.warn('[LogBookScreen] Error signing off:', err);
+      Alert.alert('Error', 'An error occurred while communicating with the server.');
+    }
   };
 
   const filteredLogbook = logbook.filter(entry => {

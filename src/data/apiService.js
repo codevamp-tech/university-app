@@ -358,6 +358,19 @@ export async function getLogbook(token) {
 }
 
 /**
+ * POST /api/v1/erp/logbook/verify
+ * Student signs off / verifies a logbook activity.
+ */
+export async function verifyLogbookActivity(token, payload) {
+  const res = await apiCall('/api/v1/erp/logbook/verify', {
+    method: 'POST',
+    headers: authHeaders(token),
+    body: JSON.stringify(payload),
+  });
+  return unwrap(res, { success: false });
+}
+
+/**
  * GET /api/v1/erp/schedule
  * Student weekly class schedule from ERP timetable.
  */
