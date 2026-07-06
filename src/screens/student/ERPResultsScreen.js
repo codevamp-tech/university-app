@@ -403,10 +403,31 @@ const SubjectDetailModal = ({ visible, subject, onClose, accessToken }) => {
           const mainData = await mainResp.json();
           
           if (Array.isArray(mainData) && mainData.length > 0) {
-            const enrichedRaw = await Promise.all(
-              mainData.map(async (mq) => {
-                try {
-                  const response = await fetch('https://myportal.srms.ac.in/SRMSERP/Faculty/printdetailpaperTheorySubQuestionResultcheck', {
+            const sectionsMap = {};
+            mainData.forEach((mq, idx) => {
+              const secName = mq.section || 'General Section';
+              if (!sectionsMap[secName]) {
+                sectionsMap[secName] = { section: secName, mainQuestions: [] };
+              }
+
+              sectionsMap[secName].mainQuestions.push({
+                no: mq.mqno || String(idx + 1),
+                text: mq.Main_question || mq.ques || 'Question details',
+                quescode: mq.quescode,
+                obtained: parseFloat(mq.obtainedmarks || 0),
+                total: parseFloat(mq.totalmarks || mq.ques_wtg || 0),
+                subquestions: [],
+                loadingSubquestions: true
+              });
+            });
+
+            const initialAttempted = Object.values(sectionsMap);
+            setAttempted(initialAttempted);
+
+            // Fetch subquestions for each main question in the background
+            mainData.forEach(async (mq) => {
+              try {
+                const response = await fetch('https://myportal.srms.ac.in/SRMSERP/Faculty/printdetailpaperTheorySubQuestionResultcheck', {
                   method: 'POST',
                   headers: {
                     'Content-Type': 'application/json',
@@ -419,68 +440,71 @@ const SubjectDetailModal = ({ visible, subject, onClose, accessToken }) => {
                   })
                 });
                 const subData = await response.json();
-                return {
-                  ...mq,
-                  subquestions: Array.isArray(subData) ? subData : []
-                };
+                const parsedSubs = (Array.isArray(subData) ? subData : []).map((sq) => {
+                  return {
+                    id: sq.subquesid,
+                    no: sq.optno || '',
+                    type: sq.QType || 'DESC',
+                    text: sq.ques || '',
+                    op1: sq.optionA || '',
+                    op2: sq.optionB || '',
+                    op3: sq.optionC || '',
+                    op4: sq.optionD || '',
+                    obtained: parseFloat(sq.obtainedmarks || 0),
+                    total: parseFloat(sq.ques_wtg || 0),
+                    correct: sq.QType === 'MCQ' ? parseFloat(sq.obtainedmarks) > 0 : undefined
+                  };
+                });
+
+                parsedSubs.sort((a, b) => {
+                  const numA = parseInt(a.no, 10);
+                  const numB = parseInt(b.no, 10);
+                  if (!isNaN(numA) && !isNaN(numB)) {
+                    return numA - numB;
+                  }
+                  return String(a.no).localeCompare(String(b.no));
+                });
+
+                setAttempted((prev) => {
+                  if (!prev) return prev;
+                  return prev.map((sec) => {
+                    const updatedMQs = sec.mainQuestions.map((item) => {
+                      if (item.quescode === mq.quescode) {
+                        return {
+                          ...item,
+                          subquestions: parsedSubs,
+                          loadingSubquestions: false
+                        };
+                      }
+                      return item;
+                    });
+                    return { ...sec, mainQuestions: updatedMQs };
+                  });
+                });
               } catch (err) {
-                console.warn('[ResultsScreen] Failed to fetch subquestions directly:', err);
-                return {
-                  ...mq,
-                  subquestions: []
-                };
+                console.warn('[ResultsScreen] Failed to fetch subquestions in background:', err);
+                setAttempted((prev) => {
+                  if (!prev) return prev;
+                  return prev.map((sec) => {
+                    const updatedMQs = sec.mainQuestions.map((item) => {
+                      if (item.quescode === mq.quescode) {
+                        return {
+                          ...item,
+                          loadingSubquestions: false
+                        };
+                      }
+                      return item;
+                    });
+                    return { ...sec, mainQuestions: updatedMQs };
+                  });
+                });
               }
-            })
-          );
-
-          const sectionsMap = {};
-          enrichedRaw.forEach((mq, idx) => {
-            const secName = mq.section || 'General Section';
-            if (!sectionsMap[secName]) {
-              sectionsMap[secName] = { section: secName, mainQuestions: [] };
-            }
-
-            const subquestions = (mq.subquestions || []).map((sq) => {
-              return {
-                id: sq.subquesid,
-                no: sq.optno || '',
-                type: sq.QType || 'DESC',
-                text: sq.ques || '',
-                op1: sq.optionA || '',
-                op2: sq.optionB || '',
-                op3: sq.optionC || '',
-                op4: sq.optionD || '',
-                obtained: parseFloat(sq.obtainedmarks || 0),
-                total: parseFloat(sq.ques_wtg || 0),
-                correct: sq.QType === 'MCQ' ? parseFloat(sq.obtainedmarks) > 0 : undefined
-              };
             });
-
-            subquestions.sort((a, b) => {
-              const numA = parseInt(a.no, 10);
-              const numB = parseInt(b.no, 10);
-              if (!isNaN(numA) && !isNaN(numB)) {
-                return numA - numB;
-              }
-              return String(a.no).localeCompare(String(b.no));
-            });
-
-            sectionsMap[secName].mainQuestions.push({
-              no: mq.mqno || String(idx + 1),
-              text: mq.Main_question || mq.ques || 'Question details',
-              quescode: mq.quescode,
-              obtained: parseFloat(mq.obtainedmarks || 0),
-              total: parseFloat(mq.totalmarks || mq.ques_wtg || 0),
-              subquestions
-            });
-          });
-          nextAttempted = Object.values(sectionsMap);
+          }
         }
+      } catch (err) {
+        console.warn('[ResultsScreen] Direct attempted paper fetch failed:', err);
       }
-    } catch (err) {
-      console.warn('[ResultsScreen] Direct attempted paper fetch failed:', err);
-    }
-      setAttempted(nextAttempted);
 
       let nextChart = [];
       if (chartResp.status === 'fulfilled') {
@@ -778,7 +802,12 @@ const SubjectDetailModal = ({ visible, subject, onClose, accessToken }) => {
                 <Text style={[styles.mainQuestionText, { color: colors.textPrimary }]}>{mq.text}</Text>
 
                 {/* Sub Questions */}
-                {mq.subquestions && mq.subquestions.length > 0 && (
+                {mq.loadingSubquestions ? (
+                  <View style={{ marginTop: 12, paddingVertical: 14, gap: 8, borderTopWidth: 1, borderTopColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)', paddingTop: 12, alignItems: 'center', justifyContent: 'center' }}>
+                    <ActivityIndicator size="small" color={colors.primary} />
+                    <Text style={{ fontSize: 11, color: colors.textSecondary, marginTop: 4 }}>Loading sub-questions...</Text>
+                  </View>
+                ) : mq.subquestions && mq.subquestions.length > 0 ? (
                   <View style={{ marginTop: 12, gap: 12, borderTopWidth: 1, borderTopColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)', paddingTop: 12 }}>
                     {mq.subquestions.map((sq, sqi) => {
                       const sqPct = sq.total > 0 ? (sq.obtained / sq.total) * 100 : 0;
@@ -879,7 +908,7 @@ const SubjectDetailModal = ({ visible, subject, onClose, accessToken }) => {
                       );
                     })}
                   </View>
-                )}
+                ) : null}
               </View>
             ))}
           </View>
