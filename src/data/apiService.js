@@ -2076,12 +2076,15 @@ export async function getAdminGeneralNotifications() {
 
         let attachmentUrl = null;
         const attachmentRaw = item.Attachment || item.attachment;
+        const baseurl = item.baseurl || item.baseUrl || '';
         if (attachmentRaw && String(attachmentRaw).trim() !== '' && String(attachmentRaw) !== '0' && String(attachmentRaw).toLowerCase() !== 'null') {
           const cleanAttach = String(attachmentRaw).replace(/\\/g, '/');
           if (cleanAttach.startsWith('http')) {
             attachmentUrl = cleanAttach;
+          } else if (baseurl) {
+            attachmentUrl = baseurl + cleanAttach;
           } else {
-            attachmentUrl = 'https://myportal.srms.ac.in' + (cleanAttach.startsWith('/') ? '' : '/') + cleanAttach;
+            attachmentUrl = 'https://myportal.srms.ac.in/SRMSERP/Faculty/ChatsFile?pathname=' + cleanAttach;
           }
         }
 
