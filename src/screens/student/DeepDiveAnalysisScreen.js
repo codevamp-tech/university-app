@@ -28,14 +28,45 @@ const DeepDiveAnalysisScreen = ({ navigation }) => {
   // Fetch academic results and ERP competency gaps
   const [academicResults, setAcademicResults] = useState([]);
   const [erpCompetencies, setErpCompetencies] = useState(null);
+  // Load cached ERP results and competency gaps on mount, fallback to API if empty
   useEffect(() => {
-    if (!accessToken) return;
-    getResults(accessToken)
-      .then(data => { if (data && data.length > 0) setAcademicResults(data); })
-      .catch(() => {});
-    getCompetencyGaps(accessToken)
-      .then(data => { if (data) setErpCompetencies(data); })
-      .catch(() => {});
+    async function loadData() {
+      try {
+        const cachedGaps = await AsyncStorage.getItem('@erp_competency_gaps_cache');
+        const cachedResults = await AsyncStorage.getItem('@erp_academic_results_cache');
+        
+        let loadedGaps = null;
+        let loadedResults = [];
+        
+        if (cachedGaps) {
+          loadedGaps = JSON.parse(cachedGaps);
+          setErpCompetencies(loadedGaps);
+        }
+        if (cachedResults) {
+          loadedResults = JSON.parse(cachedResults);
+          setAcademicResults(loadedResults);
+        }
+        
+        // If cache is empty and we have access token, fetch from API
+        if (!loadedGaps && accessToken) {
+          const gapsData = await getCompetencyGaps(accessToken);
+          if (gapsData) {
+            setErpCompetencies(gapsData);
+            await AsyncStorage.setItem('@erp_competency_gaps_cache', JSON.stringify(gapsData));
+          }
+        }
+        if ((!loadedResults || loadedResults.length === 0) && accessToken) {
+          const resultsData = await getResults(accessToken);
+          if (resultsData && resultsData.length > 0) {
+            setAcademicResults(resultsData);
+            await AsyncStorage.setItem('@erp_academic_results_cache', JSON.stringify(resultsData));
+          }
+        }
+      } catch (e) {
+        console.warn('Error loading ERP data in DeepDive:', e);
+      }
+    }
+    loadData();
   }, [accessToken]);
 
   // Compute gap data reactively whenever results, competency gaps, or user changes
