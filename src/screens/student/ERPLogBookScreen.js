@@ -226,7 +226,11 @@ const ERPLogBookScreen = ({ navigation }) => {
   const handleStudentSignOff = async (index) => {
     const entry = logbook[index];
     try {
-      const rollNumber = String(user?.username || '2162354');
+      const rollNumber = String(user?.username || '');
+      if (!rollNumber) {
+        Alert.alert('Error', 'Unable to retrieve student roll number. Please try logging in again.');
+        return;
+      }
       const batchYear = String(user?.batch_year || user?.year || '2024');
 
       const payload = {
