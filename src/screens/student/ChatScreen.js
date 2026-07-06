@@ -7,6 +7,8 @@ import {
 import { Ionicons, MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as ImagePicker from 'expo-image-picker';
+import * as DocumentPicker from 'expo-document-picker';
 import { APP_CONFIG } from '../../config/appConfig';
 import { useUser } from '../../context/UserContext';
 import { useChatSocketContext } from '../../context/ChatSocketContext';
@@ -16,6 +18,8 @@ import {
   getDMContactsAPI,
   getFacultyGroupChats,
   sendPortalChatMessage,
+  uploadAvatarAPI,
+  uploadDocumentAPI,
 } from '../../data/apiService';
 import { getAvatarUrl } from '../../utils/avatar';
 import { useTheme } from '../../hooks/useTheme';
@@ -52,6 +56,7 @@ const ChatScreen = ({ navigation }) => {
   const [portalMessages, setPortalMessages] = useState([]);
   const [loadingPortal, setLoadingPortal] = useState(false);
   const [sendingPortalMessage, setSendingPortalMessage] = useState(false);
+  const [selectedAttachment, setSelectedAttachment] = useState(null);
   const [activePortalSubject, setActivePortalSubject] = useState(PORTAL_SUBJECTS[0]);
   const slideAnim = useRef(new Animated.Value(0)).current;
 
@@ -199,14 +204,97 @@ const ChatScreen = ({ navigation }) => {
     }
   }, [lastError]);
 
+  const pickImage = async () => {
+    try {
+      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permissionResult.granted) {
+        Alert.alert('Permission Denied', 'Permission to access gallery is required to select images.');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: false,
+        quality: 0.8
+      });
+
+      if (!result.canceled && result.assets?.[0]) {
+        const asset = result.assets[0];
+        setSelectedAttachment({
+          uri: asset.uri,
+          name: asset.fileName || asset.uri.split('/').pop() || 'image.jpg',
+          type: 'image'
+        });
+      }
+    } catch (err) {
+      console.warn('[ChatScreen] pickImage error:', err);
+    }
+  };
+
+  const pickDocument = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: 'application/pdf',
+        copyToCacheDirectory: true
+      });
+
+      if (!result.canceled && result.assets?.[0]) {
+        const asset = result.assets[0];
+        setSelectedAttachment({
+          uri: asset.uri,
+          name: asset.name || 'document.pdf',
+          type: 'document'
+        });
+      }
+    } catch (err) {
+      console.warn('[ChatScreen] pickDocument error:', err);
+    }
+  };
+
+  const handleSelectAttachment = () => {
+    Alert.alert(
+      'Attach File',
+      'Choose an option:',
+      [
+        { text: 'Image from Gallery', onPress: pickImage },
+        { text: 'PDF Document', onPress: pickDocument },
+        { text: 'Cancel', style: 'cancel' }
+      ]
+    );
+  };
+
   // ── Send message ──────────────────────────────────────────────────────────
   const handleSend = useCallback(async () => {
     const textVal = inputText.trim();
-    if (!textVal || !activeChannel?.id) return;
+    if (activeChannel?.id === 'official-batch-chat') {
+      if (!textVal && !selectedAttachment) return;
+    } else {
+      if (!textVal) return;
+    }
+    if (!activeChannel?.id) return;
 
     if (activeChannel.id === 'official-batch-chat') {
       setSendingPortalMessage(true);
       try {
+        let attachmentUrl = '';
+        if (selectedAttachment) {
+          if (selectedAttachment.type === 'image') {
+            const res = await uploadAvatarAPI(accessToken || '', selectedAttachment.uri);
+            if (res.ok && res.json?.data?.avatar_url) {
+              attachmentUrl = res.json.data.avatar_url;
+            } else {
+              throw new Error(res.json?.message || 'Failed to upload image to server.');
+            }
+          } else if (selectedAttachment.type === 'document') {
+            const res = await uploadDocumentAPI(accessToken || '', selectedAttachment.uri, selectedAttachment.name);
+            if (res.ok && res.json?.data?.document_url) {
+              attachmentUrl = res.json.data.document_url;
+            } else {
+              throw new Error(res.json?.message || 'Failed to upload document to server.');
+            }
+          }
+        }
+
         const batchYear = isSuperAdmin ? selectedBatch : (user?.batch_year || user?.batch || '2025');
         const colgcd = user?.emp_id ? (user.emp_id.split('/')[1] || '11') : '11';
         const isFaculty = user?.role === 'teacher';
@@ -234,7 +322,7 @@ const ChatScreen = ({ navigation }) => {
           FacultyName: activePortalSubject.facultyName,
           ChatStudId: String(batchYear),
           StudentName: isFaculty ? String(batchYear) : (user?.name || user?.id || 'Student'),
-          Chat_Desc: textVal,
+          Chat_Desc: textVal || `Shared an attachment: ${selectedAttachment?.name || 'File'}`,
           classlabel: isFaculty ? 'left' : 'right',
           Crt_dt: formatCrtDt(new Date()),
           colgcd: colgcd,
@@ -248,7 +336,7 @@ const ChatScreen = ({ navigation }) => {
           subphase: '1',
           sub_phase_part: '1',
           department: activePortalSubject.department,
-          attachfile: '',
+          attachfile: attachmentUrl,
           subcode: activePortalSubject.subcode,
           msgflg: 0,
           ctype: 'GROUP'
@@ -257,12 +345,13 @@ const ChatScreen = ({ navigation }) => {
         const res = await sendPortalChatMessage(payload);
         if (res && res.Mess === 'Success') {
           setInputText('');
+          setSelectedAttachment(null);
           loadPortalMessages();
         } else {
           Alert.alert('Send Failed', res?.Mess || 'An error occurred while sending message to portal.');
         }
       } catch (err) {
-        Alert.alert('Send Failed', 'Failed to connect to the portal server.');
+        Alert.alert('Send Failed', err.message || 'Failed to send message.');
       } finally {
         setSendingPortalMessage(false);
       }
@@ -276,7 +365,7 @@ const ChatScreen = ({ navigation }) => {
       avatar_url: user?.avatar_url,
     });
     setInputText('');
-  }, [inputText, activeChannel, sendChannelMessage, user, activePortalSubject, loadPortalMessages, selectedBatch, isSuperAdmin]);
+  }, [inputText, activeChannel, sendChannelMessage, user, activePortalSubject, loadPortalMessages, selectedBatch, isSuperAdmin, selectedAttachment, accessToken]);
 
   // Current channel messages from socket or REST
   const messages = activeChannel?.id === 'official-batch-chat'
@@ -471,11 +560,38 @@ const ChatScreen = ({ navigation }) => {
         />
       )}
 
+      {/* Selected Attachment preview bar */}
+      {selectedAttachment && (
+        <View style={[styles.attachmentPreviewBar, { backgroundColor: isDark ? 'rgba(234,88,12,0.1)' : '#FFF7ED', borderTopColor: colors.border }]}>
+          <Ionicons 
+            name={selectedAttachment.type === 'image' ? 'image-outline' : 'document-text-outline'} 
+            size={18} 
+            color={colors.primary} 
+          />
+          <Text style={[styles.attachmentPreviewText, { color: colors.primary }]} numberOfLines={1}>
+            {selectedAttachment.name}
+          </Text>
+          <TouchableOpacity onPress={() => setSelectedAttachment(null)} style={styles.attachmentClearBtn}>
+            <Ionicons name="close-circle" size={18} color={colors.textSecondary} />
+          </TouchableOpacity>
+        </View>
+      )}
+
       {/* Input Bar */}
       <View style={[
         styles.inputBar,
         { backgroundColor: colors.card, borderTopColor: colors.border, paddingBottom: Math.max(insets.bottom, 12) }
       ]}>
+        {activeChannel?.id === 'official-batch-chat' && (
+          <TouchableOpacity
+            style={[styles.attachTriggerBtn, { backgroundColor: isDark ? '#1F2937' : '#F3F4F6' }]}
+            onPress={handleSelectAttachment}
+            disabled={sendingPortalMessage}
+          >
+            <Ionicons name="attach-outline" size={24} color={colors.textSecondary} />
+          </TouchableOpacity>
+        )}
+
         <TextInput
           style={[
             styles.textInput,
@@ -493,15 +609,15 @@ const ChatScreen = ({ navigation }) => {
           autoCapitalize="sentences"
         />
         <TouchableOpacity
-          style={[styles.sendBtn, { backgroundColor: (inputText.trim() && !sendingPortalMessage) ? colors.primary : (isDark ? '#374151' : '#E5E7EB') }]}
+          style={[styles.sendBtn, { backgroundColor: ((inputText.trim() || selectedAttachment) && !sendingPortalMessage) ? colors.primary : (isDark ? '#374151' : '#E5E7EB') }]}
           onPress={handleSend}
-          disabled={!inputText.trim() || sendingPortalMessage}
+          disabled={(!inputText.trim() && !selectedAttachment) || sendingPortalMessage}
           activeOpacity={0.8}
         >
           {sendingPortalMessage ? (
             <ActivityIndicator size="small" color="#FFFFFF" />
           ) : (
-            <MaterialIcons name="send" size={20} color={inputText.trim() ? '#FFFFFF' : (isDark ? '#6B7280' : '#9CA3AF')} />
+            <MaterialIcons name="send" size={20} color={(inputText.trim() || selectedAttachment) ? '#FFFFFF' : (isDark ? '#6B7280' : '#9CA3AF')} />
           )}
         </TouchableOpacity>
       </View>
@@ -820,6 +936,29 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     marginTop: 6,
     alignSelf: 'flex-start',
+  },
+  attachmentPreviewBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderTopWidth: 1,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    gap: 8,
+  },
+  attachmentPreviewText: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  attachmentClearBtn: {
+    padding: 2,
+  },
+  attachTriggerBtn: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
 
