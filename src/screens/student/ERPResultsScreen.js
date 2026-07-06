@@ -391,8 +391,42 @@ const SubjectDetailModal = ({ visible, subject, onClose, accessToken }) => {
       if (attemptedData.status === 'fulfilled') {
         const raw = attemptedData.value?.data || attemptedData.value || [];
         if (Array.isArray(raw) && raw.length > 0) {
+          const rollno = String(user?.username || '2143089');
+          const enrichedRaw = await Promise.all(
+            raw.map(async (mq) => {
+              if (mq.subquestions && mq.subquestions.length > 0) {
+                return mq;
+              }
+              try {
+                const response = await fetch('https://myportal.srms.ac.in/SRMSERP/Faculty/printdetailpaperTheorySubQuestionResultcheck', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'User-Agent': 'Mozilla/5.0'
+                  },
+                  body: JSON.stringify({
+                    papercode: String(pcode),
+                    quescode: String(mq.quescode),
+                    stud_rollno: rollno
+                  })
+                });
+                const subData = await response.json();
+                return {
+                  ...mq,
+                  subquestions: Array.isArray(subData) ? subData : []
+                };
+              } catch (err) {
+                console.warn('[ResultsScreen] Failed to fetch subquestions directly:', err);
+                return {
+                  ...mq,
+                  subquestions: []
+                };
+              }
+            })
+          );
+
           const sectionsMap = {};
-          raw.forEach((mq, idx) => {
+          enrichedRaw.forEach((mq, idx) => {
             const secName = mq.section || 'General Section';
             if (!sectionsMap[secName]) {
               sectionsMap[secName] = { section: secName, mainQuestions: [] };
