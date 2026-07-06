@@ -5,14 +5,17 @@ import {
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as ImagePicker from 'expo-image-picker';
+import * as DocumentPicker from 'expo-document-picker';
 import { useUser } from '../../context/UserContext';
-import { getFacultyBatches, getFacultyGroupChats, sendPortalChatMessage } from '../../data/apiService';
+import { getFacultyBatches, getFacultyGroupChats, sendPortalChatMessage, uploadAvatarAPI, uploadDocumentAPI } from '../../data/apiService';
+
 
 const { width } = Dimensions.get('window');
 
 const FacultyOfficialChatScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
-  const { user } = useUser();
+  const { user, accessToken } = useUser();
 
   const [batches, setBatches] = useState([]);
   const [selectedBatch, setSelectedBatch] = useState(null);
@@ -23,6 +26,7 @@ const FacultyOfficialChatScreen = ({ navigation }) => {
   const [showBatchDropdown, setShowBatchDropdown] = useState(false);
   const [inputText, setInputText] = useState('');
   const [sendingMessage, setSendingMessage] = useState(false);
+  const [selectedAttachment, setSelectedAttachment] = useState(null);
 
   const flatListRef = useRef(null);
 
@@ -52,8 +56,6 @@ const FacultyOfficialChatScreen = ({ navigation }) => {
     if (!isRefresh) setLoadingChats(true);
     try {
       const chatHistory = await getFacultyGroupChats(user.emp_id, selectedBatch.name);
-      // Reverse messages if needed, ERP API typically returns them in reverse or chronological order
-      // Let's keep the order returned or check
       setMessages(chatHistory || []);
     } catch (err) {
       console.warn(err);
@@ -80,11 +82,90 @@ const FacultyOfficialChatScreen = ({ navigation }) => {
     }
   }, [messages.length]);
 
+  const pickImage = async () => {
+    try {
+      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permissionResult.granted) {
+        Alert.alert('Permission Denied', 'Permission to access gallery is required to select images.');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: false,
+        quality: 0.8
+      });
+
+      if (!result.canceled && result.assets?.[0]) {
+        const asset = result.assets[0];
+        setSelectedAttachment({
+          uri: asset.uri,
+          name: asset.fileName || asset.uri.split('/').pop() || 'image.jpg',
+          type: 'image'
+        });
+      }
+    } catch (err) {
+      console.warn('[FacultyOfficialChatScreen] pickImage error:', err);
+    }
+  };
+
+  const pickDocument = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: 'application/pdf',
+        copyToCacheDirectory: true
+      });
+
+      if (!result.canceled && result.assets?.[0]) {
+        const asset = result.assets[0];
+        setSelectedAttachment({
+          uri: asset.uri,
+          name: asset.name || 'document.pdf',
+          type: 'document'
+        });
+      }
+    } catch (err) {
+      console.warn('[FacultyOfficialChatScreen] pickDocument error:', err);
+    }
+  };
+
+  const handleSelectAttachment = () => {
+    Alert.alert(
+      'Attach File',
+      'Choose an option:',
+      [
+        { text: 'Image from Gallery', onPress: pickImage },
+        { text: 'PDF Document', onPress: pickDocument },
+        { text: 'Cancel', style: 'cancel' }
+      ]
+    );
+  };
+
   const handleSend = async () => {
     const textVal = inputText.trim();
-    if (!textVal || !selectedBatch || !user?.emp_id) return;
+    if ((!textVal && !selectedAttachment) || !selectedBatch || !user?.emp_id) return;
     setSendingMessage(true);
     try {
+      let attachmentUrl = '';
+      
+      if (selectedAttachment) {
+        if (selectedAttachment.type === 'image') {
+          const res = await uploadAvatarAPI(accessToken || '', selectedAttachment.uri);
+          if (res.ok && res.json?.data?.avatar_url) {
+            attachmentUrl = res.json.data.avatar_url;
+          } else {
+            throw new Error(res.json?.message || 'Failed to upload image to server.');
+          }
+        } else if (selectedAttachment.type === 'document') {
+          const res = await uploadDocumentAPI(accessToken || '', selectedAttachment.uri, selectedAttachment.name);
+          if (res.ok && res.json?.data?.document_url) {
+            attachmentUrl = res.json.data.document_url;
+          } else {
+            throw new Error(res.json?.message || 'Failed to upload document to server.');
+          }
+        }
+      }
+
       const parts = String(user.emp_id).split('/');
       const colgcd = parts.length >= 2 ? parts[1] : '11';
       const batchName = selectedBatch.name;
@@ -112,7 +193,7 @@ const FacultyOfficialChatScreen = ({ navigation }) => {
         FacultyName: String(user.name || 'Faculty'),
         ChatStudId: String(batchName),
         StudentName: String(batchName),
-        Chat_Desc: textVal,
+        Chat_Desc: textVal || `Shared an attachment: ${selectedAttachment?.name || 'File'}`,
         classlabel: 'left',
         Crt_dt: formatCrtDt(new Date()),
         colgcd: String(colgcd),
@@ -126,7 +207,7 @@ const FacultyOfficialChatScreen = ({ navigation }) => {
         subphase: '1',
         sub_phase_part: '1',
         department: String(user.department || 'PHYSIOLOGY'),
-        attachfile: '',
+        attachfile: attachmentUrl,
         subcode: 'PY',
         msgflg: 0,
         ctype: 'GROUP'
@@ -135,13 +216,14 @@ const FacultyOfficialChatScreen = ({ navigation }) => {
       const res = await sendPortalChatMessage(payload);
       if (res && res.Mess === 'Success') {
         setInputText('');
+        setSelectedAttachment(null);
         fetchChats(true);
       } else {
         Alert.alert('Send Failed', res?.Mess || 'An error occurred.');
       }
     } catch (err) {
       console.warn('[FacultyOfficialChatScreen] Send error:', err);
-      Alert.alert('Send Failed', 'Failed to connect to the portal server.');
+      Alert.alert('Send Failed', err.message || 'Failed to send message.');
     } finally {
       setSendingMessage(false);
     }
@@ -272,11 +354,36 @@ const FacultyOfficialChatScreen = ({ navigation }) => {
         />
       )}
 
+      {/* Selected Attachment preview bar */}
+      {selectedAttachment && (
+        <View style={styles.attachmentPreviewBar}>
+          <Ionicons 
+            name={selectedAttachment.type === 'image' ? 'image-outline' : 'document-text-outline'} 
+            size={18} 
+            color="#EA580C" 
+          />
+          <Text style={styles.attachmentPreviewText} numberOfLines={1}>
+            {selectedAttachment.name}
+          </Text>
+          <TouchableOpacity onPress={() => setSelectedAttachment(null)} style={styles.attachmentClearBtn}>
+            <Ionicons name="close-circle" size={18} color="#9CA3AF" />
+          </TouchableOpacity>
+        </View>
+      )}
+
       {/* Input Bar */}
       <View style={[
         styles.inputBar,
         { borderTopColor: '#E5E7EB', paddingBottom: Math.max(insets.bottom, 12) }
       ]}>
+        <TouchableOpacity
+          style={styles.attachTriggerBtn}
+          onPress={handleSelectAttachment}
+          disabled={sendingMessage}
+        >
+          <Ionicons name="attach-outline" size={24} color="#6B7280" />
+        </TouchableOpacity>
+
         <TextInput
           style={styles.textInput}
           value={inputText}
@@ -288,15 +395,15 @@ const FacultyOfficialChatScreen = ({ navigation }) => {
           editable={!!selectedBatch}
         />
         <TouchableOpacity
-          style={[styles.sendBtn, { backgroundColor: (inputText.trim() && !sendingMessage) ? '#EA580C' : '#E5E7EB' }]}
+          style={[styles.sendBtn, { backgroundColor: ((inputText.trim() || selectedAttachment) && !sendingMessage) ? '#EA580C' : '#E5E7EB' }]}
           onPress={handleSend}
-          disabled={!inputText.trim() || sendingMessage || !selectedBatch}
+          disabled={(!inputText.trim() && !selectedAttachment) || sendingMessage || !selectedBatch}
           activeOpacity={0.8}
         >
           {sendingMessage ? (
             <ActivityIndicator size="small" color="#FFFFFF" />
           ) : (
-            <Ionicons name="send" size={18} color={inputText.trim() ? '#FFFFFF' : '#9CA3AF'} />
+            <Ionicons name="send" size={18} color={(inputText.trim() || selectedAttachment) ? '#FFFFFF' : '#9CA3AF'} />
           )}
         </TouchableOpacity>
       </View>
@@ -448,6 +555,33 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  attachmentPreviewBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFBEB',
+    borderTopWidth: 1,
+    borderTopColor: '#FEF3C7',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    gap: 8,
+  },
+  attachmentPreviewText: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#D97706',
+  },
+  attachmentClearBtn: {
+    padding: 2,
+  },
+  attachTriggerBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#F3F4F6',
     justifyContent: 'center',
     alignItems: 'center',
   },
