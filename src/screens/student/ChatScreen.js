@@ -327,9 +327,14 @@ const ChatScreen = ({ navigation }) => {
             ? [styles.bubbleRight, { backgroundColor: colors.primary }]
             : [styles.bubbleLeft, { backgroundColor: isDark ? colors.card : '#F3F4F6' }]
         ]}>
+          {isMe && activeChannel?.id === 'official-batch-chat' && (
+            <Text style={[styles.bubbleSender, { color: '#FFFFFF', opacity: 0.85, fontSize: 11, fontWeight: '700', marginBottom: 2 }]}>
+              You {user?.role === 'teacher' || user?.role === 'super_admin' ? '[F]' : '[S]'}
+            </Text>
+          )}
           {!isMe && (
             <Text style={[styles.bubbleSender, { color: colors.primary }]}>
-              {senderName} {activeChannel?.id === 'official-batch-chat' && item.department ? `(${item.department})` : ''}
+              {senderName}{activeChannel?.id === 'official-batch-chat' ? (item.classlabel === 'left' ? ' [F]' : ' [S]') : ''} {activeChannel?.id === 'official-batch-chat' && item.department ? `(${item.department})` : ''}
             </Text>
           )}
           <Text style={[styles.bubbleText, { color: isMe ? '#FFFFFF' : colors.textPrimary }]}>{messageText}</Text>

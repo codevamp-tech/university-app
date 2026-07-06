@@ -152,15 +152,15 @@ const FacultyOfficialChatScreen = ({ navigation }) => {
     return (
       <View style={[styles.messageRow, isMe ? styles.myMsgRow : styles.otherMsgRow]}>
         {!isMe && (
-          <View style={styles.avatarCircle}>
-            <Text style={styles.avatarLetter}>
-              {item.sender ? item.sender.slice(0, 1).toUpperCase() : 'S'}
+          <View style={[styles.avatarCircle, { backgroundColor: item.classlabel === 'left' ? '#EA580C20' : '#3B82F620' }]}>
+            <Text style={[styles.avatarLetter, { color: item.classlabel === 'left' ? '#EA580C' : '#3B82F6' }]}>
+              {item.classlabel === 'left' ? 'F' : 'S'}
             </Text>
           </View>
         )}
         <View style={[styles.bubble, isMe ? styles.myBubble : styles.otherBubble]}>
           <Text style={[styles.senderName, isMe ? styles.mySender : styles.otherSender]}>
-            {isMe ? 'You (Faculty)' : item.sender}
+            {isMe ? 'You (Faculty) [F]' : `${item.sender} ${item.classlabel === 'left' ? '[F]' : '[S]'}`}
           </Text>
           {item.department ? (
             <Text style={styles.deptBadge}>{item.department.toUpperCase()}</Text>
