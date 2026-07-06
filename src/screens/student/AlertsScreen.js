@@ -297,7 +297,8 @@ const AlertsScreen = ({ navigation }) => {
             <View style={{ padding: 40, alignItems: 'center' }}>
               <MaterialIcons name="notifications-none" size={48} color={colors.textMuted} style={{ marginBottom: 16 }} />
               <Text style={{ color: colors.textSecondary, fontSize: 16, fontWeight: '600' }}>No {activeTab === 'All Updates' ? '' : activeTab.toLowerCase() + ' '}updates yet</Text>
-                  ) : (
+            </View>
+          ) : (
             filteredNotifs.map((notif, index) => {
               const isErp = String(notif.id).startsWith('erp-announcement-');
               const cardBgColors = isErp
