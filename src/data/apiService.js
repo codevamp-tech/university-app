@@ -2053,6 +2053,44 @@ export async function getEBooks(searchQuery = '', colg = '11') {
   return [];
 }
 
+/**
+ * Fetch general admin announcements shown to students from live ERP.
+ */
+export async function getAdminGeneralNotifications() {
+  try {
+    const response = await fetch('https://myportal.srms.ac.in/SRMSERP/Home/GetAdminGNotf');
+    const data = await response.json();
+    if (Array.isArray(data)) {
+      return data.map((item, index) => {
+        let rawDate = new Date();
+        try {
+          const dateStr = String(item.formatted_date || '').trim();
+          if (dateStr) {
+            const currentYear = new Date().getFullYear();
+            const parsed = Date.parse(`${dateStr.replace(',', ' ')} ${currentYear}`);
+            if (!isNaN(parsed)) {
+              rawDate = new Date(parsed);
+            }
+          }
+        } catch {}
+
+        return {
+          id: `erp-announcement-${index}-${item.formatted_date}`,
+          title: `[ERP] ${item.FacultyName || 'Administration'}`,
+          body: (item.Chat_Desc || '').trim(),
+          type: 'announcement',
+          urgency: 'medium',
+          is_read: false,
+          created_at: rawDate.toISOString(),
+        };
+      });
+    }
+  } catch (err) {
+    console.warn('[apiService] getAdminGeneralNotifications failed:', err);
+  }
+  return [];
+}
+
 
 
 

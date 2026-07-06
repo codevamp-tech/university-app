@@ -2,13 +2,14 @@ import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, RefreshControl
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons, MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { APP_CONFIG } from '../../config/appConfig';
 import { useTheme } from '../../hooks/useTheme';
 import { useUser } from '../../context/UserContext';
-import { getAlerts, markAllAlertsRead, markAlertRead } from '../../data/apiService';
+import { getAlerts, markAllAlertsRead, markAlertRead, getAdminGeneralNotifications } from '../../data/apiService';
 
 const { width } = Dimensions.get('window');
 const TABS = ['All Updates', 'Social', 'Marketplace', 'Announcements'];
@@ -23,39 +24,76 @@ const AlertsScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  const onRefresh = React.useCallback(async () => {
-    if (!accessToken) return;
-    setRefreshing(true);
+  const loadAlerts = React.useCallback(async (isRefresh = false) => {
+    if (!accessToken) { setLoading(false); setRefreshing(false); return; }
+    if (isRefresh) setRefreshing(true);
+    else setLoading(true);
     try {
-      const { data } = await getAlerts(accessToken);
-      setApiAlerts(data || []);
+      // 1. Fetch backend alerts
+      const res = await getAlerts(accessToken);
+      const backendAlerts = res?.data || [];
+
+      // 2. Fetch ERP general notifications
+      const erpAnnouncements = await getAdminGeneralNotifications();
+      let readErpIds = [];
+      try {
+        readErpIds = JSON.parse(await AsyncStorage.getItem('read_erp_announcements') || '[]');
+      } catch {}
+
+      const mappedErp = erpAnnouncements.map(a => ({
+        ...a,
+        is_read: readErpIds.includes(a.id)
+      }));
+
+      // 3. Combine and sort by date descending
+      const combined = [...backendAlerts, ...mappedErp].sort((a, b) => {
+        const dateA = new Date(a.created_at || 0);
+        const dateB = new Date(b.created_at || 0);
+        return dateB - dateA;
+      });
+
+      setApiAlerts(combined);
     } catch (e) {
-      console.log('Error refreshing alerts:', e);
+      console.log('Error loading alerts:', e);
     } finally {
+      setLoading(false);
       setRefreshing(false);
     }
   }, [accessToken]);
 
+  const onRefresh = React.useCallback(() => {
+    loadAlerts(true);
+  }, [loadAlerts]);
+
   useEffect(() => {
-    if (!accessToken) { setLoading(false); return; }
-    let mounted = true;
-    getAlerts(accessToken).then(({ data }) => {
-      if (!mounted) return;
-      setApiAlerts(data || []);
-      setLoading(false);
-    }).catch(() => setLoading(false));
-    return () => { mounted = false; };
-  }, [accessToken]);
+    loadAlerts(false);
+  }, [loadAlerts]);
 
   const handleMarkAllRead = async () => {
-    if (accessToken) await markAllAlertsRead(accessToken);
+    try {
+      if (accessToken) await markAllAlertsRead(accessToken);
+      const erpIds = apiAlerts.filter(a => a.id.startsWith('erp-announcement-')).map(a => a.id);
+      const readIds = JSON.parse(await AsyncStorage.getItem('read_erp_announcements') || '[]');
+      const newReadIds = Array.from(new Set([...readIds, ...erpIds]));
+      await AsyncStorage.setItem('read_erp_announcements', JSON.stringify(newReadIds));
+    } catch {}
     setApiAlerts(prev => prev.map(a => ({ ...a, is_read: true })));
   };
 
   const handleAlertTap = async (notif) => {
     // Mark as read optimistically
-    if (notif.isNew && accessToken) {
-      markAlertRead(accessToken, notif.id).catch(() => {});
+    if (notif.isNew) {
+      if (String(notif.id).startsWith('erp-announcement-')) {
+        try {
+          const readIds = JSON.parse(await AsyncStorage.getItem('read_erp_announcements') || '[]');
+          if (!readIds.includes(notif.id)) {
+            readIds.push(notif.id);
+            await AsyncStorage.setItem('read_erp_announcements', JSON.stringify(readIds));
+          }
+        } catch {}
+      } else if (accessToken) {
+        markAlertRead(accessToken, notif.id).catch(() => {});
+      }
       setApiAlerts(prev => prev.map(a => a.id === notif.id ? { ...a, is_read: true } : a));
     }
     navigateAlert(notif);
