@@ -209,6 +209,18 @@ const ChatScreen = ({ navigation }) => {
           return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
         };
 
+        let calculatedCbme = '2024';
+        try {
+          const bNum = parseInt(batchYear);
+          if (!isNaN(bNum)) {
+            if (bNum === 2023) {
+              calculatedCbme = '2024';
+            } else {
+              calculatedCbme = String(bNum - 1);
+            }
+          }
+        } catch {}
+
         const payload = {
           chatid: 0,
           ChatFacId: activePortalSubject.facultyId,
@@ -220,15 +232,19 @@ const ChatScreen = ({ navigation }) => {
           Crt_dt: formatCrtDt(new Date()),
           colgcd: colgcd,
           course_cd: '1',
-          cbme: String(parseInt(batchYear) - 1),
+          coursecd: '1',
+          cbme: String(calculatedCbme),
+          cbmey: String(calculatedCbme),
           batch: String(batchYear),
           phase: '1',
           sub_phase: '1',
+          subphase: '1',
           sub_phase_part: '1',
           department: activePortalSubject.department,
           attachfile: '',
           subcode: activePortalSubject.subcode,
-          msgflg: 0
+          msgflg: 0,
+          ctype: 'GROUP'
         };
 
         const res = await sendPortalChatMessage(payload);

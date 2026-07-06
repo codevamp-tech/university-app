@@ -1884,7 +1884,13 @@ export async function getFacultyGroupChats(empId, batchName, phase = '1', subpha
   let cbmey = '2024';
   try {
     const batchYear = parseInt(batchName);
-    if (!isNaN(batchYear)) cbmey = String(batchYear - 1);
+    if (!isNaN(batchYear)) {
+      if (batchYear === 2023) {
+        cbmey = '2024';
+      } else {
+        cbmey = String(batchYear - 1);
+      }
+    }
   } catch {}
 
   try {

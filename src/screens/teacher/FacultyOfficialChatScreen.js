@@ -94,6 +94,18 @@ const FacultyOfficialChatScreen = ({ navigation }) => {
         return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
       };
 
+      let calculatedCbme = '2024';
+      try {
+        const bNum = parseInt(batchName);
+        if (!isNaN(bNum)) {
+          if (bNum === 2023) {
+            calculatedCbme = '2024';
+          } else {
+            calculatedCbme = String(bNum - 1);
+          }
+        }
+      } catch {}
+
       const payload = {
         chatid: 0,
         ChatFacId: String(user.emp_id),
@@ -105,15 +117,19 @@ const FacultyOfficialChatScreen = ({ navigation }) => {
         Crt_dt: formatCrtDt(new Date()),
         colgcd: String(colgcd),
         course_cd: '1',
-        cbme: String(parseInt(batchName) - 1),
+        coursecd: '1',
+        cbme: String(calculatedCbme),
+        cbmey: String(calculatedCbme),
         batch: String(batchName),
         phase: '1',
         sub_phase: '1',
+        subphase: '1',
         sub_phase_part: '1',
         department: String(user.department || 'PHYSIOLOGY'),
         attachfile: '',
         subcode: 'PY',
-        msgflg: 0
+        msgflg: 0,
+        ctype: 'GROUP'
       };
 
       const res = await sendPortalChatMessage(payload);
