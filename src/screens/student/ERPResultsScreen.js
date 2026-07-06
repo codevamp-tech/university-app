@@ -297,6 +297,28 @@ const SkeletonLogbookCard = ({ isDark }) => (
   </View>
 );
 
+const SkeletonSubQuestion = ({ isDark }) => (
+  <View style={{
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: isDark ? '#334155' : '#E2E8F0',
+    backgroundColor: isDark ? 'rgba(255,255,255,0.02)' : '#F8FAFC',
+    gap: 10,
+    marginTop: 8
+  }}>
+    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+        <AnimatedSkeleton style={{ width: 60, height: 14, borderRadius: 6 }} isDark={isDark} />
+        <AnimatedSkeleton style={{ width: 45, height: 16, borderRadius: 6 }} isDark={isDark} />
+      </View>
+      <AnimatedSkeleton style={{ width: 40, height: 18, borderRadius: 8 }} isDark={isDark} />
+    </View>
+    <AnimatedSkeleton style={{ width: '85%', height: 12, borderRadius: 6 }} isDark={isDark} />
+    <AnimatedSkeleton style={{ width: '60%', height: 10, borderRadius: 5 }} isDark={isDark} />
+  </View>
+);
+
 // ─── Subject Detail Modal (4 Tabs) ────────────────────────────────────────────
 const SubjectDetailModal = ({ visible, subject, onClose, accessToken }) => {
   const { colors, isDark } = useTheme();
@@ -803,9 +825,9 @@ const SubjectDetailModal = ({ visible, subject, onClose, accessToken }) => {
 
                 {/* Sub Questions */}
                 {mq.loadingSubquestions ? (
-                  <View style={{ marginTop: 12, paddingVertical: 14, gap: 8, borderTopWidth: 1, borderTopColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)', paddingTop: 12, alignItems: 'center', justifyContent: 'center' }}>
-                    <ActivityIndicator size="small" color={colors.primary} />
-                    <Text style={{ fontSize: 11, color: colors.textSecondary, marginTop: 4 }}>Loading sub-questions...</Text>
+                  <View style={{ marginTop: 12, borderTopWidth: 1, borderTopColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)', paddingTop: 12, gap: 8 }}>
+                    <SkeletonSubQuestion isDark={isDark} />
+                    <SkeletonSubQuestion isDark={isDark} />
                   </View>
                 ) : mq.subquestions && mq.subquestions.length > 0 ? (
                   <View style={{ marginTop: 12, gap: 12, borderTopWidth: 1, borderTopColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)', paddingTop: 12 }}>
