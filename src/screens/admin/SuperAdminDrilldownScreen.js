@@ -73,8 +73,8 @@ const SuperAdminDrilldownScreen = ({ route, navigation }) => {
         } else if (category === 'fitness_students') {
           try {
             const result = await getSuperAdminDrilldown(accessToken, 'fitness_students');
-            if (result && result.data) {
-              const mapped = (result.data || []).map(item => ({
+            if (result) {
+              const mapped = (result || []).map(item => ({
                 id: item.id || item.user_id,
                 student_name: item.student_name,
                 avatar_url: item.avatar_url,
