@@ -41,7 +41,8 @@ const FALLBACK_LOGBOOK = [
     a1: "C", a2: "M", a3: "-",
     faculty: "Dr. Sandhya Chauhan",
     date: "2026-06-20",
-    category: "Early clinical exposure"
+    category: "Early clinical exposure",
+    department: "PEDIATRICS"
   },
   {
     activity: "Observation of Normal Spontaneous Vaginal Delivery (NSVD)",
@@ -50,7 +51,8 @@ const FALLBACK_LOGBOOK = [
     a1: "F", a2: "C", a3: "-",
     faculty: "Dr. Renu Gupta",
     date: "2026-06-22",
-    category: "Early clinical exposure"
+    category: "Early clinical exposure",
+    department: "OBSTETRICS & GYNECOLOGY"
   },
   {
     activity: "Basic Life Support (BLS) & Cardiopulmonary Resuscitation (CPR)",
@@ -59,7 +61,8 @@ const FALLBACK_LOGBOOK = [
     a1: "C", a2: "M", a3: "-",
     faculty: "Dr. Anil Sharma",
     date: "2026-06-24",
-    category: "CertificationSkills"
+    category: "CertificationSkills",
+    department: "COMMUNITY MEDICINE"
   },
   {
     activity: "Gram Staining Technique & Microscopy Observation",
@@ -68,7 +71,8 @@ const FALLBACK_LOGBOOK = [
     a1: "B", a2: "C", a3: "-",
     faculty: "Dr. V. K. Singh",
     date: "2026-06-25",
-    category: "PracticalStudentLab"
+    category: "PracticalStudentLab",
+    department: "MICROBIOLOGY"
   },
   {
     activity: "Preparation of Blood Smear & Differential Leukocyte Count (DLC)",
@@ -77,7 +81,8 @@ const FALLBACK_LOGBOOK = [
     a1: "B", a2: "-", a3: "-",
     faculty: "Dr. Shalini Saxena",
     date: "Pending",
-    category: "PracticalStudentLab"
+    category: "PracticalStudentLab",
+    department: "PATHOLOGY"
   },
   {
     activity: "Anatomy of Inguinal Hernia & Surgical Correlation",
@@ -86,7 +91,8 @@ const FALLBACK_LOGBOOK = [
     a1: "C", a2: "-", a3: "-",
     faculty: "Dr. K. P. Singh (Surgery Department)",
     date: "2026-06-26",
-    category: "Vertical integration"
+    category: "Vertical integration",
+    department: "ANATOMY"
   },
   {
     activity: "Webinar on Recent Advances in Anti-Retroviral Therapy (ART)",
@@ -95,7 +101,8 @@ const FALLBACK_LOGBOOK = [
     a1: "P", a2: "-", a3: "-",
     faculty: "Dr. Mohit Rastogi",
     date: "2026-06-28",
-    category: "SelfDirectedLearning"
+    category: "SelfDirectedLearning",
+    department: "PHARMACOLOGY"
   },
   {
     activity: "Case Presentation on Pulmonary Tuberculosis & DOTS Therapy",
@@ -104,7 +111,8 @@ const FALLBACK_LOGBOOK = [
     a1: "-", a2: "-", a3: "-",
     faculty: "Dr. Sunil Kumar",
     date: "Pending",
-    category: "SelfDirectedLearning"
+    category: "SelfDirectedLearning",
+    department: "COMMUNITY MEDICINE"
   },
   {
     activity: "Clinical Rotation in Neonatal Intensive Care Unit (NICU)",
@@ -113,7 +121,8 @@ const FALLBACK_LOGBOOK = [
     a1: "C", a2: "M", a3: "-",
     faculty: "Dr. Anurag Agarwal",
     date: "2026-06-30",
-    category: "Visit to clinical department"
+    category: "Visit to clinical department",
+    department: "PEDIATRICS"
   },
   {
     activity: "Observational Visit to Dialysis & Renal Care Unit",
@@ -122,7 +131,8 @@ const FALLBACK_LOGBOOK = [
     a1: "P", a2: "-", a3: "-",
     faculty: "Dr. Preeti Sharma",
     date: "Pending",
-    category: "Visit to clinical department"
+    category: "Visit to clinical department",
+    department: "MEDICINE"
   }
 ];
 
@@ -224,12 +234,56 @@ const ERPLogBookScreen = ({ navigation }) => {
     if (!accessToken) return;
     if (showLoading) setLoading(true);
     try {
-      const data = await getLogbook(accessToken);
-      // If live ERP logbook returns empty or success is false, use rich fallback logbook entries
-      if (data && Array.isArray(data) && data.length > 0) {
-        setLogbook(data);
-      } else if (data && data.success && Array.isArray(data.data) && data.data.length > 0) {
-        setLogbook(data.data);
+      const resp = await getLogbook(accessToken);
+      let rawList = [];
+      if (resp && resp.success && Array.isArray(resp.data)) {
+        rawList = resp.data;
+      } else if (resp && Array.isArray(resp)) {
+        rawList = resp;
+      }
+
+      if (rawList.length > 0) {
+        const flattened = [];
+        rawList.forEach(deptGroup => {
+          const deptName = deptGroup.department || 'General';
+          const categories = deptGroup.categories || [];
+          categories.forEach(catGroup => {
+            const catName = catGroup.category || 'default';
+            const activities = catGroup.activities || [];
+            activities.forEach(act => {
+              let dateStr = 'Pending';
+              if (act.verified_dt) {
+                const match = act.verified_dt.match(/\d+/);
+                if (match) {
+                  const ms = parseInt(match[0], 10);
+                  const dt = new Date(ms);
+                  dateStr = dt.toISOString().split('T')[0];
+                }
+              }
+              
+              const isVerified = act.VerifiedBy ? true : false;
+
+              flattened.push({
+                activity: act.activityName || 'Clinical Rotation',
+                competency: act.compCode || act.code || 'MB1.1',
+                verified: isVerified,
+                a1: act.A1 || '-',
+                a2: act.A2 || '-',
+                a3: act.A3 || '-',
+                faculty: act.VerifiedBy ? act.VerifiedBy.trim() : 'Faculty Desk',
+                date: dateStr,
+                category: catName,
+                department: deptName
+              });
+            });
+          });
+        });
+
+        if (flattened.length > 0) {
+          setLogbook(flattened);
+        } else {
+          setLogbook(FALLBACK_LOGBOOK);
+        }
       } else {
         setLogbook(FALLBACK_LOGBOOK);
       }
