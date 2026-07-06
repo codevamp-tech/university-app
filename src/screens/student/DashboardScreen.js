@@ -4,7 +4,7 @@ import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Dimensions, Platform, Modal, Switch, TextInput, Alert, ActivityIndicator
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { MaterialIcons, MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
@@ -359,16 +359,50 @@ const DashboardScreen = ({ navigation }) => {
     loadInsight();
   }, [user, accessToken]);
 
-  // Fetch academic results and ERP competency gaps for scoring
+  const [loadingCompetencyGaps, setLoadingCompetencyGaps] = React.useState(false);
+
+  const handleFetchCompetencyGaps = async () => {
+    setLoadingCompetencyGaps(true);
+    try {
+      const [resultsData, gapsData] = await Promise.all([
+        getResults(accessToken),
+        getCompetencyGaps(accessToken)
+      ]);
+      if (resultsData) {
+        setAcademicResults(resultsData);
+        await AsyncStorage.setItem('@erp_academic_results_cache', JSON.stringify(resultsData));
+      }
+      if (gapsData) {
+        setErpCompetencies(gapsData);
+        await AsyncStorage.setItem('@erp_competency_gaps_cache', JSON.stringify(gapsData));
+      }
+      Alert.alert("Success", "Clinical competency gaps synchronized successfully!");
+    } catch (e) {
+      console.warn("Failed to fetch competency gaps:", e);
+      Alert.alert("Sync Failed", "Could not synchronize with live ERP server. Please try again.");
+    } finally {
+      setLoadingCompetencyGaps(false);
+    }
+  };
+
+  // Load cached ERP results and competency gaps on mount
   React.useEffect(() => {
-    if (!accessToken) return;
-    getResults(accessToken)
-      .then(data => { if (data && data.length > 0) setAcademicResults(data); })
-      .catch(() => {});
-    getCompetencyGaps(accessToken)
-      .then(data => { if (data) setErpCompetencies(data); })
-      .catch(() => {});
-  }, [accessToken]);
+    async function loadCachedERPData() {
+      try {
+        const cachedGaps = await AsyncStorage.getItem('@erp_competency_gaps_cache');
+        if (cachedGaps) {
+          setErpCompetencies(JSON.parse(cachedGaps));
+        }
+        const cachedResults = await AsyncStorage.getItem('@erp_academic_results_cache');
+        if (cachedResults) {
+          setAcademicResults(JSON.parse(cachedResults));
+        }
+      } catch (e) {
+        console.warn('Error loading cached ERP data:', e);
+      }
+    }
+    loadCachedERPData();
+  }, []);
 
   const loadPathwayRetries = React.useCallback(async () => {
     try {
@@ -1205,13 +1239,54 @@ const DashboardScreen = ({ navigation }) => {
         {/* ========== SKILL GAP ANALYSIS ========== */}
         <View style={styles.sectionContainer}>
           <View style={[styles.skillGapCard, { backgroundColor: colors.card, paddingBottom: 24 }]}>
-            <View style={styles.skillGapHeader}>
-              <View style={[styles.skillGapIconWrapper, { backgroundColor: isDark ? colors.background : '#FFF7ED' }]}>
-                <MaterialCommunityIcons name="chart-areaspline" size={24} color={colors.primary} />
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, paddingHorizontal: 4 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <View style={[styles.skillGapIconWrapper, { backgroundColor: isDark ? colors.background : '#FFF7ED' }]}>
+                  <MaterialCommunityIcons name="chart-areaspline" size={24} color={colors.primary} />
+                </View>
+                <View style={{ justifyContent: 'center' }}>
+                  <Text style={[styles.skillGapTitle, { color: colors.textPrimary, marginBottom: 0 }]}>
+                    {isMed ? 'Clinical Competency Gap' : 'Skill Gap Analysis'}
+                  </Text>
+                </View>
               </View>
+              {isMed && erpCompetencies && (
+                <TouchableOpacity onPress={handleFetchCompetencyGaps} disabled={loadingCompetencyGaps} style={{ padding: 6, borderRadius: 8, backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F3F4F6' }}>
+                  {loadingCompetencyGaps ? (
+                    <ActivityIndicator size="small" color={colors.primary} />
+                  ) : (
+                    <Ionicons name="sync-outline" size={20} color={colors.primary} />
+                  )}
+                </TouchableOpacity>
+              )}
             </View>
-            <Text style={[styles.skillGapTitle, { color: colors.textPrimary }]}>{isMed ? 'Clinical Competency Gap' : 'Skill Gap Analysis'}</Text>
-            {user && (() => {
+
+            {isMed && !erpCompetencies ? (
+              <View style={[styles.syncPlaceholderCard, { borderColor: colors.border, borderWidth: 1, backgroundColor: isDark ? colors.card : '#FDFBF7' }]}>
+                <View style={[styles.syncIconBg, { backgroundColor: '#EA580C10' }]}>
+                  <Ionicons name="shield-checkmark-outline" size={32} color="#EA580C" />
+                </View>
+                <Text style={[styles.syncTitle, { color: colors.textPrimary }]}>Live Competency Alignment</Text>
+                <Text style={[styles.syncDesc, { color: colors.textSecondary }]}>
+                  Analyze your sessional exam results to identify clinical competency gaps based on NMC guidelines.
+                </Text>
+                
+                {loadingCompetencyGaps ? (
+                  <View style={{ alignItems: 'center', marginTop: 16 }}>
+                    <ActivityIndicator size="small" color="#EA580C" />
+                    <Text style={{ fontSize: 12, color: colors.textMuted, marginTop: 8 }}>Querying live ERP records...</Text>
+                  </View>
+                ) : (
+                  <TouchableOpacity
+                    style={[styles.syncButton, { backgroundColor: colors.primary }]}
+                    onPress={handleFetchCompetencyGaps}
+                  >
+                    <Ionicons name="sync-outline" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
+                    <Text style={styles.syncButtonText}>Analyze Gaps from Live ERP</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            ) : user && (() => {
               const gapData = computeSkillGap(user, academicResults, erpCompetencies);
               const targetGoal = user.course?.toLowerCase().includes('medicine') || user.course?.toLowerCase().includes('mbbs')
                 ? 'NEET-PG / NEXT' : user.course?.toLowerCase().includes('computer') || user.course?.toLowerCase().includes('cse')
@@ -1316,24 +1391,26 @@ const DashboardScreen = ({ navigation }) => {
                 </>
               );
             })()}
-            <View style={styles.skillGapActions}>
-              <TouchableOpacity
-                style={styles.giveTestBtn}
-                onPress={() => navigation.navigate('SkillGapTest')}
-              >
-                <LinearGradient colors={['#EA580C', '#9A3412']} style={styles.giveTestBtnGradient}>
-                  <MaterialCommunityIcons name="pencil-outline" size={16} color="#FFFFFF" />
-                  <Text style={styles.giveTestBtnText}>{isMed ? 'Assess Competency' : 'Give Test'}</Text>
-                </LinearGradient>
-              </TouchableOpacity>
+            {(!isMed || erpCompetencies) && (
+              <View style={styles.skillGapActions}>
+                <TouchableOpacity
+                  style={styles.giveTestBtn}
+                  onPress={() => navigation.navigate('SkillGapTest')}
+                >
+                  <LinearGradient colors={['#EA580C', '#9A3412']} style={styles.giveTestBtnGradient}>
+                    <MaterialCommunityIcons name="pencil-outline" size={16} color="#FFFFFF" />
+                    <Text style={styles.giveTestBtnText}>{isMed ? 'Assess Competency' : 'Give Test'}</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
 
-              <TouchableOpacity
-                style={[styles.analyzeBtn, { borderColor: colors.border }]}
-                onPress={() => navigation.navigate('DeepDiveAnalysis')}
-              >
-                <Text style={[styles.analyzeBtnText, { color: colors.primary }]}>{isMed ? 'Clinical Gap Analysis →' : 'Deep Dive Analysis →'}</Text>
-              </TouchableOpacity>
-            </View>
+                <TouchableOpacity
+                  style={[styles.analyzeBtn, { borderColor: colors.border }]}
+                  onPress={() => navigation.navigate('DeepDiveAnalysis')}
+                >
+                  <Text style={[styles.analyzeBtnText, { color: colors.primary }]}>{isMed ? 'Clinical Gap Analysis →' : 'Deep Dive Analysis →'}</Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
         </View>
 
@@ -3140,6 +3217,52 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 15,
     fontWeight: '800',
+  },
+  syncPlaceholderCard: {
+    padding: 24,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginVertical: 12,
+  },
+  syncIconBg: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  syncTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  syncDesc: {
+    fontSize: 13,
+    lineHeight: 20,
+    textAlign: 'center',
+    marginBottom: 20,
+    paddingHorizontal: 8,
+  },
+  syncButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 16,
+    elevation: 2,
+    shadowColor: '#EA580C',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+  },
+  syncButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
   },
 });
 
