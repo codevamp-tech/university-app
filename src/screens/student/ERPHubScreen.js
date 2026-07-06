@@ -21,6 +21,7 @@ const ERPHubScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
   const isMedical = user?.course?.replace(/\./g, '').toUpperCase().includes('MBBS') || user?.category?.toLowerCase() === 'medical';
+  const isLibraryLocked = user?.rollno === '2137196';
 
   const [alerts, setAlerts] = useState([]);
 
@@ -506,107 +507,136 @@ const ERPHubScreen = ({ navigation }) => {
         {/* Student Library Card */}
         <View style={styles.sectionContainer}>
           <Text style={[styles.sectionHeading, { color: colors.textPrimary }]}>Student Library Card</Text>
-          <LinearGradient
-            colors={['#1A1A2E', '#2D1B5E', '#EA580C']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.libraryCardWrapper}
-          >
-            <View style={styles.cardCircle1} />
-            <View style={styles.cardCircle2} />
+          <View style={{ borderRadius: 24, overflow: 'hidden' }}>
+            <LinearGradient
+              colors={['#1A1A2E', '#2D1B5E', '#EA580C']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={[styles.libraryCardWrapper, isLibraryLocked && { opacity: 0.6 }]}
+            >
+              <View style={styles.cardCircle1} />
+              <View style={styles.cardCircle2} />
 
-            <View style={styles.lcHeader}>
-              <View style={styles.lcUniversityRow}>
-                <LinearGradient colors={['#EA580C', '#9A3412']} style={styles.lcLogoBox}>
-                  <MaterialIcons name="school" size={14} color="#FFFFFF" />
-                </LinearGradient>
-                <View>
-                  <Text style={styles.lcUniversityName}>{APP_CONFIG.UNIVERSITY_NAME}</Text>
-                  <Text style={styles.lcLocation}>{APP_CONFIG.CAMPUS_LOCATION}</Text>
+              <View style={styles.lcHeader}>
+                <View style={styles.lcUniversityRow}>
+                  <LinearGradient colors={['#EA580C', '#9A3412']} style={styles.lcLogoBox}>
+                    <MaterialIcons name="school" size={14} color="#FFFFFF" />
+                  </LinearGradient>
+                  <View>
+                    <Text style={styles.lcUniversityName}>{APP_CONFIG.UNIVERSITY_NAME}</Text>
+                    <Text style={styles.lcLocation}>{APP_CONFIG.CAMPUS_LOCATION}</Text>
+                  </View>
+                </View>
+                <View style={styles.lcCardTypeBadge}>
+                  <Text style={styles.lcCardTypeText}>LIBRARY CARD</Text>
                 </View>
               </View>
-              <View style={styles.lcCardTypeBadge}>
-                <Text style={styles.lcCardTypeText}>LIBRARY CARD</Text>
-              </View>
-            </View>
 
-            <View style={styles.lcStudentRow}>
-              <Image
-                source={{ uri: getAvatarUrl(user?.avatar_url || user?.name || user?.id || 'me') }}
-                style={styles.lcAvatar}
-              />
-              <View style={styles.lcStudentInfo}>
-                <Text style={styles.lcStudentName}>{user?.name || 'Aryan Kumar'}</Text>
-                <Text style={styles.lcStudentDept}>
-                  {user?.course
-                    ? (isMedical ? user.course : `${user.course} ${user.branch ? '- ' + user.branch : ''}`)
-                    : 'B.Tech Computer Science & Engineering'}
+              <View style={styles.lcStudentRow}>
+                <Image
+                  source={{ uri: getAvatarUrl(user?.avatar_url || user?.name || user?.id || 'me') }}
+                  style={styles.lcAvatar}
+                />
+                <View style={styles.lcStudentInfo}>
+                  <Text style={styles.lcStudentName}>{user?.name || 'Aryan Kumar'}</Text>
+                  <Text style={styles.lcStudentDept}>
+                    {user?.course
+                      ? (isMedical ? user.course : `${user.course} ${user.branch ? '- ' + user.branch : ''}`)
+                      : 'B.Tech Computer Science & Engineering'}
+                  </Text>
+                  {(() => {
+                    const roman = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
+                    const displaySem = user?.semester ? (roman[user.semester - 1] || user.semester) : 'VII';
+                    // For MBBS: show current Prof label (e.g. "3rd Prof")
+                    const medYear = user?.year || user?.current_year || (user?.semester ? Math.ceil(parseInt(user.semester) / 2) : 1);
+                    return (
+                      <Text style={styles.lcStudentSem}>
+                        {isMedical ? getMBBSProfLabel(medYear) : `Semester ${displaySem}`}  •  Section A
+                      </Text>
+                    );
+                  })()}
+                  <View style={styles.lcIdRow}>
+                    <Text style={styles.lcIdLabel}>ID: </Text>
+                    <Text style={styles.lcIdValue}>{user?.id || `${APP_CONFIG.UNIVERSITY_ID_PREFIX}2024001`}</Text>
+                  </View>
+                </View>
+              </View>
+
+              <View style={styles.lcStatsRow}>
+                <View style={styles.lcStatItem}>
+                  <Text style={styles.lcStatValue}>0</Text>
+                  <Text style={styles.lcStatLabel}>BORROWED</Text>
+                </View>
+                <View style={styles.lcStatDivider} />
+                <View style={styles.lcStatItem}>
+                  <Text style={styles.lcStatValue}>-</Text>
+                  <Text style={styles.lcStatLabel}>BOOKS READ</Text>
+                </View>
+                <View style={styles.lcStatDivider} />
+                <View style={styles.lcStatItem}>
+                  <Text style={styles.lcStatValue}>₹0</Text>
+                  <Text style={[styles.lcStatLabel, { color: '#FCA5A5' }]}>FINE DUE</Text>
+                </View>
+              </View>
+
+              <View style={styles.lcBarcodeRow}>
+                <View style={styles.lcBarcode}>
+                  {Array.from({ length: 28 }).map((_, i) => (
+                    <View
+                      key={i}
+                      style={[
+                        styles.lcBarcodeBar,
+                        {
+                          height: i % 4 === 0 ? 28 : i % 3 === 0 ? 22 : 18,
+                          backgroundColor: i % 2 === 0 ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.3)',
+                          width: i % 5 === 0 ? 3 : 2,
+                        },
+                      ]}
+                    />
+                  ))}
+                </View>
+                <Text style={styles.lcBarcodeText}>{user?.id ? `${APP_CONFIG.UNIVERSITY_ID_PREFIX}-LIB-${user.id}` : `${APP_CONFIG.UNIVERSITY_ID_PREFIX}-LIB-2024-001`}</Text>
+              </View>
+
+              <View style={styles.lcFooterRow}>
+                <View style={styles.lcValidRow}>
+                  <MaterialIcons name="event" size={12} color="rgba(255,255,255,0.5)" />
+                  <Text style={styles.lcValidText}>Valid until: 31 May 2027</Text>
+                </View>
+                <TouchableOpacity
+                  style={styles.lcQRBtn}
+                  onPress={() => {
+                    if (isLibraryLocked) {
+                      Alert.alert('🔒 Access Locked', 'Your library card is locked due to outstanding administrative clearance.');
+                    } else {
+                      setShowLibraryQRModal(true);
+                    }
+                  }}
+                >
+                  <MaterialIcons name="qr-code-2" size={16} color="#EA580C" />
+                  <Text style={styles.lcQRBtnText}>Show QR</Text>
+                </TouchableOpacity>
+              </View>
+            </LinearGradient>
+
+            {isLibraryLocked && (
+              <View style={{
+                position: 'absolute',
+                top: 0, left: 0, right: 0, bottom: 0,
+                backgroundColor: 'rgba(0,0,0,0.55)',
+                justifyContent: 'center',
+                alignItems: 'center',
+                paddingHorizontal: 24,
+                zIndex: 20
+              }}>
+                <MaterialCommunityIcons name="card-bulleted-off-outline" size={48} color="#FFFFFF" />
+                <Text style={{ color: '#FFFFFF', fontSize: 18, fontWeight: '900', marginTop: 12 }}>Library Card Locked</Text>
+                <Text style={{ color: 'rgba(255,255,255,0.75)', fontSize: 13, textAlign: 'center', marginTop: 6, lineHeight: 18 }}>
+                  Your library clearance status is locked. Please contact the administrative desk to resolve outstanding updates.
                 </Text>
-                {(() => {
-                  const roman = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
-                  const displaySem = user?.semester ? (roman[user.semester - 1] || user.semester) : 'VII';
-                  // For MBBS: show current Prof label (e.g. "3rd Prof")
-                  const medYear = user?.year || user?.current_year || (user?.semester ? Math.ceil(parseInt(user.semester) / 2) : 1);
-                  return (
-                    <Text style={styles.lcStudentSem}>
-                      {isMedical ? getMBBSProfLabel(medYear) : `Semester ${displaySem}`}  •  Section A
-                    </Text>
-                  );
-                })()}
-                <View style={styles.lcIdRow}>
-                  <Text style={styles.lcIdLabel}>ID: </Text>
-                  <Text style={styles.lcIdValue}>{user?.id || `${APP_CONFIG.UNIVERSITY_ID_PREFIX}2024001`}</Text>
-                </View>
               </View>
-            </View>
-
-            <View style={styles.lcStatsRow}>
-              <View style={styles.lcStatItem}>
-                <Text style={styles.lcStatValue}>0</Text>
-                <Text style={styles.lcStatLabel}>BORROWED</Text>
-              </View>
-              <View style={styles.lcStatDivider} />
-              <View style={styles.lcStatItem}>
-                <Text style={styles.lcStatValue}>-</Text>
-                <Text style={styles.lcStatLabel}>BOOKS READ</Text>
-              </View>
-              <View style={styles.lcStatDivider} />
-              <View style={styles.lcStatItem}>
-                <Text style={styles.lcStatValue}>₹0</Text>
-                <Text style={[styles.lcStatLabel, { color: '#FCA5A5' }]}>FINE DUE</Text>
-              </View>
-            </View>
-
-            <View style={styles.lcBarcodeRow}>
-              <View style={styles.lcBarcode}>
-                {Array.from({ length: 28 }).map((_, i) => (
-                  <View
-                    key={i}
-                    style={[
-                      styles.lcBarcodeBar,
-                      {
-                        height: i % 4 === 0 ? 28 : i % 3 === 0 ? 22 : 18,
-                        backgroundColor: i % 2 === 0 ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.3)',
-                        width: i % 5 === 0 ? 3 : 2,
-                      },
-                    ]}
-                  />
-                ))}
-              </View>
-              <Text style={styles.lcBarcodeText}>{user?.id ? `${APP_CONFIG.UNIVERSITY_ID_PREFIX}-LIB-${user.id}` : `${APP_CONFIG.UNIVERSITY_ID_PREFIX}-LIB-2024-001`}</Text>
-            </View>
-
-            <View style={styles.lcFooterRow}>
-              <View style={styles.lcValidRow}>
-                <MaterialIcons name="event" size={12} color="rgba(255,255,255,0.5)" />
-                <Text style={styles.lcValidText}>Valid until: 31 May 2027</Text>
-              </View>
-              <TouchableOpacity style={styles.lcQRBtn} onPress={() => setShowLibraryQRModal(true)}>
-                <MaterialIcons name="qr-code-2" size={16} color="#EA580C" />
-                <Text style={styles.lcQRBtnText}>Show QR</Text>
-              </TouchableOpacity>
-            </View>
-          </LinearGradient>
+            )}
+          </View>
         </View>
 
         {/* Recent Alerts */}

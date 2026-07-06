@@ -136,11 +136,33 @@ const EmptyTabState = ({ icon, title, subtitle, colors }) => (
 
 // ─── Attempt Badge ─────────────────────────────────────────────────────────────
 const AttemptBadge = ({ val }) => {
-  const bg = val === 'C' ? '#D1FAE5' : val === 'M' ? '#FEF3C7' : val === 'F' ? '#FEE2E2' : '#F3F4F6';
-  const color = val === 'C' ? '#059669' : val === 'M' ? '#D97706' : val === 'F' ? '#DC2626' : '#9CA3AF';
+  let bg = '#F3F4F6';
+  let color = '#9CA3AF';
+  if (val === 'C') {
+    bg = '#D1FAE5';
+    color = '#059669';
+  } else if (val === 'M') {
+    bg = '#FEF3C7';
+    color = '#D97706';
+  } else if (val === 'F') {
+    bg = '#FEE2E2';
+    color = '#DC2626';
+  } else if (val === 'B') {
+    bg = '#FCE7F3';
+    color = '#DB2777';
+  } else if (val === 'Re') {
+    bg = '#F3E8FF';
+    color = '#7C3AED';
+  } else if (val === 'P') {
+    bg = '#D1FAE5';
+    color = '#059669';
+  } else if (val === 'A') {
+    bg = '#E2E8F0';
+    color = '#475569';
+  }
   return (
-    <View style={{ width: 28, height: 28, borderRadius: 8, backgroundColor: bg, justifyContent: 'center', alignItems: 'center' }}>
-      <Text style={{ fontSize: 12, fontWeight: '800', color }}>{val}</Text>
+    <View style={{ paddingHorizontal: 6, height: 28, minWidth: 28, borderRadius: 8, backgroundColor: bg, justifyContent: 'center', alignItems: 'center' }}>
+      <Text style={{ fontSize: 11, fontWeight: '800', color }}>{val}</Text>
     </View>
   );
 };
@@ -817,11 +839,19 @@ const SubjectDetailModal = ({ visible, subject, onClose, accessToken }) => {
             UG Logbook · Clinical Competency Tracking
           </Text>
         </View>
-        <View style={[styles.attemptLegend, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          {[['F', 'First Attempt'], ['M', 'Mastered'], ['C', 'Competent']].map(([val, label]) => (
+        <View style={[styles.attemptLegend, { backgroundColor: colors.card, borderColor: colors.border, flexWrap: 'wrap', gap: 10, padding: 12 }]}>
+          {[
+            ['F', 'First Attempt'],
+            ['M', 'Mastered'],
+            ['C', 'Competent'],
+            ['B', 'Below Expectation'],
+            ['Re', 'Remedial'],
+            ['P', 'Present'],
+            ['A', 'Absent']
+          ].map(([val, label]) => (
             <View key={val} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
               <AttemptBadge val={val} />
-              <Text style={{ fontSize: 11, color: colors.textSecondary }}>{label}</Text>
+              <Text style={{ fontSize: 10, fontWeight: '700', color: colors.textSecondary }}>{label}</Text>
             </View>
           ))}
         </View>

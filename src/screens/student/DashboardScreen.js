@@ -1250,15 +1250,6 @@ const DashboardScreen = ({ navigation }) => {
                   </Text>
                 </View>
               </View>
-              {isMed && erpCompetencies && (
-                <TouchableOpacity onPress={handleFetchCompetencyGaps} disabled={loadingCompetencyGaps} style={{ padding: 6, borderRadius: 8, backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F3F4F6' }}>
-                  {loadingCompetencyGaps ? (
-                    <ActivityIndicator size="small" color={colors.primary} />
-                  ) : (
-                    <Ionicons name="sync-outline" size={20} color={colors.primary} />
-                  )}
-                </TouchableOpacity>
-              )}
             </View>
 
             {isMed && !erpCompetencies ? (
@@ -1311,9 +1302,37 @@ const DashboardScreen = ({ navigation }) => {
 
               return (
                 <>
-                  <Text style={[styles.skillGapDesc, { color: colors.textSecondary }]}>
+                  <Text style={[styles.skillGapDesc, { color: colors.textSecondary, marginBottom: 0 }]}>
                     {isMed ? `What clinical competencies are missing for ${targetGoal}?` : `What's missing for ${targetGoal}?`}
                   </Text>
+                  {isMed && erpCompetencies && (
+                    <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 8, marginBottom: 4 }}>
+                      <TouchableOpacity 
+                        onPress={handleFetchCompetencyGaps} 
+                        disabled={loadingCompetencyGaps} 
+                        style={{ 
+                          flexDirection: 'row', 
+                          alignItems: 'center', 
+                          gap: 6, 
+                          paddingHorizontal: 12, 
+                          paddingVertical: 6, 
+                          borderRadius: 10, 
+                          backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : '#F1F5F9',
+                          borderWidth: 1,
+                          borderColor: colors.border
+                        }}
+                      >
+                        {loadingCompetencyGaps ? (
+                          <ActivityIndicator size="small" color={colors.primary} />
+                        ) : (
+                          <>
+                            <Ionicons name="sync-outline" size={14} color={colors.primary} />
+                            <Text style={{ fontSize: 11, fontWeight: '800', color: colors.primary }}>Sync ERP Results</Text>
+                          </>
+                        )}
+                      </TouchableOpacity>
+                    </View>
+                  )}
 
 
 
