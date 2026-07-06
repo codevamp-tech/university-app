@@ -796,36 +796,6 @@ const SubjectDetailModal = ({ visible, subject, onClose, accessToken }) => {
                             }
                           ]}
                         >
-                          {/* Background human-like checking mark */}
-                          <View
-                            pointerEvents="none"
-                            style={{
-                              position: 'absolute',
-                              right: 20,
-                              top: 0,
-                              bottom: 0,
-                              justifyContent: 'center',
-                              alignItems: 'center',
-                              zIndex: 0
-                            }}
-                          >
-                            {sq.obtained > 0 ? (
-                              <Feather
-                                name="check"
-                                size={110}
-                                color="#10B981"
-                                style={{ opacity: isDark ? 0.08 : 0.12, transform: [{ rotate: '-18deg' }] }}
-                              />
-                            ) : (
-                              <Feather
-                                name="x"
-                                size={110}
-                                color="#EF4444"
-                                style={{ opacity: isDark ? 0.08 : 0.12, transform: [{ rotate: '12deg' }] }}
-                              />
-                            )}
-                          </View>
-
                           {/* Sub Question Header */}
                           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', zIndex: 1 }}>
                             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
@@ -875,6 +845,36 @@ const SubjectDetailModal = ({ visible, subject, onClose, accessToken }) => {
                               </Text>
                             </View>
                           )}
+
+                          {/* Human-like checking stamp layered on top */}
+                          <View
+                            pointerEvents="none"
+                            style={{
+                              position: 'absolute',
+                              right: 25,
+                              top: 0,
+                              bottom: 0,
+                              justifyContent: 'center',
+                              alignItems: 'center',
+                              zIndex: 10
+                            }}
+                          >
+                            {sq.obtained > 0 ? (
+                              <Feather
+                                name="check"
+                                size={90}
+                                color="#10B981"
+                                style={{ opacity: isDark ? 0.09 : 0.14, transform: [{ rotate: '-18deg' }] }}
+                              />
+                            ) : (
+                              <Feather
+                                name="x"
+                                size={90}
+                                color="#EF4444"
+                                style={{ opacity: isDark ? 0.09 : 0.14, transform: [{ rotate: '12deg' }] }}
+                              />
+                            )}
+                          </View>
                         </View>
                       );
                     })}
