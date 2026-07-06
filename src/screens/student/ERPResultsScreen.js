@@ -12,11 +12,12 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  ActivityIndicator, Modal, FlatList, Dimensions, Animated,
+  ActivityIndicator, Modal, FlatList, Dimensions, Animated, RefreshControl
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons, MaterialCommunityIcons, Feather, Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import Svg, { Circle, G, Text as SvgText, Path } from 'react-native-svg';
 
 import { useTheme } from '../../hooks/useTheme';
@@ -300,6 +301,7 @@ const SkeletonLogbookCard = ({ isDark }) => (
 // ─── Subject Detail Modal (4 Tabs) ────────────────────────────────────────────
 const SubjectDetailModal = ({ visible, subject, onClose, accessToken }) => {
   const { colors, isDark } = useTheme();
+  const { user } = useUser();
   const [activeTab, setActiveTab] = useState(0);
   const [selectedPaper, setSelectedPaper] = useState(null);
   const [competencies, setCompetencies] = useState([]);
@@ -336,6 +338,31 @@ const SubjectDetailModal = ({ visible, subject, onClose, accessToken }) => {
     }
 
     setLoading(true);
+
+    const cacheKey = `@erp_paper_cache_${user?.id || 'default'}`;
+    try {
+      const persistedStr = await AsyncStorage.getItem(cacheKey);
+      if (persistedStr) {
+        const persisted = JSON.parse(persistedStr);
+        if (persisted && persisted[pcode]) {
+          const cached = persisted[pcode];
+          setCompetencies(cached.competencies || []);
+          setAttempted(cached.attempted || []);
+          setChartData(cached.chartData || []);
+          setLogbook(cached.logbook || []);
+          
+          setPaperCache(prev => ({
+            ...prev,
+            [pcode]: cached
+          }));
+          setLoading(false);
+          return;
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to load persisted paper cache:', e);
+    }
+
     try {
       const [compData, attemptedData, chartResp, logData] = await Promise.allSettled([
         getPaperCompetencies(accessToken, pcode),
@@ -447,15 +474,26 @@ const SubjectDetailModal = ({ visible, subject, onClose, accessToken }) => {
       }
       setLogbook(nextLog);
 
+      const cacheValue = {
+        competencies: nextComps,
+        attempted: nextAttempted,
+        chartData: nextChart,
+        logbook: nextLog
+      };
+
       setPaperCache(prev => ({
         ...prev,
-        [pcode]: {
-          competencies: nextComps,
-          attempted: nextAttempted,
-          chartData: nextChart,
-          logbook: nextLog
-        }
+        [pcode]: cacheValue
       }));
+
+      try {
+        const persistedStr = await AsyncStorage.getItem(cacheKey);
+        const persisted = persistedStr ? JSON.parse(persistedStr) : {};
+        persisted[pcode] = cacheValue;
+        await AsyncStorage.setItem(cacheKey, JSON.stringify(persisted));
+      } catch (e) {
+        console.warn('Failed to save paper cache:', e);
+      }
     } catch (e) {
       console.warn('[SubjectModal] load error:', e);
     } finally {
@@ -971,6 +1009,7 @@ const ERPResultsScreen = ({ navigation }) => {
 
   const [phases, setPhases] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [expandedPhase, setExpandedPhase] = useState(null);
   const [selectedSubject, setSelectedSubject] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
@@ -979,15 +1018,47 @@ const ERPResultsScreen = ({ navigation }) => {
     || user?.category?.toLowerCase() === 'medical';
 
   useEffect(() => {
-    loadResults();
+    loadResults(false);
   }, [accessToken]);
 
-  const loadResults = async () => {
-    setLoading(true);
+  const loadResults = async (forceFetch = false) => {
+    const cacheKey = `@erp_results_cache_${user?.id || 'default'}`;
+    
+    if (!forceFetch) {
+      try {
+        const cached = await AsyncStorage.getItem(cacheKey);
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (parsed && parsed.phases) {
+            setPhases(parsed.phases);
+            if (parsed.phases.length > 0) {
+              setExpandedPhase(parsed.phases[parsed.phases.length - 1].phase);
+            }
+            setLoading(false);
+            // Update in background silently
+            performFetch(cacheKey, false).catch(err => console.warn(err));
+            return;
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to load cached results:', e);
+      }
+    }
+
+    if (forceFetch) {
+      setRefreshing(true);
+    } else {
+      setLoading(true);
+    }
+    await performFetch(cacheKey, true);
+  };
+
+  const performFetch = async (cacheKey, shouldSetLoading) => {
     try {
       if (!accessToken) {
         setPhases([]);
-        setLoading(false);
+        if (shouldSetLoading) setLoading(false);
+        setRefreshing(false);
         return;
       }
 
@@ -1002,7 +1073,8 @@ const ERPResultsScreen = ({ navigation }) => {
       const listData = paperList?.data || paperList || [];
       if (listData.length === 0) {
         setPhases([]);
-        setLoading(false);
+        if (shouldSetLoading) setLoading(false);
+        setRefreshing(false);
         return;
       }
 
@@ -1034,7 +1106,6 @@ const ERPResultsScreen = ({ navigation }) => {
 
         (item.papers || []).forEach(p => {
           let obtained = null;
-          let total = 100;
           let found = false;
           let dbYrFk = null;
 
@@ -1049,24 +1120,25 @@ const ERPResultsScreen = ({ navigation }) => {
             }
           }
 
-          const paperName = p.paperName || '';
-          const paperPhase = getPhaseForPaper(paperName, dbYrFk, defaultPhase);
+          const paperPhase = getPhaseForPaper(p.paperName, dbYrFk, defaultPhase);
 
           if (!byPhase[paperPhase]) {
             byPhase[paperPhase] = {
               phase: paperPhase,
-              yr_fk: paperPhase.includes('1st') ? 1 : paperPhase.includes('2nd') ? 2 : paperPhase.includes('Part I') ? 3 : 4,
-              subjectsMap: {}
+              yr_fk: dbYrFk || (paperPhase.includes('1st') ? 1 : paperPhase.includes('2nd') ? 2 : paperPhase.includes('Part I') ? 3 : 4),
+              subjectsMap: {},
+              subjects: []
             };
           }
 
+          const maxWtg = parseFloat(p.marksWtg || 100);
+          const rawObtained = obtained !== null ? parseFloat(obtained) : 0;
           const paperObj = {
-            paper_code: String(p.paperCode),
+            paper_code: p.paperCode,
             paper_name: p.paperName,
-            code: p.code || item.code || 'SUB',
-            obtained_marks: obtained,
-            total_marks: total,
-            pct: found ? Math.round((obtained / total) * 100) : null,
+            obtained_marks: rawObtained,
+            total_marks: maxWtg,
+            pct: maxWtg > 0 ? Math.round((rawObtained / maxWtg) * 100) : 0,
             notTaken: !found
           };
 
@@ -1120,11 +1192,14 @@ const ERPResultsScreen = ({ navigation }) => {
 
       setPhases(sorted);
       if (sorted.length > 0) setExpandedPhase(sorted[sorted.length - 1].phase);
+
+      // Save to cache
+      await AsyncStorage.setItem(cacheKey, JSON.stringify({ phases: sorted }));
     } catch (e) {
-      console.warn('[ERPResults] Error:', e);
-      setPhases([]);
+      console.warn('[ERPResults] performFetch Error:', e);
     } finally {
-      setLoading(false);
+      if (shouldSetLoading) setLoading(false);
+      setRefreshing(false);
     }
   };
 
@@ -1157,12 +1232,27 @@ const ERPResultsScreen = ({ navigation }) => {
       </View>
 
       {loading ? (
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={{ color: colors.textSecondary, marginTop: 12, fontWeight: '600' }}>Loading results from ERP…</Text>
-        </View>
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16 }}>
+          <SkeletonHeader isDark={isDark} />
+          <View style={{ gap: 12 }}>
+            <SkeletonRow isDark={isDark} />
+            <SkeletonRow isDark={isDark} />
+            <SkeletonRow isDark={isDark} />
+          </View>
+        </ScrollView>
       ) : (
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
+        <ScrollView 
+          showsVerticalScrollIndicator={false} 
+          contentContainerStyle={{ paddingBottom: 120 }}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => loadResults(true)}
+              colors={[colors.primary]}
+              tintColor={colors.primary}
+            />
+          }
+        >
 
           {/* Hero Banner */}
           <View style={styles.sectionContainer}>
