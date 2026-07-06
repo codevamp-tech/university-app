@@ -33,118 +33,7 @@ const CATEGORY_PILLS = [
   { key: 'Visit to clinical department', label: 'Clinical Visits' }
 ];
 
-const FALLBACK_LOGBOOK = [
-  {
-    activity: "Pediatric History Taking & Case Sheet Recording",
-    competency: "PE1.1",
-    verified: true,
-    student_verified: true,
-    a1: "C", a2: "M", a3: "-",
-    faculty: "Dr. Sandhya Chauhan",
-    date: "2026-06-20",
-    category: "Early clinical exposure",
-    department: "PEDIATRICS"
-  },
-  {
-    activity: "Observation of Normal Spontaneous Vaginal Delivery (NSVD)",
-    competency: "OG2.4",
-    verified: true,
-    student_verified: false,
-    a1: "F", a2: "C", a3: "-",
-    faculty: "Dr. Renu Gupta",
-    date: "2026-06-22",
-    category: "Early clinical exposure",
-    department: "OBSTETRICS & GYNECOLOGY"
-  },
-  {
-    activity: "Basic Life Support (BLS) & Cardiopulmonary Resuscitation (CPR)",
-    competency: "CM4.2",
-    verified: true,
-    student_verified: true,
-    a1: "C", a2: "M", a3: "-",
-    faculty: "Dr. Anil Sharma",
-    date: "2026-06-24",
-    category: "CertificationSkills",
-    department: "COMMUNITY MEDICINE"
-  },
-  {
-    activity: "Gram Staining Technique & Microscopy Observation",
-    competency: "MI1.8",
-    verified: true,
-    student_verified: false,
-    a1: "B", a2: "C", a3: "-",
-    faculty: "Dr. V. K. Singh",
-    date: "2026-06-25",
-    category: "PracticalStudentLab",
-    department: "MICROBIOLOGY"
-  },
-  {
-    activity: "Preparation of Blood Smear & Differential Leukocyte Count (DLC)",
-    competency: "PH1.3",
-    verified: false,
-    student_verified: false,
-    a1: "B", a2: "-", a3: "-",
-    faculty: "Dr. Shalini Saxena",
-    date: "Pending",
-    category: "PracticalStudentLab",
-    department: "PATHOLOGY"
-  },
-  {
-    activity: "Anatomy of Inguinal Hernia & Surgical Correlation",
-    competency: "AN4.1",
-    verified: true,
-    student_verified: true,
-    a1: "C", a2: "-", a3: "-",
-    faculty: "Dr. K. P. Singh (Surgery Department)",
-    date: "2026-06-26",
-    category: "Vertical integration",
-    department: "ANATOMY"
-  },
-  {
-    activity: "Webinar on Recent Advances in Anti-Retroviral Therapy (ART)",
-    competency: "PH2.9",
-    verified: true,
-    student_verified: false,
-    a1: "P", a2: "-", a3: "-",
-    faculty: "Dr. Mohit Rastogi",
-    date: "2026-06-28",
-    category: "SelfDirectedLearning",
-    department: "PHARMACOLOGY"
-  },
-  {
-    activity: "Case Presentation on Pulmonary Tuberculosis & DOTS Therapy",
-    competency: "CM2.1",
-    verified: false,
-    student_verified: false,
-    a1: "-", a2: "-", a3: "-",
-    faculty: "Dr. Sunil Kumar",
-    date: "Pending",
-    category: "SelfDirectedLearning",
-    department: "COMMUNITY MEDICINE"
-  },
-  {
-    activity: "Clinical Rotation in Neonatal Intensive Care Unit (NICU)",
-    competency: "PE3.4",
-    verified: true,
-    student_verified: true,
-    a1: "C", a2: "M", a3: "-",
-    faculty: "Dr. Anurag Agarwal",
-    date: "2026-06-30",
-    category: "Visit to clinical department",
-    department: "PEDIATRICS"
-  },
-  {
-    activity: "Observational Visit to Dialysis & Renal Care Unit",
-    competency: "MD3.8",
-    verified: false,
-    student_verified: false,
-    a1: "P", a2: "-", a3: "-",
-    faculty: "Dr. Preeti Sharma",
-    date: "Pending",
-    category: "Visit to clinical department",
-    department: "MEDICINE"
-  }
-];
+
 
 // ─── Attempt Badge ─────────────────────────────────────────────────────────────
 const AttemptBadge = ({ val }) => {
@@ -297,14 +186,14 @@ const ERPLogBookScreen = ({ navigation }) => {
         if (flattened.length > 0) {
           setLogbook(flattened);
         } else {
-          setLogbook(FALLBACK_LOGBOOK);
+          setLogbook([]);
         }
       } else {
-        setLogbook(FALLBACK_LOGBOOK);
+        setLogbook([]);
       }
     } catch (err) {
       console.warn('[LogBookScreen] Error loading logbook:', err);
-      setLogbook(FALLBACK_LOGBOOK);
+      setLogbook([]);
     } finally {
       setLoading(false);
       setRefreshing(false);
