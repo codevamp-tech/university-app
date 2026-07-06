@@ -21,9 +21,7 @@ const ERPHubScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
   const isMedical = user?.course?.replace(/\./g, '').toUpperCase().includes('MBBS') || user?.category?.toLowerCase() === 'medical';
-  const isLibraryLocked = String(user?.rollno || '').includes('2137196') ||
-                          String(user?.rollno || '').includes('2500141790001') ||
-                          String(user?.username || '').includes('2500141790001');
+  const isLibraryLocked = true;
 
   const [alerts, setAlerts] = useState([]);
 
