@@ -423,7 +423,7 @@ export function computeSkillGap(student, results = [], erpCompetencyData = null)
         
       const clinicalMissing = erpClinicalGaps.length > 0
         ? erpClinicalGaps.map(c => c.competency)
-        : clinicalExpected.slice(0, 3); // fallback
+        : [];
         
       const clinicalScores = {};
       clinicalExpected.forEach(c => {
