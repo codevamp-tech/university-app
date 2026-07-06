@@ -3,6 +3,7 @@ import {
   View, Text, StyleSheet, TouchableOpacity, Image,
   Animated, Pressable, Dimensions, Platform, Alert,
   FlatList, TextInput, KeyboardAvoidingView, ActivityIndicator, ScrollView,
+  Linking,
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -203,6 +204,21 @@ const ChatScreen = ({ navigation }) => {
       clearError();
     }
   }, [lastError]);
+
+  const handleAttachmentPress = async (url) => {
+    if (!url) return;
+    try {
+      const supported = await Linking.canOpenURL(url);
+      if (supported) {
+        await Linking.openURL(url);
+      } else {
+        Alert.alert('Cannot Open URL', 'No app is available to open this link: ' + url);
+      }
+    } catch (err) {
+      console.warn('[Chat] Failed to open attachment URL:', err);
+      Alert.alert('Error', 'Failed to open the attachment.');
+    }
+  };
 
   const pickImage = async () => {
     try {
@@ -428,7 +444,11 @@ const ChatScreen = ({ navigation }) => {
           )}
           <Text style={[styles.bubbleText, { color: isMe ? '#FFFFFF' : colors.textPrimary }]}>{messageText}</Text>
           {item.attachment ? (
-            <TouchableOpacity style={styles.attachmentButton} activeOpacity={0.8}>
+            <TouchableOpacity 
+              style={styles.attachmentButton} 
+              activeOpacity={0.8}
+              onPress={() => handleAttachmentPress(item.attachment)}
+            >
               <Ionicons name="document-attach-outline" size={16} color={isMe ? '#FFF' : colors.primary} />
               <Text style={{ color: isMe ? '#FFF' : colors.primary, fontSize: 12, fontWeight: '700' }} numberOfLines={1}>
                 {item.attachment.split('/').pop() || 'Attachment'}
