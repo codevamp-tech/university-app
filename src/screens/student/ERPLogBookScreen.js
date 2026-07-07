@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl,
-  TextInput, Dimensions, Animated, Platform, ActivityIndicator, Alert
+  TextInput, Dimensions, Animated, Platform, ActivityIndicator, Alert, Modal
 } from 'react-native';
 import { MaterialIcons, MaterialCommunityIcons, Feather, Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -133,6 +133,8 @@ const ERPLogBookScreen = ({ navigation }) => {
   const [activeFilter, setActiveFilter] = useState('ALL'); // ALL, VERIFIED, PENDING
   const [activeCategory, setActiveCategory] = useState('ALL'); // ALL or CATEGORY_MAP key
   const [activePhase, setActivePhase] = useState('ALL'); // ALL or specific phase number
+  const [showFilters, setShowFilters] = useState(false);
+  const [showLegendModal, setShowLegendModal] = useState(false);
 
   const loadLogbook = async (showLoading = true) => {
     if (!accessToken) return;
@@ -394,141 +396,175 @@ const ERPLogBookScreen = ({ navigation }) => {
               )}
             </View>
 
-            {/* Verification Status Filter pills */}
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{ gap: 8, paddingBottom: 4 }}
-            >
-              {[
-                ['ALL', 'All Statuses'],
-                ['FAC_VERIFIED', 'Faculty Verified'],
-                ['FAC_PENDING', 'Faculty Pending'],
-                ['STUD_VERIFIED', 'Student Verified'],
-                ['STUD_PENDING', 'Student Pending']
-              ].map(([key, label]) => {
-                const isActive = activeFilter === key;
-                return (
-                  <TouchableOpacity
-                    key={key}
-                    onPress={() => setActiveFilter(key)}
-                    style={[
-                      styles.filterPill,
-                      { backgroundColor: colors.card, borderColor: colors.border },
-                      isActive && { backgroundColor: colors.primary, borderColor: colors.primary }
-                    ]}
-                  >
-                    <Text style={[styles.filterText, { color: colors.textSecondary }, isActive && { color: '#FFF', fontWeight: '800' }]}>
-                      {label}
+            {/* Filter Toggle & Info Bar */}
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
+              <TouchableOpacity
+                onPress={() => setShowFilters(!showFilters)}
+                style={[styles.filterToggleBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="funnel-outline" size={14} color={colors.primary} style={{ marginRight: 4 }} />
+                <Text style={[styles.filterToggleText, { color: colors.textPrimary }]}>
+                  {showFilters ? 'Hide Filters' : 'Filter & Phase'}
+                </Text>
+                {((activeFilter !== 'ALL' || activeCategory !== 'ALL' || activePhase !== 'ALL')) && (
+                  <View style={[styles.filterCountBadge, { backgroundColor: colors.primary }]}>
+                    <Text style={styles.filterCountText}>
+                      {Number(activeFilter !== 'ALL') + Number(activeCategory !== 'ALL') + Number(activePhase !== 'ALL')}
                     </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
-
-            {/* Phase Filter pills */}
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{ gap: 8, paddingBottom: 4 }}
-            >
-              {availablePhases.map((ph) => {
-                const isActive = activePhase === ph;
-                const label = ph === 'ALL' ? 'All Phases' : `Phase ${ph}`;
-                return (
-                  <TouchableOpacity
-                    key={ph}
-                    onPress={() => setActivePhase(ph)}
-                    style={[
-                      styles.filterPill,
-                      { backgroundColor: colors.card, borderColor: colors.border },
-                      isActive && { backgroundColor: '#8B5CF6', borderColor: '#8B5CF6' }
-                    ]}
-                  >
-                    <Text style={[styles.filterText, { color: colors.textSecondary }, isActive && { color: '#FFF', fontWeight: '800' }]}>
-                      {label}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
-          </View>
-
-          {/* Category Filter Pills (Horizontal Scroll) */}
-          <View style={{ marginTop: 16 }}>
-            <Text style={[styles.categoryHeaderTitle, { color: colors.textPrimary }]}>Filter by Category</Text>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.categoryScrollContainer}
-            >
-              {CATEGORY_PILLS.map((pill) => {
-                const isActive = activeCategory === pill.key;
-                const catInfo = CATEGORY_MAP[pill.key] || CATEGORY_MAP['default'];
-                const accentColor = pill.key === 'ALL' ? colors.primary : catInfo.color;
-
-                return (
-                  <TouchableOpacity
-                    key={pill.key}
-                    onPress={() => setActiveCategory(pill.key)}
-                    style={[
-                      styles.catFilterPill,
-                      { backgroundColor: colors.card, borderColor: colors.border },
-                      isActive && { backgroundColor: accentColor, borderColor: accentColor }
-                    ]}
-                  >
-                    {pill.key !== 'ALL' && (
-                      catInfo.iconType === 'materialcommunity' ? (
-                        <MaterialCommunityIcons
-                          name={catInfo.icon}
-                          size={13}
-                          color={isActive ? '#FFF' : accentColor}
-                          style={{ marginRight: 6 }}
-                        />
-                      ) : (
-                        <MaterialIcons
-                          name={catInfo.icon}
-                          size={13}
-                          color={isActive ? '#FFF' : accentColor}
-                          style={{ marginRight: 6 }}
-                        />
-                      )
-                    )}
-                    <Text style={[
-                      styles.catFilterText,
-                      { color: colors.textSecondary },
-                      isActive && { color: '#FFF', fontWeight: '800' }
-                    ]}>
-                      {pill.label}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
-          </View>
-
-          {/* Attempt Legend */}
-          <View style={{ paddingHorizontal: 16, marginTop: 16 }}>
-            <View style={[styles.attemptLegend, { backgroundColor: colors.card, borderColor: colors.border }]}>
-              <Text style={[styles.legendTitle, { color: colors.textPrimary }]}>Attempt Status Legend</Text>
-              <View style={styles.legendGrid}>
-                {[
-                  ['F', 'First Attempt'],
-                  ['M', 'Mastered'],
-                  ['C', 'Competent'],
-                  ['B', 'Below Expectation'],
-                  ['Re', 'Remedial'],
-                  ['R', 'Repeated'],
-                  ['P', 'Present'],
-                  ['A', 'Absent']
-                ].map(([val, label]) => (
-                  <View key={val} style={styles.legendItem}>
-                    <AttemptBadge val={val} />
-                    <Text style={[styles.legendItemText, { color: colors.textSecondary }]} numberOfLines={1}>{label}</Text>
                   </View>
-                ))}
-              </View>
+                )}
+                <Ionicons name={showFilters ? 'chevron-up' : 'chevron-down'} size={14} color={colors.textSecondary} style={{ marginLeft: 4 }} />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => setShowLegendModal(true)}
+                style={[styles.legendLinkBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="information-circle-outline" size={14} color={colors.primary} style={{ marginRight: 4 }} />
+                <Text style={[styles.legendLinkText, { color: colors.primary }]}>Attempt Legend</Text>
+              </TouchableOpacity>
             </View>
+
+            {/* Active Filter Badges */}
+            {!showFilters && (activeFilter !== 'ALL' || activeCategory !== 'ALL' || activePhase !== 'ALL') && (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, paddingVertical: 2, marginTop: 4 }}>
+                {activeFilter !== 'ALL' && (
+                  <TouchableOpacity onPress={() => setActiveFilter('ALL')} style={[styles.activeFilterChip, { borderColor: colors.border, backgroundColor: colors.card }]}>
+                    <Text style={[styles.activeFilterChipText, { color: colors.textSecondary }]}>
+                      Status: {activeFilter === 'FAC_VERIFIED' ? 'Fac Ver' : activeFilter === 'FAC_PENDING' ? 'Fac Pend' : activeFilter === 'STUD_VERIFIED' ? 'Stud Ver' : 'Stud Pend'}
+                    </Text>
+                    <Ionicons name="close" size={12} color={colors.textSecondary} style={{ marginLeft: 4 }} />
+                  </TouchableOpacity>
+                )}
+                {activePhase !== 'ALL' && (
+                  <TouchableOpacity onPress={() => setActivePhase('ALL')} style={[styles.activeFilterChip, { borderColor: colors.border, backgroundColor: colors.card }]}>
+                    <Text style={[styles.activeFilterChipText, { color: colors.textSecondary }]}>Phase {activePhase}</Text>
+                    <Ionicons name="close" size={12} color={colors.textSecondary} style={{ marginLeft: 4 }} />
+                  </TouchableOpacity>
+                )}
+                {activeCategory !== 'ALL' && (
+                  <TouchableOpacity onPress={() => setActiveCategory('ALL')} style={[styles.activeFilterChip, { borderColor: colors.border, backgroundColor: colors.card }]}>
+                    <Text style={[styles.activeFilterChipText, { color: colors.textSecondary }]}>
+                      Cat: {CATEGORY_MAP[activeCategory]?.label || activeCategory}
+                    </Text>
+                    <Ionicons name="close" size={12} color={colors.textSecondary} style={{ marginLeft: 4 }} />
+                  </TouchableOpacity>
+                )}
+              </ScrollView>
+            )}
+
+            {/* Collapsible filters panel */}
+            {showFilters && (
+              <View style={[styles.collapsibleFilterPanel, { backgroundColor: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)', borderColor: colors.border, borderRadius: 12, padding: 12, gap: 12, borderWidth: 1, marginTop: 4 }]}>
+                {/* Verification Status Filter pills */}
+                <View>
+                  <Text style={[styles.filterSectionTitle, { color: colors.textSecondary }]}>Verification Status</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, paddingVertical: 2, marginTop: 4 }}>
+                    {[
+                      ['ALL', 'All Statuses'],
+                      ['FAC_VERIFIED', 'Faculty Verified'],
+                      ['FAC_PENDING', 'Faculty Pending'],
+                      ['STUD_VERIFIED', 'Student Verified'],
+                      ['STUD_PENDING', 'Student Pending']
+                    ].map(([key, label]) => {
+                      const isActive = activeFilter === key;
+                      return (
+                        <TouchableOpacity
+                          key={key}
+                          onPress={() => setActiveFilter(key)}
+                          style={[
+                            styles.filterPill,
+                            { backgroundColor: colors.card, borderColor: colors.border },
+                            isActive && { backgroundColor: colors.primary, borderColor: colors.primary }
+                          ]}
+                        >
+                          <Text style={[styles.filterText, { color: colors.textSecondary }, isActive && { color: '#FFF', fontWeight: '800' }]}>
+                            {label}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </ScrollView>
+                </View>
+
+                {/* Phase Filter pills */}
+                <View>
+                  <Text style={[styles.filterSectionTitle, { color: colors.textSecondary }]}>Phase</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, paddingVertical: 2, marginTop: 4 }}>
+                    {availablePhases.map((ph) => {
+                      const isActive = activePhase === ph;
+                      const label = ph === 'ALL' ? 'All Phases' : `Phase ${ph}`;
+                      return (
+                        <TouchableOpacity
+                          key={ph}
+                          onPress={() => setActivePhase(ph)}
+                          style={[
+                            styles.filterPill,
+                            { backgroundColor: colors.card, borderColor: colors.border },
+                            isActive && { backgroundColor: '#8B5CF6', borderColor: '#8B5CF6' }
+                          ]}
+                        >
+                          <Text style={[styles.filterText, { color: colors.textSecondary }, isActive && { color: '#FFF', fontWeight: '800' }]}>
+                            {label}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </ScrollView>
+                </View>
+
+                {/* Category Filter Pills (Horizontal Scroll) */}
+                <View>
+                  <Text style={[styles.filterSectionTitle, { color: colors.textSecondary }]}>Category</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, paddingVertical: 2, marginTop: 4 }}>
+                    {CATEGORY_PILLS.map((pill) => {
+                      const isActive = activeCategory === pill.key;
+                      const catInfo = CATEGORY_MAP[pill.key] || CATEGORY_MAP['default'];
+                      const accentColor = pill.key === 'ALL' ? colors.primary : catInfo.color;
+
+                      return (
+                        <TouchableOpacity
+                          key={pill.key}
+                          onPress={() => setActiveCategory(pill.key)}
+                          style={[
+                            styles.catFilterPill,
+                            { backgroundColor: colors.card, borderColor: colors.border },
+                            isActive && { backgroundColor: accentColor, borderColor: accentColor }
+                          ]}
+                        >
+                          {pill.key !== 'ALL' && (
+                            catInfo.iconType === 'materialcommunity' ? (
+                              <MaterialCommunityIcons
+                                name={catInfo.icon}
+                                size={11}
+                                color={isActive ? '#FFF' : accentColor}
+                                style={{ marginRight: 4 }}
+                              />
+                            ) : (
+                              <MaterialIcons
+                                name={catInfo.icon}
+                                size={11}
+                                color={isActive ? '#FFF' : accentColor}
+                                style={{ marginRight: 4 }}
+                              />
+                            )
+                          )}
+                          <Text style={[
+                            styles.catFilterText,
+                            { color: colors.textSecondary },
+                            isActive && { color: '#FFF', fontWeight: '800' }
+                          ]}>
+                            {pill.label}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </ScrollView>
+                </View>
+              </View>
+            )}
           </View>
 
           {/* Logbook entries list */}
@@ -667,6 +703,45 @@ const ERPLogBookScreen = ({ navigation }) => {
           </View>
         </ScrollView>
       )}
+
+      <Modal
+        visible={showLegendModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowLegendModal(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={[styles.legendModalContent, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>Attempt Status Legend</Text>
+              <TouchableOpacity onPress={() => setShowLegendModal(false)}>
+                <Ionicons name="close" size={22} color={colors.textPrimary} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={{ maxHeight: 350, marginTop: 12 }} showsVerticalScrollIndicator={false}>
+              <View style={styles.legendModalGrid}>
+                {[
+                  ['F', 'First Attempt'],
+                  ['M', 'Mastered'],
+                  ['C', 'Competent'],
+                  ['B', 'Below Expectation'],
+                  ['Re', 'Remedial'],
+                  ['R', 'Repeated'],
+                  ['P', 'Present'],
+                  ['A', 'Absent']
+                ].map(([val, label]) => (
+                  <View key={val} style={styles.modalLegendItem}>
+                    <View style={{ width: 34, alignItems: 'center' }}>
+                      <AttemptBadge val={val} />
+                    </View>
+                    <Text style={[styles.modalLegendText, { color: colors.textSecondary }]}>{label}</Text>
+                  </View>
+                ))}
+              </View>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -849,33 +924,109 @@ const styles = StyleSheet.create({
     padding: 16,
     borderWidth: 1,
   },
-  attemptLegend: {
-    borderRadius: 20,
-    padding: 16,
-    borderWidth: 1,
-    gap: 12,
-  },
-  legendTitle: {
-    fontSize: 12,
-    fontWeight: '800',
-    letterSpacing: 0.2,
-    textTransform: 'uppercase',
-  },
-  legendGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-  },
-  legendItem: {
+  filterToggleBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    width: '47%',
-    marginVertical: 2,
+    paddingHorizontal: 12,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 1,
   },
-  legendItemText: {
+  filterToggleText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  filterCountBadge: {
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+    marginLeft: 6,
+  },
+  filterCountText: {
+    color: '#FFF',
+    fontSize: 9,
+    fontWeight: '900',
+  },
+  legendLinkBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 1,
+  },
+  legendLinkText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  activeFilterChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    height: 26,
+    borderRadius: 13,
+    borderWidth: 1,
+  },
+  activeFilterChipText: {
     fontSize: 10,
     fontWeight: '700',
+  },
+  collapsibleFilterPanel: {
+    borderWidth: 1,
+  },
+  filterSectionTitle: {
+    fontSize: 11,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 4,
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  legendModalContent: {
+    width: '100%',
+    borderRadius: 24,
+    borderWidth: 1,
+    padding: 20,
+    elevation: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.25,
+    shadowRadius: 15,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.05)',
+  },
+  modalTitle: {
+    fontSize: 16,
+    fontWeight: '900',
+    letterSpacing: -0.5,
+  },
+  legendModalGrid: {
+    gap: 12,
+  },
+  modalLegendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 4,
+  },
+  modalLegendText: {
+    fontSize: 13,
+    fontWeight: '600',
     flex: 1,
   },
   statusBadge: {
