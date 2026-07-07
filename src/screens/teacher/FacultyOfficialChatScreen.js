@@ -8,7 +8,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import { useUser } from '../../context/UserContext';
-import { getFacultyBatches, getFacultyGroupChats, sendPortalChatMessage, uploadAvatarAPI, uploadDocumentAPI } from '../../data/apiService';
+import { getFacultyBatches, getFacultyGroupChats, sendPortalChatMessage, uploadLectureMaterial } from '../../data/apiService';
 
 
 const { width } = Dimensions.get('window');
@@ -164,20 +164,18 @@ const FacultyOfficialChatScreen = ({ navigation }) => {
       let attachmentUrl = '';
       
       if (selectedAttachment) {
-        if (selectedAttachment.type === 'image') {
-          const res = await uploadAvatarAPI(accessToken || '', selectedAttachment.uri);
-          if (res.ok && res.json?.data?.avatar_url) {
-            attachmentUrl = res.json.data.avatar_url;
-          } else {
-            throw new Error(res.json?.message || 'Failed to upload image to server.');
-          }
-        } else if (selectedAttachment.type === 'document') {
-          const res = await uploadDocumentAPI(accessToken || '', selectedAttachment.uri, selectedAttachment.name);
-          if (res.ok && res.json?.data?.document_url) {
-            attachmentUrl = res.json.data.document_url;
-          } else {
-            throw new Error(res.json?.message || 'Failed to upload document to server.');
-          }
+        const fileType = selectedAttachment.type === 'image' ? 'image/jpeg' : 'application/pdf';
+        const res = await uploadLectureMaterial(
+          user.emp_id,
+          user.department || 'Physiology',
+          selectedAttachment.uri,
+          selectedAttachment.name,
+          fileType
+        );
+        if (res && res.success) {
+          attachmentUrl = res.data || res.filename || res.file || selectedAttachment.name;
+        } else {
+          throw new Error(res?.message || 'Failed to upload attachment to ERP.');
         }
       }
 

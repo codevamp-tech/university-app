@@ -602,15 +602,7 @@ const ChatScreen = ({ navigation }) => {
         styles.inputBar,
         { backgroundColor: colors.card, borderTopColor: colors.border, paddingBottom: Math.max(insets.bottom, 12) }
       ]}>
-        {activeChannel?.id === 'official-batch-chat' && (
-          <TouchableOpacity
-            style={[styles.attachTriggerBtn, { backgroundColor: isDark ? '#1F2937' : '#F3F4F6' }]}
-            onPress={handleSelectAttachment}
-            disabled={sendingPortalMessage}
-          >
-            <Ionicons name="attach-outline" size={24} color={colors.textSecondary} />
-          </TouchableOpacity>
-        )}
+
 
         <TextInput
           style={[

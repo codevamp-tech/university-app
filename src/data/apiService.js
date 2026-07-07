@@ -2210,6 +2210,28 @@ export async function getConnectionList(token, userId = null) {
   }
 }
 
+export async function uploadLectureMaterial(empId, department, fileUri, fileName, fileType) {
+  const formData = new FormData();
+  formData.append('file', {
+    uri: fileUri,
+    name: fileName || 'file.jpg',
+    type: fileType || 'image/jpeg',
+  });
+  formData.append('empid', empId);
+  formData.append('depart', department || 'Physiology');
 
+  const response = await fetch('https://myportal.srms.ac.in/SRMSERP/Faculty/UploadLectureMaterial', {
+    method: 'POST',
+    body: formData,
+    headers: {
+      'Accept': 'application/json',
+    },
+  });
 
+  if (!response.ok) {
+    throw new Error(`Upload failed with status ${response.status}`);
+  }
 
+  const resJson = await response.json();
+  return resJson;
+}
