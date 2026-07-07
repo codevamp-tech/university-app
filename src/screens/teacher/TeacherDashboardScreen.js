@@ -489,6 +489,9 @@ const TeacherDashboardScreen = ({ navigation }) => {
                 <View style={styles.scheduleTime}>
                   <Text style={styles.scheduleTimeHour}>{formatTime(item.start_time).split(' ')[0]}</Text>
                   <Text style={styles.scheduleTimePeriod}>{formatTime(item.start_time).split(' ')[1]}</Text>
+                  <Text style={{ fontSize: 9, fontWeight: '800', color: '#6B7280', marginTop: 3 }}>
+                    {formatDay(item.start_time).toUpperCase()}
+                  </Text>
                 </View>
                 <View style={styles.scheduleLine}>
                   <LinearGradient colors={['#EA580C', '#F97316']} style={styles.scheduleDot} />
