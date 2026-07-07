@@ -207,10 +207,17 @@ const ChatScreen = ({ navigation }) => {
 
   const handleAttachmentPress = async (url, department) => {
     if (!url) return;
-    let targetUrl = url;
-    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+    let cleanUrl = url.trim();
+    if (cleanUrl.startsWith('"') && cleanUrl.endsWith('"')) {
+      cleanUrl = cleanUrl.substring(1, cleanUrl.length - 1);
+    }
+    if (cleanUrl.startsWith('%22') && cleanUrl.endsWith('%22')) {
+      cleanUrl = cleanUrl.substring(3, cleanUrl.length - 3);
+    }
+    let targetUrl = cleanUrl;
+    if (!cleanUrl.startsWith('http://') && !cleanUrl.startsWith('https://')) {
       const deptName = department || 'Physiology';
-      targetUrl = `https://myportal.srms.ac.in/SRMSERP/Faculty/ChatsFile?pathname=${encodeURIComponent(url)}&department=${encodeURIComponent(deptName)}`;
+      targetUrl = `https://myportal.srms.ac.in/SRMSERP/Faculty/ChatsFile?pathname=${encodeURIComponent(cleanUrl)}&department=${encodeURIComponent(deptName)}`;
     }
     try {
       const supported = await Linking.canOpenURL(targetUrl);
