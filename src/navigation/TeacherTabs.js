@@ -39,7 +39,7 @@ const TeacherTabs = () => {
         tabBarIcon: ({ focused, color }) => {
           const icons = {
             Home: focused ? 'home' : 'home-outline',
-            Syllabus: focused ? 'book' : 'book-outline',
+            Schedule: focused ? 'calendar' : 'calendar-outline',
             Attendance: focused ? 'finger-print' : 'finger-print-outline',
             Profile: focused ? 'person' : 'person-outline',
           };
@@ -48,7 +48,7 @@ const TeacherTabs = () => {
       })}
     >
       <Tab.Screen name="Home" component={TeacherDashboardScreen} />
-      <Tab.Screen name="Syllabus" component={CourseManagementScreen} />
+      <Tab.Screen name="Schedule" component={CourseManagementScreen} />
       <Tab.Screen name="Attendance" component={TeacherAttendanceScreen} />
       <Tab.Screen name="Profile" component={TeacherProfileScreen} />
     </Tab.Navigator>

@@ -1640,11 +1640,83 @@ export async function getFacultyProfile(token) {
  * GET /api/v1/faculty/timetable
  * Returns synced timetable for this faculty.
  */
-export async function getFacultyTimetable(token) {
-  const res = await apiCall('/api/v1/faculty/timetable', {
-    headers: authHeaders(token),
-  });
-  return unwrap(res, []);
+export async function getFacultyTimetable(token, empId) {
+  const targetEmpId = empId || 'D/11/093';
+  try {
+    const response = await fetch('https://myportal.srms.ac.in/SRMSERP/Faculty/GetCurrentTimeTable', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ empid: targetEmpId }),
+    });
+    const resJson = await response.json();
+    if (!resJson || !resJson.success || !resJson.data) {
+      return [];
+    }
+    
+    // Flatten and parse the nested lectures
+    const list = [];
+    resJson.data.forEach((deptObj) => {
+      if (!deptObj.categories) return;
+      deptObj.categories.forEach((catObj) => {
+        if (!catObj.lectures) return;
+        catObj.lectures.forEach((lec) => {
+          // Parse date
+          let dateObj = null;
+          if (lec.lectureDate) {
+            const match = lec.lectureDate.match(/\d+/);
+            if (match) {
+              // Convert to IST
+              dateObj = new Date(parseInt(match[0], 10) + (5.5 * 60 * 60 * 1000));
+            }
+          }
+          
+          // Generate start and end times in ISO format (using UTC components representing IST)
+          const combineTime = (timeStr) => {
+            if (!dateObj || !timeStr) return null;
+            const parts = timeStr.trim().match(/(\d+):(\d+)\s*(AM|PM)/i);
+            if (parts) {
+              let hours = parseInt(parts[1], 10);
+              const minutes = parseInt(parts[2], 10);
+              const ampm = parts[3].toUpperCase();
+              if (ampm === 'PM' && hours < 12) hours += 12;
+              if (ampm === 'AM' && hours === 12) hours = 0;
+              
+              const combined = new Date(Date.UTC(
+                dateObj.getUTCFullYear(),
+                dateObj.getUTCMonth(),
+                dateObj.getUTCDate(),
+                hours,
+                minutes
+              ));
+              return combined.toISOString();
+            }
+            return null;
+          };
+          
+          list.push({
+            tt_cd: `${lec.empId}_${lec.lectureStart}_${lec.lectureDate}`.replace(/[\/\s:]/g, '_'),
+            subject_code: lec.empId,
+            subject_name: lec.subject,
+            faculty_name: lec.faculty,
+            start_time: combineTime(lec.lectureStart),
+            end_time: combineTime(lec.lectureEnd),
+            topic_name: lec.description || '',
+            lecture_type: catObj.category || 'Lecture',
+            raw_date: dateObj ? dateObj.toISOString() : null
+          });
+        });
+      });
+    });
+    
+    // Sort by start_time ascending
+    list.sort((a, b) => new Date(a.start_time) - new Date(b.start_time));
+    return list;
+  } catch (error) {
+    console.error('[apiService] getFacultyTimetable error:', error);
+    return [];
+  }
 }
 
 /**

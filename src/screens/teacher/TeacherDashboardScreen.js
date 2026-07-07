@@ -189,7 +189,7 @@ const TeacherDashboardScreen = ({ navigation }) => {
     setLoading(true);
     try {
       const [ttData, topicsData] = await Promise.all([
-        getFacultyTimetable(accessToken),
+        getFacultyTimetable(accessToken, user?.emp_id),
         getFacultyTopics(accessToken),
       ]);
       setTimetable(Array.isArray(ttData) ? ttData : []);
@@ -199,7 +199,7 @@ const TeacherDashboardScreen = ({ navigation }) => {
     } finally {
       setLoading(false);
     }
-  }, [accessToken]);
+  }, [accessToken, user?.emp_id]);
 
   useEffect(() => { loadData(); }, [loadData]);
 
@@ -210,10 +210,16 @@ const TeacherDashboardScreen = ({ navigation }) => {
     .slice(0, 4);
 
   // Today's schedule (same day as today)
-  const today = now.toDateString();
+  const formatLocalDate = (date) => {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  };
+  const todayStr = formatLocalDate(now);
   const todaySlots = timetable.filter(tt => {
     if (!tt.start_time) return false;
-    return new Date(tt.start_time).toDateString() === today;
+    return tt.start_time.split('T')[0] === todayStr;
   });
 
   let scheduleToShow = todaySlots.length > 0 ? todaySlots : upcoming;
@@ -364,13 +370,13 @@ const TeacherDashboardScreen = ({ navigation }) => {
         <View style={styles.quickActionsContainer}>
           <TouchableOpacity
             style={styles.quickActionCard}
-            onPress={() => navigation.navigate('Syllabus')}
+            onPress={() => navigation.navigate('Schedule')}
             activeOpacity={0.8}
           >
             <View style={[styles.quickActionIconBg, { backgroundColor: '#FEF3C7' }]}>
-              <Ionicons name="book-outline" size={20} color="#D97706" />
+              <Ionicons name="time-outline" size={20} color="#D97706" />
             </View>
-            <Text style={styles.quickActionLabel}>Syllabus</Text>
+            <Text style={styles.quickActionLabel}>Schedule</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -436,7 +442,7 @@ const TeacherDashboardScreen = ({ navigation }) => {
           <Text style={styles.sectionTitle}>
             {isShowingRecent ? '📅 Recently Synced Schedule' : "📅 Today's Schedule"}
           </Text>
-          <TouchableOpacity onPress={() => navigation.navigate('Syllabus')} activeOpacity={0.7}>
+          <TouchableOpacity onPress={() => navigation.navigate('Schedule')} activeOpacity={0.7}>
             <Text style={styles.viewAllText}>See All →</Text>
           </TouchableOpacity>
         </View>

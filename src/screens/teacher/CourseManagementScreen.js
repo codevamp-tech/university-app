@@ -1,172 +1,22 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Animated,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator,
 } from 'react-native';
-import { Ionicons, MaterialIcons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { CURRICULUM as DEFAULT_CURRICULUM } from '../../constants/data';
 import { useUser } from '../../context/UserContext';
 import { getFacultyTimetable } from '../../data/apiService';
 
-const SkeletonPlaceholder = ({ width, height, style }) => {
-  const pulseAnim = useRef(new Animated.Value(0.3)).current;
+const DAYS_OF_WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
-  useEffect(() => {
-    const pulse = Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulseAnim, {
-          toValue: 0.7,
-          duration: 800,
-          useNativeDriver: true,
-        }),
-        Animated.timing(pulseAnim, {
-          toValue: 0.3,
-          duration: 800,
-          useNativeDriver: true,
-        }),
-      ])
-    );
-    pulse.start();
-    return () => pulse.stop();
-  }, [pulseAnim]);
-
-  return (
-    <Animated.View
-      style={[
-        {
-          width: width || '100%',
-          height: height || 20,
-          backgroundColor: '#E5E7EB',
-          borderRadius: 8,
-          opacity: pulseAnim,
-        },
-        style,
-      ]}
-    />
-  );
-};
-
-const SyllabusSkeleton = () => (
-  <View style={{ flex: 1, paddingHorizontal: 20, paddingTop: 20 }}>
-    {/* Course Header Hero Skeleton */}
-    <View style={{ backgroundColor: '#F3F4F6', borderRadius: 24, padding: 24, gap: 12, marginBottom: 24 }}>
-      <SkeletonPlaceholder width="30%" height={16} />
-      <SkeletonPlaceholder width="80%" height={24} />
-      <SkeletonPlaceholder width="40%" height={14} style={{ marginTop: 4 }} />
-    </View>
-
-    <Text style={{ fontSize: 16, fontWeight: '700', color: '#111827', marginBottom: 16, textTransform: 'uppercase', letterSpacing: 1 }}>
-      Curriculum Oversight
-    </Text>
-
-    {/* Syllabus Card Skeletons */}
-    {[1, 2, 3].map((i) => (
-      <View key={i} style={{ backgroundColor: '#FFFFFF', borderRadius: 20, padding: 20, borderWidth: 1, borderColor: '#E5E7EB', gap: 14, marginBottom: 16 }}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-          <SkeletonPlaceholder width="20%" height={14} />
-          <SkeletonPlaceholder width="30%" height={16} style={{ borderRadius: 8 }} />
-        </View>
-        <SkeletonPlaceholder width="60%" height={18} />
-        <SkeletonPlaceholder width="95%" height={12} />
-        <SkeletonPlaceholder width="85%" height={12} />
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8 }}>
-          <SkeletonPlaceholder width={32} height={32} style={{ borderRadius: 16 }} />
-          <View style={{ flex: 1, gap: 4 }}>
-            <SkeletonPlaceholder width="40%" height={12} />
-            <SkeletonPlaceholder width="30%" height={10} />
-          </View>
-        </View>
-      </View>
-    ))}
-  </View>
-);
-
-const MEDICAL_CURRICULUM = [
-  { 
-    id: '1', 
-    code: 'PE-TH', 
-    name: 'Pediatrics Theory', 
-    description: 'Growth & development, neonatology, infectious diseases, and pediatric emergencies.', 
-    faculty: 'Dr. Sandhya Chauhan', 
-    role: 'Professor of Pediatrics', 
-    progress: 45, 
-    type: 'CORE SUBJECT', 
-    color: '#EA580C' 
-  },
-  { 
-    id: '2', 
-    code: 'PE-CL', 
-    name: 'Clinical Posting - Pediatrics', 
-    description: 'Bedside case presentation, clinical history taking, and physical examination of neonates.', 
-    faculty: 'Dr. Sandhya Chauhan', 
-    role: 'Clinical Instructor', 
-    progress: 30, 
-    type: 'CLINICAL POSTING', 
-    color: '#10B981' 
-  },
-  { 
-    id: '3', 
-    code: 'PE-PR', 
-    name: 'Pediatrics Practical', 
-    description: 'OSCE prep, infant feeding assessment, immunization schedules, and emergency care procedures.', 
-    faculty: 'Dr. Sandhya Chauhan', 
-    role: 'Practical Lead', 
-    progress: 50, 
-    type: 'PRACTICAL', 
-    color: '#7C3AED' 
-  }
-];
-
-const PHYSIOLOGY_CURRICULUM = [
-  { 
-    id: '1', 
-    code: 'PY-TH', 
-    name: 'Physiology Theory', 
-    description: 'General physiology, hematology, cardiovascular system, respiration, and renal physiology.', 
-    faculty: 'Dr. Kranthi Kumar Garikapati', 
-    role: 'Associate Professor of Physiology', 
-    progress: 45, 
-    type: 'CORE SUBJECT', 
-    color: '#EA580C' 
-  },
-  { 
-    id: '2', 
-    code: 'PY-PR', 
-    name: 'Physiology Practical', 
-    description: 'Hematology experiments, clinical examination of CVS, respiratory system, and nervous system.', 
-    faculty: 'Dr. Kranthi Kumar Garikapati', 
-    role: 'Practical Instructor', 
-    progress: 30, 
-    type: 'PRACTICAL', 
-    color: '#10B981' 
-  }
-];
-
-const ANATOMY_CURRICULUM = [
-  { 
-    id: '1', 
-    code: 'AN-TH', 
-    name: 'Anatomy Theory', 
-    description: 'Gross anatomy, embryology, histology, and neuroanatomy.', 
-    faculty: 'Anatomy Faculty', 
-    role: 'Professor of Anatomy', 
-    progress: 50, 
-    type: 'CORE SUBJECT', 
-    color: '#EA580C' 
-  },
-  { 
-    id: '2', 
-    code: 'AN-PR', 
-    name: 'Anatomy Dissection / Histology', 
-    description: 'Cadaveric dissection and microscopic study of tissues.', 
-    faculty: 'Anatomy Faculty', 
-    role: 'Dissection Lead', 
-    progress: 40, 
-    type: 'PRACTICAL', 
-    color: '#7C3AED' 
-  }
-];
+function formatTime(iso) {
+  if (!iso) return '';
+  try {
+    const d = new Date(iso);
+    return d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+  } catch { return ''; }
+}
 
 const CourseManagementScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
@@ -174,83 +24,58 @@ const CourseManagementScreen = ({ navigation }) => {
   const [timetable, setTimetable] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const isMedical = 
-    user?.department?.toUpperCase().includes('PAEDIATRICS') || 
-    user?.department?.toUpperCase().includes('PEDIATRICS') ||
-    user?.department?.toUpperCase().includes('PHYSIOLOGY') || 
-    user?.department?.toUpperCase().includes('ANATOMY') || 
-    user?.department?.toUpperCase().includes('MEDICAL') ||
-    user?.department?.toUpperCase().includes('DOCTORS');
+  // Get current day of the week to set as default
+  const getCurrentDay = () => {
+    const now = new Date();
+    const dayIndex = now.getDay(); // 0 is Sunday, 1 is Monday ...
+    const mapped = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    return mapped[dayIndex];
+  };
+
+  const [selectedDay, setSelectedDay] = useState(getCurrentDay());
 
   const loadData = useCallback(async () => {
     if (!accessToken) { setLoading(false); return; }
     setLoading(true);
     try {
-      const ttData = await getFacultyTimetable(accessToken);
+      const ttData = await getFacultyTimetable(accessToken, user?.emp_id);
       setTimetable(Array.isArray(ttData) ? ttData : []);
     } catch (e) {
       console.warn('[CourseManagementScreen] load error:', e);
     } finally {
       setLoading(false);
     }
-  }, [accessToken]);
+  }, [accessToken, user?.emp_id]);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
 
-  // Generate dynamic curriculum from timetable if available
-  const subjectSet = new Set();
-  const dynamicCurriculum = [];
-  timetable.forEach((item, idx) => {
-    if (item.subject_name && !subjectSet.has(item.subject_name)) {
-      subjectSet.add(item.subject_name);
-      
-      const colors = ['#EA580C', '#10B981', '#7C3AED', '#F59E0B', '#3B82F6'];
-      const color = colors[idx % colors.length];
-      
-      dynamicCurriculum.push({
-        id: String(item.tt_cd || idx + 1),
-        code: item.subject_code || (isMedical ? 'PE' : 'CS'),
-        name: item.subject_name,
-        description: item.topic_name || (isMedical ? 'ERP Synced medical lectures and clinical postings.' : 'Core curriculum lectures.'),
-        faculty: user?.name || 'Faculty Member',
-        role: user?.department || 'Faculty Department',
-        progress: isMedical ? 45 : 75,
-        type: item.lecture_type || 'CORE SUBJECT',
-        color: color,
-      });
-    }
+  const getDayFromISO = (isoStr) => {
+    if (!isoStr) return '';
+    const date = new Date(isoStr);
+    const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    return DAYS[date.getUTCDay()];
+  };
+
+  // Filter slots for the selected day of the week
+  const daySlots = timetable.filter(slot => {
+    return getDayFromISO(slot.raw_date) === selectedDay;
   });
 
-  const getFallbackCurriculum = () => {
-    const d = String(user?.department).toUpperCase();
-    if (d.includes('PHYSIOLOGY')) return PHYSIOLOGY_CURRICULUM;
-    if (d.includes('ANATOMY')) return ANATOMY_CURRICULUM;
-    return MEDICAL_CURRICULUM;
+  const getLectureIcon = (type) => {
+    const t = String(type).toLowerCase();
+    if (t.includes('practical')) return 'flask-outline';
+    if (t.includes('clinical')) return 'stethoscope';
+    return 'book-open-outline';
   };
 
-  const getRomanPhase = (p, dept) => {
-    const num = parseInt(p, 10);
-    if (num === 1) return 'I';
-    if (num === 2) return 'II';
-    if (num === 3) return 'III';
-    
-    // Fallback based on department string
-    const d = String(dept).toUpperCase();
-    if (d.includes('PHYSIOLOGY') || d.includes('ANATOMY') || d.includes('BIOCHEMISTRY')) {
-      return 'I';
-    }
-    if (d.includes('PHARMACOLOGY') || d.includes('PATHOLOGY') || d.includes('MICROBIOLOGY') || d.includes('FORENSIC')) {
-      return 'II';
-    }
-    return 'III';
+  const getLectureColor = (type) => {
+    const t = String(type).toLowerCase();
+    if (t.includes('practical')) return '#7C3AED'; // Purple
+    if (t.includes('clinical')) return '#10B981'; // Green
+    return '#EA580C'; // Orange
   };
-
-  const curriculumToShow = dynamicCurriculum;
-  const courseBadge = isMedical ? 'MBBS PROGRAM' : 'B.TECH CSE';
-  const courseTitle = isMedical ? `Phase ${getRomanPhase(user?.phase, user?.department)} • Section A` : '3rd Year • Section A';
-  const enrolledCount = isMedical ? '160 enrolled' : '64 enrolled';
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -267,111 +92,111 @@ const CourseManagementScreen = ({ navigation }) => {
             <Ionicons name="arrow-back" size={20} color="#EA580C" />
           </LinearGradient>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Course Management</Text>
+        <Text style={styles.headerTitle}>Weekly Schedule</Text>
         <View style={{ width: 40 }} />
       </LinearGradient>
 
+      {/* Days Tabs bar */}
+      <View style={styles.daysTabContainer}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.daysScroll}>
+          {DAYS_OF_WEEK.map((day) => {
+            const isActive = selectedDay === day;
+            return (
+              <TouchableOpacity
+                key={day}
+                onPress={() => setSelectedDay(day)}
+                style={[
+                  styles.dayTab,
+                  isActive ? { backgroundColor: '#EA580C' } : { backgroundColor: '#FFFFFF', borderColor: '#E5E7EB', borderWidth: 1 }
+                ]}
+                activeOpacity={0.8}
+              >
+                <Text style={[styles.dayLabel, { color: isActive ? '#FFFFFF' : '#4B5563' }]}>
+                  {day}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+      </View>
+
       {loading ? (
-        <SyllabusSkeleton />
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#EA580C" />
+          <Text style={styles.loadingText}>Fetching your weekly schedule...</Text>
+        </View>
       ) : (
         <ScrollView
           contentContainerStyle={styles.scroll}
           showsVerticalScrollIndicator={false}
         >
-          {/* Course Header */}
-          <View style={styles.courseHeader}>
-            <View style={styles.courseBadgeWrapper}>
-              <LinearGradient
-                colors={['#FFF7ED', '#FFEDD5']}
-                style={styles.courseBadge}
-              >
-                <Text style={styles.courseBadgeText}>{courseBadge}</Text>
-              </LinearGradient>
-            </View>
-            <Text style={styles.courseTitle}>{courseTitle}</Text>
-            <Text style={styles.courseSubtitle}>Academic Session 2023-24</Text>
-          </View>
-
-
-          {/* Curriculum Oversight */}
-          <View style={styles.curriculumHeader}>
-            <Text style={styles.sectionTitle}>Curriculum Oversight</Text>
-            <View style={styles.viewToggle}>
-              <TouchableOpacity style={[styles.toggleBtn, styles.toggleBtnActive]} activeOpacity={0.8}>
-                <Ionicons name="grid-outline" size={18} color="#EA580C" />
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.toggleBtn} activeOpacity={0.8}>
-                <Ionicons name="list-outline" size={18} color="#9CA3AF" />
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          {curriculumToShow.length === 0 ? (
+          {daySlots.length === 0 ? (
             <View style={styles.emptyCard}>
-              <Ionicons name="book-outline" size={48} color="#D1D5DB" style={{ marginBottom: 12 }} />
-              <Text style={styles.emptyText}>No Syllabus Found</Text>
-              <Text style={styles.emptySub}>Please pull-to-refresh on your Attendance tab or login again to sync from SRMS ERP.</Text>
+              <MaterialCommunityIcons name="calendar-blank" size={56} color="#D1D5DB" style={{ marginBottom: 12 }} />
+              <Text style={styles.emptyText}>No Classes Scheduled</Text>
+              <Text style={styles.emptySub}>You have no lectures or clinical postings scheduled for {selectedDay}.</Text>
             </View>
           ) : (
-            curriculumToShow.map((course) => (
-              <LinearGradient
-                key={course.id}
-                colors={['#FFFFFF', '#F9FAFB']}
-                style={styles.currCard}
-              >
-                <View style={styles.currHeader}>
-                  <LinearGradient
-                    colors={[course.color + '12', course.color + '08']}
-                    style={styles.currIcon}
-                  >
-                    <Ionicons name="book-outline" size={20} color={course.color} />
-                  </LinearGradient>
-                  <LinearGradient
-                    colors={[course.color + '12', course.color + '08']}
-                    style={styles.currTypeBadge}
-                  >
-                    <Text style={[styles.currTypeText, { color: course.color }]}>{course.type}</Text>
-                  </LinearGradient>
-                </View>
-
-                <Text style={styles.currName}>{course.name}</Text>
-                <Text style={styles.currDesc}>{course.description}</Text>
-
-                <View style={styles.facultySection}>
-                  <Text style={styles.facultyLabel}>FACULTY ASSIGNED</Text>
-                  <View style={styles.facultyInfo}>
+            daySlots.map((slot, index) => {
+              const themeColor = getLectureColor(slot.lecture_type);
+              const iconName = getLectureIcon(slot.lecture_type);
+              return (
+                <LinearGradient
+                  key={slot.tt_cd || index}
+                  colors={['#FFFFFF', '#F9FAFB']}
+                  style={styles.currCard}
+                >
+                  <View style={styles.currHeader}>
                     <LinearGradient
-                      colors={['#EA580C', '#9A3412']}
-                      style={styles.facultyAvatar}
+                      colors={[themeColor + '12', themeColor + '08']}
+                      style={styles.currIcon}
                     >
-                      <Text style={styles.facultyAvatarText}>
-                        {course.faculty.charAt(0)}
+                      <MaterialCommunityIcons name={iconName} size={22} color={themeColor} />
+                    </LinearGradient>
+                    <LinearGradient
+                      colors={[themeColor + '12', themeColor + '08']}
+                      style={styles.currTypeBadge}
+                    >
+                      <Text style={[styles.currTypeText, { color: themeColor }]}>
+                        {slot.lecture_type || 'Lecture'}
                       </Text>
                     </LinearGradient>
-                    <View>
-                      <Text style={styles.facultyName}>{course.faculty}</Text>
-                      <Text style={styles.facultyRole}>{course.role}</Text>
+                  </View>
+
+                  <Text style={styles.currName}>{slot.subject_name}</Text>
+                  
+                  {slot.topic_name ? (
+                    <Text style={styles.currDesc}>{slot.topic_name}</Text>
+                  ) : null}
+
+                  <View style={styles.metaRow}>
+                    <Ionicons name="time-outline" size={16} color="#6B7280" style={{ marginRight: 6 }} />
+                    <Text style={styles.metaText}>
+                      {formatTime(slot.start_time)} – {formatTime(slot.end_time)}
+                    </Text>
+                  </View>
+
+                  <View style={styles.facultySection}>
+                    <Text style={styles.facultyLabel}>INSTRUCTOR</Text>
+                    <View style={styles.facultyInfo}>
+                      <LinearGradient
+                        colors={['#EA580C', '#9A3412']}
+                        style={styles.facultyAvatar}
+                      >
+                        <Text style={styles.facultyAvatarText}>
+                          {slot.faculty_name ? slot.faculty_name.charAt(0) : 'F'}
+                        </Text>
+                      </LinearGradient>
+                      <View>
+                        <Text style={styles.facultyName}>{slot.faculty_name || 'Faculty Member'}</Text>
+                        <Text style={styles.facultyRole}>{user?.department || 'Physiology Department'}</Text>
+                      </View>
                     </View>
                   </View>
-                </View>
-
-                <View style={styles.progressSection}>
-                  <View style={styles.progressHeader}>
-                    <Text style={styles.progressLabel}>Syllabus Progress</Text>
-                    <Text style={[styles.progressPercent, { color: course.color }]}>{course.progress}%</Text>
-                  </View>
-                  <View style={styles.progressBarBg}>
-                    <LinearGradient
-                      colors={[course.color, course.color + 'CC']}
-                      style={[styles.progressBarFill, { width: `${course.progress}%` }]}
-                    />
-                  </View>
-                </View>
-              </LinearGradient>
-            ))
+                </LinearGradient>
+              );
+            })
           )}
-
-
           <View style={{ height: 40 }} />
         </ScrollView>
       )}
@@ -411,203 +236,42 @@ const styles = StyleSheet.create({
     color: '#111827',
     letterSpacing: -0.5,
   },
-  bellBtn: {
-    borderRadius: 20,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+  daysTabContainer: {
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
   },
-  bellGradient: {
-    width: 40,
-    height: 40,
+  daysScroll: {
+    paddingHorizontal: 16,
+    gap: 8,
+  },
+  dayTab: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
     borderRadius: 20,
-    alignItems: 'center',
     justifyContent: 'center',
-    position: 'relative',
+    alignItems: 'center',
   },
-  bellBadge: {
-    position: 'absolute',
-    top: 9,
-    right: 9,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#EF4444',
-    borderWidth: 1.5,
-    borderColor: '#FFFFFF',
+  dayLabel: {
+    fontSize: 13,
+    fontWeight: '700',
   },
   scroll: {
     paddingHorizontal: 20,
-    paddingTop: 20,
+    paddingTop: 16,
   },
-  courseHeader: {
-    marginBottom: 24,
-  },
-  courseBadgeWrapper: {
-    alignSelf: 'flex-start',
-    marginBottom: 8,
-  },
-  courseBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderRadius: 20,
-  },
-  courseBadgeText: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#EA580C',
-    letterSpacing: 0.8,
-  },
-  courseTitle: {
-    fontSize: 24,
-    fontWeight: '900',
-    color: '#111827',
-    marginBottom: 4,
-    letterSpacing: -0.5,
-    lineHeight: 32,
-  },
-  courseSubtitle: {
-    fontSize: 13,
-    color: '#6B7280',
-    marginBottom: 20,
-    fontWeight: '500',
-  },
-  headerActions: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  primaryBtn: {
+  loadingContainer: {
     flex: 1,
-    borderRadius: 40,
-    overflow: 'hidden',
-    shadowColor: '#EA580C',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  primaryBtnGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 12,
-  },
-  primaryBtnText: {
-    color: '#FFFFFF',
-    fontWeight: '800',
-    fontSize: 13,
-  },
-  secondaryBtn: {
-    flex: 1,
-    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 40,
-    paddingVertical: 12,
-    borderWidth: 1.5,
-    borderColor: '#FFEDD5',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    elevation: 2,
+    paddingTop: 64,
   },
-  secondaryBtnText: {
-    color: '#EA580C',
-    fontWeight: '800',
-    fontSize: 13,
-  },
-  attendanceCard: {
-    borderRadius: 24,
-    padding: 20,
-    marginBottom: 24,
-    borderWidth: 1,
-    borderColor: '#FFFFFF',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.04,
-    shadowRadius: 12,
-    elevation: 4,
-  },
-  attHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  attTitle: {
-    fontSize: 13,
+  loadingText: {
+    marginTop: 12,
     color: '#6B7280',
-    fontWeight: '600',
-    letterSpacing: 0.3,
-  },
-  liveBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: '#FEF2F2',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 20,
-  },
-  liveDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#EF4444',
-  },
-  liveText: {
-    fontSize: 9,
-    fontWeight: '800',
-    color: '#EF4444',
-    letterSpacing: 0.5,
-  },
-  attPercent: {
-    fontSize: 40,
-    fontWeight: '900',
-    color: '#EA580C',
-    marginBottom: 4,
-    letterSpacing: -1,
-    lineHeight: 48,
-  },
-  attDesc: {
-    fontSize: 12,
-    color: '#6B7280',
-    marginBottom: 16,
+    fontSize: 14,
     fontWeight: '500',
-  },
-  progressBarBg: {
-    height: 8,
-    backgroundColor: '#F3F4F6',
-    borderRadius: 4,
-    overflow: 'hidden',
-  },
-  progressBarFill: {
-    height: '100%',
-    borderRadius: 4,
-  },
-  rosterHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '900',
-    color: '#111827',
-    letterSpacing: -0.3,
-  },
-  enrolledCount: {
-    fontSize: 12,
-    color: '#6B7280',
-    fontWeight: '600',
   },
   emptyCard: {
     backgroundColor: '#FFFFFF',
@@ -616,7 +280,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
     borderColor: '#E5E7EB',
-    marginBottom: 24,
+    marginTop: 20,
   },
   emptyText: {
     fontSize: 16,
@@ -630,36 +294,10 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 18,
   },
-  curriculumHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 14,
-  },
-  viewToggle: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  toggleBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.03,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  toggleBtnActive: {
-    backgroundColor: '#FFF7ED',
-  },
   currCard: {
     borderRadius: 24,
     padding: 20,
-    marginBottom: 12,
+    marginBottom: 16,
     borderWidth: 1,
     borderColor: '#FFFFFF',
     shadowColor: '#000',
@@ -675,8 +313,8 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   currIcon: {
-    width: 48,
-    height: 48,
+    width: 44,
+    height: 44,
     borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
@@ -701,17 +339,29 @@ const styles = StyleSheet.create({
     lineHeight: 24,
   },
   currDesc: {
-    fontSize: 12,
-    color: '#6B7280',
+    fontSize: 13,
+    color: '#4B5563',
     lineHeight: 18,
-    marginBottom: 18,
+    marginBottom: 16,
     fontWeight: '500',
   },
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  metaText: {
+    fontSize: 13,
+    color: '#4B5563',
+    fontWeight: '700',
+  },
   facultySection: {
-    marginBottom: 18,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+    paddingTop: 14,
   },
   facultyLabel: {
-    fontSize: 10,
+    fontSize: 9,
     color: '#9CA3AF',
     fontWeight: '800',
     letterSpacing: 1,
@@ -723,9 +373,9 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   facultyAvatar: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -743,54 +393,6 @@ const styles = StyleSheet.create({
   facultyRole: {
     fontSize: 11,
     color: '#6B7280',
-    fontWeight: '500',
-  },
-  progressSection: {
-    marginTop: 4,
-  },
-  progressHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-  },
-  progressLabel: {
-    fontSize: 12,
-    color: '#6B7280',
-    fontWeight: '600',
-  },
-  progressPercent: {
-    fontSize: 13,
-    fontWeight: '800',
-  },
-  addSubjectBtn: {
-    borderWidth: 1.5,
-    borderColor: '#FFEDD5',
-    borderStyle: 'dashed',
-    borderRadius: 24,
-    paddingVertical: 24,
-    alignItems: 'center',
-    gap: 8,
-    marginTop: 8,
-    marginBottom: 8,
-    backgroundColor: '#FFFFFF',
-  },
-  addIcon: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 4,
-  },
-  addSubjectTitle: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: '#111827',
-    letterSpacing: -0.3,
-  },
-  addSubjectDesc: {
-    fontSize: 12,
-    color: '#9CA3AF',
     fontWeight: '500',
   },
 });
