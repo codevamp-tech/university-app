@@ -330,11 +330,13 @@ const SubjectDetailModal = ({ visible, subject, onClose, accessToken }) => {
   const [chartData, setChartData] = useState([]);
   const [logbook, setLogbook] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [practicalMarks, setPracticalMarks] = useState(null);
+  const [loadingPractical, setLoadingPractical] = useState(false);
   const [paperCache, setPaperCache] = useState({});
   const slideAnim = useRef(new Animated.Value(0)).current;
 
-  const tabs = ['Competencies', 'Attempted Paper', 'Progress Chart'];
-  const tabIcons = ['assignment', 'description', 'pie-chart'];
+  const tabs = ['Competencies', 'Attempted Paper', 'Progress Chart', 'Practical Marks'];
+  const tabIcons = ['assignment', 'description', 'pie-chart', 'grade'];
 
   useEffect(() => {
     if (visible && subject) {
@@ -354,6 +356,7 @@ const SubjectDetailModal = ({ visible, subject, onClose, accessToken }) => {
       setAttempted(cached.attempted);
       setChartData(cached.chartData);
       setLogbook(cached.logbook);
+      setPracticalMarks(cached.practicalMarks || null);
       setLoading(false);
       return;
     }
@@ -371,6 +374,7 @@ const SubjectDetailModal = ({ visible, subject, onClose, accessToken }) => {
           setAttempted(cached.attempted || []);
           setChartData(cached.chartData || []);
           setLogbook(cached.logbook || []);
+          setPracticalMarks(cached.practicalMarks || null);
           
           setPaperCache(prev => ({
             ...prev,
@@ -575,11 +579,54 @@ const SubjectDetailModal = ({ visible, subject, onClose, accessToken }) => {
       }
       setLogbook(nextLog);
 
+      // Fetch Practical Marks from ERP
+      let nextPractical = null;
+      try {
+        const rollno = String(user?.username || '');
+        if (rollno) {
+          const pracResp = await fetch('https://myportal.srms.ac.in/SRMSERP/Faculty/GetPracticalMarks', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'User-Agent': 'Mozilla/5.0'
+            },
+            body: JSON.stringify({
+              rollno: rollno,
+              papercode: String(pcode)
+            })
+          });
+          const pracData = await pracResp.json();
+          if (pracData && pracData.success && pracData.data) {
+            let obtained = null;
+            let max = null;
+            pracData.data.forEach(dept => {
+              if (dept.categories) {
+                dept.categories.forEach(cat => {
+                  if (cat.activities) {
+                    cat.activities.forEach(act => {
+                      obtained = act.obtained_marks;
+                      max = act.max_marks;
+                    });
+                  }
+                });
+              }
+            });
+            if (obtained !== null && max !== null) {
+              nextPractical = { obtained_marks: obtained, max_marks: max };
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('[ResultsScreen] Practical marks fetch failed:', err);
+      }
+      setPracticalMarks(nextPractical);
+
       const cacheValue = {
         competencies: nextComps,
         attempted: nextAttempted,
         chartData: nextChart,
-        logbook: nextLog
+        logbook: nextLog,
+        practicalMarks: nextPractical
       };
 
       setPaperCache(prev => ({
@@ -978,6 +1025,106 @@ const SubjectDetailModal = ({ visible, subject, onClose, accessToken }) => {
     );
   };
 
+  const renderPracticalMarks = () => {
+    if (loadingPractical) {
+      return (
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', minHeight: 200 }}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={{ color: colors.textSecondary, marginTop: 12, fontSize: 14 }}>Fetching practical marks...</Text>
+        </View>
+      );
+    }
+
+    if (!practicalMarks) {
+      return (
+        <EmptyTabState
+          icon="grade"
+          title="No Practical Marks"
+          subtitle="No practical marks entries were found for this student paper."
+          colors={colors}
+        />
+      );
+    }
+
+    const percentage = practicalMarks.max_marks > 0 ? Math.round((practicalMarks.obtained_marks / practicalMarks.max_marks) * 100) : 0;
+    const isPass = percentage >= 50;
+
+    return (
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 20, gap: 16 }}>
+        <View style={{
+          backgroundColor: colors.card,
+          borderRadius: 24,
+          padding: 24,
+          borderWidth: 1,
+          borderColor: colors.border,
+          alignItems: 'center',
+          gap: 16,
+          elevation: 2,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.05,
+          shadowRadius: 8
+        }}>
+          <View style={{
+            width: 80,
+            height: 80,
+            borderRadius: 40,
+            backgroundColor: isPass ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+            justifyContent: 'center',
+            alignItems: 'center',
+            borderWidth: 2,
+            borderColor: isPass ? '#10B981' : '#EF4444'
+          }}>
+            <MaterialIcons name="grade" size={40} color={isPass ? '#10B981' : '#EF4444'} />
+          </View>
+
+          <View style={{ alignItems: 'center', gap: 4 }}>
+            <Text style={{ fontSize: 18, fontWeight: '900', color: colors.textPrimary }}>Practical Score Card</Text>
+            <Text style={{ fontSize: 12, color: colors.textSecondary, textAlign: 'center' }}>
+              Student practical exam marks fetched from SRMS ERP
+            </Text>
+          </View>
+
+          <View style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 12,
+            backgroundColor: isDark ? 'rgba(255,255,255,0.02)' : '#F8FAFC',
+            paddingVertical: 14,
+            paddingHorizontal: 24,
+            borderRadius: 16,
+            width: '100%',
+            borderWidth: 1,
+            borderColor: colors.border
+          }}>
+            <Text style={{ fontSize: 32, fontWeight: '900', color: colors.textPrimary }}>
+              {practicalMarks.obtained_marks}
+            </Text>
+            <Text style={{ fontSize: 24, color: colors.textMuted, fontWeight: '300' }}>/</Text>
+            <Text style={{ fontSize: 24, color: colors.textSecondary, fontWeight: '700' }}>
+              {practicalMarks.max_marks}
+            </Text>
+          </View>
+
+          <View style={{ width: '100%', gap: 12, marginTop: 8 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: colors.border }}>
+              <Text style={{ fontSize: 13, color: colors.textSecondary }}>Percentage Obtained</Text>
+              <Text style={{ fontSize: 13, fontWeight: '700', color: colors.textPrimary }}>{percentage}%</Text>
+            </View>
+
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: colors.border }}>
+              <Text style={{ fontSize: 13, color: colors.textSecondary }}>Exam Result Status</Text>
+              <Text style={{ fontSize: 13, fontWeight: '800', color: isPass ? '#10B981' : '#EF4444' }}>
+                {isPass ? 'PASS' : 'FAIL'}
+              </Text>
+            </View>
+          </View>
+        </View>
+      </ScrollView>
+    );
+  };
+
   // ── Tab 4: Clinical / Logbook ──
   const renderLogbook = () => {
     if (!logbook || logbook.length === 0) {
@@ -1111,6 +1258,7 @@ const SubjectDetailModal = ({ visible, subject, onClose, accessToken }) => {
                   {activeTab === 0 && renderCompetencies()}
                   {activeTab === 1 && renderAttemptedPaper()}
                   {activeTab === 2 && renderChart()}
+                  {activeTab === 3 && renderPracticalMarks()}
                 </View>
               )}
             </>
