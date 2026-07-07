@@ -132,6 +132,7 @@ const ERPLogBookScreen = ({ navigation }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState('ALL'); // ALL, VERIFIED, PENDING
   const [activeCategory, setActiveCategory] = useState('ALL'); // ALL or CATEGORY_MAP key
+  const [activePhase, setActivePhase] = useState('ALL'); // ALL or specific phase number
 
   const loadLogbook = async (showLoading = true) => {
     if (!accessToken) return;
@@ -166,7 +167,7 @@ const ERPLogBookScreen = ({ navigation }) => {
 
               const isVerified = act.VerifiedBy ? true : false;
 
-              const isStudentVerified = act.received === 1 || act.student_verified === 1 || false;
+              const isStudentVerified = act.received === 1 || act.recieved === 1 || act.student_verified === 1 || false;
 
               flattened.push({
                 activity: act.activityName || 'Clinical Rotation',
@@ -181,8 +182,9 @@ const ERPLogBookScreen = ({ navigation }) => {
                 category: catName,
                 department: deptName,
                 comp_code: act.compCode || act.code || '',
-                actmstid: act.actmstid || '8289',
-                cbmeyear: act.cbmeyear || '2024'
+                actmstid: act.actmstid ? String(act.actmstid) : '',
+                cbmeyear: act.cbmeyear ? String(act.cbmeyear) : '',
+                phase: act.phase ? String(act.phase) : ''
               });
             });
           });
@@ -231,14 +233,14 @@ const ERPLogBookScreen = ({ navigation }) => {
         Alert.alert('Error', 'Unable to retrieve student roll number. Please try logging in again.');
         return;
       }
-      const batchYear = String(user?.batch_year || user?.year || '2024');
+      const batchYear = String(user?.batch_year || user?.year || '');
 
       const payload = {
         LMS_LogBook_ActivityData: {
           rollno: rollNumber,
-          lbtype: entry.category || 'PracticalStudentLab',
+          lbtype: entry.category || '',
           comp_code: entry.comp_code || entry.competency || '',
-          actmstid: String(entry.actmstid || '8289'),
+          actmstid: String(entry.actmstid || ''),
           cbmeyear: String(entry.cbmeyear || batchYear),
           received: 1
         }
@@ -301,12 +303,20 @@ const ERPLogBookScreen = ({ navigation }) => {
       matchesCategory = entry.category === activeCategory;
     }
 
-    return matchesSearch && matchesStatus && matchesCategory;
+    // Filter by Phase
+    let matchesPhase = true;
+    if (activePhase !== 'ALL') {
+      matchesPhase = String(entry.phase) === String(activePhase);
+    }
+
+    return matchesSearch && matchesStatus && matchesCategory && matchesPhase;
   });
 
   const verifiedCount = logbook.filter(e => e.verified).length;
   const totalCount = logbook.length;
   const progressPct = totalCount > 0 ? Math.round((verifiedCount / totalCount) * 100) : 0;
+
+  const availablePhases = ['ALL', ...new Set(logbook.map(e => e.phase).filter(Boolean).sort((a, b) => a - b))];
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
@@ -405,6 +415,33 @@ const ERPLogBookScreen = ({ navigation }) => {
                       styles.filterPill,
                       { backgroundColor: colors.card, borderColor: colors.border },
                       isActive && { backgroundColor: colors.primary, borderColor: colors.primary }
+                    ]}
+                  >
+                    <Text style={[styles.filterText, { color: colors.textSecondary }, isActive && { color: '#FFF', fontWeight: '800' }]}>
+                      {label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+
+            {/* Phase Filter pills */}
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ gap: 8, paddingBottom: 4 }}
+            >
+              {availablePhases.map((ph) => {
+                const isActive = activePhase === ph;
+                const label = ph === 'ALL' ? 'All Phases' : `Phase ${ph}`;
+                return (
+                  <TouchableOpacity
+                    key={ph}
+                    onPress={() => setActivePhase(ph)}
+                    style={[
+                      styles.filterPill,
+                      { backgroundColor: colors.card, borderColor: colors.border },
+                      isActive && { backgroundColor: '#8B5CF6', borderColor: '#8B5CF6' }
                     ]}
                   >
                     <Text style={[styles.filterText, { color: colors.textSecondary }, isActive && { color: '#FFF', fontWeight: '800' }]}>
