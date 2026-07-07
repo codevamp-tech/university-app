@@ -29,7 +29,6 @@ import {
   getPaperList,
   getPaperCompetencies,
   getCompetencyChart,
-  getLogbook,
 } from '../../data/apiService';
 
 const { width } = Dimensions.get('window');
@@ -328,7 +327,6 @@ const SubjectDetailModal = ({ visible, subject, onClose, accessToken }) => {
   const [competencies, setCompetencies] = useState([]);
   const [attempted, setAttempted] = useState([]);
   const [chartData, setChartData] = useState([]);
-  const [logbook, setLogbook] = useState([]);
   const [loading, setLoading] = useState(false);
   const [practicalMarks, setPracticalMarks] = useState(null);
   const [loadingPractical, setLoadingPractical] = useState(false);
@@ -355,7 +353,6 @@ const SubjectDetailModal = ({ visible, subject, onClose, accessToken }) => {
       setCompetencies(cached.competencies);
       setAttempted(cached.attempted);
       setChartData(cached.chartData);
-      setLogbook(cached.logbook);
       setPracticalMarks(cached.practicalMarks || null);
       setLoading(false);
       setLoadingPractical(false);
@@ -375,7 +372,6 @@ const SubjectDetailModal = ({ visible, subject, onClose, accessToken }) => {
           setCompetencies(cached.competencies || []);
           setAttempted(cached.attempted || []);
           setChartData(cached.chartData || []);
-          setLogbook(cached.logbook || []);
           setPracticalMarks(cached.practicalMarks || null);
           
           setPaperCache(prev => ({
@@ -392,10 +388,9 @@ const SubjectDetailModal = ({ visible, subject, onClose, accessToken }) => {
     }
 
     try {
-      const [compData, chartResp, logData] = await Promise.allSettled([
+      const [compData, chartResp] = await Promise.allSettled([
         getPaperCompetencies(accessToken, pcode),
         getCompetencyChart(accessToken, pcode),
-        getLogbook(accessToken),
       ]);
 
       let nextComps = [];
@@ -544,43 +539,6 @@ const SubjectDetailModal = ({ visible, subject, onClose, accessToken }) => {
       }
       setChartData(nextChart);
 
-      let nextLog = [];
-      if (logData.status === 'fulfilled') {
-        const rawLog = logData.value?.data || logData.value || [];
-        const flatLogbook = [];
-
-        const parseWcfDate = (str) => {
-          if (!str) return 'N/A';
-          const match = str.match(/\/Date\((\d+)\)\//);
-          if (match) {
-            const epoch = parseInt(match[1]);
-            const d = new Date(epoch);
-            return d.toLocaleDateString('en-GB');
-          }
-          return str;
-        };
-
-        if (Array.isArray(rawLog)) {
-          rawLog.forEach(dept => {
-            (dept.categories || []).forEach(cat => {
-              (cat.activities || []).forEach(act => {
-                flatLogbook.push({
-                  activity: act.activityName || act.ActivityName || 'Logbook Activity',
-                  competency: act.compCode || act.CompCode || act.competency || 'N/A',
-                  verified: (act.VerifiedBy || act.verifiedBy) ? true : false,
-                  a1: act.A1 || '-',
-                  a2: act.A2 || '-',
-                  a3: act.A3 || '-',
-                  faculty: act.VerifiedBy || act.verifiedBy || 'Pending Verification',
-                  date: parseWcfDate(act.verified_dt || act.VerifiedDate || act.verifiedDate)
-                });
-              });
-            });
-          });
-        }
-        nextLog = flatLogbook;
-      }
-      setLogbook(nextLog);
 
       // Fetch Practical Marks from ERP
       let nextPractical = null;
@@ -628,7 +586,6 @@ const SubjectDetailModal = ({ visible, subject, onClose, accessToken }) => {
         competencies: nextComps,
         attempted: nextAttempted,
         chartData: nextChart,
-        logbook: nextLog,
         practicalMarks: nextPractical
       };
 
@@ -685,21 +642,43 @@ const SubjectDetailModal = ({ visible, subject, onClose, accessToken }) => {
             >
               <View style={{ flex: 1, marginRight: 16 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                  <View style={{
-                    paddingHorizontal: 8,
-                    paddingVertical: 2,
-                    borderRadius: 6,
-                    backgroundColor: paper.paper_name.toLowerCase().includes('university') ? (isDark ? 'rgba(245,158,11,0.15)' : '#FFFBEB') : (isDark ? 'rgba(99,102,241,0.15)' : '#EEF2FF'),
-                  }}>
-                    <Text style={{
-                      fontSize: 10,
-                      fontWeight: '800',
-                      color: paper.paper_name.toLowerCase().includes('university') ? '#D97706' : '#6366F1',
-                      textTransform: 'uppercase',
-                    }}>
-                      {paper.paper_name.toLowerCase().includes('university') ? 'University' : 'Internal'}
-                    </Text>
-                  </View>
+                  {(() => {
+                    const nameLower = paper.paper_name.toLowerCase();
+                    const isPreUni = nameLower.includes('pre-uni') || nameLower.includes('pre university') || nameLower.includes('preuniversity');
+                    const isUni = nameLower.includes('university') && !isPreUni;
+                    
+                    let bg = isDark ? 'rgba(99,102,241,0.15)' : '#EEF2FF';
+                    let textCol = '#6366F1';
+                    let label = 'Internal';
+
+                    if (isPreUni) {
+                      bg = isDark ? 'rgba(13,148,136,0.15)' : '#E6F4F1';
+                      textCol = '#0D9488';
+                      label = 'Pre-University';
+                    } else if (isUni) {
+                      bg = isDark ? 'rgba(245,158,11,0.15)' : '#FFFBEB';
+                      textCol = '#D97706';
+                      label = 'University';
+                    }
+
+                    return (
+                      <View style={{
+                        paddingHorizontal: 8,
+                        paddingVertical: 2,
+                        borderRadius: 6,
+                        backgroundColor: bg,
+                      }}>
+                        <Text style={{
+                          fontSize: 10,
+                          fontWeight: '800',
+                          color: textCol,
+                          textTransform: 'uppercase',
+                        }}>
+                          {label}
+                        </Text>
+                      </View>
+                    );
+                  })()}
                   {isGap && (
                     <View style={{ backgroundColor: '#FEE2E2', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 }}>
                       <Text style={{ fontSize: 9, fontWeight: '800', color: '#EF4444' }}>GAP DETECTED</Text>
@@ -1129,77 +1108,7 @@ const SubjectDetailModal = ({ visible, subject, onClose, accessToken }) => {
     );
   };
 
-  // ── Tab 4: Clinical / Logbook ──
-  const renderLogbook = () => {
-    if (!logbook || logbook.length === 0) {
-      return (
-        <EmptyTabState
-          icon="local-hospital"
-          title="No Clinical Logbook"
-          subtitle="No clinical logbook entries or postings were found for this subject."
-          colors={colors}
-        />
-      );
-    }
-    return (
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16, gap: 12 }}>
-        <View style={[styles.logbookHeader, { backgroundColor: isDark ? 'rgba(20,184,166,0.1)' : '#F0FDFA', borderColor: isDark ? 'rgba(20,184,166,0.3)' : '#99F6E4' }]}>
-          <MaterialCommunityIcons name="hospital-box-outline" size={18} color="#14B8A6" />
-          <Text style={{ color: '#14B8A6', fontSize: 12, fontWeight: '700', marginLeft: 8 }}>
-            UG Logbook · Clinical Competency Tracking
-          </Text>
-        </View>
-        <View style={[styles.attemptLegend, { backgroundColor: colors.card, borderColor: colors.border, flexWrap: 'wrap', gap: 10, padding: 12 }]}>
-          {[
-            ['F', 'First Attempt'],
-            ['M', 'Mastered'],
-            ['C', 'Competent'],
-            ['B', 'Below Expectation'],
-            ['Re', 'Remedial'],
-            ['P', 'Present'],
-            ['A', 'Absent']
-          ].map(([val, label]) => (
-            <View key={val} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              <AttemptBadge val={val} />
-              <Text style={{ fontSize: 10, fontWeight: '700', color: colors.textSecondary }}>{label}</Text>
-            </View>
-          ))}
-        </View>
-        {logbook.map((entry, i) => (
-          <View key={i} style={[styles.logbookCard, { backgroundColor: colors.card, borderColor: entry.verified ? '#86EFAC' : colors.border }]}>
-            <View style={styles.logbookTop}>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.logbookActivity, { color: colors.textPrimary }]}>{entry.activity}</Text>
-                <View style={[styles.logCompBadge, { backgroundColor: isDark ? 'rgba(20,184,166,0.1)' : '#CCFBF1' }]}>
-                  <Text style={[styles.logCompText, { color: '#14B8A6' }]}>{entry.competency}</Text>
-                </View>
-              </View>
-              <View style={[styles.verifiedBadge, { backgroundColor: entry.verified ? '#D1FAE5' : isDark ? 'rgba(255,255,255,0.05)' : '#F3F4F6' }]}>
-                <MaterialIcons name={entry.verified ? 'verified' : 'pending'} size={14} color={entry.verified ? '#059669' : '#9CA3AF'} />
-                <Text style={{ fontSize: 10, fontWeight: '700', color: entry.verified ? '#059669' : '#9CA3AF', marginLeft: 4 }}>
-                  {entry.verified ? 'Verified' : 'Pending'}
-                </Text>
-              </View>
-            </View>
-            <View style={styles.logbookAttempts}>
-              {['a1', 'a2', 'a3'].map((a, ai) => (
-                <View key={ai} style={{ alignItems: 'center', gap: 4 }}>
-                  <Text style={{ fontSize: 10, color: colors.textMuted }}>A{ai + 1}</Text>
-                  <AttemptBadge val={entry[a] || '-'} />
-                </View>
-              ))}
-              <View style={{ flex: 1, paddingLeft: 12 }}>
-                <Text style={{ fontSize: 11, color: colors.textMuted }}>Faculty</Text>
-                <Text style={{ fontSize: 12, fontWeight: '600', color: colors.textSecondary, marginTop: 2 }}>{entry.faculty}</Text>
-                <Text style={{ fontSize: 10, color: colors.textMuted, marginTop: 2 }}>{entry.date}</Text>
-              </View>
-            </View>
-          </View>
-        ))}
-        <View style={{ height: 40 }} />
-      </ScrollView>
-    );
-  };
+
 
   return (
     <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
@@ -1858,16 +1767,6 @@ const styles = StyleSheet.create({
   legendBarFill: { height: '100%', borderRadius: 3 },
   legendPct: { fontSize: 12, fontWeight: '800', width: 36, textAlign: 'right' },
 
-  // Logbook Tab
-  logbookHeader: { flexDirection: 'row', alignItems: 'center', padding: 12, borderRadius: 12, borderWidth: 1 },
-  attemptLegend: { flexDirection: 'row', justifyContent: 'space-around', padding: 12, borderRadius: 12, borderWidth: 1 },
-  logbookCard: { borderRadius: 16, padding: 14, borderWidth: 1 },
-  logbookTop: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 12 },
-  logbookActivity: { fontSize: 14, fontWeight: '700' },
-  logCompBadge: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, alignSelf: 'flex-start', marginTop: 6 },
-  logCompText: { fontSize: 10, fontWeight: '700' },
-  verifiedBadge: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 10 },
-  logbookAttempts: { flexDirection: 'row', alignItems: 'center', gap: 10 },
 });
 
 export default ERPResultsScreen;
