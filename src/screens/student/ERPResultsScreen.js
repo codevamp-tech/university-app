@@ -348,7 +348,7 @@ const SubjectDetailModal = ({ visible, subject, onClose, accessToken }) => {
   const loadData = async (pcode) => {
     if (!accessToken || !pcode) return;
     
-    if (paperCache[pcode]) {
+    if (paperCache[pcode] && paperCache[pcode].practicalMarks !== undefined) {
       const cached = paperCache[pcode];
       setCompetencies(cached.competencies);
       setAttempted(cached.attempted);
@@ -367,7 +367,7 @@ const SubjectDetailModal = ({ visible, subject, onClose, accessToken }) => {
       const persistedStr = await AsyncStorage.getItem(cacheKey);
       if (persistedStr) {
         const persisted = JSON.parse(persistedStr);
-        if (persisted && persisted[pcode]) {
+        if (persisted && persisted[pcode] && persisted[pcode].practicalMarks !== undefined) {
           const cached = persisted[pcode];
           setCompetencies(cached.competencies || []);
           setAttempted(cached.attempted || []);
