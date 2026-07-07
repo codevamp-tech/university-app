@@ -205,11 +205,12 @@ const ChatScreen = ({ navigation }) => {
     }
   }, [lastError]);
 
-  const handleAttachmentPress = async (url) => {
+  const handleAttachmentPress = async (url, department) => {
     if (!url) return;
     let targetUrl = url;
     if (!url.startsWith('http://') && !url.startsWith('https://')) {
-      targetUrl = `https://myportal.srms.ac.in/SRMSERP/Faculty/ChatsFile?pathname=${encodeURIComponent(url)}`;
+      const deptName = department || 'Physiology';
+      targetUrl = `https://myportal.srms.ac.in/SRMSERP/Faculty/ChatsFile?pathname=${encodeURIComponent(url)}&department=${encodeURIComponent(deptName)}`;
     }
     try {
       const supported = await Linking.canOpenURL(targetUrl);
@@ -451,7 +452,7 @@ const ChatScreen = ({ navigation }) => {
             <TouchableOpacity 
               style={styles.attachmentButton} 
               activeOpacity={0.8}
-              onPress={() => handleAttachmentPress(item.attachment)}
+              onPress={() => handleAttachmentPress(item.attachment, item.department)}
             >
               <Ionicons name="document-attach-outline" size={16} color={isMe ? '#FFF' : colors.primary} />
               <Text style={{ color: isMe ? '#FFF' : colors.primary, fontSize: 12, fontWeight: '700' }} numberOfLines={1}>

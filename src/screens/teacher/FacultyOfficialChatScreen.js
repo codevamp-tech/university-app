@@ -82,11 +82,12 @@ const FacultyOfficialChatScreen = ({ navigation }) => {
     }
   }, [messages.length]);
 
-  const handleAttachmentPress = async (url) => {
+  const handleAttachmentPress = async (url, department) => {
     if (!url) return;
     let targetUrl = url;
     if (!url.startsWith('http://') && !url.startsWith('https://')) {
-      targetUrl = `https://myportal.srms.ac.in/SRMSERP/Faculty/ChatsFile?pathname=${encodeURIComponent(url)}`;
+      const deptName = department || user?.department || 'Physiology';
+      targetUrl = `https://myportal.srms.ac.in/SRMSERP/Faculty/ChatsFile?pathname=${encodeURIComponent(url)}&department=${encodeURIComponent(deptName)}`;
     }
     try {
       const supported = await Linking.canOpenURL(targetUrl);
@@ -271,7 +272,7 @@ const FacultyOfficialChatScreen = ({ navigation }) => {
             <TouchableOpacity 
               style={styles.attachmentButton} 
               activeOpacity={0.8}
-              onPress={() => handleAttachmentPress(item.attachment)}
+              onPress={() => handleAttachmentPress(item.attachment, item.department)}
             >
               <Ionicons name="document-attach-outline" size={16} color={isMe ? '#FFF' : '#EA580C'} />
               <Text style={[styles.attachmentText, { color: isMe ? '#FFF' : '#EA580C' }]} numberOfLines={1}>
