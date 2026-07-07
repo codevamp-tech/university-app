@@ -241,6 +241,21 @@ const TeacherDashboardScreen = ({ navigation }) => {
     isShowingRecent = true;
   }
 
+  // Calculate activeSlot for the top "Next Class" card (actual first future starting class)
+  const nextClassSlot = timetable
+    .filter(tt => tt.start_time && new Date(tt.start_time) >= now)[0] || null;
+
+  let activeSlot = nextClassSlot;
+  let isShowingRecentCard = false;
+
+  if (!activeSlot && timetable.length > 0) {
+    const sortedPast = [...timetable]
+      .filter(tt => tt.start_time && new Date(tt.start_time) < now)
+      .sort((a, b) => new Date(b.start_time) - new Date(a.start_time));
+    activeSlot = sortedPast[0] || null;
+    isShowingRecentCard = true;
+  }
+
   const handleSelectAvatar = async () => {
     const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permissionResult.granted) {
@@ -342,27 +357,27 @@ const TeacherDashboardScreen = ({ navigation }) => {
             <ActivityIndicator color="#EA580C" />
             <Text style={styles.loadingText}>Loading ERP data…</Text>
           </View>
-        ) : scheduleToShow.length > 0 ? (
+        ) : activeSlot ? (
           <LinearGradient colors={['#FFFFFF', '#F9FAFB']} style={styles.currentCard}>
             <View style={styles.currentHeader}>
-              <View style={[styles.liveIndicator, isShowingRecent && { backgroundColor: '#E5E7EB' }]}>
-                <View style={[styles.liveDot, isShowingRecent && { backgroundColor: '#6B7280' }]} />
-                <Text style={[styles.liveText, isShowingRecent && { color: '#6B7280' }]}>
-                  {isShowingRecent ? 'RECENT CLASS' : 'NEXT CLASS'}
+              <View style={[styles.liveIndicator, isShowingRecentCard && { backgroundColor: '#E5E7EB' }]}>
+                <View style={[styles.liveDot, isShowingRecentCard && { backgroundColor: '#6B7280' }]} />
+                <Text style={[styles.liveText, isShowingRecentCard && { color: '#6B7280' }]}>
+                  {isShowingRecentCard ? 'RECENT CLASS' : 'NEXT CLASS'}
                 </Text>
               </View>
-              <Text style={styles.currentTime}>{formatTime(scheduleToShow[0]?.start_time)}</Text>
+              <Text style={styles.currentTime}>{formatTime(activeSlot.start_time)}</Text>
             </View>
 
             <Text style={styles.currentSubject} numberOfLines={2}>
-              📚 {scheduleToShow[0]?.subject_name || 'No Subject'}
+              📚 {activeSlot.subject_name || 'No Subject'}
             </Text>
             <Text style={styles.currentClass}>
-              {scheduleToShow[0]?.lecture_type || 'Lecture'} • {formatDayDate(scheduleToShow[0]?.start_time)}
+              {activeSlot.lecture_type || 'Lecture'} • {formatDayDate(activeSlot.start_time)}
             </Text>
-            {scheduleToShow[0]?.topic_name ? (
+            {activeSlot.topic_name ? (
               <Text style={{ fontSize: 13, color: '#4B5563', marginTop: 4 }} numberOfLines={2}>
-                Topic: {scheduleToShow[0].topic_name}
+                Topic: {activeSlot.topic_name}
               </Text>
             ) : null}
 
@@ -370,7 +385,7 @@ const TeacherDashboardScreen = ({ navigation }) => {
               <View style={styles.metaRow}>
                 <Ionicons name="time-outline" size={14} color="#6B7280" />
                 <Text style={styles.metaText}>
-                  {formatTime(scheduleToShow[0]?.start_time)} – {formatTime(scheduleToShow[0]?.end_time)}
+                  {formatTime(activeSlot.start_time)} – {formatTime(activeSlot.end_time)}
                 </Text>
               </View>
             </View>
