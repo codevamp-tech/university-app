@@ -2224,7 +2224,7 @@ export async function uploadLectureMaterial(empId, department, fileUri, fileName
     method: 'POST',
     body: formData,
     headers: {
-      'Accept': 'application/json',
+      'Accept': '*/*',
     },
   });
 
@@ -2232,6 +2232,9 @@ export async function uploadLectureMaterial(empId, department, fileUri, fileName
     throw new Error(`Upload failed with status ${response.status}`);
   }
 
-  const resJson = await response.json();
-  return resJson;
+  const resText = await response.text();
+  return {
+    success: true,
+    data: resText.trim(),
+  };
 }
