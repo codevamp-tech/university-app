@@ -5,7 +5,7 @@ import { getAcademicSubjects } from '../../data/aiEngine';
 
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Dimensions, ActivityIndicator
+  Dimensions, ActivityIndicator, Animated
 } from 'react-native';
 import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
