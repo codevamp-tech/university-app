@@ -358,10 +358,12 @@ const SubjectDetailModal = ({ visible, subject, onClose, accessToken }) => {
       setLogbook(cached.logbook);
       setPracticalMarks(cached.practicalMarks || null);
       setLoading(false);
+      setLoadingPractical(false);
       return;
     }
 
     setLoading(true);
+    setLoadingPractical(true);
 
     const cacheKey = `@erp_paper_cache_${user?.id || 'default'}`;
     try {
@@ -381,6 +383,7 @@ const SubjectDetailModal = ({ visible, subject, onClose, accessToken }) => {
             [pcode]: cached
           }));
           setLoading(false);
+          setLoadingPractical(false);
           return;
         }
       }
@@ -646,6 +649,7 @@ const SubjectDetailModal = ({ visible, subject, onClose, accessToken }) => {
       console.warn('[SubjectModal] load error:', e);
     } finally {
       setLoading(false);
+      setLoadingPractical(false);
     }
   };
 
