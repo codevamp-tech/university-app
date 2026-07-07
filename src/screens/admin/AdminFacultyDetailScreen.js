@@ -161,32 +161,7 @@ const AdminFacultyDetailScreen = ({ navigation, route }) => {
           )}
         </View>
 
-        {/* Attendance Summary */}
-        <View style={[styles.card, { backgroundColor: colors.card }]}>
-          <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>ATTENDANCE OVERVIEW</Text>
-          <View style={styles.summaryGrid}>
-            <View style={[styles.summaryBox, { backgroundColor: 'rgba(16,185,129,0.08)' }]}>
-              <Text style={[styles.summaryVal, { color: '#10B981' }]}>{summary.present_days}</Text>
-              <Text style={[styles.summaryKey, { color: colors.textSecondary }]}>Present</Text>
-            </View>
-            <View style={[styles.summaryBox, { backgroundColor: 'rgba(239,68,68,0.08)' }]}>
-              <Text style={[styles.summaryVal, { color: '#EF4444' }]}>{summary.absent_days}</Text>
-              <Text style={[styles.summaryKey, { color: colors.textSecondary }]}>Absent</Text>
-            </View>
-            <View style={[styles.summaryBox, { backgroundColor: 'rgba(59,130,246,0.08)' }]}>
-              <Text style={[styles.summaryVal, { color: '#3B82F6' }]}>{summary.total_days}</Text>
-              <Text style={[styles.summaryKey, { color: colors.textSecondary }]}>Total Days</Text>
-            </View>
-            <View style={[styles.summaryBox, { backgroundColor: pctColor + '14' }]}>
-              <Text style={[styles.summaryVal, { color: pctColor }]}>{summary.present_pct}%</Text>
-              <Text style={[styles.summaryKey, { color: colors.textSecondary }]}>Attendance</Text>
-            </View>
-          </View>
-          <View style={[styles.progressTrack, { backgroundColor: colors.border }]}>
-            <View style={[styles.progressFill, { width: summary.present_pct + '%', backgroundColor: pctColor }]} />
-          </View>
-          <Text style={[styles.progressLabel, { color: colors.textMuted }]}>Last {summary.total_days} working days tracked</Text>
-        </View>
+
 
         {/* Tabs */}
         <View style={[styles.tabRow, { backgroundColor: colors.card, borderColor: colors.border }]}>

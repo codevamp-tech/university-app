@@ -85,11 +85,16 @@ const FacultyOfficialChatScreen = ({ navigation }) => {
   const handleAttachmentPress = async (url, department) => {
     if (!url) return;
     let cleanUrl = url.trim();
-    if (cleanUrl.startsWith('"') && cleanUrl.endsWith('"')) {
-      cleanUrl = cleanUrl.substring(1, cleanUrl.length - 1);
-    }
-    if (cleanUrl.startsWith('%22') && cleanUrl.endsWith('%22')) {
-      cleanUrl = cleanUrl.substring(3, cleanUrl.length - 3);
+    while (
+      (cleanUrl.startsWith('"') && cleanUrl.endsWith('"')) ||
+      (cleanUrl.toLowerCase().startsWith('%22') && cleanUrl.toLowerCase().endsWith('%22'))
+    ) {
+      if (cleanUrl.startsWith('"') && cleanUrl.endsWith('"')) {
+        cleanUrl = cleanUrl.substring(1, cleanUrl.length - 1);
+      } else {
+        cleanUrl = cleanUrl.substring(3, cleanUrl.length - 3);
+      }
+      cleanUrl = cleanUrl.trim();
     }
     let targetUrl = cleanUrl;
     if (!cleanUrl.startsWith('http://') && !cleanUrl.startsWith('https://')) {

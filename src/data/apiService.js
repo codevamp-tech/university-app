@@ -2234,8 +2234,9 @@ export async function uploadLectureMaterial(empId, department, fileUri, fileName
 
   const resText = await response.text();
   let cleanText = resText.trim();
-  if (cleanText.startsWith('"') && cleanText.endsWith('"')) {
+  while (cleanText.startsWith('"') && cleanText.endsWith('"')) {
     cleanText = cleanText.substring(1, cleanText.length - 1);
+    cleanText = cleanText.trim();
   }
   return {
     success: true,

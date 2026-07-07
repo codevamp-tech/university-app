@@ -148,14 +148,6 @@ const SuperAdminFacultyInsightsScreen = ({ navigation }) => {
             <Text style={[styles.cardVal, { color: colors.textPrimary }]}>{teachers.length || fStats.active_count}</Text>
             <Text style={[styles.cardLabel, { color: colors.textSecondary }]}>Total Teachers</Text>
           </View>
-
-          <View style={[styles.gridCard, { backgroundColor: colors.card }]}>
-            <View style={[styles.iconBox, { backgroundColor: 'rgba(59, 130, 246, 0.1)' }]}>
-              <MaterialCommunityIcons name="timeline-clock-outline" size={24} color="#3B82F6" />
-            </View>
-            <Text style={[styles.cardVal, { color: colors.textPrimary }]}>{fStats.average_attendance}</Text>
-            <Text style={[styles.cardLabel, { color: colors.textSecondary }]}>Avg Student Attendance</Text>
-          </View>
         </View>
 
         {/* Academic Operations
