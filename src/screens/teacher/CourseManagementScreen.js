@@ -53,9 +53,16 @@ const CourseManagementScreen = ({ navigation }) => {
 
   const getDayFromISO = (isoStr) => {
     if (!isoStr) return '';
-    const date = new Date(isoStr);
-    const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-    return DAYS[date.getUTCDay()];
+    const parts = isoStr.split('-');
+    if (parts.length === 3) {
+      const year = parseInt(parts[0], 10);
+      const month = parseInt(parts[1], 10) - 1;
+      const day = parseInt(parts[2], 10);
+      const date = new Date(year, month, day);
+      const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+      return DAYS[date.getDay()];
+    }
+    return '';
   };
 
   // Filter slots for the selected day of the week

@@ -43,6 +43,17 @@ function formatDay(iso) {
   } catch { return ''; }
 }
 
+function formatDayDate(isoStr) {
+  if (!isoStr) return '';
+  try {
+    const d = new Date(isoStr);
+    const dayName = d.toLocaleDateString('en-IN', { weekday: 'long' });
+    const dateNum = String(d.getDate()).padStart(2, '0');
+    const monthName = d.toLocaleDateString('en-IN', { month: 'short' });
+    return `${dayName}, ${dateNum} ${monthName}`;
+  } catch { return ''; }
+}
+
 const TeacherDashboardScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const { user, accessToken, logout, updateAvatarUrl } = useUser();
@@ -347,8 +358,13 @@ const TeacherDashboardScreen = ({ navigation }) => {
               📚 {scheduleToShow[0]?.subject_name || 'No Subject'}
             </Text>
             <Text style={styles.currentClass}>
-              {scheduleToShow[0]?.lecture_type || 'Lecture'} • {scheduleToShow[0]?.topic_name || department}
+              {scheduleToShow[0]?.lecture_type || 'Lecture'} • {formatDayDate(scheduleToShow[0]?.start_time)}
             </Text>
+            {scheduleToShow[0]?.topic_name ? (
+              <Text style={{ fontSize: 13, color: '#4B5563', marginTop: 4 }} numberOfLines={2}>
+                Topic: {scheduleToShow[0].topic_name}
+              </Text>
+            ) : null}
 
             <View style={styles.currentMeta}>
               <View style={styles.metaRow}>
@@ -465,11 +481,18 @@ const TeacherDashboardScreen = ({ navigation }) => {
                 </View>
                 <View style={styles.scheduleInfo}>
                   <Text style={styles.scheduleSubject} numberOfLines={1}>{item.subject_name || '—'}</Text>
-                  <Text style={styles.scheduleDetails} numberOfLines={1}>
-                    {item.lecture_type || 'Lecture'} {item.topic_name ? `• ${item.topic_name}` : ''}
-                  </Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginVertical: 3 }}>
+                    <View style={{ backgroundColor: String(item.lecture_type || 'Lecture').toLowerCase().includes('practical') ? '#7C3AED15' : '#EA580C15', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 }}>
+                      <Text style={{ fontSize: 10, fontWeight: '800', color: String(item.lecture_type || 'Lecture').toLowerCase().includes('practical') ? '#7C3AED' : '#EA580C' }}>
+                        {item.lecture_type || 'LECTURE'}
+                      </Text>
+                    </View>
+                    <Text style={[styles.scheduleDetails, { flex: 1 }]} numberOfLines={1}>
+                      {item.topic_name || 'Class session'}
+                    </Text>
+                  </View>
                   <View style={styles.scheduleMeta}>
-                    <Ionicons name="time-outline" size={12} color="#9CA3AF" />
+                    <Ionicons name="time-outline" size={12} color="#9CA3AF" style={{ marginRight: 4 }} />
                     <Text style={styles.scheduleLocation}>
                       {formatTime(item.start_time)} – {formatTime(item.end_time)}
                     </Text>
