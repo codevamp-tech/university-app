@@ -23,6 +23,7 @@ const SalarySlipScreen = ({ navigation }) => {
   const [month, setMonth] = useState(defaultMonth);
   const [year, setYear] = useState(defaultYear);
   const [slip, setSlip] = useState(null);
+  const [isSalaryVisible, setIsSalaryVisible] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -73,6 +74,11 @@ const SalarySlipScreen = ({ navigation }) => {
   const formatCurrency = (val) => {
     const num = Number(val) || 0;
     return `₹${num.toLocaleString('en-IN')}`;
+  };
+
+  const formatCurrencyMasked = (val) => {
+    if (!isSalaryVisible) return '₹•••••';
+    return formatCurrency(val);
   };
 
   const SkeletonBlock = ({ w = '100%', h = 16, style }) => (
@@ -177,7 +183,23 @@ const SalarySlipScreen = ({ navigation }) => {
                 <MaterialCommunityIcons name="wallet-outline" size={24} color="#FFF" />
               </View>
               <Text style={styles.netPayLabel}>Net Salary</Text>
-              <Text style={styles.netPayAmount}>{formatCurrency(slip.net_salary)}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 4 }}>
+                <Text style={styles.netPayAmount}>{formatCurrencyMasked(slip.net_salary)}</Text>
+                <TouchableOpacity
+                  onPress={() => setIsSalaryVisible(!isSalaryVisible)}
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: 18,
+                    backgroundColor: 'rgba(255,255,255,0.2)',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name={isSalaryVisible ? "eye-off-outline" : "eye-outline"} size={20} color="#FFF" />
+                </TouchableOpacity>
+              </View>
               <View style={styles.netPayMeta}>
                 <View style={styles.netPayPill}>
                   <Text style={styles.netPayPillText}>
@@ -197,13 +219,13 @@ const SalarySlipScreen = ({ navigation }) => {
               <View style={[styles.summaryCard, { borderLeftColor: '#10B981' }]}>
                 <Text style={styles.summaryLabel}>Gross Earnings</Text>
                 <Text style={[styles.summaryValue, { color: '#059669' }]}>
-                  {formatCurrency(slip.gross_salary)}
+                  {formatCurrencyMasked(slip.gross_salary)}
                 </Text>
               </View>
               <View style={[styles.summaryCard, { borderLeftColor: '#EF4444' }]}>
                 <Text style={styles.summaryLabel}>Total Deductions</Text>
                 <Text style={[styles.summaryValue, { color: '#EF4444' }]}>
-                  {formatCurrency(slip.gross_deductions)}
+                  {formatCurrencyMasked(slip.gross_deductions)}
                 </Text>
               </View>
             </View>
@@ -250,12 +272,12 @@ const SalarySlipScreen = ({ navigation }) => {
                   <Ionicons name="trending-up" size={18} color="#10B981" />
                 </View>
                 <Text style={styles.sectionTitle}>Earnings</Text>
-                <Text style={[styles.sectionTotal, { color: '#059669' }]}>{formatCurrency(slip.gross_salary)}</Text>
+                <Text style={[styles.sectionTotal, { color: '#059669' }]}>{formatCurrencyMasked(slip.gross_salary)}</Text>
               </View>
               {earnings.map((item, i) => (
                 <View key={i} style={[styles.lineItem, i === earnings.length - 1 && { borderBottomWidth: 0 }]}>
                   <Text style={styles.lineLabel}>{item.label}</Text>
-                  <Text style={styles.lineValue}>{formatCurrency(item.value)}</Text>
+                  <Text style={styles.lineValue}>{formatCurrencyMasked(item.value)}</Text>
                 </View>
               ))}
             </View>
@@ -267,12 +289,12 @@ const SalarySlipScreen = ({ navigation }) => {
                   <Ionicons name="trending-down" size={18} color="#EF4444" />
                 </View>
                 <Text style={styles.sectionTitle}>Deductions</Text>
-                <Text style={[styles.sectionTotal, { color: '#EF4444' }]}>{formatCurrency(slip.gross_deductions)}</Text>
+                <Text style={[styles.sectionTotal, { color: '#EF4444' }]}>{formatCurrencyMasked(slip.gross_deductions)}</Text>
               </View>
               {deductions.map((item, i) => (
                 <View key={i} style={[styles.lineItem, i === deductions.length - 1 && { borderBottomWidth: 0 }]}>
                   <Text style={styles.lineLabel}>{item.label}</Text>
-                  <Text style={[styles.lineValue, { color: '#EF4444' }]}>{formatCurrency(item.value)}</Text>
+                  <Text style={[styles.lineValue, { color: '#EF4444' }]}>{formatCurrencyMasked(item.value)}</Text>
                 </View>
               ))}
             </View>
