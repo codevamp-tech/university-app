@@ -138,11 +138,13 @@ const SuperAdminDrilldownScreen = ({ route, navigation }) => {
   };
 
   const filteredData = data.filter(item => {
-    const q = searchQuery.toLowerCase();
-    const matchesSearch = (
+    const q = searchQuery.trim().toLowerCase();
+    const matchesSearch = !q ? true : (
       (item?.student_name && item.student_name.toLowerCase().includes(q)) ||
       (item?.rollno && item.rollno.toLowerCase().includes(q)) ||
       (item?.name && item.name.toLowerCase().includes(q)) ||
+      (item?.title && item.title.toLowerCase().includes(q)) ||
+      (item?.description && item.description.toLowerCase().includes(q)) ||
       (item?.tagline && item.tagline.toLowerCase().includes(q))
     );
     if (category === 'student_directory' && selectedDept !== 'all') {
