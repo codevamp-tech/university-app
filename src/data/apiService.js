@@ -1672,7 +1672,7 @@ export async function getFacultyTimetable(token, empId) {
             }
           }
           
-          // Generate start and end times in ISO format (using UTC components representing IST)
+          // Generate start and end times in local ISO format (using UTC components representing IST)
           const combineTime = (timeStr) => {
             if (!dateObj || !timeStr) return null;
             const parts = timeStr.trim().match(/(\d+):(\d+)\s*(AM|PM)/i);
@@ -1683,14 +1683,13 @@ export async function getFacultyTimetable(token, empId) {
               if (ampm === 'PM' && hours < 12) hours += 12;
               if (ampm === 'AM' && hours === 12) hours = 0;
               
-              const combined = new Date(Date.UTC(
-                dateObj.getUTCFullYear(),
-                dateObj.getUTCMonth(),
-                dateObj.getUTCDate(),
-                hours,
-                minutes
-              ));
-              return combined.toISOString();
+              const y = dateObj.getUTCFullYear();
+              const m = String(dateObj.getUTCMonth() + 1).padStart(2, '0');
+              const d = String(dateObj.getUTCDate()).padStart(2, '0');
+              const hh = String(hours).padStart(2, '0');
+              const mm = String(minutes).padStart(2, '0');
+              
+              return `${y}-${m}-${d}T${hh}:${mm}:00`;
             }
             return null;
           };
