@@ -84,12 +84,16 @@ const FacultyOfficialChatScreen = ({ navigation }) => {
 
   const handleAttachmentPress = async (url) => {
     if (!url) return;
+    let targetUrl = url;
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      targetUrl = `https://myportal.srms.ac.in/SRMSERP/Faculty/ChatsFile?pathname=${encodeURIComponent(url)}`;
+    }
     try {
-      const supported = await Linking.canOpenURL(url);
+      const supported = await Linking.canOpenURL(targetUrl);
       if (supported) {
-        await Linking.openURL(url);
+        await Linking.openURL(targetUrl);
       } else {
-        Alert.alert('Cannot Open URL', 'No app is available to open this link: ' + url);
+        Alert.alert('Cannot Open URL', 'No app is available to open this link: ' + targetUrl);
       }
     } catch (err) {
       console.warn('[Chat] Failed to open attachment URL:', err);
