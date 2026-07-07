@@ -184,7 +184,8 @@ const ERPLogBookScreen = ({ navigation }) => {
                 comp_code: act.compCode || act.code || '',
                 actmstid: act.actmstid ? String(act.actmstid) : '',
                 cbmeyear: act.cbmeyear ? String(act.cbmeyear) : '',
-                phase: act.phase ? String(act.phase) : ''
+                phase: act.phase ? String(act.phase) : '',
+                remarks: (act.remarks || act.remark || act.Remarks || act.remarksFac || '').trim()
               });
             });
           });
@@ -617,6 +618,13 @@ const ERPLogBookScreen = ({ navigation }) => {
                         <Text style={{ fontSize: 10, color: colors.textMuted, marginTop: 2 }}>Date: {entry.date}</Text>
                       </View>
                     </View>
+
+                    {entry.remarks ? (
+                      <View style={[styles.remarksContainer, { backgroundColor: isDark ? 'rgba(234, 88, 12, 0.05)' : '#FFF7ED', borderColor: isDark ? 'rgba(234, 88, 12, 0.15)' : '#FFEDD5', borderWidth: 1, borderRadius: 8, padding: 10, marginTop: 12, marginBottom: 4 }]}>
+                        <Text style={{ fontSize: 11, fontWeight: '700', color: colors.primary }}>Remarks:</Text>
+                        <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 2 }}>{entry.remarks}</Text>
+                      </View>
+                    ) : null}
 
                     {/* Verification Actions at Bottom of Card */}
                     <View style={[styles.verificationActionRow, { borderTopWidth: 1, borderTopColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)', paddingTop: 12 }]}>
