@@ -1702,7 +1702,7 @@ export async function getFacultyTimetable(token, empId) {
             start_time: combineTime(lec.lectureStart),
             end_time: combineTime(lec.lectureEnd),
             topic_name: lec.description || '',
-            lecture_type: catObj.category || 'Lecture',
+            lecture_type: lec.lecture_type || lec.lecturetype || catObj.category || 'Lecture',
             raw_date: dateObj ? dateObj.toISOString() : null
           });
         });
