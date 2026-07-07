@@ -1664,11 +1664,17 @@ export async function getFacultyTimetable(token, empId) {
         catObj.lectures.forEach((lec) => {
           // Parse date
           let dateObj = null;
+          let yStr = '';
+          let mStr = '';
+          let dStr = '';
           if (lec.lectureDate) {
             const match = lec.lectureDate.match(/\d+/);
             if (match) {
               // Convert to IST
               dateObj = new Date(parseInt(match[0], 10) + (5.5 * 60 * 60 * 1000));
+              yStr = String(dateObj.getUTCFullYear());
+              mStr = String(dateObj.getUTCMonth() + 1).padStart(2, '0');
+              dStr = String(dateObj.getUTCDate()).padStart(2, '0');
             }
           }
           
@@ -1683,13 +1689,10 @@ export async function getFacultyTimetable(token, empId) {
               if (ampm === 'PM' && hours < 12) hours += 12;
               if (ampm === 'AM' && hours === 12) hours = 0;
               
-              const y = dateObj.getUTCFullYear();
-              const m = String(dateObj.getUTCMonth() + 1).padStart(2, '0');
-              const d = String(dateObj.getUTCDate()).padStart(2, '0');
               const hh = String(hours).padStart(2, '0');
               const mm = String(minutes).padStart(2, '0');
               
-              return `${y}-${m}-${d}T${hh}:${mm}:00`;
+              return `${yStr}-${mStr}-${dStr}T${hh}:${mm}:00`;
             }
             return null;
           };
@@ -1703,7 +1706,7 @@ export async function getFacultyTimetable(token, empId) {
             end_time: combineTime(lec.lectureEnd),
             topic_name: lec.description || '',
             lecture_type: lec.lecture_type || lec.lecturetype || catObj.category || 'Lecture',
-            raw_date: dateObj ? `${y}-${m}-${d}` : null
+            raw_date: dateObj ? `${yStr}-${mStr}-${dStr}` : null
           });
         });
       });
