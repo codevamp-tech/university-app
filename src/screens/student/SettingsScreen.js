@@ -45,6 +45,10 @@ const SettingsScreen = ({ navigation }) => {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
+  const [showOldPassword, setShowOldPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
   const handleChangePassword = async () => {
     if (!oldPassword || !newPassword || !confirmPassword) {
       Alert.alert('Error', 'Please fill all fields.');
@@ -56,25 +60,45 @@ const SettingsScreen = ({ navigation }) => {
     }
     
     try {
-      const username = user?.username || user?.roll_number;
-      if (!username) throw new Error('User identifier not found.');
+      const token = await AsyncStorage.getItem('@access_token');
+      if (!token) throw new Error('Not authenticated');
 
-      const key = `password_${username}`;
-      const savedPassword = await AsyncStorage.getItem(key);
+      const apiUrl = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:8000';
       
-      if (savedPassword && savedPassword !== oldPassword) {
-        Alert.alert('Error', 'Incorrect old password.');
-        return;
+      const response = await fetch(`${apiUrl}/api/v1/users/me/password`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          old_password: oldPassword,
+          new_password: newPassword
+        })
+      });
+
+      let data = {};
+      try {
+        const text = await response.text();
+        if (text) {
+          data = JSON.parse(text);
+        }
+      } catch (parseError) {
+        // Ignore JSON parse errors, we will fallback to a generic error message
       }
 
-      await AsyncStorage.setItem(key, newPassword);
+      if (!response.ok) {
+        const errorMsg = data.detail || data.error?.message || data.message || 'Incorrect current password.';
+        throw new Error(typeof errorMsg === 'string' ? errorMsg : 'Incorrect current password.');
+      }
+
       Alert.alert('Success', 'Password updated successfully. You can now login with your new password.');
       setShowPasswordModal(false);
       setOldPassword('');
       setNewPassword('');
       setConfirmPassword('');
     } catch (e) {
-      Alert.alert('Error', 'Failed to update password.');
+      Alert.alert('Error', e.message || 'Failed to update password.');
     }
   };
 
@@ -145,46 +169,63 @@ const SettingsScreen = ({ navigation }) => {
       </ScrollView>
 
       {/* Change Password Modal */}
-      <Modal visible={showPasswordModal} transparent animationType="fade">
+      <Modal visible={showPasswordModal} transparent animationType="slide">
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
-            <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>Change Password</Text>
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>Change Password</Text>
+              <TouchableOpacity onPress={() => setShowPasswordModal(false)} style={styles.closeBtn}>
+                <Ionicons name="close" size={24} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
             
             <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Old Password</Text>
-            <TextInput
-              style={[styles.input, { color: colors.textPrimary, borderColor: colors.border }]}
-              value={oldPassword}
-              onChangeText={setOldPassword}
-              secureTextEntry
-              placeholder="Enter current password"
-              placeholderTextColor={colors.textMuted}
-            />
+            <View style={[styles.passwordInputContainer, { borderColor: colors.border, backgroundColor: colors.background }]}>
+              <TextInput
+                style={[styles.passwordInput, { color: colors.textPrimary }]}
+                value={oldPassword}
+                onChangeText={setOldPassword}
+                secureTextEntry={!showOldPassword}
+                placeholder="Enter current password"
+                placeholderTextColor={colors.textMuted}
+              />
+              <TouchableOpacity onPress={() => setShowOldPassword(!showOldPassword)} style={styles.eyeBtn}>
+                <Ionicons name={showOldPassword ? "eye-outline" : "eye-off-outline"} size={20} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
             
             <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>New Password</Text>
-            <TextInput
-              style={[styles.input, { color: colors.textPrimary, borderColor: colors.border }]}
-              value={newPassword}
-              onChangeText={setNewPassword}
-              secureTextEntry
-              placeholder="Enter new password"
-              placeholderTextColor={colors.textMuted}
-            />
+            <View style={[styles.passwordInputContainer, { borderColor: colors.border, backgroundColor: colors.background }]}>
+              <TextInput
+                style={[styles.passwordInput, { color: colors.textPrimary }]}
+                value={newPassword}
+                onChangeText={setNewPassword}
+                secureTextEntry={!showNewPassword}
+                placeholder="Enter new password"
+                placeholderTextColor={colors.textMuted}
+              />
+              <TouchableOpacity onPress={() => setShowNewPassword(!showNewPassword)} style={styles.eyeBtn}>
+                <Ionicons name={showNewPassword ? "eye-outline" : "eye-off-outline"} size={20} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
 
             <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Confirm Password</Text>
-            <TextInput
-              style={[styles.input, { color: colors.textPrimary, borderColor: colors.border }]}
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
-              secureTextEntry
-              placeholder="Confirm new password"
-              placeholderTextColor={colors.textMuted}
-            />
+            <View style={[styles.passwordInputContainer, { borderColor: colors.border, backgroundColor: colors.background }]}>
+              <TextInput
+                style={[styles.passwordInput, { color: colors.textPrimary }]}
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+                secureTextEntry={!showConfirmPassword}
+                placeholder="Confirm new password"
+                placeholderTextColor={colors.textMuted}
+              />
+              <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)} style={styles.eyeBtn}>
+                <Ionicons name={showConfirmPassword ? "eye-outline" : "eye-off-outline"} size={20} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
 
             <View style={styles.modalActions}>
-              <TouchableOpacity style={styles.modalBtnCancel} onPress={() => setShowPasswordModal(false)}>
-                <Text style={styles.modalBtnTextCancel}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.modalBtnSubmit} onPress={handleChangePassword}>
+              <TouchableOpacity style={[styles.modalBtnSubmit, { backgroundColor: colors.primary }]} onPress={handleChangePassword}>
                 <Text style={styles.modalBtnTextSubmit}>Update Password</Text>
               </TouchableOpacity>
             </View>
@@ -266,56 +307,76 @@ const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    padding: 20,
+    justifyContent: 'flex-end',
+    margin: 0,
   },
   modalContent: {
-    borderRadius: 20,
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
     padding: 24,
     width: '100%',
+    paddingBottom: 40,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 10,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 24,
   },
   modalTitle: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: '800',
-    marginBottom: 20,
+  },
+  closeBtn: {
+    padding: 4,
   },
   inputLabel: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '600',
     marginBottom: 8,
+    marginLeft: 4,
   },
-  input: {
+  passwordInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
     borderWidth: 1,
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 16,
+    borderRadius: 16,
+    marginBottom: 20,
+    paddingHorizontal: 16,
+    height: 56,
+  },
+  passwordInput: {
+    flex: 1,
     fontSize: 16,
+    height: '100%',
+  },
+  eyeBtn: {
+    padding: 8,
   },
   modalActions: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: 12,
-    marginTop: 8,
-  },
-  modalBtnCancel: {
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 12,
-    backgroundColor: '#F3F4F6',
-  },
-  modalBtnTextCancel: {
-    color: '#4B5563',
-    fontWeight: '600',
+    marginTop: 12,
   },
   modalBtnSubmit: {
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 12,
-    backgroundColor: '#EA580C',
+    paddingVertical: 16,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 5,
+    elevation: 4,
   },
   modalBtnTextSubmit: {
     color: '#FFFFFF',
-    fontWeight: '600',
+    fontWeight: '700',
+    fontSize: 16,
+    letterSpacing: 0.5,
   },
 });
 

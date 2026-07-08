@@ -62,19 +62,9 @@ const LoginScreen = ({ navigation }) => {
     setLoading(true);
 
     try {
-      const username = loginId.trim().toLowerCase();
-      const savedPassword = await AsyncStorage.getItem(`password_${username}`);
-
-      // If a password was set via Change Password, verify it locally
-      if (savedPassword && savedPassword !== securityKey) {
-        Alert.alert('Login Failed', 'Incorrect security key.');
-        setLoading(false);
-        return;
-      }
-
-      // If not overridden, the default API behavior continues normally below
+      // Password check continues normally below
     } catch (e) {
-      console.warn('Password check failed:', e);
+      console.warn('Login preparation error:', e);
     }
     let finalRole = role;
     if (role === 'admin' && loginId.trim().toLowerCase() === 'warden') {

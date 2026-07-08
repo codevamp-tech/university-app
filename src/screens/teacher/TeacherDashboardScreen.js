@@ -337,6 +337,14 @@ const TeacherDashboardScreen = ({ navigation }) => {
               </Text>
             </View>
           </View>
+
+          <TouchableOpacity 
+            style={styles.settingsIconBtn}
+            onPress={() => setShowProfileMenu(true)}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="settings-outline" size={24} color="rgba(255,255,255,0.9)" />
+          </TouchableOpacity>
         </View>
 
         {/* Dept pill */}
@@ -887,6 +895,14 @@ const styles = StyleSheet.create({
     paddingTop: 16,
   },
   headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 14, flex: 1 },
+  settingsIconBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   avatar: {
     width: 52, height: 52, borderRadius: 26,
     alignItems: 'center', justifyContent: 'center',
