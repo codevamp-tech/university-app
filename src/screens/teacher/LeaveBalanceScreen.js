@@ -6,7 +6,7 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useUser } from '../../context/UserContext';
-import { getLeaveSummary, getDepartmentFacultyList, applyFacultyLeave, getEmployeeERPProfile } from '../../data/apiService';
+import { getLeaveSummary, getDepartmentFacultyList, applyFacultyLeave, cancelFacultyLeave, getEmployeeERPProfile } from '../../data/apiService';
 
 const { width } = Dimensions.get('window');
 
@@ -358,21 +358,12 @@ const LeaveBalanceScreen = ({ navigation }) => {
       const cf_lv = parseFloat(balanceObj.carry_forward || 0);
       const ac_lv = parseFloat(balanceObj.accrued || 0);
 
-      // 3. Compute allocation
+      // 3. Duration flags per ERP spec from Sujat Khan:
+      //    lv_tot: actual leave count (0.5 half-day, 1 full-day)
+      //    lv_ac:  duration flag — '1' for half-day, '0' for full-day
+      //    lv_cf:  duration flag — '1' for half-day, '0' for full-day
       const lv_tot = dayType === '1' ? 1.0 : 0.5;
-      let lv_cf = 0.0;
-      let lv_ac = 0.0;
-
-      if (cf_lv >= lv_tot) {
-        lv_cf = lv_tot;
-        lv_ac = 0.0;
-      } else if (cf_lv > 0) {
-        lv_cf = cf_lv;
-        lv_ac = lv_tot - cf_lv;
-      } else {
-        lv_cf = 0.0;
-        lv_ac = lv_tot;
-      }
+      const durationFlag = dayType === '1' ? '0' : '1'; // '1'=half-day, '0'=full-day
 
       // 4. Construct payload
       const payload = {
@@ -388,8 +379,8 @@ const LeaveBalanceScreen = ({ navigation }) => {
         apply: '1',
         deptcd: user.department_code || '60',
         lv_tot: String(lv_tot),
-        lv_ac: String(lv_ac),
-        lv_cf: String(lv_cf),
+        lv_ac: durationFlag,
+        lv_cf: durationFlag,
         WorkEmpid: workInCharge,
       };
 
@@ -416,6 +407,44 @@ const LeaveBalanceScreen = ({ navigation }) => {
     } finally {
       setSubmittingLeave(false);
     }
+  };
+
+  const handleCancelLeave = (item) => {
+    if (!item.leave_no) {
+      Alert.alert('Error', 'Leave number not found for this record.');
+      return;
+    }
+    Alert.alert(
+      'Cancel Leave',
+      `Are you sure you want to cancel this ${item.leave_type} on ${item.date}?`,
+      [
+        { text: 'No', style: 'cancel' },
+        {
+          text: 'Yes, Cancel',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              // LeaveDur: '1' = half-day, '0' = full-day (per Sujat Khan ERP spec)
+              const isHalfDay = item.day_type === '2';
+              const res = await cancelFacultyLeave({
+                empId: user.emp_id,
+                leaveCd: item.leave_cd || '2',
+                leaveNo: item.leave_no,
+                leaveDur: isHalfDay ? '1' : '0',
+              });
+              if (res.ok) {
+                Alert.alert('Cancelled', 'Leave has been successfully cancelled.');
+                fetchLeaveSummary();
+              } else {
+                Alert.alert('Error', `ERP returned code: ${res.code}. Could not cancel leave.`);
+              }
+            } catch (e) {
+              Alert.alert('Error', 'An unexpected error occurred while cancelling.');
+            }
+          },
+        },
+      ]
+    );
   };
 
   // Skeleton pulse animation
@@ -633,6 +662,28 @@ const LeaveBalanceScreen = ({ navigation }) => {
                       <Ionicons name="shield-checkmark-outline" size={16} color="#6B7280" />
                       <Text style={styles.workInChargeText}>In-charge: {inchargeName}</Text>
                     </View>
+                  ) : null}
+
+                  {item.leave_no ? (
+                    <TouchableOpacity
+                      onPress={() => handleCancelLeave(item)}
+                      style={{
+                        marginTop: 12,
+                        alignSelf: 'flex-end',
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        backgroundColor: '#FEF2F2',
+                        borderRadius: 8,
+                        borderWidth: 1,
+                        borderColor: '#FCA5A5',
+                        paddingVertical: 6,
+                        paddingHorizontal: 12,
+                        gap: 4,
+                      }}
+                    >
+                      <Ionicons name="close-circle-outline" size={14} color="#DC2626" />
+                      <Text style={{ fontSize: 12, fontWeight: '700', color: '#DC2626' }}>Cancel Leave</Text>
+                    </TouchableOpacity>
                   ) : null}
                 </View>
               ))

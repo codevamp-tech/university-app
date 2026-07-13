@@ -2446,6 +2446,7 @@ export async function getDepartmentFacultyList(empId) {
 
 /**
  * Apply for a leave in the SRMS ERP (POST).
+ * lv_ac and lv_cf are duration flags: '1' for half-day, '0' for full-day.
  */
 export async function applyFacultyLeave(payload) {
   try {
@@ -2455,9 +2456,36 @@ export async function applyFacultyLeave(payload) {
       body: JSON.stringify(payload),
     });
     const text = await response.text();
+    // Response is a numeric leave number on success (e.g. "5")
     return { ok: response.ok, statusText: text };
   } catch (err) {
     console.warn('[apiService] applyFacultyLeave failed:', err);
+    return { ok: false, error: err.message };
+  }
+}
+
+/**
+ * Cancel an approved leave in the SRMS ERP (POST).
+ * LeaveDur: '1' = half-day, '0' = full-day
+ */
+export async function cancelFacultyLeave({ empId, leaveCd, leaveNo, leaveDur }) {
+  try {
+    const response = await fetch('https://myportal.srms.ac.in/ops/Home/CancelEmpLeave', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        EmpId: String(empId),
+        LeaveCd: String(leaveCd),
+        LeaveNo: String(leaveNo),
+        LeaveDur: String(leaveDur),
+      }),
+    });
+    const text = await response.text();
+    // Response 3 = success
+    const code = parseInt(text);
+    return { ok: !isNaN(code) && code > 0, code };
+  } catch (err) {
+    console.warn('[apiService] cancelFacultyLeave failed:', err);
     return { ok: false, error: err.message };
   }
 }
