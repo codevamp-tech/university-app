@@ -129,7 +129,7 @@ const FacultyStudentsDirectoryScreen = ({ navigation }) => {
 
   // Filter students based on phase permissions, selected filter, and search query
   const filteredStudents = React.useMemo(() => {
-    return students.filter(s => {
+    const list = students.filter(s => {
       // Must be a student and belong to the medical/MBBS category
       const isStudent = s.role?.toLowerCase() === 'student';
       const isMedical = s.category === 'medical' || 
@@ -162,6 +162,13 @@ const FacultyStudentsDirectoryScreen = ({ navigation }) => {
       }
 
       return true;
+    });
+
+    // Sort alphabetically by name / username
+    return list.sort((a, b) => {
+      const nameA = (a.full_name || a.username || '').trim().toLowerCase();
+      const nameB = (b.full_name || b.username || '').trim().toLowerCase();
+      return nameA.localeCompare(nameB);
     });
   }, [students, facultyPhases, selectedPhaseFilter, searchQuery]);
 
