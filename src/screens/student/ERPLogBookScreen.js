@@ -263,13 +263,14 @@ const ERPLogBookScreen = ({ route, navigation }) => {
       setSubjectEntriesLoading(true);
       const lbtype = activeCategory !== 'ALL' ? activeCategory : 'PracticalStudentLab';
       
-      // Resolve cohort details strictly based on activePhase mapping:
-      // Phase 1 -> 2025 (66)
-      // Phase 2 -> 2024 (63)
-      // Phase 3 -> 2023 (60)
-      const phaseStr = String(activePhase);
-      const finalCbmeyear = phaseStr === '1' ? '2025' : phaseStr === '2' ? '2024' : '2023';
-      const finalBatchcd = phaseStr === '1' ? '66' : phaseStr === '2' ? '63' : '60';
+      // Resolve the student's actual cohort details from profile
+      const userBatchYear = parseInt(user?.batch_year || user?.year || '2024', 10);
+      const BATCH_YEAR_TO_CD = {
+        2025: "66", 2024: "63", 2023: "60", 2022: "61",
+        2021: "62", 2020: "64", 2019: "65"
+      };
+      const finalCbmeyear = String(userBatchYear || '2024');
+      const finalBatchcd = BATCH_YEAR_TO_CD[userBatchYear] || '63';
 
       const raw = await getStudentSubjectLogbook(
         rollno, 
