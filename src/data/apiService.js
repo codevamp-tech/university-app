@@ -1876,12 +1876,12 @@ export async function getSubjectList(phaseId) {
 
 /**
  * Fetch student logbook entries for a specific subject & phase directly from ERP.
- * Uses GetPracticalStudLabDatastud. batchcd: Phase1=66, Phase2=63, Phase3=60.
+ * Uses GetPracticalStudLabDatastud.
  */
-export async function getStudentSubjectLogbook(rollno, phase, subjcode, lbtype = 'PracticalStudentLab') {
+export async function getStudentSubjectLogbook(rollno, phase, subjcode, lbtype = 'PracticalStudentLab', cbmeyear, batchcd) {
   const phaseStr = String(phase);
-  const cbmeyear = PHASE_BATCH_YEAR[phaseStr] || '2024';
-  const batchcd = phaseStr === '1' ? '66' : phaseStr === '2' ? '63' : '60';
+  const finalYear = String(cbmeyear || PHASE_BATCH_YEAR[phaseStr] || '2024');
+  const finalBatchCd = String(batchcd || (phaseStr === '1' ? '66' : phaseStr === '2' ? '63' : '60'));
   try {
     const response = await fetch('https://myportal.srms.ac.in/SRMSERP/PGMBBS/GetPracticalStudLabDatastud', {
       method: 'POST',
@@ -1893,7 +1893,7 @@ export async function getStudentSubjectLogbook(rollno, phase, subjcode, lbtype =
           coursetype: 'UG',
           coursecd: '1',
           branchcd: '1',
-          batchcd,
+          batchcd: finalBatchCd,
           phase: phaseStr,
           rollno: String(rollno),
           subjcode: String(subjcode),
@@ -1909,7 +1909,7 @@ export async function getStudentSubjectLogbook(rollno, phase, subjcode, lbtype =
           ac_status: 0,
           lbtype,
           received: '',
-          cbmeyear,
+          cbmeyear: finalYear,
           verified_dt: '1900-10-01 00:00:00',
         },
       }),
