@@ -1,14 +1,281 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, Animated, Dimensions, FlatList
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, Animated, Dimensions, FlatList, Modal, TextInput, ActivityIndicator, Alert, Platform
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useUser } from '../../context/UserContext';
-import { getLeaveSummary } from '../../data/apiService';
+import { getLeaveSummary, getDepartmentFacultyList, applyFacultyLeave, getEmployeeERPProfile } from '../../data/apiService';
 
 const { width } = Dimensions.get('window');
+
+// ─── CalendarModal ───────────────────────────────────────────────────────────
+const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+const DAY_NAMES = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+
+const CalendarModal = ({ visible, date, onSelect, onClose }) => {
+  const [viewYear, setViewYear] = useState(date.getFullYear());
+  const [viewMonth, setViewMonth] = useState(date.getMonth());
+
+  useEffect(() => {
+    if (visible) {
+      setViewYear(date.getFullYear());
+      setViewMonth(date.getMonth());
+    }
+  }, [visible]);
+
+  const prevMonth = () => {
+    if (viewMonth === 0) { setViewMonth(11); setViewYear(y => y - 1); }
+    else setViewMonth(m => m - 1);
+  };
+  const nextMonth = () => {
+    if (viewMonth === 11) { setViewMonth(0); setViewYear(y => y + 1); }
+    else setViewMonth(m => m + 1);
+  };
+
+  // Build day grid
+  const firstDay = new Date(viewYear, viewMonth, 1).getDay();
+  const daysInMon = new Date(viewYear, viewMonth + 1, 0).getDate();
+  const cells = [];
+  for (let i = 0; i < firstDay; i++) cells.push(null);
+  for (let d = 1; d <= daysInMon; d++) cells.push(d);
+  while (cells.length % 7 !== 0) cells.push(null);
+  const weeks = [];
+  for (let i = 0; i < cells.length; i += 7) weeks.push(cells.slice(i, i + 7));
+
+  const isSelected = (d) =>
+    d && date.getDate() === d && date.getMonth() === viewMonth && date.getFullYear() === viewYear;
+  const isToday = (d) => {
+    const t = new Date();
+    return d && t.getDate() === d && t.getMonth() === viewMonth && t.getFullYear() === viewYear;
+  };
+
+  if (!visible) return null;
+
+  return (
+    <TouchableOpacity style={calStyles.overlay} activeOpacity={1} onPress={onClose}>
+      <View style={calStyles.sheet}>
+        {/* Month nav */}
+        <View style={calStyles.header}>
+          <TouchableOpacity onPress={prevMonth} style={calStyles.navBtn}>
+            <Ionicons name="chevron-back" size={20} color="#EA580C" />
+          </TouchableOpacity>
+          <Text style={calStyles.monthLabel}>{MONTH_NAMES[viewMonth]} {viewYear}</Text>
+          <TouchableOpacity onPress={nextMonth} style={calStyles.navBtn}>
+            <Ionicons name="chevron-forward" size={20} color="#EA580C" />
+          </TouchableOpacity>
+        </View>
+
+        {/* Day labels */}
+        <View style={calStyles.dayRow}>
+          {DAY_NAMES.map(d => (
+            <Text key={d} style={calStyles.dayLabel}>{d}</Text>
+          ))}
+        </View>
+
+        {/* Date grid */}
+        {weeks.map((week, wi) => (
+          <View key={wi} style={calStyles.weekRow}>
+            {week.map((day, di) => {
+              const sel = isSelected(day);
+              const tod = isToday(day);
+              return (
+                <TouchableOpacity
+                  key={di}
+                  style={[calStyles.dayCell, sel && calStyles.dayCellSelected, tod && !sel && calStyles.dayCellToday]}
+                  onPress={() => {
+                    if (day) { onSelect(new Date(viewYear, viewMonth, day)); onClose(); }
+                  }}
+                  activeOpacity={day ? 0.7 : 1}
+                >
+                  <Text style={[
+                    calStyles.dayCellText,
+                    sel && calStyles.dayCellTextSelected,
+                    tod && !sel && calStyles.dayCellTextToday,
+                    !day && { opacity: 0 },
+                  ]}>
+                    {day || ''}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        ))}
+
+        {/* Today shortcut */}
+        <TouchableOpacity
+          style={calStyles.todayBtn}
+          onPress={() => { onSelect(getIstToday()); onClose(); }}
+        >
+          <Text style={calStyles.todayBtnText}>Today</Text>
+        </TouchableOpacity>
+      </View>
+    </TouchableOpacity>
+  );
+};
+
+const calStyles = StyleSheet.create({
+  overlay: {
+    position: 'absolute',
+    top: 0, bottom: 0, left: 0, right: 0,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+    zIndex: 1000,
+  },
+  sheet: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 28, borderTopRightRadius: 28,
+    paddingTop: 20, paddingBottom: Platform.OS === 'ios' ? 36 : 24,
+    paddingHorizontal: 20,
+  },
+  header: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  navBtn: { padding: 6, borderRadius: 8, backgroundColor: '#FFF7ED' },
+  monthLabel: { fontSize: 16, fontWeight: '800', color: '#111827' },
+  dayRow: { flexDirection: 'row', marginBottom: 8 },
+  dayLabel: {
+    flex: 1, textAlign: 'center',
+    fontSize: 11, fontWeight: '700', color: '#9CA3AF', letterSpacing: 0.3,
+  },
+  weekRow: { flexDirection: 'row', marginBottom: 4 },
+  dayCell: {
+    flex: 1, height: 38, borderRadius: 10,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  dayCellSelected: { backgroundColor: '#EA580C' },
+  dayCellToday: { backgroundColor: '#FFF7ED', borderWidth: 1, borderColor: '#EA580C' },
+  dayCellText: { fontSize: 14, color: '#1F2937', fontWeight: '500' },
+  dayCellTextSelected: { color: '#FFFFFF', fontWeight: '800' },
+  dayCellTextToday: { color: '#EA580C', fontWeight: '700' },
+  todayBtn: {
+    marginTop: 12, alignSelf: 'center',
+    paddingVertical: 10, paddingHorizontal: 32,
+    backgroundColor: '#FFF7ED', borderRadius: 12,
+    borderWidth: 1, borderColor: '#FDBA74',
+  },
+  todayBtnText: { fontSize: 14, fontWeight: '800', color: '#EA580C' },
+});
+
+// ─── DropdownModal ────────────────────────────────────────────────────────────
+const DropdownModal = ({ visible, title, options, selectedValue, onSelect, onClose }) => {
+  if (!visible) return null;
+  return (
+    <TouchableOpacity style={ddStyles.overlay} activeOpacity={1} onPress={onClose}>
+      <View style={ddStyles.sheet}>
+        <View style={ddStyles.header}>
+          <Text style={ddStyles.title}>{title}</Text>
+          <TouchableOpacity onPress={onClose}>
+            <Ionicons name="close" size={22} color="#6B7280" />
+          </TouchableOpacity>
+        </View>
+        <FlatList
+          data={options}
+          keyExtractor={item => item.value}
+          renderItem={({ item }) => {
+            const isSelected = item.value === selectedValue;
+            return (
+              <TouchableOpacity
+                style={[ddStyles.option, isSelected && ddStyles.optionSelected]}
+                onPress={() => { onSelect(item); onClose(); }}
+              >
+                <Text style={[ddStyles.optionText, isSelected && ddStyles.optionTextSelected]}>
+                  {item.label}
+                </Text>
+                {isSelected && <Ionicons name="checkmark" size={18} color="#EA580C" />}
+              </TouchableOpacity>
+            );
+          }}
+        />
+      </View>
+    </TouchableOpacity>
+  );
+};
+
+const ddStyles = StyleSheet.create({
+  overlay: {
+    position: 'absolute',
+    top: 0, bottom: 0, left: 0, right: 0,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+    zIndex: 1000,
+  },
+  sheet: {
+    backgroundColor: '#FFFFFF', borderTopLeftRadius: 24, borderTopRightRadius: 24,
+    paddingTop: 20, paddingBottom: Platform.OS === 'ios' ? 36 : 24, maxHeight: '60%',
+  },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, marginBottom: 12 },
+  title: { fontSize: 16, fontWeight: '800', color: '#111827' },
+  option: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
+  optionSelected: { backgroundColor: '#FFF7ED' },
+  optionText: { fontSize: 14, color: '#374151', fontWeight: '500', flex: 1, marginRight: 8 },
+  optionTextSelected: { color: '#EA580C', fontWeight: '700' },
+});
+
+const LEAVE_TYPES = [
+  { value: '2', label: 'Casual Leave' },
+  { value: '1', label: 'Privilege Leave' },
+  { value: '9', label: 'Earned Leave' },
+];
+
+const DAY_TYPES = [
+  { value: '1', label: 'Full Day' },
+  { value: '2', label: 'Half Day' },
+];
+
+const getIstToday = () => {
+  const local = new Date();
+  const utc = local.getTime() + (local.getTimezoneOffset() * 60000);
+  const istOffset = 5.5 * 3600000;
+  return new Date(utc + istOffset);
+};
+
+const formStyles = StyleSheet.create({
+  overlay: {
+    position: 'absolute',
+    top: 0, bottom: 0, left: 0, right: 0,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'flex-end',
+    zIndex: 999,
+  },
+  overlayBackdrop: {
+    position: 'absolute',
+    top: 0, bottom: 0, left: 0, right: 0,
+  },
+  sheet: {
+    backgroundColor: '#FFFFFF', borderTopLeftRadius: 30, borderTopRightRadius: 30,
+    paddingTop: 22, paddingBottom: Platform.OS === 'ios' ? 36 : 24, maxHeight: '90%',
+  },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 24, marginBottom: 16 },
+  title: { fontSize: 18, fontWeight: '900', color: '#111827', letterSpacing: -0.3 },
+  closeBtn: {
+    width: 32, height: 32, borderRadius: 16,
+    backgroundColor: '#F3F4F6', alignItems: 'center', justifyContent: 'center',
+  },
+  formScroll: { paddingHorizontal: 24, gap: 16, paddingBottom: 20 },
+  fieldWrap: { gap: 6 },
+  fieldLabel: { fontSize: 9, fontWeight: '800', color: '#9CA3AF', letterSpacing: 0.8 },
+  selectBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    backgroundColor: '#F9FAFB', paddingHorizontal: 16, paddingVertical: 12,
+    borderRadius: 14, borderWidth: 1, borderColor: '#E5E7EB',
+  },
+  selectBtnText: { fontSize: 14, color: '#374151', fontWeight: '600' },
+  textInput: {
+    backgroundColor: '#F9FAFB', paddingHorizontal: 16, paddingVertical: 12,
+    borderRadius: 14, borderWidth: 1, borderColor: '#E5E7EB',
+    fontSize: 14, color: '#374151', minHeight: 80, textAlignVertical: 'top',
+  },
+  submitBtn: {
+    flexDirection: 'row', backgroundColor: '#EA580C', paddingVertical: 14,
+    borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginTop: 10,
+    shadowColor: '#EA580C', shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2, shadowRadius: 8, elevation: 3,
+  },
+  submitBtnText: { fontSize: 15, fontWeight: '800', color: '#FFF' },
+});
 
 const LeaveBalanceScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
@@ -17,6 +284,139 @@ const LeaveBalanceScreen = ({ navigation }) => {
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [inchargeName, setInchargeName] = useState('');
+
+  // --- Leave Apply Modal states ---
+  const [applyModalVisible, setApplyModalVisible] = useState(false);
+  const [submittingLeave, setSubmittingLeave] = useState(false);
+  const [facList, setFacList] = useState([]);
+  const [facLoading, setFacLoading] = useState(false);
+
+  // Form states
+  const [selectedLeaveCode, setSelectedLeaveCode] = useState('2'); // default: Casual Leave
+  const [leaveDate, setLeaveDate] = useState(getIstToday());
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [dayType, setDayType] = useState('1'); // default: Full Day
+  const [workInCharge, setWorkInCharge] = useState('');
+  const [remarks, setRemarks] = useState('');
+
+  // Dropdown states for form
+  const [leaveTypeDropdownOpen, setLeaveTypeDropdownOpen] = useState(false);
+  const [dayTypeDropdownOpen, setDayTypeDropdownOpen] = useState(false);
+  const [workInChargeDropdownOpen, setWorkInChargeDropdownOpen] = useState(false);
+
+  const fetchFacultyList = useCallback(async () => {
+    if (!user?.emp_id) return;
+    setFacLoading(true);
+    try {
+      const data = await getDepartmentFacultyList(user.emp_id);
+      // Filter out the current user themselves
+      const filtered = (data || []).filter(f => f.EmpID !== user.emp_id);
+      setFacList(filtered);
+      if (filtered.length > 0) {
+        setWorkInCharge(filtered[0].EmpID);
+      }
+    } catch (e) {
+      console.warn('[LeaveBalance] Failed to fetch faculty list:', e);
+    } finally {
+      setFacLoading(false);
+    }
+  }, [user?.emp_id]);
+
+  useEffect(() => {
+    if (applyModalVisible) {
+      fetchFacultyList();
+    }
+  }, [applyModalVisible, fetchFacultyList]);
+
+  const handleSubmitLeave = async () => {
+    if (!user?.emp_id) return;
+    if (!workInCharge) {
+      Alert.alert('Error', 'Please select a colleague for Work Assigned To.');
+      return;
+    }
+    if (!remarks.trim()) {
+      Alert.alert('Error', 'Please enter a remark / reason.');
+      return;
+    }
+
+    setSubmittingLeave(true);
+    try {
+      // 1. Format date as MM/DD/YYYY
+      const m = String(leaveDate.getMonth() + 1).padStart(2, '0');
+      const d = String(leaveDate.getDate()).padStart(2, '0');
+      const y = leaveDate.getFullYear();
+      const attdt = `${m}/${d}/${y}`;
+
+      // 2. Fetch balance for selected leave code
+      const balances = summary?.balances || {};
+      let balanceObj = { carry_forward: 0, accrued: 0 };
+      if (selectedLeaveCode === '2') balanceObj = balances.casual || { carry_forward: 0, accrued: 0 };
+      else if (selectedLeaveCode === '1') balanceObj = balances.privilege || { carry_forward: 0, accrued: 0 };
+      else if (selectedLeaveCode === '9') balanceObj = balances.earned || { carry_forward: 0, accrued: 0 };
+
+      const cf_lv = parseFloat(balanceObj.carry_forward || 0);
+      const ac_lv = parseFloat(balanceObj.accrued || 0);
+
+      // 3. Compute allocation
+      const lv_tot = dayType === '1' ? 1.0 : 0.5;
+      let lv_cf = 0.0;
+      let lv_ac = 0.0;
+
+      if (cf_lv >= lv_tot) {
+        lv_cf = lv_tot;
+        lv_ac = 0.0;
+      } else if (cf_lv > 0) {
+        lv_cf = cf_lv;
+        lv_ac = lv_tot - cf_lv;
+      } else {
+        lv_cf = 0.0;
+        lv_ac = lv_tot;
+      }
+
+      // 4. Construct payload
+      const payload = {
+        empid: user.emp_id,
+        genno: '0',
+        attdt: attdt,
+        shift: '1',
+        leavecd: selectedLeaveCode,
+        daytype: dayType,
+        rmrk: remarks.trim(),
+        usrid: user.emp_id,
+        reason: user.emp_id,
+        apply: '1',
+        deptcd: user.department_code || '60',
+        lv_tot: String(lv_tot),
+        lv_ac: String(lv_ac),
+        lv_cf: String(lv_cf),
+        WorkEmpid: workInCharge,
+      };
+
+      // 5. Submit
+      const res = await applyFacultyLeave(payload);
+      if (res.ok) {
+        if (res.statusText && parseInt(res.statusText) > 0) {
+          Alert.alert('Success', 'Leave application submitted successfully!');
+          setApplyModalVisible(false);
+          setRemarks('');
+          setLeaveDate(getIstToday());
+          setDayType('1');
+          setSelectedLeaveCode('2');
+          fetchLeaveSummary();
+        } else {
+          Alert.alert('Error', `ERP rejected request with status code: ${res.statusText}`);
+        }
+      } else {
+        Alert.alert('Error', res.error || 'Failed to submit leave. Please check network connection.');
+      }
+    } catch (e) {
+      console.warn('[LeaveBalance] Submit error:', e);
+      Alert.alert('Error', 'An unexpected error occurred.');
+    } finally {
+      setSubmittingLeave(false);
+    }
+  };
 
   // Skeleton pulse animation
   const pulseAnim = React.useRef(new Animated.Value(0.4)).current;
@@ -36,11 +436,18 @@ const LeaveBalanceScreen = ({ navigation }) => {
     setLoading(true);
     setError(null);
     try {
-      const data = await getLeaveSummary(user.emp_id);
+      const [data, profile] = await Promise.all([
+        getLeaveSummary(user.emp_id),
+        getEmployeeERPProfile(user.emp_id)
+      ]);
       if (data) {
+        console.log('[LeaveBalanceScreen] fetched leave data leaves_taken:', JSON.stringify(data.leaves_taken));
         setSummary(data);
       } else {
         setError('No leave records found.');
+      }
+      if (profile && profile.INCHAGENAME) {
+        setInchargeName(profile.INCHAGENAME);
       }
     } catch (e) {
       setError('Failed to fetch leave summary');
@@ -73,6 +480,16 @@ const LeaveBalanceScreen = ({ navigation }) => {
   const formatDate = (dateStr) => {
     if (!dateStr) return '';
     try {
+      if (typeof dateStr === 'string' && dateStr.includes('-')) {
+        const parts = dateStr.split('-');
+        if (parts.length === 3) {
+          const y = parseInt(parts[0], 10);
+          const m = parseInt(parts[1], 10) - 1;
+          const d = parseInt(parts[2], 10);
+          const localDate = new Date(y, m, d);
+          return localDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+        }
+      }
       const d = new Date(dateStr);
       return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
     } catch {
@@ -102,7 +519,9 @@ const LeaveBalanceScreen = ({ navigation }) => {
             <Ionicons name="arrow-back" size={22} color="#FFF" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Leave Ledger</Text>
-          <View style={{ width: 36 }} />
+          <TouchableOpacity onPress={() => setApplyModalVisible(true)} style={styles.applyBtn}>
+            <Ionicons name="add-circle-outline" size={22} color="#FFF" />
+          </TouchableOpacity>
         </View>
 
         <View style={styles.headerSub}>
@@ -167,7 +586,13 @@ const LeaveBalanceScreen = ({ navigation }) => {
             </View>
 
             {/* Leaves Taken / History */}
-            <Text style={styles.sectionTitle}>Leaves Taken History</Text>
+            <View style={styles.historyTitleRow}>
+              <Text style={[styles.sectionTitle, { marginBottom: 0, marginTop: 0 }]}>Leaves Taken History</Text>
+              <TouchableOpacity onPress={() => setApplyModalVisible(true)} style={styles.inlineApplyBtn}>
+                <Ionicons name="add" size={16} color="#EA580C" style={{ marginRight: 4 }} />
+                <Text style={styles.inlineApplyBtnText}>Apply Leave</Text>
+              </TouchableOpacity>
+            </View>
             {leavesTaken.length === 0 ? (
               <View style={styles.emptyCard}>
                 <Ionicons name="sunny-outline" size={32} color="#9CA3AF" />
@@ -199,7 +624,14 @@ const LeaveBalanceScreen = ({ navigation }) => {
                   {item.work_in_charge ? (
                     <View style={styles.workInChargeRow}>
                       <Ionicons name="person-circle-outline" size={16} color="#6B7280" />
-                      <Text style={styles.workInChargeText}>Work In-charge: {item.work_in_charge}</Text>
+                      <Text style={styles.workInChargeText}>Work Assigned To: {item.work_in_charge}</Text>
+                    </View>
+                  ) : null}
+
+                  {inchargeName ? (
+                    <View style={[styles.workInChargeRow, { marginTop: 6 }]}>
+                      <Ionicons name="shield-checkmark-outline" size={16} color="#6B7280" />
+                      <Text style={styles.workInChargeText}>In-charge: {inchargeName}</Text>
                     </View>
                   ) : null}
                 </View>
@@ -210,6 +642,144 @@ const LeaveBalanceScreen = ({ navigation }) => {
           </>
         )}
       </ScrollView>
+
+      {/* Leave Application Slide-Up Sheet */}
+      {applyModalVisible ? (
+        <View style={formStyles.overlay}>
+          <TouchableOpacity style={formStyles.overlayBackdrop} activeOpacity={1} onPress={() => setApplyModalVisible(false)} />
+          <View style={formStyles.sheet}>
+            <View style={formStyles.header}>
+              <Text style={formStyles.title}>Apply for Leave</Text>
+              <TouchableOpacity onPress={() => setApplyModalVisible(false)} style={formStyles.closeBtn}>
+                <Ionicons name="close" size={22} color="#4B5563" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView contentContainerStyle={formStyles.formScroll} showsVerticalScrollIndicator={false}>
+              
+              {/* Leave Type Select */}
+              <View style={formStyles.fieldWrap}>
+                <Text style={formStyles.fieldLabel}>LEAVE TYPE</Text>
+                <TouchableOpacity style={formStyles.selectBtn} onPress={() => setLeaveTypeDropdownOpen(true)}>
+                  <Text style={formStyles.selectBtnText}>
+                    {LEAVE_TYPES.find(t => t.value === selectedLeaveCode)?.label || 'Select Type'}
+                  </Text>
+                  <Ionicons name="chevron-down" size={16} color="#6B7280" />
+                </TouchableOpacity>
+              </View>
+
+              {/* Date Select */}
+              <View style={formStyles.fieldWrap}>
+                <Text style={formStyles.fieldLabel}>LEAVE DATE</Text>
+                <TouchableOpacity style={formStyles.selectBtn} onPress={() => setShowDatePicker(true)}>
+                  <Text style={formStyles.selectBtnText}>
+                    {leaveDate ? leaveDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }) : 'Select Date'}
+                  </Text>
+                  <Ionicons name="calendar-outline" size={18} color="#EA580C" />
+                </TouchableOpacity>
+              </View>
+
+              {/* Day Type Select */}
+              <View style={formStyles.fieldWrap}>
+                <Text style={formStyles.fieldLabel}>DURATION</Text>
+                <TouchableOpacity style={formStyles.selectBtn} onPress={() => setDayTypeDropdownOpen(true)}>
+                  <Text style={formStyles.selectBtnText}>
+                    {DAY_TYPES.find(t => t.value === dayType)?.label || 'Select Duration'}
+                  </Text>
+                  <Ionicons name="chevron-down" size={16} color="#6B7280" />
+                </TouchableOpacity>
+              </View>
+
+              {/* Work Assigned To Select */}
+              <View style={formStyles.fieldWrap}>
+                <Text style={formStyles.fieldLabel}>WORK ASSIGNED TO (COLLEAGUE)</Text>
+                <TouchableOpacity 
+                  style={formStyles.selectBtn} 
+                  onPress={() => setWorkInChargeDropdownOpen(true)}
+                  disabled={facLoading}
+                >
+                  {facLoading ? (
+                    <ActivityIndicator size="small" color="#EA580C" style={{ marginRight: 8 }} />
+                  ) : null}
+                  <Text style={formStyles.selectBtnText} numberOfLines={1}>
+                    {facList.find(f => f.EmpID === workInCharge)?.EmpName || (facLoading ? 'Loading colleagues...' : 'Select Colleague')}
+                  </Text>
+                  <Ionicons name="chevron-down" size={16} color="#6B7280" />
+                </TouchableOpacity>
+              </View>
+
+              {/* Remarks/Reason Text Input */}
+              <View style={formStyles.fieldWrap}>
+                <Text style={formStyles.fieldLabel}>REASON / REMARKS</Text>
+                <TextInput
+                  style={formStyles.textInput}
+                  placeholder="Explain the reason for leave..."
+                  placeholderTextColor="#9CA3AF"
+                  value={remarks}
+                  onChangeText={setRemarks}
+                  multiline
+                  numberOfLines={3}
+                />
+              </View>
+
+              {/* Submit Button */}
+              <TouchableOpacity 
+                style={formStyles.submitBtn} 
+                onPress={handleSubmitLeave}
+                disabled={submittingLeave}
+              >
+                {submittingLeave ? (
+                  <ActivityIndicator size="small" color="#FFF" />
+                ) : (
+                  <>
+                    <Ionicons name="checkmark-circle-outline" size={18} color="#FFF" style={{ marginRight: 8 }} />
+                    <Text style={formStyles.submitBtnText}>Apply Leave</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+              
+            </ScrollView>
+          </View>
+
+          {/* Date Picker Calendar Modal Overlay */}
+          <CalendarModal
+            visible={showDatePicker}
+            date={leaveDate}
+            onSelect={(d) => setLeaveDate(d)}
+            onClose={() => setShowDatePicker(false)}
+          />
+
+          {/* Leave Type Selection Modal Overlay */}
+          <DropdownModal
+            visible={leaveTypeDropdownOpen}
+            title="Select Leave Type"
+            options={LEAVE_TYPES}
+            selectedValue={selectedLeaveCode}
+            onSelect={(item) => setSelectedLeaveCode(item.value)}
+            onClose={() => setLeaveTypeDropdownOpen(false)}
+          />
+
+          {/* Day Type Selection Modal Overlay */}
+          <DropdownModal
+            visible={dayTypeDropdownOpen}
+            title="Select Duration"
+            options={DAY_TYPES}
+            selectedValue={dayType}
+            onSelect={(item) => setDayType(item.value)}
+            onClose={() => setDayTypeDropdownOpen(false)}
+          />
+
+          {/* Work Assigned To Selection Modal Overlay */}
+          <DropdownModal
+            visible={workInChargeDropdownOpen}
+            title="Select Colleague (Work Assigned To)"
+            options={facList.map(f => ({ value: f.EmpID, label: `${f.EmpName} (${f.Department})` }))}
+            selectedValue={workInCharge}
+            onSelect={(item) => setWorkInCharge(item.value)}
+            onClose={() => setWorkInChargeDropdownOpen(false)}
+          />
+        </View>
+      ) : null}
     </View>
   );
 };
@@ -320,6 +890,33 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.04, shadowRadius: 10, elevation: 2,
   },
   emptyText: { fontSize: 13, color: '#9CA3AF', textAlign: 'center', fontWeight: '500', lineHeight: 18 },
+  applyBtn: {
+    width: 36, height: 36, borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  historyTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+    marginTop: 16,
+  },
+  inlineApplyBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF7ED',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#FDBA74',
+  },
+  inlineApplyBtnText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#EA580C',
+  },
 });
 
 export default LeaveBalanceScreen;

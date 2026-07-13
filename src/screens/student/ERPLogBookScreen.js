@@ -120,11 +120,13 @@ const LogBookSkeleton = ({ colors }) => (
   </View>
 );
 
-const ERPLogBookScreen = ({ navigation }) => {
+const ERPLogBookScreen = ({ route, navigation }) => {
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
-  const { user, accessToken } = useUser();
-  const isFaculty = user && user.role === 'teacher';
+  const { user: contextUser, accessToken } = useUser();
+  const passedStudent = route?.params?.student;
+  const user = passedStudent || contextUser;
+  const isFaculty = contextUser && contextUser.role === 'teacher';
 
   const [logbook, setLogbook] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -140,7 +142,8 @@ const ERPLogBookScreen = ({ navigation }) => {
     if (!accessToken) return;
     if (showLoading) setLoading(true);
     try {
-      const resp = await getLogbook(accessToken);
+      const studentId = user?.rollno || user?.id || user?.username;
+      const resp = await getLogbook(accessToken, studentId);
       let rawList = [];
       if (resp && resp.success && Array.isArray(resp.data)) {
         rawList = resp.data;
@@ -326,7 +329,13 @@ const ERPLogBookScreen = ({ navigation }) => {
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <TouchableOpacity onPress={() => navigation.navigate('ERPHome')} style={[styles.backBtn, { backgroundColor: colors.card }]}>
+          <TouchableOpacity onPress={() => {
+            if (isFaculty) {
+              navigation.navigate('FacultyStudentsDirectory');
+            } else {
+              navigation.navigate('ERPHome');
+            }
+          }} style={[styles.backBtn, { backgroundColor: colors.card }]}>
             <MaterialIcons name="arrow-back" size={22} color={colors.textPrimary} />
           </TouchableOpacity>
           <View style={{ marginLeft: 12 }}>

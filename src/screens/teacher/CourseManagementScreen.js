@@ -9,6 +9,7 @@ import { useUser } from '../../context/UserContext';
 import { getFacultyTimetable } from '../../data/apiService';
 
 const DAYS_OF_WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+const TABS = ['Upcoming', ...DAYS_OF_WEEK];
 
 function formatTime(iso) {
   if (!iso) return '';
@@ -18,7 +19,18 @@ function formatTime(iso) {
   } catch { return ''; }
 }
 
-const CourseManagementScreen = ({ navigation }) => {
+function formatSlotDayDate(isoStr) {
+  if (!isoStr) return '';
+  try {
+    const d = new Date(isoStr);
+    const dayName = d.toLocaleDateString('en-IN', { weekday: 'short' });
+    const dateNum = String(d.getDate()).padStart(2, '0');
+    const monthName = d.toLocaleDateString('en-IN', { month: 'short' });
+    return `${dayName}, ${dateNum} ${monthName}`;
+  } catch { return ''; }
+}
+
+const CourseManagementScreen = ({ route, navigation }) => {
   const insets = useSafeAreaInsets();
   const { user, accessToken } = useUser();
   const [timetable, setTimetable] = useState([]);
@@ -33,6 +45,12 @@ const CourseManagementScreen = ({ navigation }) => {
   };
 
   const [selectedDay, setSelectedDay] = useState(getCurrentDay());
+
+  useEffect(() => {
+    if (route?.params?.tab) {
+      setSelectedDay(route.params.tab);
+    }
+  }, [route?.params?.tab]);
 
   const loadData = useCallback(async () => {
     if (!accessToken) { setLoading(false); return; }
@@ -65,10 +83,14 @@ const CourseManagementScreen = ({ navigation }) => {
     return '';
   };
 
-  // Filter slots for the selected day of the week
-  const daySlots = timetable.filter(slot => {
-    return getDayFromISO(slot.raw_date) === selectedDay;
-  });
+  // Filter slots for the selected day of the week or upcoming
+  const daySlots = selectedDay === 'Upcoming'
+    ? timetable
+        .filter(slot => slot.start_time && new Date(slot.start_time) >= new Date())
+        .sort((a, b) => new Date(a.start_time) - new Date(b.start_time))
+    : timetable.filter(slot => {
+        return getDayFromISO(slot.raw_date) === selectedDay;
+      });
 
   const getLectureIcon = (type) => {
     const t = String(type).toLowerCase();
@@ -106,7 +128,7 @@ const CourseManagementScreen = ({ navigation }) => {
       {/* Days Tabs bar */}
       <View style={styles.daysTabContainer}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.daysScroll}>
-          {DAYS_OF_WEEK.map((day) => {
+          {TABS.map((day) => {
             const isActive = selectedDay === day;
             return (
               <TouchableOpacity
@@ -141,7 +163,11 @@ const CourseManagementScreen = ({ navigation }) => {
             <View style={styles.emptyCard}>
               <MaterialCommunityIcons name="calendar-blank" size={56} color="#D1D5DB" style={{ marginBottom: 12 }} />
               <Text style={styles.emptyText}>No Classes Scheduled</Text>
-              <Text style={styles.emptySub}>You have no lectures or clinical postings scheduled for {selectedDay}.</Text>
+              <Text style={styles.emptySub}>
+                {selectedDay === 'Upcoming'
+                  ? 'You have no lectures or clinical postings scheduled in the future.'
+                  : `You have no lectures or clinical postings scheduled for ${selectedDay}.`}
+              </Text>
             </View>
           ) : (
             daySlots.map((slot, index) => {
@@ -179,6 +205,7 @@ const CourseManagementScreen = ({ navigation }) => {
                   <View style={styles.metaRow}>
                     <Ionicons name="time-outline" size={16} color="#6B7280" style={{ marginRight: 6 }} />
                     <Text style={styles.metaText}>
+                      {selectedDay === 'Upcoming' ? `${formatSlotDayDate(slot.start_time)}   ·   ` : ''}
                       {formatTime(slot.start_time)} – {formatTime(slot.end_time)}
                     </Text>
                   </View>

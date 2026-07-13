@@ -8,7 +8,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useUser } from '../../context/UserContext';
-import { getFacultyTimetable, getFacultyTopics, uploadAvatarAPI, listGrievancesAPI } from '../../data/apiService';
+import { getFacultyTimetable, getFacultyTopics, uploadAvatarAPI, listGrievancesAPI, getFacultyAttendance } from '../../data/apiService';
 import ActivityRing from '../../components/ActivityRing';
 import { getAvatarUrl } from '../../utils/avatar';
 import { useHealthMetrics } from '../../hooks/useHealthMetrics';
@@ -154,11 +154,11 @@ const TeacherDashboardScreen = ({ navigation }) => {
       if (res.ok && res.json?.success) {
         const secureUrl = res.json.data.avatar_url;
         await updateAvatarUrl(secureUrl);
-        
+
         // Mark prompted
         const key = `@teacher_avatar_setup_prompted_${user?.emp_id || 'default'}`;
         await AsyncStorage.setItem(key, 'true');
-        
+
         setShowAvatarSetup(false);
         Alert.alert('Success', 'Profile photo updated successfully!');
       } else {
@@ -195,16 +195,49 @@ const TeacherDashboardScreen = ({ navigation }) => {
   const department = user?.department || 'Medical Faculty';
   const initials = getInitials(facultyName);
 
+  const [todayInTime, setTodayInTime] = useState(null);
+  const [todayOutTime, setTodayOutTime] = useState(null);
+
   const loadData = useCallback(async () => {
     if (!accessToken) { setLoading(false); return; }
     setLoading(true);
     try {
-      const [ttData, topicsData] = await Promise.all([
+      const [ttData, topicsData, punchesData] = await Promise.all([
         getFacultyTimetable(accessToken, user?.emp_id),
         getFacultyTopics(accessToken),
+        getFacultyAttendance(accessToken),
       ]);
       setTimetable(Array.isArray(ttData) ? ttData : []);
       setTopics(Array.isArray(topicsData) ? topicsData : []);
+
+      if (Array.isArray(punchesData)) {
+        const todayStr = new Date().toDateString();
+        const todayPunches = punchesData.filter(p => {
+          if (!p.punch_time) return false;
+          return new Date(p.punch_time).toDateString() === todayStr;
+        });
+
+        // Find IN and OUT punches
+        const inPunch = todayPunches.find(p => p.in_out?.toUpperCase() === 'IN');
+        const outPunch = todayPunches.find(p => p.in_out?.toUpperCase() === 'OUT');
+
+        if (inPunch && inPunch.punch_time) {
+          const t = new Date(inPunch.punch_time);
+          setTodayInTime(t.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }));
+        } else {
+          setTodayInTime(null);
+        }
+
+        if (outPunch && outPunch.punch_time) {
+          const t = new Date(outPunch.punch_time);
+          setTodayOutTime(t.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }));
+        } else {
+          setTodayOutTime(null);
+        }
+      } else {
+        setTodayInTime(null);
+        setTodayOutTime(null);
+      }
     } catch (e) {
       console.warn('[TeacherDashboard] load error:', e);
     } finally {
@@ -270,7 +303,7 @@ const TeacherDashboardScreen = ({ navigation }) => {
     });
     if (pickerResult.canceled) return;
     const uri = pickerResult.assets[0].uri;
-    
+
     try {
       Alert.alert('Uploading...', 'Uploading profile photo, please wait.');
       const res = await uploadAvatarAPI(accessToken, uri);
@@ -293,7 +326,8 @@ const TeacherDashboardScreen = ({ navigation }) => {
       'Are you sure you want to log out?',
       [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Log Out', style: 'destructive', onPress: async () => {
+        {
+          text: 'Log Out', style: 'destructive', onPress: async () => {
             setShowProfileMenu(false);
             await logout();
             navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
@@ -338,13 +372,23 @@ const TeacherDashboardScreen = ({ navigation }) => {
             </View>
           </View>
 
-          <TouchableOpacity 
-            style={styles.settingsIconBtn}
-            onPress={() => setShowProfileMenu(true)}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="settings-outline" size={24} color="rgba(255,255,255,0.9)" />
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            <TouchableOpacity
+              style={styles.settingsIconBtn}
+              onPress={() => navigation.navigate('TeacherAlerts')}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="notifications-outline" size={24} color="rgba(255,255,255,0.9)" />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.settingsIconBtn}
+              onPress={() => setShowProfileMenu(true)}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="settings-outline" size={24} color="rgba(255,255,255,0.9)" />
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Dept pill */}
@@ -359,51 +403,143 @@ const TeacherDashboardScreen = ({ navigation }) => {
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
       >
-        {/* Next Lecture / Current Card */}
+        {/* Punch Time Card */}
+        <View style={styles.punchCardContainer}>
+          <LinearGradient colors={['#FFF7ED', '#FFEDD5']} style={styles.punchCard}>
+            <View style={styles.punchHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <MaterialCommunityIcons name="clock-check-outline" size={18} color="#EA580C" />
+                <Text style={styles.punchTitle}>Today's Punches</Text>
+              </View>
+              <View style={[styles.statusIndicator, { backgroundColor: todayInTime ? '#DEF7EC' : '#FDE8E8' }]}>
+                <View style={[styles.statusDot, { backgroundColor: todayInTime ? '#0E9F6E' : '#E02424' }]} />
+                <Text style={[styles.statusText, { color: todayInTime ? '#03543F' : '#9B1C1C' }]}>
+                  {todayInTime ? (todayOutTime ? 'Shift Completed' : 'Active Duty') : 'Not Punched'}
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.punchTimesRow}>
+              <View style={styles.punchTimeCol}>
+                <Text style={styles.punchTimeLabel}>PUNCH IN</Text>
+                <Text style={styles.punchTimeValue}>
+                  {todayInTime ? todayInTime : '--:--'}
+                </Text>
+              </View>
+              <View style={styles.punchDivider} />
+              <View style={styles.punchTimeCol}>
+                <Text style={styles.punchTimeLabel}>PUNCH OUT</Text>
+                <Text style={styles.punchTimeValue}>
+                  {todayOutTime ? todayOutTime : '--:--'}
+                </Text>
+              </View>
+            </View>
+          </LinearGradient>
+        </View>
+
+        {/* Today's Schedule */}
+        <View style={styles.scheduleHeader}>
+          <Text style={styles.sectionTitle}>
+            {isShowingRecent ? '📅 Recently Synced Schedule' : "📅 Today's Schedule"}
+          </Text>
+          <TouchableOpacity onPress={() => navigation.navigate('Schedule', { tab: 'Upcoming' })} activeOpacity={0.7}>
+            <Text style={styles.viewAllText}>See All →</Text>
+          </TouchableOpacity>
+        </View>
+
         {loading ? (
           <View style={styles.loadingCard}>
             <ActivityIndicator color="#EA580C" />
             <Text style={styles.loadingText}>Loading ERP data…</Text>
           </View>
-        ) : activeSlot ? (
-          <LinearGradient colors={['#FFFFFF', '#F9FAFB']} style={styles.currentCard}>
-            <View style={styles.currentHeader}>
-              <View style={[styles.liveIndicator, isShowingRecentCard && { backgroundColor: '#E5E7EB' }]}>
-                <View style={[styles.liveDot, isShowingRecentCard && { backgroundColor: '#6B7280' }]} />
-                <Text style={[styles.liveText, isShowingRecentCard && { color: '#6B7280' }]}>
-                  {isShowingRecentCard ? 'RECENT CLASS' : 'NEXT CLASS'}
-                </Text>
-              </View>
-              <Text style={styles.currentTime}>{formatTime(activeSlot.start_time)}</Text>
+        ) : scheduleToShow.length > 0 ? (
+          scheduleToShow.length === 1 ? (
+            <View style={styles.scheduleContainer}>
+              <LinearGradient
+                colors={['#FFFFFF', '#F9FAFB']}
+                style={styles.scheduleCard}
+              >
+                <View style={styles.scheduleTime}>
+                  <Text style={styles.scheduleTimeHour}>{formatTime(scheduleToShow[0].start_time).split(' ')[0]}</Text>
+                  <Text style={styles.scheduleTimePeriod}>{formatTime(scheduleToShow[0].start_time).split(' ')[1]}</Text>
+                  <Text style={{ fontSize: 9, fontWeight: '800', color: '#6B7280', marginTop: 3 }}>
+                    {formatDay(scheduleToShow[0].start_time).toUpperCase()}
+                  </Text>
+                </View>
+                <View style={styles.horizontalCardDivider} />
+                <View style={styles.scheduleInfo}>
+                  <Text style={styles.scheduleSubject} numberOfLines={1}>{scheduleToShow[0].subject_name || '—'}</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginVertical: 3 }}>
+                    <View style={{ backgroundColor: String(scheduleToShow[0].lecture_type || 'Lecture').toLowerCase().includes('practical') ? '#7C3AED15' : '#EA580C15', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 }}>
+                      <Text style={{ fontSize: 10, fontWeight: '800', color: String(scheduleToShow[0].lecture_type || 'Lecture').toLowerCase().includes('practical') ? '#7C3AED' : '#EA580C' }}>
+                        {scheduleToShow[0].lecture_type || 'LECTURE'}
+                      </Text>
+                    </View>
+                    <Text style={[styles.scheduleDetails, { flex: 1 }]} numberOfLines={1}>
+                      {scheduleToShow[0].topic_name || 'Class session'}
+                    </Text>
+                  </View>
+                  <View style={styles.scheduleMeta}>
+                    <Ionicons name="time-outline" size={12} color="#9CA3AF" style={{ marginRight: 4 }} />
+                    <Text style={styles.scheduleLocation}>
+                      {formatTime(scheduleToShow[0].start_time)} – {formatTime(scheduleToShow[0].end_time)}
+                    </Text>
+                  </View>
+                </View>
+              </LinearGradient>
             </View>
-
-            <Text style={styles.currentSubject} numberOfLines={2}>
-              📚 {activeSlot.subject_name || 'No Subject'}
-            </Text>
-            <Text style={styles.currentClass}>
-              {activeSlot.lecture_type || 'Lecture'} • {formatDayDate(activeSlot.start_time)}
-            </Text>
-            {activeSlot.topic_name ? (
-              <Text style={{ fontSize: 13, color: '#4B5563', marginTop: 4 }} numberOfLines={2}>
-                Topic: {activeSlot.topic_name}
-              </Text>
-            ) : null}
-
-            <View style={styles.currentMeta}>
-              <View style={styles.metaRow}>
-                <Ionicons name="time-outline" size={14} color="#6B7280" />
-                <Text style={styles.metaText}>
-                  {formatTime(activeSlot.start_time)} – {formatTime(activeSlot.end_time)}
-                </Text>
-              </View>
-            </View>
-          </LinearGradient>
-        ) : (
-          <LinearGradient colors={['#FFFFFF', '#F9FAFB']} style={styles.currentCard}>
-            <Text style={styles.emptyCardTitle}>No Upcoming Classes</Text>
-            <Text style={styles.emptyCardSub}>Your timetable will appear here once synced from SRMS ERP.</Text>
-          </LinearGradient>
-        )}
+          ) : (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.horizontalScheduleScroll}
+              style={styles.horizontalScheduleContainer}
+            >
+              {scheduleToShow.map((item, index) => (
+                <LinearGradient
+                  key={item.tt_cd || index}
+                  colors={['#FFFFFF', '#F9FAFB']}
+                  style={[
+                    styles.scheduleCardHorizontal,
+                    index === scheduleToShow.length - 1 && { marginRight: 20 }
+                  ]}
+                >
+                  <View style={styles.scheduleTime}>
+                    <Text style={styles.scheduleTimeHour}>{formatTime(item.start_time).split(' ')[0]}</Text>
+                    <Text style={styles.scheduleTimePeriod}>{formatTime(item.start_time).split(' ')[1]}</Text>
+                    <Text style={{ fontSize: 9, fontWeight: '800', color: '#6B7280', marginTop: 3 }}>
+                      {formatDay(item.start_time).toUpperCase()}
+                    </Text>
+                  </View>
+                  <View style={styles.horizontalCardDivider} />
+                  <View style={styles.scheduleInfo}>
+                    <Text style={styles.scheduleSubject} numberOfLines={1}>{item.subject_name || '—'}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginVertical: 3 }}>
+                      <View style={{ backgroundColor: String(item.lecture_type || 'Lecture').toLowerCase().includes('practical') ? '#7C3AED15' : '#EA580C15', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 }}>
+                        <Text style={{ fontSize: 10, fontWeight: '800', color: String(item.lecture_type || 'Lecture').toLowerCase().includes('practical') ? '#7C3AED' : '#EA580C' }}>
+                          {item.lecture_type || 'LECTURE'}
+                        </Text>
+                      </View>
+                    </View>
+                    <Text style={styles.scheduleDetails} numberOfLines={1}>
+                      {item.topic_name || 'Class session'}
+                    </Text>
+                    <View style={styles.scheduleMeta}>
+                      <Ionicons name="time-outline" size={12} color="#9CA3AF" style={{ marginRight: 4 }} />
+                      <Text style={styles.scheduleLocation} numberOfLines={1}>
+                        {formatTime(item.start_time)} – {formatTime(item.end_time)}
+                      </Text>
+                    </View>
+                  </View>
+                </LinearGradient>
+              ))}
+            </ScrollView>
+          )
+        ) : !loading ? (
+          <View style={styles.emptySchedule}>
+            <Text style={styles.emptyScheduleText}>No schedule data available from ERP</Text>
+          </View>
+        ) : null}
 
         {/* Quick Actions */}
         <View style={styles.quickActionsContainer}>
@@ -420,13 +556,13 @@ const TeacherDashboardScreen = ({ navigation }) => {
 
           <TouchableOpacity
             style={styles.quickActionCard}
-            onPress={() => navigation.navigate('SalarySlip')}
+            onPress={() => navigation.navigate('UGLogbook')}
             activeOpacity={0.8}
           >
-            <View style={[styles.quickActionIconBg, { backgroundColor: '#ECFDF5' }]}>
-              <Ionicons name="card-outline" size={20} color="#10B981" />
+            <View style={[styles.quickActionIconBg, { backgroundColor: '#F5F3FF' }]}>
+              <Ionicons name="book-outline" size={20} color="#7C3AED" />
             </View>
-            <Text style={styles.quickActionLabel}>Payslip</Text>
+            <Text style={styles.quickActionLabel}>UG Logbook</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -434,14 +570,25 @@ const TeacherDashboardScreen = ({ navigation }) => {
             onPress={() => navigation.navigate('LeaveBalance')}
             activeOpacity={0.8}
           >
-            <View style={[styles.quickActionIconBg, { backgroundColor: '#EEF2FF' }]}>
-              <Ionicons name="calendar-outline" size={20} color="#4F46E5" />
+            <View style={[styles.quickActionIconBg, { backgroundColor: '#FFF7ED' }]}>
+              <Ionicons name="calendar-outline" size={20} color="#EA580C" />
             </View>
             <Text style={styles.quickActionLabel}>Leaves</Text>
           </TouchableOpacity>
         </View>
 
         <View style={[styles.quickActionsContainer, { marginTop: -12, marginBottom: 24 }]}>
+          <TouchableOpacity
+            style={styles.quickActionCard}
+            onPress={() => navigation.navigate('FacultyStudentsDirectory')}
+            activeOpacity={0.8}
+          >
+            <View style={[styles.quickActionIconBg, { backgroundColor: '#ECFDF5' }]}>
+              <Ionicons name="people-outline" size={20} color="#059669" />
+            </View>
+            <Text style={styles.quickActionLabel}>Students Info</Text>
+          </TouchableOpacity>
+
           <TouchableOpacity
             style={styles.quickActionCard}
             onPress={() => navigation.navigate('RaiseIssue')}
@@ -455,17 +602,6 @@ const TeacherDashboardScreen = ({ navigation }) => {
 
           <TouchableOpacity
             style={styles.quickActionCard}
-            onPress={() => navigation.navigate('TeacherAlerts')}
-            activeOpacity={0.8}
-          >
-            <View style={[styles.quickActionIconBg, { backgroundColor: '#E0E7FF' }]}>
-              <Ionicons name="notifications-outline" size={20} color="#4F46E5" />
-            </View>
-            <Text style={styles.quickActionLabel}>Campus Alerts</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.quickActionCard}
             onPress={() => navigation.navigate('FacultyOfficialChat')}
             activeOpacity={0.8}
           >
@@ -475,63 +611,6 @@ const TeacherDashboardScreen = ({ navigation }) => {
             <Text style={styles.quickActionLabel}>Portal Chats</Text>
           </TouchableOpacity>
         </View>
-
-        {/* Today's Schedule */}
-        <View style={styles.scheduleHeader}>
-          <Text style={styles.sectionTitle}>
-            {isShowingRecent ? '📅 Recently Synced Schedule' : "📅 Today's Schedule"}
-          </Text>
-          <TouchableOpacity onPress={() => navigation.navigate('Schedule')} activeOpacity={0.7}>
-            <Text style={styles.viewAllText}>See All →</Text>
-          </TouchableOpacity>
-        </View>
-
-        {scheduleToShow.length > 0 ? (
-          <View style={styles.scheduleContainer}>
-            {scheduleToShow.slice(0, 5).map((item, index) => (
-              <LinearGradient
-                key={item.tt_cd || index}
-                colors={['#FFFFFF', '#F9FAFB']}
-                style={styles.scheduleCard}
-              >
-                <View style={styles.scheduleTime}>
-                  <Text style={styles.scheduleTimeHour}>{formatTime(item.start_time).split(' ')[0]}</Text>
-                  <Text style={styles.scheduleTimePeriod}>{formatTime(item.start_time).split(' ')[1]}</Text>
-                  <Text style={{ fontSize: 9, fontWeight: '800', color: '#6B7280', marginTop: 3 }}>
-                    {formatDay(item.start_time).toUpperCase()}
-                  </Text>
-                </View>
-                <View style={styles.scheduleLine}>
-                  <LinearGradient colors={['#EA580C', '#F97316']} style={styles.scheduleDot} />
-                  {index < scheduleToShow.length - 1 && <View style={styles.scheduleLineConnector} />}
-                </View>
-                <View style={styles.scheduleInfo}>
-                  <Text style={styles.scheduleSubject} numberOfLines={1}>{item.subject_name || '—'}</Text>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginVertical: 3 }}>
-                    <View style={{ backgroundColor: String(item.lecture_type || 'Lecture').toLowerCase().includes('practical') ? '#7C3AED15' : '#EA580C15', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 }}>
-                      <Text style={{ fontSize: 10, fontWeight: '800', color: String(item.lecture_type || 'Lecture').toLowerCase().includes('practical') ? '#7C3AED' : '#EA580C' }}>
-                        {item.lecture_type || 'LECTURE'}
-                      </Text>
-                    </View>
-                    <Text style={[styles.scheduleDetails, { flex: 1 }]} numberOfLines={1}>
-                      {item.topic_name || 'Class session'}
-                    </Text>
-                  </View>
-                  <View style={styles.scheduleMeta}>
-                    <Ionicons name="time-outline" size={12} color="#9CA3AF" style={{ marginRight: 4 }} />
-                    <Text style={styles.scheduleLocation}>
-                      {formatTime(item.start_time)} – {formatTime(item.end_time)}
-                    </Text>
-                  </View>
-                </View>
-              </LinearGradient>
-            ))}
-          </View>
-        ) : !loading ? (
-          <View style={styles.emptySchedule}>
-            <Text style={styles.emptyScheduleText}>No schedule data available from ERP</Text>
-          </View>
-        ) : null}
 
         {/* Campus Fitness (same as student app) */}
         <Text style={styles.sectionTitle}>❤️ Campus Fitness</Text>
@@ -819,22 +898,22 @@ const TeacherDashboardScreen = ({ navigation }) => {
               Let's personalize your profile. Upload a profile photo so your peers and colleagues can recognize you.
             </Text>
 
-            <TouchableOpacity 
-              activeOpacity={0.8} 
-              onPress={handlePickAvatar} 
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={handlePickAvatar}
               style={styles.avatarPreviewContainer}
             >
-              <Image 
-                source={{ uri: selectedAvatarUri || getAvatarUrl(user?.avatar_url || user?.emp_id) }} 
-                style={styles.avatarPreviewImage} 
+              <Image
+                source={{ uri: selectedAvatarUri || getAvatarUrl(user?.avatar_url || user?.emp_id) }}
+                style={styles.avatarPreviewImage}
               />
               <View style={styles.avatarCameraBadge}>
                 <MaterialCommunityIcons name="camera" size={20} color="#FFF" />
               </View>
             </TouchableOpacity>
 
-            <TouchableOpacity 
-              style={styles.avatarSelectBtn} 
+            <TouchableOpacity
+              style={styles.avatarSelectBtn}
               onPress={handlePickAvatar}
             >
               <Text style={styles.avatarSelectBtnText}>
@@ -843,11 +922,11 @@ const TeacherDashboardScreen = ({ navigation }) => {
             </TouchableOpacity>
 
             <View style={styles.avatarActionsContainer}>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={[
-                  styles.avatarSaveBtn, 
+                  styles.avatarSaveBtn,
                   { backgroundColor: selectedAvatarUri ? '#EA580C' : '#E5E7EB' }
-                ]} 
+                ]}
                 onPress={handleSaveAvatar}
                 disabled={!selectedAvatarUri || isUploadingAvatar}
               >
@@ -858,8 +937,8 @@ const TeacherDashboardScreen = ({ navigation }) => {
                 )}
               </TouchableOpacity>
 
-              <TouchableOpacity 
-                style={styles.avatarSkipBtn} 
+              <TouchableOpacity
+                style={styles.avatarSkipBtn}
                 onPress={handleSkipAvatar}
                 disabled={isUploadingAvatar}
               >
@@ -1338,6 +1417,100 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
     color: '#9CA3AF',
+  },
+  horizontalScheduleContainer: {
+    marginHorizontal: -20,
+    marginBottom: 24,
+  },
+  horizontalScheduleScroll: {
+    paddingHorizontal: 20,
+    gap: 12,
+  },
+  scheduleCardHorizontal: {
+    width: width * 0.75,
+    marginRight: 12,
+    flexDirection: 'row',
+    gap: 12,
+    padding: 16,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.04,
+    shadowRadius: 12,
+    elevation: 3,
+  },
+  horizontalCardDivider: {
+    width: 1,
+    backgroundColor: '#F3F4F6',
+    marginVertical: 4,
+  },
+  punchCardContainer: {
+    paddingHorizontal: 20,
+    marginBottom: 20,
+    marginTop: 8,
+  },
+  punchCard: {
+    padding: 18,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: '#FFE8D6',
+  },
+  punchHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 14,
+  },
+  punchTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#8A4A00',
+  },
+  statusIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    gap: 4,
+  },
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  statusText: {
+    fontSize: 9,
+    fontWeight: '850',
+    letterSpacing: 0.5,
+  },
+  punchTimesRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-around',
+  },
+  punchTimeCol: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  punchTimeLabel: {
+    fontSize: 8,
+    fontWeight: '800',
+    color: '#A75D00',
+    letterSpacing: 1,
+    marginBottom: 4,
+  },
+  punchTimeValue: {
+    fontSize: 22,
+    fontWeight: '900',
+    color: '#EA580C',
+  },
+  punchDivider: {
+    width: 1,
+    height: 32,
+    backgroundColor: '#F7D7C4',
   },
 });
 

@@ -100,7 +100,9 @@ import AdminFacultyDetailScreen from '../screens/admin/AdminFacultyDetailScreen'
 import SalarySlipScreen from '../screens/teacher/SalarySlipScreen';
 import LeaveBalanceScreen from '../screens/teacher/LeaveBalanceScreen';
 import FacultyOfficialChatScreen from '../screens/teacher/FacultyOfficialChatScreen';
-
+import FacultyStudentsDirectoryScreen from '../screens/teacher/FacultyStudentsDirectoryScreen';
+import UGLogbookScreen from '../screens/teacher/UGLogbookScreen';
+import PGLogbookScreen from '../screens/teacher/PGLogbookScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -221,6 +223,9 @@ const AppNavigator = () => {
       <Stack.Screen name="SalarySlip" component={SalarySlipScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="LeaveBalance" component={LeaveBalanceScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="FacultyOfficialChat" component={FacultyOfficialChatScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="FacultyStudentsDirectory" component={FacultyStudentsDirectoryScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="UGLogbook" component={UGLogbookScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="PGLogbook" component={PGLogbookScreen} options={{ animation: 'slide_from_right' }} />
     </Stack.Navigator>
   );
 };

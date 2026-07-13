@@ -319,9 +319,10 @@ const SkeletonSubQuestion = ({ isDark }) => (
 );
 
 // ─── Subject Detail Modal (4 Tabs) ────────────────────────────────────────────
-const SubjectDetailModal = ({ visible, subject, onClose, accessToken }) => {
+const SubjectDetailModal = ({ visible, subject, onClose, accessToken, student }) => {
   const { colors, isDark } = useTheme();
-  const { user } = useUser();
+  const { user: contextUser } = useUser();
+  const user = student || contextUser;
   const [activeTab, setActiveTab] = useState(0);
   const [selectedPaper, setSelectedPaper] = useState(null);
   const [competencies, setCompetencies] = useState([]);
@@ -388,9 +389,10 @@ const SubjectDetailModal = ({ visible, subject, onClose, accessToken }) => {
     }
 
     try {
+      const studentId = user?.rollno || user?.id || user?.username;
       const [compData, chartResp] = await Promise.allSettled([
-        getPaperCompetencies(accessToken, pcode),
-        getCompetencyChart(accessToken, pcode),
+        getPaperCompetencies(accessToken, pcode, studentId),
+        getCompetencyChart(accessToken, pcode, '1', studentId),
       ]);
 
       let nextComps = [];
@@ -1183,10 +1185,13 @@ const SubjectDetailModal = ({ visible, subject, onClose, accessToken }) => {
 };
 
 // ─── Main Screen ─────────────────────────────────────────────────────────────
-const ERPResultsScreen = ({ navigation }) => {
+const ERPResultsScreen = ({ route, navigation }) => {
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
-  const { user, accessToken } = useUser();
+  const { user: contextUser, accessToken } = useUser();
+  const passedStudent = route?.params?.student;
+  const user = passedStudent || contextUser;
+  const isFaculty = contextUser && contextUser.role === 'teacher';
 
   const [phases, setPhases] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -1243,9 +1248,10 @@ const ERPResultsScreen = ({ navigation }) => {
         return;
       }
 
+      const studentId = user?.rollno || user?.id || user?.username;
       const [rawResults, paperListData] = await Promise.allSettled([
-        getDetailedResults(accessToken),
-        getPaperList(accessToken)
+        getDetailedResults(accessToken, studentId),
+        getPaperList(accessToken, studentId)
       ]);
 
       const detailed = rawResults.status === 'fulfilled' ? rawResults.value : [];
@@ -1402,7 +1408,15 @@ const ERPResultsScreen = ({ navigation }) => {
     <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
       {/* Header */}
       <View style={[styles.header, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
-        <TouchableOpacity onPress={() => navigation.navigate('ERPHome')}
+        <TouchableOpacity onPress={() => {
+          if (isFaculty) {
+            navigation.navigate('FacultyStudentsDirectory');
+          } else if (passedStudent) {
+            navigation.goBack();
+          } else {
+            navigation.navigate('ERPHome');
+          }
+        }}
           style={[styles.backBtn, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <MaterialIcons name="arrow-back" size={22} color={colors.textPrimary} />
         </TouchableOpacity>
@@ -1632,6 +1646,7 @@ const ERPResultsScreen = ({ navigation }) => {
         subject={selectedSubject}
         onClose={() => setModalVisible(false)}
         accessToken={accessToken}
+        student={user}
       />
     </View>
   );

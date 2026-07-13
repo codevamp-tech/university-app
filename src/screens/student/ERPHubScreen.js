@@ -23,6 +23,11 @@ const ERPHubScreen = ({ navigation }) => {
   const isMedical = user?.course?.replace(/\./g, '').toUpperCase().includes('MBBS') || user?.category?.toLowerCase() === 'medical';
   const isLibraryLocked = true;
 
+  const formatCgpa = (val) => {
+    const num = parseFloat(val);
+    return isNaN(num) ? '8.42' : num.toFixed(2);
+  };
+
   const [alerts, setAlerts] = useState([]);
 
   React.useEffect(() => {
@@ -197,7 +202,7 @@ const ERPHubScreen = ({ navigation }) => {
             {(() => {
               const roman = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
               const displaySem = user?.semester ? (roman[user.semester - 1] || user.semester) : 'VII';
-              const displayCgpa = user?.cgpa ? user.cgpa.toFixed(2) : '8.42';
+              const displayCgpa = formatCgpa(user?.cgpa);
               const displayBranch = user?.branch && user.branch !== '-'
                 ? user.branch.split(' ').map(w => w[0]).join('').toUpperCase().substring(0, 4)
                 : user?.course && user.course.replace(/\./g, '').toUpperCase().includes('MBBS')
@@ -423,7 +428,7 @@ const ERPHubScreen = ({ navigation }) => {
 
               <View style={styles.essentialFooter}>
                 <View style={[styles.dueBadge, { backgroundColor: isDark ? 'rgba(129, 140, 248, 0.2)' : '#EEF2FF' }]}>
-                  <Text style={[styles.dueText, { color: isDark ? '#818CF8' : '#4338CA' }]}>CGPA: {user ? user.cgpa.toFixed(2) : '8.42'}</Text>
+                  <Text style={[styles.dueText, { color: isDark ? '#818CF8' : '#4338CA' }]}>CGPA: {formatCgpa(user?.cgpa)}</Text>
                 </View>
                 <MaterialIcons name="chevron-right" size={20} color={colors.textMuted} />
               </View>

@@ -1,7 +1,8 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { loginWithRollNumber, logoutAPI, getMyProfile, updateMyProfile, loginFacultyWithEmpId, getFacultyProfile } from '../data/apiService';
+import { loginWithRollNumber, logoutAPI, getMyProfile, updateMyProfile, loginFacultyWithEmpId, getFacultyProfile, setUnauthorizedCallback } from '../data/apiService';
+import * as RootNavigation from '../navigation/RootNavigation';
 
 export const UserContext = createContext();
 
@@ -56,6 +57,7 @@ export const UserProvider = ({ children }) => {
             emp_id: fac.emp_id || queryId,
             name: dbProfile?.name || fac.name || 'Faculty Member',
             department: dbProfile?.department || fac.department || 'Medical Faculty',
+            department_code: fac.department_code || '60',
             email: dbProfile?.email || fac.email || null,
             mobile: dbProfile?.mobile || null,
             user_id: fac.user_id || null,
@@ -159,7 +161,22 @@ export const UserProvider = ({ children }) => {
     } catch (e) {
       console.warn('[UserContext] Error clearing session:', e.message);
     }
+    RootNavigation.reset({
+      index: 0,
+      routes: [{ name: 'Login' }],
+    });
   };
+
+  useEffect(() => {
+    setUnauthorizedCallback(() => {
+      logout();
+      Alert.alert(
+        'Session Expired',
+        'Your session has expired or is invalid. Please log in again.'
+      );
+    });
+    return () => setUnauthorizedCallback(null);
+  }, [logout]);
 
   const updateSkillScore = (skillName, score) => {
     setUser(prevUser => {

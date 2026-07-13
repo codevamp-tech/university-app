@@ -88,10 +88,13 @@ const ClassCard = ({ item, index, isDark, colors }) => {
   );
 };
 
-const StudentScheduleScreen = ({ navigation }) => {
+const StudentScheduleScreen = ({ route, navigation }) => {
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
-  const { user, accessToken } = useUser();
+  const { user: contextUser, accessToken } = useUser();
+  const passedStudent = route?.params?.student;
+  const user = passedStudent || contextUser;
+  const isFaculty = contextUser && contextUser.role === 'teacher';
 
   const today = new Date().getDay(); // 0=Sun, 1=Mon, …
   const defaultDay = today === 0 || today === 7 ? 'Mon' : DAYS[today - 1];
@@ -112,7 +115,8 @@ const StudentScheduleScreen = ({ navigation }) => {
     if (!accessToken) return;
     setLoading(true);
     try {
-      const data = await getStudentSchedule(accessToken);
+      const studentId = user?.rollno || user?.id || user?.username;
+      const data = await getStudentSchedule(accessToken, studentId);
       if (data && Array.isArray(data) && data.length > 0) {
         // Transform ERP timetable format into our display format
         const mapped = {};
@@ -148,7 +152,13 @@ const StudentScheduleScreen = ({ navigation }) => {
     <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
       {/* Header */}
       <View style={[styles.header, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()}
+        <TouchableOpacity onPress={() => {
+          if (isFaculty) {
+            navigation.navigate('FacultyStudentsDirectory');
+          } else {
+            navigation.goBack();
+          }
+        }}
           style={[styles.backBtn, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <MaterialIcons name="arrow-back" size={22} color={colors.textPrimary} />
         </TouchableOpacity>

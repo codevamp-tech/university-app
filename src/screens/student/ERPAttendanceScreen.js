@@ -132,10 +132,14 @@ const getParentSubjectName = (name) => {
   return n.split(' ')[0];
 };
 
-const ERPAttendanceScreen = ({ navigation }) => {
+const ERPAttendanceScreen = ({ route, navigation }) => {
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
-  const { user, accessToken } = useUser();
+  const { user: contextUser, accessToken } = useUser();
+  const passedStudent = route?.params?.student;
+  const user = passedStudent || contextUser;
+  const isFaculty = contextUser && contextUser.role === 'teacher';
+
   const [apiAttendance, setApiAttendance] = React.useState(null);
   const [loading, setLoading] = React.useState(true);
 
@@ -177,7 +181,8 @@ const ERPAttendanceScreen = ({ navigation }) => {
         return;
       }
       try {
-        const data = await getAttendance(accessToken);
+        const studentId = user?.rollno || user?.id || user?.username;
+        const data = await getAttendance(accessToken, studentId);
         if (data && data.length > 0) {
           // Filter out exam/sessional components (where attendance_pct is null or undefined)
           const validRecords = data.filter(
@@ -349,7 +354,15 @@ const ERPAttendanceScreen = ({ navigation }) => {
       {/* TopAppBar */}
       <View style={[styles.header, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
         <View style={styles.headerLeft}>
-          <TouchableOpacity onPress={() => navigation.navigate('ERPHome')} style={[styles.backBtn, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
+          <TouchableOpacity onPress={() => {
+            if (isFaculty) {
+              navigation.navigate('FacultyStudentsDirectory');
+            } else if (passedStudent) {
+              navigation.goBack();
+            } else {
+              navigation.navigate('ERPHome');
+            }
+          }} style={[styles.backBtn, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
             <MaterialIcons name="arrow-back" size={22} color={colors.textPrimary} />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Attendance</Text>

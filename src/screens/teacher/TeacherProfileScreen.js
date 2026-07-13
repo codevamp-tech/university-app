@@ -145,6 +145,39 @@ const TeacherProfileScreen = ({ navigation }) => {
         )}
 
 
+        {/* Profile Menu Actions */}
+        <View style={styles.menuContainer}>
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => navigation.navigate('LeaveBalance')}
+            activeOpacity={0.8}
+          >
+            <View style={styles.menuItemLeft}>
+              <View style={[styles.menuIconBg, { backgroundColor: '#EEF2FF' }]}>
+                <Ionicons name="calendar-outline" size={20} color="#4F46E5" />
+              </View>
+              <Text style={styles.menuLabel}>Leave Balance</Text>
+            </View>
+            <Ionicons name="chevron-forward-outline" size={18} color="#9CA3AF" />
+          </TouchableOpacity>
+
+          <View style={{ height: 1, backgroundColor: '#F3F4F6', marginHorizontal: 12 }} />
+
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => navigation.navigate('SalarySlip')}
+            activeOpacity={0.8}
+          >
+            <View style={styles.menuItemLeft}>
+              <View style={[styles.menuIconBg, { backgroundColor: '#ECFDF5' }]}>
+                <Ionicons name="card-outline" size={20} color="#10B981" />
+              </View>
+              <Text style={styles.menuLabel}>Payslip Downloads</Text>
+            </View>
+            <Ionicons name="chevron-forward-outline" size={18} color="#9CA3AF" />
+          </TouchableOpacity>
+        </View>
+
         {/* Logout */}
         <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout} activeOpacity={0.7}>
           <LinearGradient colors={['#FEF2F2', '#FEE2E2']} style={styles.logoutGradient}>
@@ -232,7 +265,26 @@ const styles = StyleSheet.create({
   menuIcon: { width: 46, height: 46, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   menuText: { flex: 1 },
   menuLabel: { fontSize: 15, fontWeight: '800', color: '#111827', marginBottom: 2, letterSpacing: -0.2 },
-  menuDesc: { fontSize: 11, color: '#6B7280', fontWeight: '500' },
+  menuContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    marginBottom: 20,
+  },
+  menuItemLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  menuIconBg: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   logoutBtn: { borderRadius: 40, overflow: 'hidden', marginTop: 8, marginBottom: 20 },
   logoutGradient: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',

@@ -5,6 +5,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import * as Notifications from 'expo-notifications';
 import AppNavigator from './src/navigation/AppNavigator';
+import { navigationRef } from './src/navigation/RootNavigation';
 import { ThemeProvider, ThemeContext } from './src/context/ThemeContext';
 import { UserProvider, useUser } from './src/context/UserContext';
 import { ChatSocketProvider } from './src/context/ChatSocketContext';
@@ -51,7 +52,7 @@ const AppContent = () => {
   const { isDark, colors } = React.useContext(ThemeContext);
   
   return (
-    <NavigationContainer>
+    <NavigationContainer ref={navigationRef}>
       <StatusBar style={isDark ? 'light' : 'dark'} backgroundColor={colors.background} />
       <AppNavigator />
     </NavigationContainer>

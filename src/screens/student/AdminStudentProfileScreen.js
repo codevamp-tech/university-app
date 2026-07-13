@@ -364,21 +364,56 @@ const AdminStudentProfileScreen = ({ navigation, route }) => {
           <View style={styles.sectionHeader}>
             <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>Academic Performance</Text>
             <MaterialIcons name="trending-up" size={20} color={colors.primary} />
-          </View>
-
-          <View style={styles.acadGrid}>
-            <View style={styles.acadItem}>
+          </View>          <View style={styles.acadGrid}>
+            <TouchableOpacity 
+              style={styles.acadItem}
+              onPress={() => navigation.navigate('ERPHub', {
+                screen: 'ERPResultsTab',
+                params: { student: user }
+              })}
+              activeOpacity={0.7}
+            >
               <Text style={[styles.acadValue, { color: colors.primary }]}>{user?.cgpa || '0.0'} <Text style={[styles.acadMax, { color: colors.textMuted }]}>/ 10.0</Text></Text>
-              <Text style={[styles.acadLabel, { color: colors.textMuted }]}>CUMULATIVE GPA</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                <Text style={[styles.acadLabel, { color: colors.textMuted }]}>CUMULATIVE GPA</Text>
+                <Ionicons name="chevron-forward" size={10} color={colors.textMuted} />
+              </View>
               <View style={[styles.pBar, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : colors.border }]}><View style={[styles.pFill, { width: `${(user?.cgpa || 0) * 10}%`, backgroundColor: colors.primary }]} /></View>
-            </View>
+            </TouchableOpacity>
 
-            <View style={styles.acadItem}>
+            <TouchableOpacity 
+              style={styles.acadItem}
+              onPress={() => navigation.navigate('ERPHub', {
+                screen: 'ERPAttendanceTab',
+                params: { student: user }
+              })}
+              activeOpacity={0.7}
+            >
               <Text style={[styles.acadValue, { color: '#f59e0b' }]}>{user?.attendance || 0}%</Text>
-              <Text style={[styles.acadLabel, { color: colors.textMuted }]}>ATTENDANCE</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                <Text style={[styles.acadLabel, { color: colors.textMuted }]}>ATTENDANCE</Text>
+                <Ionicons name="chevron-forward" size={10} color={colors.textMuted} />
+              </View>
               <View style={[styles.pBar, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : colors.border }]}><View style={[styles.pFill, { width: `${user?.attendance || 0}%`, backgroundColor: '#f59e0b' }]} /></View>
-            </View>
+            </TouchableOpacity>
 
+            {isMed && (
+              <TouchableOpacity 
+                style={styles.acadItem}
+                onPress={() => navigation.navigate('ERPHub', {
+                  screen: 'ERPLogBookTab',
+                  params: { student: user }
+                })}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.acadValue, { color: '#10b981' }]}>Logbook</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                  <Text style={[styles.acadLabel, { color: colors.textMuted }]}>LOGBOOK DATA</Text>
+                  <Ionicons name="chevron-forward" size={10} color={colors.textMuted} />
+                </View>
+                <View style={[styles.pBar, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : colors.border }]}><View style={[styles.pFill, { width: '100%', backgroundColor: '#10b981' }]} /></View>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
 

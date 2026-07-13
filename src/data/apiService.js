@@ -28,19 +28,38 @@ const DEPT_ID         = APP_CONFIG.DEPT_ID;
 const DEFAULT_PASSWORD = APP_CONFIG.DEFAULT_PASSWORD;
 
 
+let onUnauthorizedCallback = null;
+
+export function setUnauthorizedCallback(callback) {
+  onUnauthorizedCallback = callback;
+}
+
 // ─── HTTP helpers ─────────────────────────────────────────────────────────────
 
 async function apiCall(path, options = {}) {
   const url = `${BASE}${path}`;
+  const method = options.method || 'GET';
+  console.log(`[API Call] 📡 ${method} -> ${url}`);
+  if (options.body) {
+    console.log(`[API Payload] 📦`, options.body);
+  }
   try {
     const response = await fetch(url, {
       ...options,
       headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
     });
     const json = await response.json();
+    console.log(`[API Response] ✅ ${response.status} <- ${path}`, JSON.stringify(json).slice(0, 500));
+
+    if (response.status === 401 && !path.includes('/login') && !path.includes('/register')) {
+      if (onUnauthorizedCallback) {
+        onUnauthorizedCallback();
+      }
+    }
+
     return { ok: response.ok, status: response.status, json };
   } catch (err) {
-    console.warn(`[API] Network error on ${path}:`, err.message);
+    console.warn(`[API Error] ❌ ${path}:`, err.message);
     return { ok: false, status: 0, json: null, networkError: true };
   }
 }
@@ -195,8 +214,9 @@ export async function setPulse(token, mood) {
  * GET /api/v1/erp/attendance
  * Returns attendance records array.
  */
-export async function getAttendance(token) {
-  const res = await apiCall('/api/v1/erp/attendance', {
+export async function getAttendance(token, studentId) {
+  const url = studentId ? `/api/v1/erp/attendance?student_id=${studentId}` : '/api/v1/erp/attendance';
+  const res = await apiCall(url, {
     headers: authHeaders(token),
   });
   return unwrap(res, []);
@@ -206,8 +226,9 @@ export async function getAttendance(token) {
  * GET /api/v1/erp/results
  * Returns results/grade records.
  */
-export async function getResults(token) {
-  const res = await apiCall('/api/v1/erp/results', {
+export async function getResults(token, studentId) {
+  const url = studentId ? `/api/v1/erp/results?student_id=${studentId}` : '/api/v1/erp/results';
+  const res = await apiCall(url, {
     headers: authHeaders(token),
   });
   return unwrap(res, []);
@@ -294,8 +315,9 @@ export async function getStudentOutpasses(token) {
  * GET /api/v1/erp/results/detailed
  * Returns grouped results with sessional vs university marks separated.
  */
-export async function getDetailedResults(token) {
-  const res = await apiCall('/api/v1/erp/results/detailed', {
+export async function getDetailedResults(token, studentId) {
+  const url = studentId ? `/api/v1/erp/results/detailed?student_id=${studentId}` : '/api/v1/erp/results/detailed';
+  const res = await apiCall(url, {
     headers: authHeaders(token),
   });
   return unwrap(res, []);
@@ -305,8 +327,9 @@ export async function getDetailedResults(token) {
  * GET /api/v1/erp/papers
  * All exam papers grouped by subject for the current student's batch.
  */
-export async function getPaperList(token) {
-  const res = await apiCall('/api/v1/erp/papers', {
+export async function getPaperList(token, studentId) {
+  const url = studentId ? `/api/v1/erp/papers?student_id=${studentId}` : '/api/v1/erp/papers';
+  const res = await apiCall(url, {
     headers: authHeaders(token),
   });
   return unwrap(res, []);
@@ -316,8 +339,11 @@ export async function getPaperList(token) {
  * GET /api/v1/erp/papers/:paperCode/competencies
  * Competency-based marks for a specific paper.
  */
-export async function getPaperCompetencies(token, paperCode) {
-  const res = await apiCall(`/api/v1/erp/papers/${encodeURIComponent(paperCode)}/competencies`, {
+export async function getPaperCompetencies(token, paperCode, studentId) {
+  const url = studentId 
+    ? `/api/v1/erp/papers/${encodeURIComponent(paperCode)}/competencies?student_id=${studentId}` 
+    : `/api/v1/erp/papers/${encodeURIComponent(paperCode)}/competencies`;
+  const res = await apiCall(url, {
     headers: authHeaders(token),
   });
   return unwrap(res, {});
@@ -327,8 +353,11 @@ export async function getPaperCompetencies(token, paperCode) {
  * GET /api/v1/erp/papers/:paperCode/attempted
  * Attempted exam paper with sections, questions and obtained marks.
  */
-export async function getAttemptedPaper(token, paperCode) {
-  const res = await apiCall(`/api/v1/erp/papers/${encodeURIComponent(paperCode)}/attempted`, {
+export async function getAttemptedPaper(token, paperCode, studentId) {
+  const url = studentId 
+    ? `/api/v1/erp/papers/${encodeURIComponent(paperCode)}/attempted?student_id=${studentId}` 
+    : `/api/v1/erp/papers/${encodeURIComponent(paperCode)}/attempted`;
+  const res = await apiCall(url, {
     headers: authHeaders(token),
   });
   return unwrap(res, []);
@@ -338,11 +367,11 @@ export async function getAttemptedPaper(token, paperCode) {
  * GET /api/v1/erp/papers/:paperCode/chart?phase=1
  * Competency pie chart data for a paper.
  */
-export async function getCompetencyChart(token, paperCode, phase = '1') {
-  const res = await apiCall(
-    `/api/v1/erp/papers/${encodeURIComponent(paperCode)}/chart?phase=${phase}`,
-    { headers: authHeaders(token) }
-  );
+export async function getCompetencyChart(token, paperCode, phase = '1', studentId) {
+  const url = studentId 
+    ? `/api/v1/erp/papers/${encodeURIComponent(paperCode)}/chart?phase=${phase}&student_id=${studentId}` 
+    : `/api/v1/erp/papers/${encodeURIComponent(paperCode)}/chart?phase=${phase}`;
+  const res = await apiCall(url, { headers: authHeaders(token) });
   return unwrap(res, { data: [] });
 }
 
@@ -350,8 +379,9 @@ export async function getCompetencyChart(token, paperCode, phase = '1') {
  * GET /api/v1/erp/logbook
  * UG logbook activities with attempt status and faculty verification.
  */
-export async function getLogbook(token) {
-  const res = await apiCall('/api/v1/erp/logbook', {
+export async function getLogbook(token, studentId) {
+  const url = studentId ? `/api/v1/erp/logbook?student_id=${studentId}` : '/api/v1/erp/logbook';
+  const res = await apiCall(url, {
     headers: authHeaders(token),
   });
   return unwrap(res, []);
@@ -374,8 +404,9 @@ export async function verifyLogbookActivity(token, payload) {
  * GET /api/v1/erp/schedule
  * Student weekly class schedule from ERP timetable.
  */
-export async function getStudentSchedule(token) {
-  const res = await apiCall('/api/v1/erp/schedule', {
+export async function getStudentSchedule(token, studentId) {
+  const url = studentId ? `/api/v1/erp/schedule?student_id=${studentId}` : '/api/v1/erp/schedule';
+  const res = await apiCall(url, {
     headers: authHeaders(token),
   });
   return unwrap(res, []);
@@ -1747,6 +1778,70 @@ export async function getFacultyAttendance(token, empId = null) {
 }
 
 /**
+ * GET /api/v1/faculty/logbook/activities
+ * Fetch UG logbook activity dropdown options from ERP.
+ */
+export async function getLogbookActivities(token, ugtype = 'PracticalStudentLab', subCode = '', batchyear = '2024') {
+  const params = new URLSearchParams({ ugtype, batchyear });
+  if (subCode) params.append('sub_code', subCode);
+  const res = await apiCall(`/api/v1/faculty/logbook/activities?${params.toString()}`, {
+    headers: authHeaders(token),
+  });
+  return unwrap(res, []);
+}
+
+/**
+ * GET /api/v1/faculty/logbook/students
+ * Fetch students pending UG logbook verification for an activity/date/group.
+ */
+export async function getLogbookStudents(token, { subCode, compcode, verifiedDt, gcd = 'A1', phase = '1' }) {
+  const params = new URLSearchParams({
+    sub_code: subCode,
+    compcode,
+    verified_dt: verifiedDt,
+    gcd,
+    phase: String(phase),
+  });
+  const res = await apiCall(`/api/v1/faculty/logbook/students?${params.toString()}`, {
+    headers: authHeaders(token),
+  });
+  return unwrap(res, []);
+}
+
+/**
+ * GET /api/v1/faculty/logbook/students/verified
+ * Fetch students who have already been verified for an activity/compcode.
+ */
+export async function getLogbookVerifiedStudents(token, { subCode, compcode, activityName, verifiedDt, phase = '1', lbtype = 'PracticalStudentLab' }) {
+  const params = new URLSearchParams({
+    sub_code: subCode,
+    compcode,
+    activity_name: activityName,
+    verified_dt: verifiedDt,
+    phase: String(phase),
+    lbtype,
+  });
+  const res = await apiCall(`/api/v1/faculty/logbook/students/verified?${params.toString()}`, {
+    headers: authHeaders(token),
+  });
+  return unwrap(res, []);
+}
+
+
+/**
+ * POST /api/v1/faculty/logbook/verify
+ * Submit faculty sign-off for a student's UG logbook entry.
+ */
+export async function submitLogbookVerification(token, body) {
+  const res = await apiCall('/api/v1/faculty/logbook/verify', {
+    method: 'POST',
+    headers: authHeaders(token),
+    body: JSON.stringify(body),
+  });
+  return unwrap(res, null);
+}
+
+/**
  * POST /api/v1/faculty/sync
  * Manually trigger synchronization of faculty data from ERP.
  */
@@ -1895,7 +1990,8 @@ export async function getLeaveSummary(empId, month, year) {
         if (raw_dt && String(raw_dt).includes('/Date(')) {
           try {
             const ts = parseInt(String(raw_dt).split('(')[1].split(')')[0]);
-            leave_date = new Date(ts).toISOString().split('T')[0];
+            const istDate = new Date(ts + (5.5 * 3600 * 1000));
+            leave_date = istDate.toISOString().split('T')[0];
           } catch {}
         }
         const leave_cd = String(rec.leave_cd || '');
@@ -2243,3 +2339,64 @@ export async function uploadLectureMaterial(empId, department, fileUri, fileName
     data: cleanText,
   };
 }
+
+/**
+ * Fetch other faculty members in the same department as the logged-in faculty (POST).
+ * Used to populate the "Work In-charge" dropdown.
+ */
+export async function getDepartmentFacultyList(empId) {
+  if (!empId) return [];
+  try {
+    const response = await fetch('https://myportal.srms.ac.in/SRMSERP/PGMBBS/getfaclist', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        facid: 'ddl_faculty2',
+        EmpId: String(empId),
+      }),
+    });
+    const data = await response.json();
+    return Array.isArray(data) ? data : [];
+  } catch (err) {
+    console.warn('[apiService] getDepartmentFacultyList failed:', err);
+    return [];
+  }
+}
+
+/**
+ * Apply for a leave in the SRMS ERP (POST).
+ */
+export async function applyFacultyLeave(payload) {
+  try {
+    const response = await fetch('https://myportal.srms.ac.in/ops/Home/SaveEmpLeaveDtl', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const text = await response.text();
+    return { ok: response.ok, statusText: text };
+  } catch (err) {
+    console.warn('[apiService] applyFacultyLeave failed:', err);
+    return { ok: false, error: err.message };
+  }
+}
+
+/**
+ * Fetch employee profile info (including incharge name) from ERP (POST).
+ */
+export async function getEmployeeERPProfile(empId) {
+  if (!empId) return null;
+  try {
+    const response = await fetch('https://myportal.srms.ac.in/OPS/Home/GetEmpNameLV', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ empid: String(empId) }),
+    });
+    const data = await response.json();
+    return Array.isArray(data) && data.length > 0 ? data[0] : null;
+  } catch (err) {
+    console.warn('[apiService] getEmployeeERPProfile failed:', err);
+    return null;
+  }
+}
+

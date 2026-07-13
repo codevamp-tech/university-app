@@ -14,7 +14,7 @@ import { useTheme } from '../hooks/useTheme';
 const Tab = createBottomTabNavigator();
 
 // Custom Tab Bar Component
-const CustomTabBar = ({ state, descriptors, navigation }) => {
+const CustomTabBar = ({ state, descriptors, navigation, student }) => {
   const { colors, isDark } = useTheme();
 
   return (
@@ -54,7 +54,7 @@ const CustomTabBar = ({ state, descriptors, navigation }) => {
             });
 
             if (!isFocused && !event.defaultPrevented) {
-              navigation.navigate(route.name);
+              navigation.navigate(route.name, student ? { student } : undefined);
             }
           };
 
@@ -95,19 +95,21 @@ const CustomTabBar = ({ state, descriptors, navigation }) => {
   );
 };
 
-const ERPTabs = () => {
+const ERPTabs = ({ route }) => {
+  const student = route.params?.student || route.params?.params?.student;
+
   return (
     <Tab.Navigator
-      tabBar={props => <CustomTabBar {...props} />}
+      tabBar={props => <CustomTabBar {...props} student={student} />}
       screenOptions={{
         headerShown: false,
       }}
     >
-      <Tab.Screen name="ERPHome" component={ERPHubScreen} />
-      <Tab.Screen name="ERPResultsTab" component={ERPResultsScreen} />
-      <Tab.Screen name="ERPScheduleTab" component={StudentScheduleScreen} />
-      <Tab.Screen name="ERPAttendanceTab" component={ERPAttendanceScreen} />
-      <Tab.Screen name="ERPLogBookTab" component={ERPLogBookScreen} />
+      <Tab.Screen name="ERPHome" component={ERPHubScreen} initialParams={{ student }} />
+      <Tab.Screen name="ERPResultsTab" component={ERPResultsScreen} initialParams={{ student }} />
+      <Tab.Screen name="ERPScheduleTab" component={StudentScheduleScreen} initialParams={{ student }} />
+      <Tab.Screen name="ERPAttendanceTab" component={ERPAttendanceScreen} initialParams={{ student }} />
+      <Tab.Screen name="ERPLogBookTab" component={ERPLogBookScreen} initialParams={{ student }} />
     </Tab.Navigator>
   );
 };
