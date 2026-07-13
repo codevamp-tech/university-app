@@ -2509,3 +2509,19 @@ export async function getEmployeeERPProfile(empId) {
   }
 }
 
+/**
+ * Fetch PG MBBS schedule events for a department.
+ * @param {string} token  - Bearer access token
+ * @param {string} depart - Department name e.g. "MCA", "Physiology"
+ * @returns {{ events: Array, department: string } | null}
+ */
+export async function getPGSchedulerAPI(token, depart = 'MCA') {
+  const result = await apiCall('/api/v1/faculty/pg-scheduler', {
+    method: 'POST',
+    headers: authHeaders(token),
+    body: JSON.stringify({ depart }),
+  });
+  return unwrap(result, { events: [], department: depart });
+}
+
+

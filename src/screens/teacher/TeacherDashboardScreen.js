@@ -567,13 +567,13 @@ const TeacherDashboardScreen = ({ navigation }) => {
 
           <TouchableOpacity
             style={styles.quickActionCard}
-            onPress={() => navigation.navigate('LeaveBalance')}
+            onPress={() => navigation.navigate('PGLogbook')}
             activeOpacity={0.8}
           >
-            <View style={[styles.quickActionIconBg, { backgroundColor: '#FFF7ED' }]}>
-              <Ionicons name="calendar-outline" size={20} color="#EA580C" />
+            <View style={[styles.quickActionIconBg, { backgroundColor: '#F0FDF4' }]}>
+              <Ionicons name="journal-outline" size={20} color="#059669" />
             </View>
-            <Text style={styles.quickActionLabel}>Leaves</Text>
+            <Text style={styles.quickActionLabel}>PG Logbook</Text>
           </TouchableOpacity>
         </View>
 
