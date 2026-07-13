@@ -17,138 +17,157 @@ const PG_CATEGORIES = [
     id: 'AcademicList', title: 'Academic List',
     icon: 'school-outline', color: '#7C3AED', bgColor: '#F5F3FF',
     items: [
-      { id: 'AL1', title: 'Didactic Lecture', description: 'Formal lecture sessions on core PG topics' },
-      { id: 'AL2', title: 'Seminar', description: 'Student-led topic presentations' },
-      { id: 'AL3', title: 'Journal Club', description: 'Review and discussion of recent research papers' },
-      { id: 'AL4', title: 'Case Presentation', description: 'Clinical case discussion and analysis' },
-      { id: 'AL5', title: 'CME / Conference', description: 'Continuing medical education and conferences attended' },
-      { id: 'AL6', title: 'Group Discussion', description: 'Structured academic group discussions' },
+      { id: 9,   api: 'GetSeminardata',                   title: 'Seminar' },
+      { id: 10,  api: 'GetPGLecturedata',                 title: 'P.G. Lecture' },
+      { id: 86,  api: 'GetPGTeachingdata',                title: 'P.G. Teaching' },
+      { id: 87,  api: 'GetPGExercisedata',                title: 'P.G. Exercise' },
+      { id: 11,  api: 'GetGroupDiscussiondata',           title: 'Group Discussion' },
+      { id: 12,  api: 'GetJournalClubdata',               title: 'Journal Club - Critical Review of Paper' },
+      { id: 13,  api: 'GetCaseStudydatadata',             title: 'Case Presentations / Practical' },
+      { id: 14,  api: 'GetMicroTeachingdata',             title: 'Micro Teaching' },
+      { id: 15,  api: 'GetParticipatinginUGTeaching',     title: 'Attending UG Teaching' },
+      { id: 16,  api: 'GetSelfDirectedLearning',          title: 'Self Directed Learning' },
+      { id: 17,  api: 'GetPGCentralSeminar',              title: 'Central Seminar' },
+      { id: 18,  api: 'GetClinicalPathalogicalConfrence', title: 'Clinical Pathological Conference' },
+      { id: 19,  api: 'GetGuestLecture',                  title: 'Guest Lectures' },
+      { id: 21,  api: 'GetThesisData',                    title: 'Thesis Work' },
+      { id: 37,  api: 'Getwpbadata',                      title: 'WPBA' },
+      { id: 501, api: 'GetLabActivitydata',               title: 'Lab Activity' },
     ],
   },
   {
     id: 'ClinicalList', title: 'Clinical List',
     icon: 'medical-outline', color: '#DC2626', bgColor: '#FEF2F2',
     items: [
-      { id: 'CL1', title: 'Case Write-up', description: 'Detailed written documentation of clinical cases' },
-      { id: 'CL2', title: 'Bedside Clinic', description: 'Bedside teaching and examination of patients' },
-      { id: 'CL3', title: 'OPD Posting', description: 'Outpatient department clinical posting' },
-      { id: 'CL4', title: 'Ward Rounds', description: 'In-patient ward rounds with senior faculty' },
-      { id: 'CL5', title: 'Procedure Log', description: 'Record of clinical procedures performed' },
-      { id: 'CL6', title: 'Emergency Posting', description: 'Emergency department postings and case management' },
+      { id: 23, api: 'GetClinicalCaseManagement', title: 'Clinical Cases Management' },
+      { id: 64, api: 'GetRadiology',              title: 'Radiology/X-ray/USG/CT/MRI' },
+      { id: 22, api: 'GetProcedureSkill',         title: 'Procedure / Observed / Assisted / Perform' },
+      { id: 24, api: 'GetAlliedTrainingPosting',  title: 'Allied Training / Posting' },
+      { id: 31, api: 'GetMinorOT',                title: 'Minor OT' },
+      { id: 32, api: 'GetMajorOT',                title: 'Major OT' },
     ],
   },
   {
     id: 'AdditionalList', title: 'Additional List',
     icon: 'add-circle-outline', color: '#D97706', bgColor: '#FFFBEB',
     items: [
-      { id: 'ADL1', title: 'Research Work', description: 'Ongoing or completed research activities' },
-      { id: 'ADL2', title: 'Publication', description: 'Research papers authored or co-authored' },
-      { id: 'ADL3', title: 'Thesis Progress', description: 'Thesis chapter completion milestones' },
-      { id: 'ADL4', title: 'Community Posting', description: 'Community health center postings' },
-      { id: 'ADL5', title: 'Teaching UG', description: 'Contribution to UG teaching activities' },
+      { id: 20, api: 'GetConfrenceCMEWorkshop',         title: 'Conference/CME/Workshops' },
+      { id: 25, api: 'GetPAPERPRESENTED',               title: 'Paper Presented' },
+      { id: 26, api: 'GetPUBLICATIONS',                 title: 'Publications' },
+      { id: 27, api: 'GetANYOTHERRESEARCHPROJECT',     title: 'Any Other Research Project' },
+      { id: 28, api: 'GetADVANCEDTRAINING',             title: 'Advanced Training' },
+      { id: 77, api: 'GetOphthamologyDepartment',       title: 'Other Dept Activity / Refraction / Contact Lenses' },
     ],
   },
   {
-    id: 'MandatoryTraining', title: 'Mandatory Training List',
+    id: 'MandatoryTrainingList', title: 'Mandatory Training',
     icon: 'shield-checkmark-outline', color: '#0284C7', bgColor: '#F0F9FF',
     items: [
-      { id: 'MT1', title: 'BLS / ACLS Training', description: 'Basic & Advanced Cardiac Life Support' },
-      { id: 'MT2', title: 'Basic Surgical Skills', description: 'Knot tying, suturing, and instrument handling' },
-      { id: 'MT3', title: 'Bioethics Session', description: 'Medical ethics and professionalism training' },
-      { id: 'MT4', title: 'POSH Training', description: 'Prevention of Sexual Harassment awareness' },
-      { id: 'MT5', title: 'Infection Control', description: 'Hand hygiene and infection prevention' },
+      { id: 33, api: 'getbcbr',              title: 'BCBR' },
+      { id: 34, api: 'getblsatls',           title: 'BLS & ACLS' },
+      { id: 35, api: 'getatls',              title: 'ATLS' },
+      { id: 36, api: 'gettraininginethics',  title: 'Training In Ethics' },
     ],
   },
   {
     id: 'Microbiology', title: 'Microbiology',
     icon: 'flask-outline', color: '#059669', bgColor: '#ECFDF5',
     items: [
-      { id: 'MB1', title: 'Lab Demonstration', description: 'Microbiological lab techniques and demonstrations' },
-      { id: 'MB2', title: 'Culture & Sensitivity', description: 'C&S reporting and interpretation sessions' },
-      { id: 'MB3', title: 'Microscopy', description: 'Slide preparation and microscopy practice' },
-      { id: 'MB4', title: 'Case-Based Learning', description: 'Microbiology-focused case discussions' },
+      { id: 38, api: 'GetMicrobiologyDepartment', title: 'Sterilization & Media Preparation' },
+      { id: 39, api: 'GetMicrobiologyDepartment', title: 'Bacteriology' },
+      { id: 40, api: 'GetMicrobiologyDepartment', title: 'Mycobacteriology' },
+      { id: 41, api: 'GetMicrobiologyDepartment', title: 'Serology/Immunology' },
+      { id: 42, api: 'GetMicrobiologyDepartment', title: 'Mycology' },
+      { id: 43, api: 'GetMicrobiologyDepartment', title: 'Parasitology' },
+      { id: 44, api: 'GetMicrobiologyDepartment', title: 'Clinical Microbiology' },
+      { id: 84, api: 'GetMicrobiologyDepartment', title: 'Virology' },
     ],
   },
   {
     id: 'Pathology', title: 'Pathology',
     icon: 'eyedrop-outline', color: '#7C3AED', bgColor: '#F5F3FF',
     items: [
-      { id: 'PA1', title: 'Histopathology', description: 'Tissue biopsy slide interpretation' },
-      { id: 'PA2', title: 'Cytopathology', description: 'Fine needle aspiration and cytological studies' },
-      { id: 'PA3', title: 'Autopsy Participation', description: 'Medico-legal autopsy observation and reporting' },
-      { id: 'PA4', title: 'Lab Report Review', description: 'Pathology report analysis sessions' },
+      { id: 45, api: 'GetPathologyDepartment', title: 'Inter & Intradepartmental Rotation' },
+      { id: 46, api: 'GetPathologyDepartment', title: 'Tumor Board' },
+      { id: 47, api: 'GetPathologyDepartment', title: 'Slide Seminar' },
+      { id: 48, api: 'GetPathologyDepartment', title: 'Gross Session' },
+      { id: 49, api: 'GetPathologyDepartment', title: 'Student Symposium' },
+      { id: 50, api: 'GetPathologyDepartment', title: 'Teaching' },
+      { id: 51, api: 'GetPathologyDepartment', title: 'Course in Research Methodology' },
     ],
   },
   {
     id: 'Pediatrics', title: 'Department of Pediatrics',
     icon: 'people-outline', color: '#EC4899', bgColor: '#FDF2F8',
     items: [
-      { id: 'PED1', title: 'Neonatal Case', description: 'Neonatal examination and case management' },
-      { id: 'PED2', title: 'Growth Assessment', description: 'Pediatric anthropometry and growth charting' },
-      { id: 'PED3', title: 'Immunization Clinic', description: 'Vaccine administration and counseling' },
-      { id: 'PED4', title: 'Pediatric Emergency', description: 'Emergency pediatric management cases' },
-      { id: 'PED5', title: 'Neonatal Resuscitation', description: 'NRP training and clinical application' },
+      { id: 52, api: 'GetPediatricsDepartment', title: 'Practicals' },
+      { id: 53, api: 'GetPediatricsDepartment', title: 'Test' },
+      { id: 54, api: 'GetPediatricsDepartment', title: 'Lecture' },
+      { id: 55, api: 'GetPediatricsDepartment', title: 'GD' },
+      { id: 56, api: 'GetPediatricsDepartment', title: 'Basic Ped' },
+      { id: 58, api: 'GetPediatricsDepartment', title: 'Tutorial' },
+      { id: 59, api: 'GetPediatricsDepartment', title: 'Word Base Assessment' },
+      { id: 60, api: 'GetPediatricsDepartment', title: 'Mortality Meet' },
+      { id: 61, api: 'GetPediatricsDepartment', title: 'Thesis Review' },
+      { id: 62, api: 'GetPediatricsDepartment', title: 'Symposium' },
+      { id: 63, api: 'GetPediatricsDepartment', title: 'Recent Update' },
     ],
   },
   {
-    id: 'AnatomyActivities', title: 'Anatomy Academic Activities',
+    id: 'Anatomy', title: 'Anatomy Academic Activities',
     icon: 'body-outline', color: '#EA580C', bgColor: '#FFF7ED',
     items: [
-      { id: 'AA1', title: 'Dissection Session', description: 'Cadaveric dissection and anatomical studies' },
-      { id: 'AA2', title: 'Surface Anatomy', description: 'Surface markings and clinical correlations' },
-      { id: 'AA3', title: 'Radiological Anatomy', description: 'Imaging interpretation for anatomical structures' },
-      { id: 'AA4', title: 'Embryology Session', description: 'Developmental anatomy lectures and seminars' },
+      { id: 65, api: 'GetAnatomyDepartment', title: 'UG Lecture' },
+      { id: 66, api: 'GetAnatomyDepartment', title: 'UG Practical' },
+      { id: 67, api: 'GetAnatomyDepartment', title: 'PG Lecture' },
+      { id: 68, api: 'GetAnatomyDepartment', title: 'Tutorial' },
+      { id: 69, api: 'GetAnatomyDepartment', title: 'Histology' },
+      { id: 70, api: 'GetAnatomyDepartment', title: 'Radiology & Surface Marking' },
+      { id: 71, api: 'GetAnatomyDepartment', title: 'Museum Techniques & Embalming' },
+      { id: 72, api: 'GetAnatomyDepartment', title: 'Anthropology & Comparative Anatomy' },
+      { id: 73, api: 'GetAnatomyDepartment', title: 'AETCOM' },
     ],
   },
   {
     id: 'Physiology', title: 'Physiology',
     icon: 'heart-outline', color: '#EF4444', bgColor: '#FEF2F2',
     items: [
-      { id: 'PHY1', title: 'Practical Demonstration', description: 'Physiology lab practical and demonstrations' },
-      { id: 'PHY2', title: 'Research Review', description: 'Review of current physiological research' },
-      { id: 'PHY3', title: 'Clinical Correlation', description: 'Linking physiology concepts to clinical cases' },
-      { id: 'PHY4', title: 'Instrument Training', description: 'Hands-on training with physiological instruments' },
+      { id: 74, api: 'GetPhysiologyDepartment', title: 'PG Product' },
+      { id: 75, api: 'GetPhysiologyDepartment', title: 'Clinical Posting' },
+      { id: 76, api: 'GetPhysiologyDepartment', title: 'Paramedical Lectures' },
     ],
   },
   {
     id: 'Pharmacology', title: 'Pharmacology',
     icon: 'tablets-outline', color: '#2563EB', bgColor: '#EFF6FF',
     items: [
-      { id: 'PHAR1', title: 'Drug Chart Review', description: 'Review and analysis of patient drug charts' },
-      { id: 'PHAR2', title: 'Drug Interaction Session', description: 'Clinically significant drug interactions' },
-      { id: 'PHAR3', title: 'Clinical Pharmacology Case', description: 'Pharmacological management of cases' },
-      { id: 'PHAR4', title: 'ADR Reporting', description: 'Adverse drug reaction documentation and reporting' },
+      { id: 78, api: 'GetPharmacologyDepartment', title: 'Practicals PG' },
+      { id: 79, api: 'GetPharmacologyDepartment', title: 'Paramedical Classes' },
+      { id: 80, api: 'GetPharmacologyDepartment', title: 'Rotational Posting' },
     ],
   },
   {
     id: 'Radiology', title: 'Radiology',
     icon: 'scan-outline', color: '#0891B2', bgColor: '#ECFEFF',
     items: [
-      { id: 'RAD1', title: 'X-Ray Reporting', description: 'Plain radiograph interpretation and reporting' },
-      { id: 'RAD2', title: 'CT Interpretation', description: 'CT scan analysis and structured reporting' },
-      { id: 'RAD3', title: 'USG Guided Procedure', description: 'Ultrasound-guided diagnostic/therapeutic procedures' },
-      { id: 'RAD4', title: 'MRI Review', description: 'MRI sequence interpretation and correlation' },
+      { id: 81, api: 'GetRadioDepartment', title: 'Radio Physics' },
     ],
   },
   {
     id: 'DRP', title: 'DRP',
     icon: 'document-text-outline', color: '#7C3AED', bgColor: '#F5F3FF',
     items: [
-      { id: 'DRP1', title: 'Drug Regulatory Affairs', description: 'Overview of drug regulatory frameworks' },
-      { id: 'DRP2', title: 'Pharmacovigilance', description: 'Post-marketing drug surveillance and monitoring' },
-      { id: 'DRP3', title: 'ADR Reporting', description: 'Systematic adverse reaction reporting' },
-      { id: 'DRP4', title: 'Clinical Trial Protocol', description: 'Understanding and reviewing clinical trials' },
+      { id: 83, api: 'GetDRPDepartment', title: 'DRP Entries' },
     ],
   },
   {
     id: 'Anaesthesia', title: 'Anaesthesia',
     icon: 'medkit-outline', color: '#059669', bgColor: '#ECFDF5',
     items: [
-      { id: 'AN1', title: 'Pre-op Assessment', description: 'Pre-operative patient evaluation and risk stratification' },
-      { id: 'AN2', title: 'Intubation Log', description: 'Endotracheal intubation cases performed' },
-      { id: 'AN3', title: 'Epidural / Spinal', description: 'Regional anaesthesia procedures completed' },
-      { id: 'AN4', title: 'ICU Posting', description: 'Intensive care unit clinical rotation' },
-      { id: 'AN5', title: 'Pain Management', description: 'Acute and chronic pain management cases' },
+      { id: 91, api: 'GETAnaesthesiaRegional',  title: 'Regional Anaesthesia' },
+      { id: 92, api: 'GETAnaesthesiaRegional',  title: 'Cardiopulmonary Brain Resuscitation' },
+      { id: 93, api: 'GETAnaesthesiaPAINMNG',   title: 'Pain Management' },
+      { id: 94, api: 'GETAnaesthesiaPAINMNG',   title: 'General Anaesthesia' },
     ],
   },
 ];
@@ -313,15 +332,8 @@ const PGLogbookScreen = ({ navigation }) => {
           </TouchableOpacity>
         </LinearGradient>
 
-        {/* Info Banner */}
-        <View style={styles.infoBanner}>
-          <Ionicons name="information-circle-outline" size={18} color="#0284C7" />
-          <Text style={styles.infoText}>
-            PG students use the faculty login. Tap "Open Events" to browse all activity categories.
-          </Text>
-        </View>
 
-        {/* Category Grid */}
+        {/* Category Grid
         <Text style={styles.sectionTitle}>Activity Categories</Text>
         <View style={styles.grid}>
           {PG_CATEGORIES.map(cat => (
@@ -333,7 +345,7 @@ const PGLogbookScreen = ({ navigation }) => {
               <Text style={styles.tileCount}>{cat.items.length} items</Text>
             </TouchableOpacity>
           ))}
-        </View>
+        </View> */}
       </ScrollView>
 
       {/* Events Bottom Sheet Modal */}
@@ -357,12 +369,18 @@ const PGLogbookScreen = ({ navigation }) => {
                     <Text style={[mStyles.catBadgeText, { color: selectedItem.category.color }]}>{selectedItem.category.title}</Text>
                   </View>
                   <View style={mStyles.detailCard}>
-                    <Text style={mStyles.detailLabel}>DESCRIPTION</Text>
-                    <Text style={mStyles.detailText}>{selectedItem.item.description}</Text>
+                    <Text style={mStyles.detailLabel}>ACTIVITY</Text>
+                    <Text style={mStyles.detailText}>{selectedItem.item.title}</Text>
                   </View>
-                  <View style={mStyles.detailCard}>
-                    <Text style={mStyles.detailLabel}>ACTIVITY ID</Text>
-                    <Text style={mStyles.detailText}>{selectedItem.item.id}</Text>
+                  <View style={{ flexDirection: 'row', gap: 10 }}>
+                    <View style={[mStyles.detailCard, { flex: 1 }]}>
+                      <Text style={mStyles.detailLabel}>ACTIVITY ID</Text>
+                      <Text style={mStyles.detailText}>{selectedItem.item.id}</Text>
+                    </View>
+                    <View style={[mStyles.detailCard, { flex: 2 }]}>
+                      <Text style={mStyles.detailLabel}>ERP API</Text>
+                      <Text style={[mStyles.detailText, { fontSize: 12, color: '#7C3AED' }]}>{selectedItem.item.api}</Text>
+                    </View>
                   </View>
                   <View style={mStyles.infoNote}>
                     <Ionicons name="information-circle-outline" size={16} color="#0284C7" />
