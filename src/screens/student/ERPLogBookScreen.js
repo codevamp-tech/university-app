@@ -8,7 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../hooks/useTheme';
 import { useUser } from '../../context/UserContext';
-import { getLogbook } from '../../data/apiService';
+import { getLogbook, getSubjectList, getStudentSubjectLogbook } from '../../data/apiService';
 
 const { width } = Dimensions.get('window');
 
@@ -132,11 +132,18 @@ const ERPLogBookScreen = ({ route, navigation }) => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeFilter, setActiveFilter] = useState('ALL'); // ALL, VERIFIED, PENDING
-  const [activeCategory, setActiveCategory] = useState('ALL'); // ALL or CATEGORY_MAP key
-  const [activePhase, setActivePhase] = useState('ALL'); // ALL or specific phase number
+  const [activeFilter, setActiveFilter] = useState('ALL');
+  const [activeCategory, setActiveCategory] = useState('ALL');
+  const [activePhase, setActivePhase] = useState('ALL');
   const [showFilters, setShowFilters] = useState(false);
   const [showLegendModal, setShowLegendModal] = useState(false);
+
+  // Subject filter state
+  const [subjectList, setSubjectList] = useState([]);
+  const [subjectsLoading, setSubjectsLoading] = useState(false);
+  const [activeSubject, setActiveSubject] = useState(null); // { subject_Code, subject_name } or null
+  const [subjectEntries, setSubjectEntries] = useState([]); // ERP entries for the selected subject
+  const [subjectEntriesLoading, setSubjectEntriesLoading] = useState(false);
 
   const loadLogbook = async (showLoading = true) => {
     if (!accessToken) return;
@@ -217,6 +224,81 @@ const ERPLogBookScreen = ({ route, navigation }) => {
     loadLogbook();
   }, [accessToken]);
 
+  // When phase changes, fetch subjects for that phase (clear subject selection)
+  useEffect(() => {
+    setActiveSubject(null);
+    setSubjectEntries([]);
+    if (activePhase === 'ALL') {
+      setSubjectList([]);
+      return;
+    }
+    let cancelled = false;
+    const fetchSubjects = async () => {
+      setSubjectsLoading(true);
+      const list = await getSubjectList(activePhase);
+      // Deduplicate by subject_Code (ERP sometimes returns duplicates)
+      const seen = new Set();
+      const unique = list.filter(s => {
+        if (seen.has(s.subject_Code)) return false;
+        seen.add(s.subject_Code);
+        return true;
+      });
+      if (!cancelled) setSubjectList(unique);
+      setSubjectsLoading(false);
+    };
+    fetchSubjects();
+    return () => { cancelled = true; };
+  }, [activePhase]);
+
+  // When a subject is selected, fetch its logbook entries directly from ERP
+  useEffect(() => {
+    if (!activeSubject) {
+      setSubjectEntries([]);
+      return;
+    }
+    let cancelled = false;
+    const fetchSubjectEntries = async () => {
+      const rollno = user?.rollno || user?.id || user?.username;
+      if (!rollno) return;
+      setSubjectEntriesLoading(true);
+      const lbtype = activeCategory !== 'ALL' ? activeCategory : 'PracticalStudentLab';
+      const raw = await getStudentSubjectLogbook(rollno, activePhase, activeSubject.subject_Code, lbtype);
+      if (!cancelled) {
+        // Normalise ERP raw entries to match existing logbook entry shape
+        const parseErpDate = (dateStr) => {
+          if (!dateStr) return 'Pending';
+          const match = String(dateStr).match(/\d+/);
+          if (!match) return 'Pending';
+          const ms = parseInt(match[0], 10);
+          if (ms <= 0) return 'Pending';
+          return new Date(ms).toISOString().split('T')[0];
+        };
+        const normalised = raw.map((act) => ({
+          activity: act.ActivityName || act.activityName || 'Clinical Rotation',
+          competency: act.comp_code || act.compCode || '',
+          verified: !!act.VerifiedBy,
+          student_verified: act.received === 1,
+          a1: act.A1 || '-',
+          a2: act.A2 || '-',
+          a3: act.A3 || '-',
+          faculty: act.VerifiedBy ? act.VerifiedBy.trim() : 'Faculty Desk',
+          date: parseErpDate(act.verified_dt || act.Acdt),
+          category: act.lbtype || lbtype,
+          department: act.Department || activeSubject.subject_name || '',
+          comp_code: act.comp_code || act.compCode || '',
+          actmstid: act.actmstid ? String(act.actmstid) : '',
+          cbmeyear: act.cbmeyear ? String(act.cbmeyear) : '',
+          phase: String(activePhase),
+          remarks: (act.remarks || act.Remarks || '').trim(),
+        }));
+        setSubjectEntries(normalised);
+      }
+      setSubjectEntriesLoading(false);
+    };
+    fetchSubjectEntries();
+    return () => { cancelled = true; };
+  }, [activeSubject, activePhase, activeCategory]);
+
   const handleRefresh = () => {
     setRefreshing(true);
     loadLogbook(false);
@@ -283,7 +365,10 @@ const ERPLogBookScreen = ({ route, navigation }) => {
     }
   };
 
-  const filteredLogbook = logbook.filter(entry => {
+  // Use subjectEntries when a subject is selected, otherwise use the full logbook
+  const baseList = activeSubject ? subjectEntries : logbook;
+
+  const filteredLogbook = baseList.filter(entry => {
     const q = searchQuery.toLowerCase();
     const matchesSearch = (
       (entry.activity && entry.activity.toLowerCase().includes(q)) ||
@@ -303,26 +388,27 @@ const ERPLogBookScreen = ({ route, navigation }) => {
       matchesStatus = !entry.student_verified;
     }
 
-    // Filter by Category
+    // Filter by Category (not applied when subject-mode is active, since lbtype was used in the API call)
     let matchesCategory = true;
-    if (activeCategory !== 'ALL') {
+    if (!activeSubject && activeCategory !== 'ALL') {
       matchesCategory = entry.category === activeCategory;
     }
 
-    // Filter by Phase
+    // Filter by Phase (not applied when subject-mode is active — phase was the API param)
     let matchesPhase = true;
-    if (activePhase !== 'ALL') {
+    if (!activeSubject && activePhase !== 'ALL') {
       matchesPhase = String(entry.phase) === String(activePhase);
     }
 
     return matchesSearch && matchesStatus && matchesCategory && matchesPhase;
   });
 
-  const verifiedCount = logbook.filter(e => e.verified).length;
-  const totalCount = logbook.length;
+  const verifiedCount = baseList.filter(e => e.verified).length;
+  const totalCount = activeSubject ? baseList.length : logbook.length;
   const progressPct = totalCount > 0 ? Math.round((verifiedCount / totalCount) * 100) : 0;
 
   const availablePhases = ['ALL', ...new Set(logbook.map(e => e.phase).filter(Boolean).sort((a, b) => a - b))];
+
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
@@ -416,10 +502,10 @@ const ERPLogBookScreen = ({ route, navigation }) => {
                 <Text style={[styles.filterToggleText, { color: colors.textPrimary }]}>
                   {showFilters ? 'Hide Filters' : 'Filter & Phase'}
                 </Text>
-                {((activeFilter !== 'ALL' || activeCategory !== 'ALL' || activePhase !== 'ALL')) && (
+                {((activeFilter !== 'ALL' || activeCategory !== 'ALL' || activePhase !== 'ALL' || !!activeSubject)) && (
                   <View style={[styles.filterCountBadge, { backgroundColor: colors.primary }]}>
                     <Text style={styles.filterCountText}>
-                      {Number(activeFilter !== 'ALL') + Number(activeCategory !== 'ALL') + Number(activePhase !== 'ALL')}
+                      {Number(activeFilter !== 'ALL') + Number(activeCategory !== 'ALL') + Number(activePhase !== 'ALL') + Number(!!activeSubject)}
                     </Text>
                   </View>
                 )}
@@ -437,7 +523,7 @@ const ERPLogBookScreen = ({ route, navigation }) => {
             </View>
 
             {/* Active Filter Badges */}
-            {!showFilters && (activeFilter !== 'ALL' || activeCategory !== 'ALL' || activePhase !== 'ALL') && (
+            {!showFilters && (activeFilter !== 'ALL' || activeCategory !== 'ALL' || activePhase !== 'ALL' || !!activeSubject) && (
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, paddingVertical: 2, marginTop: 4 }}>
                 {activeFilter !== 'ALL' && (
                   <TouchableOpacity onPress={() => setActiveFilter('ALL')} style={[styles.activeFilterChip, { borderColor: colors.border, backgroundColor: colors.card }]}>
@@ -451,6 +537,15 @@ const ERPLogBookScreen = ({ route, navigation }) => {
                   <TouchableOpacity onPress={() => setActivePhase('ALL')} style={[styles.activeFilterChip, { borderColor: colors.border, backgroundColor: colors.card }]}>
                     <Text style={[styles.activeFilterChipText, { color: colors.textSecondary }]}>Phase {activePhase}</Text>
                     <Ionicons name="close" size={12} color={colors.textSecondary} style={{ marginLeft: 4 }} />
+                  </TouchableOpacity>
+                )}
+                {activeSubject && (
+                  <TouchableOpacity onPress={() => setActiveSubject(null)} style={[styles.activeFilterChip, { borderColor: '#F59E0B', backgroundColor: 'rgba(245,158,11,0.1)' }]}>
+                    <Ionicons name="book-outline" size={11} color="#F59E0B" style={{ marginRight: 3 }} />
+                    <Text style={[styles.activeFilterChipText, { color: '#F59E0B' }]}>
+                      {activeSubject.subject_name}
+                    </Text>
+                    <Ionicons name="close" size={12} color="#F59E0B" style={{ marginLeft: 4 }} />
                   </TouchableOpacity>
                 )}
                 {activeCategory !== 'ALL' && (
@@ -524,6 +619,62 @@ const ERPLogBookScreen = ({ route, navigation }) => {
                   </ScrollView>
                 </View>
 
+                {/* Subject Filter pills — only shown when a phase is selected */}
+                {activePhase !== 'ALL' && (
+                  <View>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 2 }}>
+                      <Text style={[styles.filterSectionTitle, { color: colors.textSecondary }]}>Subject</Text>
+                      {subjectsLoading && (
+                        <ActivityIndicator size={12} color={colors.primary} style={{ marginLeft: 6 }} />
+                      )}
+                    </View>
+                    {!subjectsLoading && subjectList.length === 0 ? (
+                      <Text style={{ fontSize: 12, color: colors.textMuted, marginTop: 4 }}>No subjects found for this phase.</Text>
+                    ) : (
+                      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, paddingVertical: 2, marginTop: 4 }}>
+                        {/* All subjects (clear) pill */}
+                        <TouchableOpacity
+                          onPress={() => setActiveSubject(null)}
+                          style={[
+                            styles.filterPill,
+                            { backgroundColor: colors.card, borderColor: colors.border },
+                            !activeSubject && { backgroundColor: '#F59E0B', borderColor: '#F59E0B' }
+                          ]}
+                        >
+                          <Text style={[styles.filterText, { color: colors.textSecondary }, !activeSubject && { color: '#FFF', fontWeight: '800' }]}>
+                            All Subjects
+                          </Text>
+                        </TouchableOpacity>
+                        {subjectList.map((subj, idx) => {
+                          const isActive = activeSubject?.subject_Code === subj.subject_Code;
+                          return (
+                            <TouchableOpacity
+                              key={`${subj.subject_Code}-${idx}`}
+                              onPress={() => setActiveSubject(subj)}
+                              style={[
+                                styles.filterPill,
+                                { backgroundColor: colors.card, borderColor: colors.border },
+                                isActive && { backgroundColor: '#F59E0B', borderColor: '#F59E0B' }
+                              ]}
+                            >
+                              <Text style={[styles.filterText, { color: colors.textSecondary }, isActive && { color: '#FFF', fontWeight: '800' }]}>
+                                {subj.subject_name}
+                              </Text>
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </ScrollView>
+                    )}
+                    {/* Loading overlay when fetching subject entries */}
+                    {subjectEntriesLoading && (
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6 }}>
+                        <ActivityIndicator size={12} color='#F59E0B' />
+                        <Text style={{ fontSize: 11, color: '#F59E0B' }}>Loading {activeSubject?.subject_name} entries…</Text>
+                      </View>
+                    )}
+                  </View>
+                )}
+
                 {/* Category Filter Pills (Horizontal Scroll) */}
                 <View>
                   <Text style={[styles.filterSectionTitle, { color: colors.textSecondary }]}>Category</Text>
@@ -578,12 +729,21 @@ const ERPLogBookScreen = ({ route, navigation }) => {
 
           {/* Logbook entries list */}
           <View style={{ padding: 16, gap: 12 }}>
-            {filteredLogbook.length === 0 ? (
+            {subjectEntriesLoading ? (
+              <View style={{ alignItems: 'center', paddingVertical: 40, gap: 12 }}>
+                <ActivityIndicator size="large" color='#F59E0B' />
+                <Text style={{ fontSize: 14, color: colors.textSecondary }}>
+                  Loading {activeSubject?.subject_name} entries…
+                </Text>
+              </View>
+            ) : filteredLogbook.length === 0 ? (
               <View style={[styles.emptyCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
                 <MaterialCommunityIcons name="hospital-box-outline" size={48} color={colors.textMuted} style={{ marginBottom: 12 }} />
                 <Text style={[styles.emptyText, { color: colors.textPrimary }]}>No entries found</Text>
                 <Text style={[styles.emptySub, { color: colors.textSecondary }]}>
-                  No entries found matching the selected status or category filters.
+                  {activeSubject
+                    ? `No logbook entries found for ${activeSubject.subject_name} in Phase ${activePhase}.`
+                    : 'No entries found matching the selected status or category filters.'}
                 </Text>
               </View>
             ) : (

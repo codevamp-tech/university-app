@@ -1841,6 +1841,87 @@ export async function submitLogbookVerification(token, body) {
   return unwrap(res, null);
 }
 
+// ─── Phase → Subject Batch Year Map ──────────────────────────────────────────
+const PHASE_BATCH_YEAR = { '1': '2025', '2': '2024', '3': '2023' };
+
+/**
+ * Fetch subject list for a given UG phase directly from ERP (GetSubjectInLIst).
+ * sub_phase_id and phs_mnth_id both equal phaseId in practice, so we pass the
+ * same phaseId for all three: yrcd, subsemcd, subsemmonthscd.
+ */
+export async function getSubjectList(phaseId) {
+  const pid = String(phaseId);
+  try {
+    const response = await fetch('https://myportal.srms.ac.in/SRMSERP/NMC/GetSubjectInLIst', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        colgcd: '11',
+        coursetypecd: 'UG',
+        coursecd: '1',
+        branchcd: '1',
+        yrcd: pid,
+        subsemcd: pid,
+        subsemmonthscd: pid,
+        empid: '',
+      }),
+    });
+    const data = await response.json();
+    return Array.isArray(data) ? data : [];
+  } catch (err) {
+    console.warn('[apiService] getSubjectList failed:', err);
+    return [];
+  }
+}
+
+/**
+ * Fetch student logbook entries for a specific subject & phase directly from ERP.
+ * Uses GetPracticalStudLabDatastud. batchcd: Phase1=66, Phase2=63, Phase3=60.
+ */
+export async function getStudentSubjectLogbook(rollno, phase, subjcode, lbtype = 'PracticalStudentLab') {
+  const phaseStr = String(phase);
+  const cbmeyear = PHASE_BATCH_YEAR[phaseStr] || '2024';
+  const batchcd = phaseStr === '1' ? '66' : phaseStr === '2' ? '63' : '60';
+  try {
+    const response = await fetch('https://myportal.srms.ac.in/SRMSERP/PGMBBS/GetPracticalStudLabDatastud', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        LMS_LogBook_ActivityData: {
+          actmstid: 0,
+          colgcd: '11',
+          coursetype: 'UG',
+          coursecd: '1',
+          branchcd: '1',
+          batchcd,
+          phase: phaseStr,
+          rollno: String(rollno),
+          subjcode: String(subjcode),
+          topiccode: 0,
+          comp_code: '',
+          ActivityName: '',
+          empid: '',
+          crtdt: '',
+          Acdt: '',
+          A1: '', A2: '', A3: '',
+          VerifiedBy: '', VerifiedId: '',
+          remarks: '',
+          ac_status: 0,
+          lbtype,
+          received: '',
+          cbmeyear,
+          verified_dt: '1900-10-01 00:00:00',
+        },
+      }),
+    });
+    const data = await response.json();
+    return Array.isArray(data?.data) ? data.data : [];
+  } catch (err) {
+    console.warn('[apiService] getStudentSubjectLogbook failed:', err);
+    return [];
+  }
+}
+
 /**
  * POST /api/v1/faculty/sync
  * Manually trigger synchronization of faculty data from ERP.
