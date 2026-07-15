@@ -261,25 +261,57 @@ const ERPLogBookScreen = ({ route, navigation }) => {
       const rollno = user?.rollno || user?.id || user?.username;
       if (!rollno) return;
       setSubjectEntriesLoading(true);
-      const lbtype = activeCategory !== 'ALL' ? activeCategory : 'PracticalStudentLab';
       
-      // Resolve the student's actual cohort details from profile
+      // Resolve student entry batch details to determine batchcd
       const userBatchYear = parseInt(user?.batch_year || user?.year || '2024', 10);
       const BATCH_YEAR_TO_CD = {
         2025: "66", 2024: "63", 2023: "60", 2022: "61",
         2021: "62", 2020: "64", 2019: "65"
       };
-      const finalCbmeyear = String(userBatchYear || '2024');
       const finalBatchcd = BATCH_YEAR_TO_CD[userBatchYear] || '63';
+      
+      // cbmeyear corresponds to curriculum year: Phase 1 & 2 use 2024, Phase 3 uses 2023
+      const finalCbmeyear = activePhase === '3' ? '2023' : '2024';
 
-      const raw = await getStudentSubjectLogbook(
-        rollno, 
-        activePhase, 
-        activeSubject.subject_Code, 
-        lbtype,
-        finalCbmeyear,
-        finalBatchcd
-      );
+      let raw = [];
+      if (activeCategory === 'ALL') {
+        const categoriesToFetch = [
+          'SelfDirectedLearning',
+          'PracticalStudentLab',
+          'CertificationSkills',
+          'Vertical integration',
+          'Early clinical exposure',
+          'Visit to clinical department'
+        ];
+        try {
+          const results = await Promise.all(
+            categoriesToFetch.map(cat =>
+              getStudentSubjectLogbook(
+                rollno,
+                activePhase,
+                activeSubject.subject_Code,
+                cat,
+                finalCbmeyear,
+                finalBatchcd
+              )
+            )
+          );
+          raw = results.flat();
+        } catch (e) {
+          console.warn('[LogBookScreen] Error in parallel category fetch:', e);
+          raw = [];
+        }
+      } else {
+        raw = await getStudentSubjectLogbook(
+          rollno,
+          activePhase,
+          activeSubject.subject_Code,
+          activeCategory,
+          finalCbmeyear,
+          finalBatchcd
+        );
+      }
+
       if (!cancelled) {
         // Normalise ERP raw entries to match existing logbook entry shape
         const parseErpDate = (dateStr) => {
@@ -300,7 +332,7 @@ const ERPLogBookScreen = ({ route, navigation }) => {
           a3: act.A3 || '-',
           faculty: act.VerifiedBy ? act.VerifiedBy.trim() : 'Faculty Desk',
           date: parseErpDate(act.verified_dt || act.Acdt),
-          category: act.lbtype || lbtype,
+          category: act.lbtype || (activeCategory !== 'ALL' ? activeCategory : 'PracticalStudentLab'),
           department: act.Department || activeSubject.subject_name || '',
           comp_code: act.comp_code || act.compCode || '',
           actmstid: act.actmstid ? String(act.actmstid) : '',

@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  TextInput, ActivityIndicator, Dimensions, Image, Animated, Modal, Platform
+  TextInput, ActivityIndicator, Dimensions, Image, Animated, Modal, Platform, RefreshControl,
+  FlatList
 } from 'react-native';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -9,11 +10,23 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useUser } from '../../context/UserContext';
 import { useTheme } from '../../hooks/useTheme';
 import { getAllStudents, getPublicProfile } from '../../data/apiService';
+import { populateStudentAvatars } from '../../utils/studentAvatarCache';
 
 const { width } = Dimensions.get('window');
 
+// ─── In-memory cache (persists across mounts, resets on app restart) ─────────
+const STUDENT_CACHE_TTL = 10 * 60 * 1000; // 10 minutes
+const _studentCache = { data: null, timestamp: 0 };
+const ALL_PHASES = [1, 2, 3];
+
+
 const getStudentPhase = (s) => {
   if (s.phase) return parseInt(s.phase);
+  const batchYear = parseInt(s.batch_year || s.batchYear || 0);
+  if (batchYear >= 2025) return 1;
+  if (batchYear === 2024) return 2;
+  if (batchYear > 0 && batchYear <= 2023) return 3;
+
   const sem = parseInt(s.semester || s.current_year * 2 - 1 || 1);
   if (sem <= 2) return 1;
   if (sem <= 4) return 2;
@@ -63,14 +76,31 @@ const FacultyStudentsDirectoryScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [dropdownVisible, setDropdownVisible] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
-  const handleStudentClick = async (student) => {
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    _studentCache.data = null;
+    _studentCache.timestamp = 0;
     try {
-      // Trigger dynamic DB registration on the backend by hitting the public profile endpoint
-      await getPublicProfile(accessToken, student.id);
+      const data = await getAllStudents(accessToken);
+      _studentCache.data = data || [];
+      _studentCache.timestamp = Date.now();
+      populateStudentAvatars(_studentCache.data);
+      setStudents(_studentCache.data);
     } catch (e) {
-      console.warn('[FacultyStudentsDirectory] Registration error:', e);
+      console.warn('[FacultyStudentsDirectory] Error refreshing students:', e);
+    } finally {
+      setRefreshing(false);
     }
+  };
+
+  const handleStudentClick = (student) => {
+    // Fire-and-forget: trigger backend registration without blocking navigation
+    // (awaiting this was causing a re-fetch whose data dropped the student count by 1)
+    getPublicProfile(accessToken, student.id).catch(e =>
+      console.warn('[FacultyStudentsDirectory] Registration error:', e)
+    );
     // Navigate directly to ERPHub landing on Results tab
     navigation.navigate('ERPHub', {
       screen: 'ERPResultsTab',
@@ -90,24 +120,23 @@ const FacultyStudentsDirectoryScreen = ({ navigation }) => {
   );
 
   const batchCounts = React.useMemo(() => {
-    const counts = { ALL: 0 };
+    const counts = { ALL: 0, 1: 0, 2: 0, 3: 0 };
     students.forEach(s => {
       const isStudent = s.role?.toLowerCase() === 'student';
-      const isMedical = s.category === 'medical' || 
+      const isMedical = (!s.category && !s.branch && !s.course) ||
+                        s.category === 'medical' || 
                         (s.branch && s.branch.toUpperCase() === 'MBBS') || 
                         (s.course && s.course.toUpperCase().includes('MBBS')) ||
                         (s.course && s.course.replace(/\./g, '').toUpperCase().includes('MBBS'));
                         
       if (isStudent && isMedical) {
         const studentPhase = getStudentPhase(s);
-        if (facultyPhases.includes(studentPhase)) {
-          counts[studentPhase] = (counts[studentPhase] || 0) + 1;
-          counts.ALL += 1;
-        }
+        counts[studentPhase] = (counts[studentPhase] || 0) + 1;
+        counts.ALL += 1;
       }
     });
     return counts;
-  }, [students, facultyPhases]);
+  }, [students]);
 
   useEffect(() => {
     const fetchStudents = async () => {
@@ -115,9 +144,20 @@ const FacultyStudentsDirectoryScreen = ({ navigation }) => {
         setLoading(false);
         return;
       }
+      // Serve from cache if still fresh
+      const now = Date.now();
+      if (_studentCache.data && (now - _studentCache.timestamp) < STUDENT_CACHE_TTL) {
+        setStudents(_studentCache.data);
+        setLoading(false);
+        return;
+      }
       try {
         const data = await getAllStudents(accessToken);
-        setStudents(data || []);
+        _studentCache.data = data || [];
+        _studentCache.timestamp = Date.now();
+        // Populate cross-screen avatar lookup so logbook can show real photos
+        populateStudentAvatars(_studentCache.data);
+        setStudents(_studentCache.data);
       } catch (e) {
         console.warn('[FacultyStudentsDirectory] Error fetching students:', e);
       } finally {
@@ -132,7 +172,8 @@ const FacultyStudentsDirectoryScreen = ({ navigation }) => {
     const list = students.filter(s => {
       // Must be a student and belong to the medical/MBBS category
       const isStudent = s.role?.toLowerCase() === 'student';
-      const isMedical = s.category === 'medical' || 
+      const isMedical = (!s.category && !s.branch && !s.course) ||
+                        s.category === 'medical' || 
                         (s.branch && s.branch.toUpperCase() === 'MBBS') || 
                         (s.course && s.course.toUpperCase().includes('MBBS')) ||
                         (s.course && s.course.replace(/\./g, '').toUpperCase().includes('MBBS'));
@@ -142,11 +183,6 @@ const FacultyStudentsDirectoryScreen = ({ navigation }) => {
       }
 
       const studentPhase = getStudentPhase(s);
-      
-      // Must be a phase the faculty teaches
-      if (!facultyPhases.includes(studentPhase)) {
-        return false;
-      }
 
       // Filter by selected phase filter capsule
       if (selectedPhaseFilter !== 'ALL' && studentPhase !== selectedPhaseFilter) {
@@ -170,7 +206,7 @@ const FacultyStudentsDirectoryScreen = ({ navigation }) => {
       const nameB = (b.full_name || b.username || '').trim().toLowerCase();
       return nameA.localeCompare(nameB);
     });
-  }, [students, facultyPhases, selectedPhaseFilter, searchQuery]);
+  }, [students, selectedPhaseFilter, searchQuery]);
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -247,14 +283,29 @@ const FacultyStudentsDirectoryScreen = ({ navigation }) => {
           </Text>
         </View>
       ) : (
-        <ScrollView contentContainerStyle={styles.listScroll} showsVerticalScrollIndicator={false}>
-          {filteredStudents.map(student => {
+        <FlatList
+          data={filteredStudents}
+          keyExtractor={item => item.rollno || item.id}
+          contentContainerStyle={styles.listScroll}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              colors={['#EA580C']}
+              tintColor="#EA580C"
+            />
+          }
+          initialNumToRender={12}
+          maxToRenderPerBatch={10}
+          windowSize={5}
+          removeClippedSubviews={Platform.OS === 'android'}
+          renderItem={({ item: student }) => {
             const phase = getStudentPhase(student);
             const displayInitial = (student.full_name || student.username || 'S').charAt(0).toUpperCase();
 
             return (
               <TouchableOpacity
-                key={student.rollno || student.id}
                 style={styles.studentCard}
                 onPress={() => handleStudentClick(student)}
                 activeOpacity={0.8}
@@ -283,8 +334,8 @@ const FacultyStudentsDirectoryScreen = ({ navigation }) => {
                 </View>
               </TouchableOpacity>
             );
-          })}
-        </ScrollView>
+          }}
+        />
       )}
 
       {/* Dropdown Selection Modal */}
@@ -307,8 +358,7 @@ const FacultyStudentsDirectoryScreen = ({ navigation }) => {
               </TouchableOpacity>
             </View>
 
-            <ScrollView style={styles.modalOptionsList} showsVerticalScrollIndicator={false}>
-              {facultyPhases.length > 1 && (
+             <ScrollView style={styles.modalOptionsList} showsVerticalScrollIndicator={false}>
                 <TouchableOpacity
                   style={[
                     styles.optionItem,
@@ -334,11 +384,10 @@ const FacultyStudentsDirectoryScreen = ({ navigation }) => {
                     {batchCounts.ALL} students
                   </Text>
                 </TouchableOpacity>
-              )}
 
-              {facultyPhases.map(ph => {
-                // Phase 1 -> 2025 Batch
-                const year = 2026 - parseInt(ph);
+              {ALL_PHASES.map(ph => {
+                // Phase 1 -> 2025 Batch, Phase 2 -> 2024 Batch, Phase 3 -> 2023 Batch
+                const year = 2026 - ph;
                 const label = `${year} Batch`;
                 const count = batchCounts[ph] || 0;
                 const isSelected = selectedPhaseFilter === ph;

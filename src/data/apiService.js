@@ -1842,7 +1842,7 @@ export async function submitLogbookVerification(token, body) {
 }
 
 // ─── Phase → Subject Batch Year Map ──────────────────────────────────────────
-const PHASE_BATCH_YEAR = { '1': '2025', '2': '2024', '3': '2023' };
+const PHASE_BATCH_YEAR = { '1': '2024', '2': '2024', '3': '2023' };
 
 /**
  * Fetch subject list for a given UG phase directly from ERP (GetSubjectInLIst).

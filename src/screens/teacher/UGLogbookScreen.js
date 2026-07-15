@@ -2,12 +2,13 @@ import React, { useState, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   ActivityIndicator, Alert, TextInput, Modal, Platform,
-  FlatList,
+  FlatList, Image,
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useUser } from '../../context/UserContext';
+import { getStudentAvatar } from '../../utils/studentAvatarCache';
 import {
   getLogbookActivities,
   getLogbookStudents,
@@ -16,6 +17,12 @@ import {
 } from '../../data/apiService';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
+
+// ─── In-memory cache ────────────────────────────────────────────────────────
+const ACTIVITY_CACHE_TTL = 15 * 60 * 1000; // 15 minutes – activity list rarely changes
+const STUDENTS_CACHE_TTL =  5 * 60 * 1000; //  5 minutes – student list is date-specific
+const _activityCache = {};  // key: `${event}_${subCode}_${batchyear}`
+const _studentsCache = {};  // key: `${subCode}_${compcode}_${date}_${gcd}_${phase}_${event}`
 
 const PHASE_OPTIONS = [
   { label: 'Phase 1  (2025 Batch)', value: '1' },
@@ -300,6 +307,8 @@ const UGLogbookScreen = ({ navigation }) => {
   const [verifyForms, setVerifyForms] = useState({});
   const [submitting, setSubmitting] = useState(null);
   const [verifiedRolls, setVerifiedRolls] = useState(new Set());
+  const [selectedRolls, setSelectedRolls] = useState(new Set());
+  const [submittingBulk, setSubmittingBulk] = useState(false);
 
   // Tab
   const [activeTab, setActiveTab] = useState('pending');
@@ -317,8 +326,17 @@ const UGLogbookScreen = ({ navigation }) => {
     setSelectedActivity(null);
     try {
       const batchyear = selectedPhase.value === '3' ? '2023' : '2024';
-      const data = await getLogbookActivities(accessToken, selectedEvent.value, subCode, batchyear);
-      const list = Array.isArray(data) ? data : [];
+      const cacheKey = `${selectedEvent.value}_${subCode}_${batchyear}`;
+      const now = Date.now();
+      const cached = _activityCache[cacheKey];
+      let list;
+      if (cached && (now - cached.timestamp) < ACTIVITY_CACHE_TTL) {
+        list = cached.data;
+      } else {
+        const data = await getLogbookActivities(accessToken, selectedEvent.value, subCode, batchyear);
+        list = Array.isArray(data) ? data : [];
+        _activityCache[cacheKey] = { data: list, timestamp: now };
+      }
       setActivities(list);
       if (list.length > 0) setSelectedActivity(list[0]);
     } catch (e) {
@@ -334,9 +352,29 @@ const UGLogbookScreen = ({ navigation }) => {
   // ── Load Students ─────────────────────────────────────────────────────────
 
   const loadStudents = useCallback(async () => {
-    if (!selectedActivity) {
+    if (!selectedActivity) return;
+
+    let compcode = selectedActivity.comp_code || selectedActivity.CompCode || selectedActivity.compcode || selectedActivity.value || '';
+    if (compcode && compcode.includes('_')) {
+      compcode = compcode.split('_')[0];
+    }
+    const activityName = selectedActivity.ActivityName || selectedActivity.comp_name || selectedActivity.label || '';
+    const dateStr = formatDateISO(selectedDate);
+    const cacheKey = `${subCode}_${compcode}_${dateStr}_${selectedGroup.value}_${selectedPhase.value}_${selectedEvent.value}`;
+
+    // ─ Cache hit: restore state instantly without any loading flash ────────────────
+    const now = Date.now();
+    const cached = _studentsCache[cacheKey];
+    if (cached && (now - cached.timestamp) < STUDENTS_CACHE_TTL) {
+      setStudentList(cached.pending);
+      setVerifiedStudentList(cached.verified);
+      setVerifiedRolls(new Set());
+      setExpandedRoll(null);
+      setStudentsLoaded(true);
       return;
     }
+
+    // ─ Cache miss: fetch from ERP ──────────────────────────────────────────
     setStudentsLoading(true);
     setStudentsLoaded(false);
     setStudentList([]);
@@ -344,17 +382,11 @@ const UGLogbookScreen = ({ navigation }) => {
     setExpandedRoll(null);
     setVerifiedRolls(new Set());
     try {
-      let compcode = selectedActivity.comp_code || selectedActivity.CompCode || selectedActivity.compcode || selectedActivity.value || '';
-      if (compcode && compcode.includes('_')) {
-        compcode = compcode.split('_')[0];
-      }
-      const activityName = selectedActivity.ActivityName || selectedActivity.comp_name || selectedActivity.label || '';
-
       const [pendingData, verifiedData] = await Promise.all([
         getLogbookStudents(accessToken, {
           subCode,
           compcode,
-          verifiedDt: formatDateISO(selectedDate),
+          verifiedDt: dateStr,
           gcd: selectedGroup.value,
           phase: selectedPhase.value,
         }),
@@ -362,13 +394,13 @@ const UGLogbookScreen = ({ navigation }) => {
           subCode,
           compcode,
           activityName,
-          verifiedDt: formatDateISO(selectedDate),
+          verifiedDt: dateStr,
           phase: selectedPhase.value,
           lbtype: selectedEvent.value,
         })
       ]);
 
-      setStudentList(Array.isArray(pendingData) ? pendingData : []);
+      const pending = Array.isArray(pendingData) ? pendingData : [];
 
       // Map verified students to uniform shape
       const mappedVerified = (Array.isArray(verifiedData) ? verifiedData : []).map(item => {
@@ -387,6 +419,11 @@ const UGLogbookScreen = ({ navigation }) => {
           received: item.received,
         };
       });
+
+      // Store in cache
+      _studentsCache[cacheKey] = { pending, verified: mappedVerified, timestamp: Date.now() };
+
+      setStudentList(pending);
       setVerifiedStudentList(mappedVerified);
       setStudentsLoaded(true);
     } catch (e) {
@@ -421,13 +458,116 @@ const UGLogbookScreen = ({ navigation }) => {
   };
 
   const updateForm = (rollNo, key, value) => {
-    setVerifyForms(prev => ({
-      ...prev,
-      [rollNo]: { ...(prev[rollNo] || {}), [key]: value },
-    }));
+    setVerifyForms(prev => {
+      const current = prev[rollNo] || {};
+      const updated = { ...current, [key]: value };
+      if (key === 'a1' && value === 'Absent') {
+        updated.a2 = 'Absent';
+        updated.a3 = 'Absent';
+      }
+      return {
+        ...prev,
+        [rollNo]: updated,
+      };
+    });
   };
 
-  // ── Submit ────────────────────────────────────────────────────────────────
+  // Clear multi-select when list of students changes
+  useEffect(() => {
+    setSelectedRolls(new Set());
+  }, [studentList]);
+
+  const toggleSelectStudent = (rollNo) => {
+    setSelectedRolls(prev => {
+      const next = new Set(prev);
+      if (next.has(rollNo)) {
+        next.delete(rollNo);
+      } else {
+        next.add(rollNo);
+      }
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    setSelectedRolls(prev => {
+      const pending = pendingStudents.map(s => s.Roll_No);
+      const allSelected = pending.every(r => prev.has(r));
+      if (allSelected) {
+        const next = new Set(prev);
+        pending.forEach(r => next.delete(r));
+        return next;
+      } else {
+        return new Set([...prev, ...pending]);
+      }
+    });
+  };
+
+  const isAllSelected = pendingStudents.length > 0 && pendingStudents.every(s => selectedRolls.has(s.Roll_No));
+
+  const handleBulkSubmit = async () => {
+    if (selectedRolls.size === 0) {
+      Alert.alert('No Selection', 'Please select at least one student to verify.');
+      return;
+    }
+
+    Alert.alert(
+      'Verify Selected',
+      `Are you sure you want to sign off logbooks for ${selectedRolls.size} selected students with default options (Attempt first/only, Meets Expectations, Completed)?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Verify',
+          onPress: async () => {
+            setSubmittingBulk(true);
+            const rollArray = Array.from(selectedRolls);
+            let compcode = selectedActivity?.comp_code || selectedActivity?.CompCode || selectedActivity?.compcode || selectedActivity?.value || '';
+            if (compcode && compcode.includes('_')) {
+              compcode = compcode.split('_')[0];
+            }
+            const activityName = selectedActivity?.ActivityName || selectedActivity?.comp_name || selectedActivity?.label || '';
+            
+            let successCount = 0;
+            let failCount = 0;
+            
+            const promises = rollArray.map(async (rollNo) => {
+              const form = verifyForms[rollNo] || {};
+              try {
+                await submitLogbookVerification(accessToken, {
+                  roll_no: rollNo,
+                  sub_code: subCode,
+                  comp_code: compcode,
+                  activity_name: activityName,
+                  a1: form.a1 || 'F',
+                  a2: form.a2 || 'M',
+                  a3: form.a3 || 'C',
+                  remarks: form.remarks || '',
+                  verified_dt: formatDateISO(selectedDate),
+                  phase: selectedPhase.value,
+                  lbtype: selectedEvent.value,
+                });
+                successCount++;
+                setVerifiedRolls(prev => new Set([...prev, rollNo]));
+              } catch (e) {
+                console.warn(`[UGLogbook] bulk verify error for ${rollNo}:`, e);
+                failCount++;
+              }
+            });
+            
+            await Promise.all(promises);
+            setSubmittingBulk(false);
+            setSelectedRolls(new Set());
+            
+            if (failCount === 0) {
+              Alert.alert('Success', `Successfully verified logbooks for all ${successCount} students.`);
+            } else {
+              Alert.alert('Bulk Verification Result', `Successfully verified: ${successCount}\nFailed: ${failCount}`);
+            }
+          }
+        }
+      ]
+    );
+  };
 
   const handleSubmit = async (student) => {
     const rollNo = student.Roll_No;
@@ -467,7 +607,13 @@ const UGLogbookScreen = ({ navigation }) => {
 
   // ── Derived ───────────────────────────────────────────────────────────────
 
-  const pendingStudents = studentList.filter(s => !verifiedRolls.has(s.Roll_No));
+  const pendingStudents = studentList
+    .filter(s => !verifiedRolls.has(s.Roll_No))
+    .sort((a, b) => {
+      const nameA = (a.Student_Name || '').trim().toLowerCase();
+      const nameB = (b.Student_Name || '').trim().toLowerCase();
+      return nameA.localeCompare(nameB);
+    });
 
   const justVerifiedStudents = studentList
     .filter(s => verifiedRolls.has(s.Roll_No))
@@ -485,7 +631,13 @@ const UGLogbookScreen = ({ navigation }) => {
       };
     });
 
-  const verifiedStudents = [...justVerifiedStudents, ...verifiedStudentList];
+  const verifiedStudents = [...justVerifiedStudents, ...verifiedStudentList]
+    .sort((a, b) => {
+      const nameA = (a.Student_Name || '').trim().toLowerCase();
+      const nameB = (b.Student_Name || '').trim().toLowerCase();
+      return nameA.localeCompare(nameB);
+    });
+
   const displayedList = activeTab === 'pending' ? pendingStudents : verifiedStudents;
 
   const activityLabel = selectedActivity
@@ -653,7 +805,55 @@ const UGLogbookScreen = ({ navigation }) => {
           </Text>
         </View>
       ) : (
-        <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        <View style={{ flex: 1 }}>
+          {activeTab === 'pending' && pendingStudents.length > 0 && (
+            <View style={styles.actionBar}>
+              <TouchableOpacity 
+                style={styles.checkboxRow} 
+                onPress={toggleSelectAll}
+                activeOpacity={0.8}
+              >
+                <View style={[
+                  styles.checkboxField,
+                  isAllSelected && { backgroundColor: '#EA580C', borderColor: '#EA580C' }
+                ]}>
+                  {isAllSelected && <Ionicons name="checkmark" size={14} color="#FFFFFF" />}
+                </View>
+                <Text style={styles.checkboxLabel}>Select All</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={[
+                  styles.bulkVerifyBtn,
+                  selectedRolls.size === 0 && { backgroundColor: '#E5E7EB', borderColor: '#E5E7EB' }
+                ]}
+                onPress={handleBulkSubmit}
+                disabled={selectedRolls.size === 0 || submittingBulk}
+                activeOpacity={0.8}
+              >
+                {submittingBulk ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <>
+                    <Ionicons 
+                      name="shield-checkmark" 
+                      size={16} 
+                      color={selectedRolls.size === 0 ? '#9CA3AF' : '#FFFFFF'} 
+                      style={{ marginRight: 6 }} 
+                    />
+                    <Text style={[
+                      styles.bulkVerifyBtnText,
+                      selectedRolls.size === 0 && { color: '#9CA3AF' }
+                    ]}>
+                      Verify Selected ({selectedRolls.size})
+                    </Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+          )}
+
+          <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
           {displayedList.map(student => {
             const rollNo = student.Roll_No;
             const isExpanded = expandedRoll === rollNo;
@@ -668,44 +868,88 @@ const UGLogbookScreen = ({ navigation }) => {
 
             return (
               <View key={rollNo} style={styles.studentCard}>
-                {/* Row */}
-                <TouchableOpacity
-                  style={styles.studentRow}
-                  onPress={() => toggleExpand(rollNo)}
-                  activeOpacity={0.85}
-                >
-                  <View style={[styles.checkbox, isExpanded && styles.checkboxChecked, isVerified && styles.checkboxVerified]}>
-                    {(isExpanded || isVerified) && (
-                      <Ionicons name={isVerified ? 'checkmark' : 'pencil'} size={12} color="#FFFFFF" />
-                    )}
-                  </View>
-                  <View style={styles.studentInfo}>
-                    <Text style={styles.studentName}>{student.Student_Name}</Text>
-                    <Text style={styles.studentRoll}>{rollNo}  ·  {student.department}</Text>
-                    {isVerified && (
-                      <View style={{ marginTop: 4 }}>
-                        {student.verifiedBy ? (
-                          <Text style={styles.cardVerifyByText} numberOfLines={1}>
-                            Verified by: {student.verifiedBy}
-                          </Text>
-                        ) : null}
-                        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 3 }}>
-                          <View style={[
-                            styles.studentStatusDot,
-                            { backgroundColor: student.received === 1 ? '#10B981' : '#F59E0B' }
-                          ]} />
-                          <Text style={styles.studentStatusText}>
-                            Student Verification: {student.received === 1 ? 'Completed' : 'Pending'}
-                          </Text>
-                        </View>
+                {/* Row Wrapper */}
+                <View style={styles.studentRow}>
+                  {/* Checkbox for selection (only in pending tab) */}
+                  {activeTab === 'pending' && !isVerified && (
+                    <TouchableOpacity
+                      style={{ paddingLeft: 14, paddingRight: 6, paddingVertical: 12, justifyContent: 'center', alignItems: 'center' }}
+                      onPress={() => toggleSelectStudent(rollNo)}
+                      activeOpacity={0.7}
+                    >
+                      <View style={[
+                        styles.checkboxField,
+                        selectedRolls.has(rollNo) && { backgroundColor: '#EA580C', borderColor: '#EA580C' }
+                      ]}>
+                        {selectedRolls.has(rollNo) && <Ionicons name="checkmark" size={14} color="#FFFFFF" />}
                       </View>
-                    )}
-                  </View>
-                  {isVerified
-                    ? <View style={styles.verifiedBadge}><Text style={styles.verifiedBadgeText}>Verified</Text></View>
-                    : <Ionicons name={isExpanded ? 'chevron-up' : 'chevron-down'} size={16} color="#9CA3AF" />
-                  }
-                </TouchableOpacity>
+                    </TouchableOpacity>
+                  )}
+
+                  {/* Pressable Row Content */}
+                  <TouchableOpacity
+                    style={[
+                      styles.studentRowContent,
+                      (activeTab !== 'pending' || isVerified) && { paddingLeft: 14 }
+                    ]}
+                    onPress={() => toggleExpand(rollNo)}
+                    activeOpacity={0.85}
+                  >
+                    <View style={styles.avatarWrapper}>
+                      <View style={styles.avatarCircle}>
+                        {(() => {
+                          const photoUrl = getStudentAvatar(rollNo);
+                          const initial = (student.Student_Name || 'S').charAt(0).toUpperCase();
+                          return photoUrl ? (
+                            <Image source={{ uri: photoUrl }} style={styles.avatarImage} />
+                          ) : (
+                            <LinearGradient colors={['#EA580C', '#9A3412']} style={styles.avatarGradient}>
+                              <Text style={styles.avatarInitial}>{initial}</Text>
+                            </LinearGradient>
+                          );
+                        })()}
+                      </View>
+                      {isVerified && (
+                        <View style={styles.avatarVerifiedBadge}>
+                          <Ionicons name="checkmark" size={9} color="#FFFFFF" />
+                        </View>
+                      )}
+                      {isExpanded && !isVerified && (
+                        <View style={styles.avatarEditBadge}>
+                          <Ionicons name="pencil" size={9} color="#FFFFFF" />
+                        </View>
+                      )}
+                    </View>
+
+                    <View style={styles.studentInfo}>
+                      <Text style={styles.studentName}>{student.Student_Name}</Text>
+                      <Text style={styles.studentRoll}>{rollNo}  ·  {student.department}</Text>
+                      {isVerified && (
+                        <View style={{ marginTop: 4 }}>
+                          {student.verifiedBy ? (
+                            <Text style={styles.cardVerifyByText} numberOfLines={1}>
+                              Verified by: {student.verifiedBy}
+                            </Text>
+                          ) : null}
+                          <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 3 }}>
+                            <View style={[
+                              styles.studentStatusDot,
+                              { backgroundColor: student.received === 1 ? '#10B981' : '#F59E0B' }
+                            ]} />
+                            <Text style={styles.studentStatusText}>
+                              Student Verification: {student.received === 1 ? 'Completed' : 'Pending'}
+                            </Text>
+                          </View>
+                        </View>
+                      )}
+                    </View>
+
+                    {isVerified
+                      ? <View style={styles.verifiedBadge}><Text style={styles.verifiedBadgeText}>Verified</Text></View>
+                      : <Ionicons name={isExpanded ? 'chevron-up' : 'chevron-down'} size={16} color="#9CA3AF" />
+                    }
+                  </TouchableOpacity>
+                </View>
 
                 {/* Accordion */}
                 {isExpanded && (
@@ -791,6 +1035,7 @@ const UGLogbookScreen = ({ navigation }) => {
           })}
           <View style={{ height: 40 }} />
         </ScrollView>
+      </View>
       )}
 
       {/* Filter Modals */}
@@ -935,13 +1180,80 @@ const styles = StyleSheet.create({
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 6, elevation: 2,
     overflow: 'hidden',
   },
-  studentRow: { flexDirection: 'row', alignItems: 'center', padding: 14, gap: 12 },
-  checkbox: {
-    width: 22, height: 22, borderRadius: 6, borderWidth: 2, borderColor: '#D1D5DB',
-    alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFFFFF',
+  studentRow: { flexDirection: 'row', alignItems: 'center' },
+  studentRowContent: { flex: 1, flexDirection: 'row', alignItems: 'center', paddingVertical: 14, paddingRight: 14, paddingLeft: 4, gap: 12 },
+  checkboxField: {
+    width: 20,
+    height: 20,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: '#D1D5DB',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
   },
-  checkboxChecked: { backgroundColor: '#EA580C', borderColor: '#EA580C' },
-  checkboxVerified: { backgroundColor: '#10B981', borderColor: '#10B981' },
+  actionBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  checkboxRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  checkboxLabel: {
+    fontSize: 14,
+    color: '#4B5563',
+    fontWeight: '600',
+    marginLeft: 8,
+  },
+  bulkVerifyBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EA580C',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  bulkVerifyBtnText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  avatarWrapper: {
+    width: 44, height: 44, position: 'relative',
+    // No overflow:hidden here — lets the corner badges render outside the circle
+  },
+  avatarCircle: {
+    width: 44, height: 44, borderRadius: 22, overflow: 'hidden',
+  },
+  avatarImage: {
+    width: '100%', height: '100%',
+  },
+  avatarGradient: {
+    width: '100%', height: '100%',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  avatarInitial: {
+    color: '#FFFFFF', fontSize: 18, fontWeight: '800',
+  },
+  avatarVerifiedBadge: {
+    position: 'absolute', bottom: 0, right: 0,
+    width: 17, height: 17, borderRadius: 9,
+    backgroundColor: '#10B981', borderWidth: 2, borderColor: '#FFFFFF',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  avatarEditBadge: {
+    position: 'absolute', bottom: 0, right: 0,
+    width: 17, height: 17, borderRadius: 9,
+    backgroundColor: '#EA580C', borderWidth: 2, borderColor: '#FFFFFF',
+    alignItems: 'center', justifyContent: 'center',
+  },
   studentInfo: { flex: 1 },
   studentName: { fontSize: 14, fontWeight: '800', color: '#111827', marginBottom: 2 },
   studentRoll: { fontSize: 11, color: '#6B7280', fontWeight: '500' },
