@@ -461,9 +461,14 @@ const UGLogbookScreen = ({ navigation }) => {
     setVerifyForms(prev => {
       const current = prev[rollNo] || {};
       const updated = { ...current, [key]: value };
-      if (key === 'a1' && value === 'Absent') {
-        updated.a2 = 'Absent';
-        updated.a3 = 'Absent';
+      if (key === 'a1') {
+        if (value === 'Absent') {
+          updated.a2 = 'Absent';
+          updated.a3 = 'Absent';
+        } else if (current.a1 === 'Absent') {
+          updated.a2 = 'M';
+          updated.a3 = 'C';
+        }
       }
       return {
         ...prev,
