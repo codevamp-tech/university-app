@@ -872,45 +872,33 @@ const UGLogbookScreen = ({ navigation }) => {
               <View key={rollNo} style={styles.studentCard}>
                 {/* Row Wrapper */}
                 <View style={styles.studentRow}>
-                  {/* Checkbox for selection (only in pending tab) */}
-                  {activeTab === 'pending' && !isVerified && (
-                    <TouchableOpacity
-                      style={{ paddingLeft: 14, paddingRight: 6, paddingVertical: 12, justifyContent: 'center', alignItems: 'center' }}
-                      onPress={() => toggleSelectStudent(rollNo)}
-                      activeOpacity={0.7}
-                    >
-                      <View style={[
-                        styles.checkboxField,
-                        selectedRolls.has(rollNo) && { backgroundColor: '#EA580C', borderColor: '#EA580C' }
-                      ]}>
-                        {selectedRolls.has(rollNo) && <Ionicons name="checkmark" size={14} color="#FFFFFF" />}
-                      </View>
-                    </TouchableOpacity>
-                  )}
-
-                  {/* Pressable Row Content */}
+                  {/* Pressable Avatar for selection (sibling on the left) */}
                   <TouchableOpacity
-                    style={[
-                      styles.studentRowContent,
-                      (activeTab !== 'pending' || isVerified) && { paddingLeft: 14 }
-                    ]}
-                    onPress={() => toggleExpand(rollNo)}
-                    activeOpacity={0.85}
+                    onPress={() => toggleSelectStudent(rollNo)}
+                    disabled={isVerified}
+                    activeOpacity={0.7}
+                    style={styles.avatarTouchArea}
                   >
                     <View style={styles.avatarWrapper}>
-                      <View style={styles.avatarCircle}>
-                        {(() => {
-                          const photoUrl = getStudentAvatar(rollNo);
-                          const initial = (student.Student_Name || 'S').charAt(0).toUpperCase();
-                          return photoUrl ? (
-                            <Image source={{ uri: photoUrl }} style={styles.avatarImage} />
-                          ) : (
-                            <LinearGradient colors={['#EA580C', '#9A3412']} style={styles.avatarGradient}>
-                              <Text style={styles.avatarInitial}>{initial}</Text>
-                            </LinearGradient>
-                          );
-                        })()}
-                      </View>
+                      {activeTab === 'pending' && !isVerified && selectedRolls.has(rollNo) ? (
+                        <View style={styles.selectedAvatarCircle}>
+                          <Ionicons name="checkmark" size={20} color="#FFFFFF" />
+                        </View>
+                      ) : (
+                        <View style={styles.avatarCircle}>
+                          {(() => {
+                            const photoUrl = getStudentAvatar(rollNo);
+                            const initial = (student.Student_Name || 'S').charAt(0).toUpperCase();
+                            return photoUrl ? (
+                              <Image source={{ uri: photoUrl }} style={styles.avatarImage} />
+                            ) : (
+                              <LinearGradient colors={['#EA580C', '#9A3412']} style={styles.avatarGradient}>
+                                <Text style={styles.avatarInitial}>{initial}</Text>
+                              </LinearGradient>
+                            );
+                          })()}
+                        </View>
+                      )}
                       {isVerified && (
                         <View style={styles.avatarVerifiedBadge}>
                           <Ionicons name="checkmark" size={9} color="#FFFFFF" />
@@ -922,7 +910,14 @@ const UGLogbookScreen = ({ navigation }) => {
                         </View>
                       )}
                     </View>
+                  </TouchableOpacity>
 
+                  {/* Pressable Card Body for expansion (sibling on the right) */}
+                  <TouchableOpacity
+                    style={styles.studentRowRight}
+                    onPress={() => toggleExpand(rollNo)}
+                    activeOpacity={0.85}
+                  >
                     <View style={styles.studentInfo}>
                       <Text style={styles.studentName}>{student.Student_Name}</Text>
                       <Text style={styles.studentRoll}>{rollNo}  ·  {student.department}</Text>
@@ -1182,8 +1177,24 @@ const styles = StyleSheet.create({
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 6, elevation: 2,
     overflow: 'hidden',
   },
-  studentRow: { flexDirection: 'row', alignItems: 'center' },
-  studentRowContent: { flex: 1, flexDirection: 'row', alignItems: 'center', paddingVertical: 14, paddingRight: 14, paddingLeft: 4, gap: 12 },
+  studentRow: { flexDirection: 'row', alignItems: 'center', paddingLeft: 14 },
+  avatarTouchArea: { paddingVertical: 14, paddingRight: 4 },
+  studentRowRight: { flex: 1, flexDirection: 'row', alignItems: 'center', paddingVertical: 14, paddingRight: 14, paddingLeft: 8, gap: 12 },
+  selectedAvatarCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#EA580C',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+    elevation: 2,
+    shadowColor: '#EA580C',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+  },
   checkboxField: {
     width: 20,
     height: 20,
