@@ -880,25 +880,28 @@ const UGLogbookScreen = ({ navigation }) => {
                     style={styles.avatarTouchArea}
                   >
                     <View style={styles.avatarWrapper}>
-                      {activeTab === 'pending' && !isVerified && selectedRolls.has(rollNo) ? (
-                        <View style={styles.selectedAvatarCircle}>
-                          <Ionicons name="checkmark" size={20} color="#FFFFFF" />
-                        </View>
-                      ) : (
-                        <View style={styles.avatarCircle}>
-                          {(() => {
-                            const photoUrl = getStudentAvatar(rollNo);
-                            const initial = (student.Student_Name || 'S').charAt(0).toUpperCase();
-                            return photoUrl ? (
-                              <Image source={{ uri: photoUrl }} style={styles.avatarImage} />
-                            ) : (
-                              <LinearGradient colors={['#EA580C', '#9A3412']} style={styles.avatarGradient}>
-                                <Text style={styles.avatarInitial}>{initial}</Text>
-                              </LinearGradient>
-                            );
-                          })()}
-                        </View>
-                      )}
+                      <View style={styles.avatarCircle}>
+                        {(() => {
+                          const photoUrl = getStudentAvatar(rollNo);
+                          const initial = (student.Student_Name || 'S').charAt(0).toUpperCase();
+                          return photoUrl ? (
+                            <Image source={{ uri: photoUrl }} style={styles.avatarImage} />
+                          ) : (
+                            <LinearGradient colors={['#EA580C', '#9A3412']} style={styles.avatarGradient}>
+                              <Text style={styles.avatarInitial}>{initial}</Text>
+                            </LinearGradient>
+                          );
+                        })()}
+
+                        {/* Selected Checkmark Translucent Overlay */}
+                        {activeTab === 'pending' && !isVerified && selectedRolls.has(rollNo) && (
+                          <View style={styles.avatarSelectedOverlay}>
+                            <View style={styles.selectedCheckCircle}>
+                              <Ionicons name="checkmark" size={14} color="#FFFFFF" />
+                            </View>
+                          </View>
+                        )}
+                      </View>
                       {isVerified && (
                         <View style={styles.avatarVerifiedBadge}>
                           <Ionicons name="checkmark" size={9} color="#FFFFFF" />
@@ -1180,20 +1183,26 @@ const styles = StyleSheet.create({
   studentRow: { flexDirection: 'row', alignItems: 'center', paddingLeft: 14 },
   avatarTouchArea: { paddingVertical: 14, paddingRight: 4 },
   studentRowRight: { flex: 1, flexDirection: 'row', alignItems: 'center', paddingVertical: 14, paddingRight: 14, paddingLeft: 8, gap: 12 },
-  selectedAvatarCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+  avatarSelectedOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(234, 88, 12, 0.45)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  selectedCheckCircle: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     backgroundColor: '#EA580C',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 2,
+    borderWidth: 1.5,
     borderColor: '#FFFFFF',
     elevation: 2,
     shadowColor: '#EA580C',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 3,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
   },
   checkboxField: {
     width: 20,
