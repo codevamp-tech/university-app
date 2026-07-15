@@ -14,23 +14,25 @@ const { width } = Dimensions.get('window');
 
 // ─── Category Configuration ───────────────────────────────────────────────────
 const CATEGORY_MAP = {
-  'SelfDirectedLearning': { label: 'Self-Directed Learning', icon: 'menu-book', color: '#3B82F6', iconType: 'material' },
+  'SelfDirectedLearning': { label: 'Self Directed Learning', icon: 'menu-book', color: '#3B82F6', iconType: 'material' },
+  'RefSelfDirectedLearning': { label: 'Reflection on Self Directed Learning', icon: 'menu-book', color: '#3B82F6', iconType: 'material' },
   'PracticalStudentLab': { label: 'Practical Student Lab', icon: 'science', color: '#10B981', iconType: 'material' },
   'CertificationSkills': { label: 'Certification Skills', icon: 'verified-user', color: '#F59E0B', iconType: 'material' },
-  'Vertical integration': { label: 'Vertical Integration', icon: 'layers', color: '#8B5CF6', iconType: 'material' },
-  'Early clinical exposure': { label: 'Early Clinical Exposure', icon: 'baby-changing-station', color: '#EC4899', iconType: 'materialcommunity' },
-  'Visit to clinical department': { label: 'Visit to Clinical Dept', icon: 'domain', color: '#06B6D4', iconType: 'material' },
+  'VerticalIntegration': { label: 'Vertical Integration', icon: 'layers', color: '#8B5CF6', iconType: 'material' },
+  'EarlyClinicalExposure': { label: 'Early Clinical Exposure', icon: 'baby-changing-station', color: '#EC4899', iconType: 'materialcommunity' },
+  'ClinicalVisitDepartment': { label: 'Visit to Clinical Dept', icon: 'domain', color: '#06B6D4', iconType: 'material' },
   'default': { label: 'General Logbook', icon: 'assignment', color: '#6B7280', iconType: 'material' }
 };
 
 const CATEGORY_PILLS = [
   { key: 'ALL', label: 'All Categories' },
-  { key: 'SelfDirectedLearning', label: 'Self-Directed Learning' },
+  { key: 'SelfDirectedLearning', label: 'Self Directed Learning' },
+  { key: 'RefSelfDirectedLearning', label: 'Reflection on Self-Directed Learning' },
   { key: 'PracticalStudentLab', label: 'Practical Lab' },
   { key: 'CertificationSkills', label: 'Certification' },
-  { key: 'Vertical integration', label: 'Vertical Integration' },
-  { key: 'Early clinical exposure', label: 'Early Clinical' },
-  { key: 'Visit to clinical department', label: 'Clinical Visits' }
+  { key: 'VerticalIntegration', label: 'Vertical Integration' },
+  { key: 'EarlyClinicalExposure', label: 'Early Clinical' },
+  { key: 'ClinicalVisitDepartment', label: 'Clinical Visits' }
 ];
 
 
@@ -261,7 +263,7 @@ const ERPLogBookScreen = ({ route, navigation }) => {
       const rollno = user?.rollno || user?.id || user?.username;
       if (!rollno) return;
       setSubjectEntriesLoading(true);
-      
+
       // Resolve student entry batch details to determine batchcd
       const userBatchYear = parseInt(user?.batch_year || user?.year || '2024', 10);
       const BATCH_YEAR_TO_CD = {
@@ -269,7 +271,7 @@ const ERPLogBookScreen = ({ route, navigation }) => {
         2021: "62", 2020: "64", 2019: "65"
       };
       const finalBatchcd = BATCH_YEAR_TO_CD[userBatchYear] || '63';
-      
+
       // cbmeyear corresponds to curriculum year: Phase 1 & 2 use 2024, Phase 3 uses 2023
       const finalCbmeyear = activePhase === '3' ? '2023' : '2024';
 
@@ -394,9 +396,9 @@ const ERPLogBookScreen = ({ route, navigation }) => {
 
       const res = await response.json();
       const isSuccess = res && (
-        res.success || 
-        res.message === 'Success' || 
-        res.Mess === 'Update' || 
+        res.success ||
+        res.message === 'Success' ||
+        res.Mess === 'Update' ||
         res.message === 'Update'
       );
 

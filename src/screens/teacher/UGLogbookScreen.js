@@ -20,7 +20,7 @@ import {
 
 // ─── In-memory cache ────────────────────────────────────────────────────────
 const ACTIVITY_CACHE_TTL = 15 * 60 * 1000; // 15 minutes – activity list rarely changes
-const STUDENTS_CACHE_TTL =  5 * 60 * 1000; //  5 minutes – student list is date-specific
+const STUDENTS_CACHE_TTL = 5 * 60 * 1000; //  5 minutes – student list is date-specific
 const _activityCache = {};  // key: `${event}_${subCode}_${batchyear}`
 const _studentsCache = {};  // key: `${subCode}_${compcode}_${date}_${gcd}_${phase}_${event}`
 
@@ -36,6 +36,7 @@ const EVENT_OPTIONS = [
   { value: 'VerticalIntegration', label: 'Vertical Integration' },
   { value: 'EarlyClinicalExposure', label: 'Early Clinical Exposure' },
   { value: 'SelfDirectedLearning', label: 'Self Directed Learning' },
+  { value: 'RefSelfDirectedLearning', label: 'Reflection on Self Directed Learning' },
   { value: 'Seminar', label: 'Seminar' },
   { value: 'ClinicalVisitDepartment', label: 'Visit to Clinical Department' },
 ];
@@ -543,7 +544,7 @@ const UGLogbookScreen = ({ navigation }) => {
       });
       setVerifiedRolls(prev => new Set([...prev, rollNo]));
       setExpandedRoll(null);
-      
+
       // Invalidate cache so that re-opening shows fresh count from ERP
       const dateStr = formatDateISO(selectedDate);
       const cacheKey = `${subCode}_${compcode}_${dateStr}_${selectedGroup.value}_${selectedPhase.value}_${selectedEvent.value}`;
@@ -637,10 +638,10 @@ const UGLogbookScreen = ({ navigation }) => {
               compcode = compcode.split('_')[0];
             }
             const activityName = selectedActivity?.ActivityName || selectedActivity?.comp_name || selectedActivity?.label || '';
-            
+
             let successCount = 0;
             let failCount = 0;
-            
+
             const promises = rollArray.map(async (rollNo) => {
               const form = verifyForms[rollNo] || {};
               try {
@@ -664,7 +665,7 @@ const UGLogbookScreen = ({ navigation }) => {
                 failCount++;
               }
             });
-            
+
             await Promise.all(promises);
             setSubmittingBulk(false);
             setSelectedRolls(new Set());
@@ -673,7 +674,7 @@ const UGLogbookScreen = ({ navigation }) => {
             const dateStr = formatDateISO(selectedDate);
             const cacheKey = `${subCode}_${compcode}_${dateStr}_${selectedGroup.value}_${selectedPhase.value}_${selectedEvent.value}`;
             delete _studentsCache[cacheKey];
-            
+
             if (failCount === 0) {
               showToast(`Successfully verified logbooks for all ${successCount} students.`);
             } else {
@@ -731,11 +732,11 @@ const UGLogbookScreen = ({ navigation }) => {
           styles.toastContainer,
           toast.type === 'error' && { backgroundColor: '#EF4444' }
         ]}>
-          <Ionicons 
-            name={toast.type === 'success' ? "checkmark-circle" : "alert-circle"} 
-            size={18} 
-            color="#FFFFFF" 
-            style={{ marginRight: 8 }} 
+          <Ionicons
+            name={toast.type === 'success' ? "checkmark-circle" : "alert-circle"}
+            size={18}
+            color="#FFFFFF"
+            style={{ marginRight: 8 }}
           />
           <Text style={styles.toastText}>{toast.message}</Text>
         </View>
@@ -877,8 +878,8 @@ const UGLogbookScreen = ({ navigation }) => {
         <View style={{ flex: 1 }}>
           {activeTab === 'pending' && pendingStudents.length > 0 && (
             <View style={styles.actionBar}>
-              <TouchableOpacity 
-                style={styles.checkboxRow} 
+              <TouchableOpacity
+                style={styles.checkboxRow}
                 onPress={toggleSelectAll}
                 activeOpacity={0.8}
               >
@@ -890,7 +891,7 @@ const UGLogbookScreen = ({ navigation }) => {
                 </View>
                 <Text style={styles.checkboxLabel}>Select All</Text>
               </TouchableOpacity>
-              
+
               <TouchableOpacity
                 style={[
                   styles.bulkVerifyBtn,
@@ -904,11 +905,11 @@ const UGLogbookScreen = ({ navigation }) => {
                   <ActivityIndicator size="small" color="#FFFFFF" />
                 ) : (
                   <>
-                    <Ionicons 
-                      name="shield-checkmark" 
-                      size={16} 
-                      color={selectedRolls.size === 0 ? '#9CA3AF' : '#FFFFFF'} 
-                      style={{ marginRight: 6 }} 
+                    <Ionicons
+                      name="shield-checkmark"
+                      size={16}
+                      color={selectedRolls.size === 0 ? '#9CA3AF' : '#FFFFFF'}
+                      style={{ marginRight: 6 }}
                     />
                     <Text style={[
                       styles.bulkVerifyBtnText,
@@ -923,186 +924,186 @@ const UGLogbookScreen = ({ navigation }) => {
           )}
 
           <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-          {displayedList.map(student => {
-            const rollNo = student.Roll_No;
-            const isExpanded = expandedRoll === rollNo;
-            const isVerified = student.isAlreadyVerified || verifiedRolls.has(rollNo);
-            const form = verifyForms[rollNo] || {
-              a1: student.A1 || 'F',
-              a2: student.A2 || 'M',
-              a3: student.A3 || 'C',
-              remarks: student.remarks || ''
-            };
-            const isSub = submitting === rollNo;
+            {displayedList.map(student => {
+              const rollNo = student.Roll_No;
+              const isExpanded = expandedRoll === rollNo;
+              const isVerified = student.isAlreadyVerified || verifiedRolls.has(rollNo);
+              const form = verifyForms[rollNo] || {
+                a1: student.A1 || 'F',
+                a2: student.A2 || 'M',
+                a3: student.A3 || 'C',
+                remarks: student.remarks || ''
+              };
+              const isSub = submitting === rollNo;
 
-            return (
-              <View key={rollNo} style={styles.studentCard}>
-                {/* Row Wrapper */}
-                <View style={styles.studentRow}>
-                  {/* Pressable Avatar for selection (sibling on the left) */}
-                  <TouchableOpacity
-                    onPress={() => toggleSelectStudent(rollNo)}
-                    disabled={isVerified}
-                    activeOpacity={0.7}
-                    style={styles.avatarTouchArea}
-                  >
-                    <View style={styles.avatarWrapper}>
-                      <View style={styles.avatarCircle}>
-                        {(() => {
-                          const photoUrl = getStudentAvatar(rollNo);
-                          const initial = (student.Student_Name || 'S').charAt(0).toUpperCase();
-                          return photoUrl ? (
-                            <Image source={{ uri: photoUrl }} style={styles.avatarImage} />
-                          ) : (
-                            <LinearGradient colors={['#EA580C', '#9A3412']} style={styles.avatarGradient}>
-                              <Text style={styles.avatarInitial}>{initial}</Text>
-                            </LinearGradient>
-                          );
-                        })()}
+              return (
+                <View key={rollNo} style={styles.studentCard}>
+                  {/* Row Wrapper */}
+                  <View style={styles.studentRow}>
+                    {/* Pressable Avatar for selection (sibling on the left) */}
+                    <TouchableOpacity
+                      onPress={() => toggleSelectStudent(rollNo)}
+                      disabled={isVerified}
+                      activeOpacity={0.7}
+                      style={styles.avatarTouchArea}
+                    >
+                      <View style={styles.avatarWrapper}>
+                        <View style={styles.avatarCircle}>
+                          {(() => {
+                            const photoUrl = getStudentAvatar(rollNo);
+                            const initial = (student.Student_Name || 'S').charAt(0).toUpperCase();
+                            return photoUrl ? (
+                              <Image source={{ uri: photoUrl }} style={styles.avatarImage} />
+                            ) : (
+                              <LinearGradient colors={['#EA580C', '#9A3412']} style={styles.avatarGradient}>
+                                <Text style={styles.avatarInitial}>{initial}</Text>
+                              </LinearGradient>
+                            );
+                          })()}
 
-                        {/* Selected Checkmark Translucent Overlay */}
-                        {activeTab === 'pending' && !isVerified && selectedRolls.has(rollNo) && (
-                          <View style={styles.avatarSelectedOverlay}>
-                            <View style={styles.selectedCheckCircle}>
-                              <Ionicons name="checkmark" size={14} color="#FFFFFF" />
+                          {/* Selected Checkmark Translucent Overlay */}
+                          {activeTab === 'pending' && !isVerified && selectedRolls.has(rollNo) && (
+                            <View style={styles.avatarSelectedOverlay}>
+                              <View style={styles.selectedCheckCircle}>
+                                <Ionicons name="checkmark" size={14} color="#FFFFFF" />
+                              </View>
+                            </View>
+                          )}
+                        </View>
+                        {isVerified && (
+                          <View style={styles.avatarVerifiedBadge}>
+                            <Ionicons name="checkmark" size={9} color="#FFFFFF" />
+                          </View>
+                        )}
+                        {isExpanded && !isVerified && (
+                          <View style={styles.avatarEditBadge}>
+                            <Ionicons name="pencil" size={9} color="#FFFFFF" />
+                          </View>
+                        )}
+                      </View>
+                    </TouchableOpacity>
+
+                    {/* Pressable Card Body for expansion (sibling on the right) */}
+                    <TouchableOpacity
+                      style={styles.studentRowRight}
+                      onPress={() => toggleExpand(rollNo)}
+                      activeOpacity={0.85}
+                    >
+                      <View style={styles.studentInfo}>
+                        <Text style={styles.studentName}>{student.Student_Name}</Text>
+                        <Text style={styles.studentRoll}>{rollNo}  ·  {student.department}</Text>
+                        {isVerified && (
+                          <View style={{ marginTop: 4 }}>
+                            {student.verifiedBy ? (
+                              <Text style={styles.cardVerifyByText} numberOfLines={1}>
+                                Verified by: {student.verifiedBy}
+                              </Text>
+                            ) : null}
+                            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 3 }}>
+                              <View style={[
+                                styles.studentStatusDot,
+                                { backgroundColor: student.received === 1 ? '#10B981' : '#F59E0B' }
+                              ]} />
+                              <Text style={styles.studentStatusText}>
+                                Student Verification: {student.received === 1 ? 'Completed' : 'Pending'}
+                              </Text>
                             </View>
                           </View>
                         )}
                       </View>
-                      {isVerified && (
-                        <View style={styles.avatarVerifiedBadge}>
-                          <Ionicons name="checkmark" size={9} color="#FFFFFF" />
-                        </View>
-                      )}
-                      {isExpanded && !isVerified && (
-                        <View style={styles.avatarEditBadge}>
-                          <Ionicons name="pencil" size={9} color="#FFFFFF" />
-                        </View>
-                      )}
-                    </View>
-                  </TouchableOpacity>
 
-                  {/* Pressable Card Body for expansion (sibling on the right) */}
-                  <TouchableOpacity
-                    style={styles.studentRowRight}
-                    onPress={() => toggleExpand(rollNo)}
-                    activeOpacity={0.85}
-                  >
-                    <View style={styles.studentInfo}>
-                      <Text style={styles.studentName}>{student.Student_Name}</Text>
-                      <Text style={styles.studentRoll}>{rollNo}  ·  {student.department}</Text>
-                      {isVerified && (
-                        <View style={{ marginTop: 4 }}>
-                          {student.verifiedBy ? (
-                            <Text style={styles.cardVerifyByText} numberOfLines={1}>
-                              Verified by: {student.verifiedBy}
-                            </Text>
-                          ) : null}
-                          <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 3 }}>
-                            <View style={[
-                              styles.studentStatusDot,
-                              { backgroundColor: student.received === 1 ? '#10B981' : '#F59E0B' }
-                            ]} />
-                            <Text style={styles.studentStatusText}>
-                              Student Verification: {student.received === 1 ? 'Completed' : 'Pending'}
-                            </Text>
-                          </View>
-                        </View>
-                      )}
-                    </View>
-
-                    {isVerified
-                      ? <View style={styles.verifiedBadge}><Text style={styles.verifiedBadgeText}>Verified</Text></View>
-                      : <Ionicons name={isExpanded ? 'chevron-up' : 'chevron-down'} size={16} color="#9CA3AF" />
-                    }
-                  </TouchableOpacity>
-                </View>
-
-                {/* Accordion */}
-                {isExpanded && (
-                  <View style={styles.accordion}>
-                    <View style={styles.accordionDivider} />
-
-                    <Text style={styles.accordionSectionLabel}>ATTEMPT TYPE</Text>
-                    {isVerified ? (
-                      <View style={[styles.accordionDropdown, { backgroundColor: '#F3F4F6', borderColor: '#E5E7EB' }]}>
-                        <Text style={[styles.accordionDropdownText, { color: '#4B5563' }]}>
-                          {A1_OPTIONS.find(o => o.value === form.a1)?.label || form.a1}
-                        </Text>
-                      </View>
-                    ) : (
-                      renderDropdown(rollNo, 'a1', A1_OPTIONS, 'Attempt Type')
-                    )}
-
-                    <Text style={[styles.accordionSectionLabel, { marginTop: 12 }]}>PERFORMANCE RATING</Text>
-                    {isVerified ? (
-                      <View style={[styles.accordionDropdown, { backgroundColor: '#F3F4F6', borderColor: '#E5E7EB' }]}>
-                        <Text style={[styles.accordionDropdownText, { color: '#4B5563' }]}>
-                          {A2_OPTIONS.find(o => o.value === form.a2)?.label || form.a2}
-                        </Text>
-                      </View>
-                    ) : (
-                      renderDropdown(rollNo, 'a2', A2_OPTIONS, 'Performance Rating')
-                    )}
-
-                    <Text style={[styles.accordionSectionLabel, { marginTop: 12 }]}>COMPLETION STATUS</Text>
-                    {isVerified ? (
-                      <View style={[styles.accordionDropdown, { backgroundColor: '#F3F4F6', borderColor: '#E5E7EB' }]}>
-                        <Text style={[styles.accordionDropdownText, { color: '#4B5563' }]}>
-                          {A3_OPTIONS.find(o => o.value === form.a3)?.label || form.a3}
-                        </Text>
-                      </View>
-                    ) : (
-                      renderDropdown(rollNo, 'a3', A3_OPTIONS, 'Completion Status')
-                    )}
-
-                    {isVerified ? (
-                      form.remarks ? (
-                        <>
-                          <Text style={[styles.accordionSectionLabel, { marginTop: 12 }]}>REMARKS</Text>
-                          <View style={[styles.remarksInput, { backgroundColor: '#F3F4F6', borderColor: '#E5E7EB' }]}>
-                            <Text style={{ fontSize: 13, color: '#4B5563' }}>{form.remarks}</Text>
-                          </View>
-                        </>
-                      ) : null
-                    ) : (
-                      <>
-                        <Text style={[styles.accordionSectionLabel, { marginTop: 12 }]}>REMARKS (optional)</Text>
-                        <TextInput
-                          style={styles.remarksInput}
-                          placeholder="Add remarks..."
-                          placeholderTextColor="#9CA3AF"
-                          value={form.remarks}
-                          onChangeText={v => updateForm(rollNo, 'remarks', v)}
-                          multiline
-                        />
-                      </>
-                    )}
-
-                    {!isVerified && (
-                      <TouchableOpacity
-                        style={[styles.submitBtn, isSub && { opacity: 0.7 }]}
-                        onPress={() => handleSubmit(student)}
-                        disabled={isSub}
-                        activeOpacity={0.8}
-                      >
-                        {isSub
-                          ? <ActivityIndicator size="small" color="#FFFFFF" />
-                          : <>
-                            <Ionicons name="shield-checkmark-outline" size={16} color="#FFFFFF" style={{ marginRight: 8 }} />
-                            <Text style={styles.submitBtnText}>Submit Verification</Text>
-                          </>
-                        }
-                      </TouchableOpacity>
-                    )}
+                      {isVerified
+                        ? <View style={styles.verifiedBadge}><Text style={styles.verifiedBadgeText}>Verified</Text></View>
+                        : <Ionicons name={isExpanded ? 'chevron-up' : 'chevron-down'} size={16} color="#9CA3AF" />
+                      }
+                    </TouchableOpacity>
                   </View>
-                )}
-              </View>
-            );
-          })}
-          <View style={{ height: 40 }} />
-        </ScrollView>
-      </View>
+
+                  {/* Accordion */}
+                  {isExpanded && (
+                    <View style={styles.accordion}>
+                      <View style={styles.accordionDivider} />
+
+                      <Text style={styles.accordionSectionLabel}>ATTEMPT TYPE</Text>
+                      {isVerified ? (
+                        <View style={[styles.accordionDropdown, { backgroundColor: '#F3F4F6', borderColor: '#E5E7EB' }]}>
+                          <Text style={[styles.accordionDropdownText, { color: '#4B5563' }]}>
+                            {A1_OPTIONS.find(o => o.value === form.a1)?.label || form.a1}
+                          </Text>
+                        </View>
+                      ) : (
+                        renderDropdown(rollNo, 'a1', A1_OPTIONS, 'Attempt Type')
+                      )}
+
+                      <Text style={[styles.accordionSectionLabel, { marginTop: 12 }]}>PERFORMANCE RATING</Text>
+                      {isVerified ? (
+                        <View style={[styles.accordionDropdown, { backgroundColor: '#F3F4F6', borderColor: '#E5E7EB' }]}>
+                          <Text style={[styles.accordionDropdownText, { color: '#4B5563' }]}>
+                            {A2_OPTIONS.find(o => o.value === form.a2)?.label || form.a2}
+                          </Text>
+                        </View>
+                      ) : (
+                        renderDropdown(rollNo, 'a2', A2_OPTIONS, 'Performance Rating')
+                      )}
+
+                      <Text style={[styles.accordionSectionLabel, { marginTop: 12 }]}>COMPLETION STATUS</Text>
+                      {isVerified ? (
+                        <View style={[styles.accordionDropdown, { backgroundColor: '#F3F4F6', borderColor: '#E5E7EB' }]}>
+                          <Text style={[styles.accordionDropdownText, { color: '#4B5563' }]}>
+                            {A3_OPTIONS.find(o => o.value === form.a3)?.label || form.a3}
+                          </Text>
+                        </View>
+                      ) : (
+                        renderDropdown(rollNo, 'a3', A3_OPTIONS, 'Completion Status')
+                      )}
+
+                      {isVerified ? (
+                        form.remarks ? (
+                          <>
+                            <Text style={[styles.accordionSectionLabel, { marginTop: 12 }]}>REMARKS</Text>
+                            <View style={[styles.remarksInput, { backgroundColor: '#F3F4F6', borderColor: '#E5E7EB' }]}>
+                              <Text style={{ fontSize: 13, color: '#4B5563' }}>{form.remarks}</Text>
+                            </View>
+                          </>
+                        ) : null
+                      ) : (
+                        <>
+                          <Text style={[styles.accordionSectionLabel, { marginTop: 12 }]}>REMARKS (optional)</Text>
+                          <TextInput
+                            style={styles.remarksInput}
+                            placeholder="Add remarks..."
+                            placeholderTextColor="#9CA3AF"
+                            value={form.remarks}
+                            onChangeText={v => updateForm(rollNo, 'remarks', v)}
+                            multiline
+                          />
+                        </>
+                      )}
+
+                      {!isVerified && (
+                        <TouchableOpacity
+                          style={[styles.submitBtn, isSub && { opacity: 0.7 }]}
+                          onPress={() => handleSubmit(student)}
+                          disabled={isSub}
+                          activeOpacity={0.8}
+                        >
+                          {isSub
+                            ? <ActivityIndicator size="small" color="#FFFFFF" />
+                            : <>
+                              <Ionicons name="shield-checkmark-outline" size={16} color="#FFFFFF" style={{ marginRight: 8 }} />
+                              <Text style={styles.submitBtnText}>Submit Verification</Text>
+                            </>
+                          }
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  )}
+                </View>
+              );
+            })}
+            <View style={{ height: 40 }} />
+          </ScrollView>
+        </View>
       )}
 
       {/* Filter Modals */}
