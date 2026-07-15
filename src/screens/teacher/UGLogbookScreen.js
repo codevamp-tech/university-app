@@ -309,6 +309,26 @@ const UGLogbookScreen = ({ navigation }) => {
   const [verifiedRolls, setVerifiedRolls] = useState(new Set());
   const [selectedRolls, setSelectedRolls] = useState(new Set());
   const [submittingBulk, setSubmittingBulk] = useState(false);
+  const [toast, setToast] = useState(null);
+  const toastTimeoutRef = React.useRef(null);
+
+  const showToast = useCallback((message, type = 'success') => {
+    if (toastTimeoutRef.current) {
+      clearTimeout(toastTimeoutRef.current);
+    }
+    setToast({ message, type });
+    toastTimeoutRef.current = setTimeout(() => {
+      setToast(null);
+    }, 2500);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (toastTimeoutRef.current) {
+        clearTimeout(toastTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Tab
   const [activeTab, setActiveTab] = useState('pending');
@@ -523,7 +543,13 @@ const UGLogbookScreen = ({ navigation }) => {
       });
       setVerifiedRolls(prev => new Set([...prev, rollNo]));
       setExpandedRoll(null);
-      Alert.alert('Verified', `${student.Student_Name} logbook signed off successfully.`);
+      
+      // Invalidate cache so that re-opening shows fresh count from ERP
+      const dateStr = formatDateISO(selectedDate);
+      const cacheKey = `${subCode}_${compcode}_${dateStr}_${selectedGroup.value}_${selectedPhase.value}_${selectedEvent.value}`;
+      delete _studentsCache[cacheKey];
+
+      showToast(`${student.Student_Name} verified successfully.`);
     } catch (e) {
       console.warn('[UGLogbook] verify error:', e);
       Alert.alert('Error', 'Verification failed. Please try again.');
@@ -635,9 +661,14 @@ const UGLogbookScreen = ({ navigation }) => {
             await Promise.all(promises);
             setSubmittingBulk(false);
             setSelectedRolls(new Set());
+
+            // Invalidate cache so that re-opening shows fresh count from ERP
+            const dateStr = formatDateISO(selectedDate);
+            const cacheKey = `${subCode}_${compcode}_${dateStr}_${selectedGroup.value}_${selectedPhase.value}_${selectedEvent.value}`;
+            delete _studentsCache[cacheKey];
             
             if (failCount === 0) {
-              Alert.alert('Success', `Successfully verified logbooks for all ${successCount} students.`);
+              showToast(`Successfully verified logbooks for all ${successCount} students.`);
             } else {
               Alert.alert('Bulk Verification Result', `Successfully verified: ${successCount}\nFailed: ${failCount}`);
             }
@@ -688,6 +719,20 @@ const UGLogbookScreen = ({ navigation }) => {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
+      {toast && (
+        <View style={[
+          styles.toastContainer,
+          toast.type === 'error' && { backgroundColor: '#EF4444' }
+        ]}>
+          <Ionicons 
+            name={toast.type === 'success' ? "checkmark-circle" : "alert-circle"} 
+            size={18} 
+            color="#FFFFFF" 
+            style={{ marginRight: 8 }} 
+          />
+          <Text style={styles.toastText}>{toast.message}</Text>
+        </View>
+      )}
 
       {/* Header */}
       <LinearGradient colors={['#FFFFFF', '#F9FAFB']} style={styles.header}>
@@ -1218,6 +1263,30 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#FFFFFF',
+  },
+  toastContainer: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 100 : 80,
+    left: 20,
+    right: 20,
+    backgroundColor: '#10B981',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    zIndex: 9999,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  toastText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
+    flex: 1,
   },
   actionBar: {
     flexDirection: 'row',
