@@ -489,6 +489,79 @@ const UGLogbookScreen = ({ navigation }) => {
     });
   };
 
+
+
+  const handleSubmit = async (student) => {
+    const rollNo = student.Roll_No;
+    const form = verifyForms[rollNo] || {};
+    let compcode = selectedActivity?.comp_code || selectedActivity?.CompCode || selectedActivity?.compcode || selectedActivity?.value || '';
+    if (compcode && compcode.includes('_')) {
+      compcode = compcode.split('_')[0];
+    }
+    const activityName = selectedActivity?.ActivityName || selectedActivity?.comp_name || selectedActivity?.label || '';
+
+    setSubmitting(rollNo);
+
+    try {
+      await submitLogbookVerification(accessToken, {
+        roll_no: rollNo,
+        sub_code: subCode,
+        comp_code: compcode,
+        activity_name: activityName,
+        a1: form.a1 || 'F',
+        a2: form.a2 || 'M',
+        a3: form.a3 || 'C',
+        remarks: form.remarks || '',
+        verified_dt: formatDateISO(selectedDate),
+        phase: selectedPhase.value,
+        lbtype: selectedEvent.value,
+      });
+      setVerifiedRolls(prev => new Set([...prev, rollNo]));
+      setExpandedRoll(null);
+      Alert.alert('Verified', `${student.Student_Name} logbook signed off successfully.`);
+    } catch (e) {
+      console.warn('[UGLogbook] verify error:', e);
+      Alert.alert('Error', 'Verification failed. Please try again.');
+    } finally {
+      setSubmitting(null);
+    }
+  };
+
+  // ── Derived ───────────────────────────────────────────────────────────────
+
+  const pendingStudents = studentList
+    .filter(s => !verifiedRolls.has(s.Roll_No))
+    .sort((a, b) => {
+      const nameA = (a.Student_Name || '').trim().toLowerCase();
+      const nameB = (b.Student_Name || '').trim().toLowerCase();
+      return nameA.localeCompare(nameB);
+    });
+
+  const justVerifiedStudents = studentList
+    .filter(s => verifiedRolls.has(s.Roll_No))
+    .map(s => {
+      const form = verifyForms[s.Roll_No] || { a1: 'F', a2: 'M', a3: 'C', remarks: '' };
+      return {
+        ...s,
+        isAlreadyVerified: true,
+        A1: form.a1,
+        A2: form.a2,
+        A3: form.a3,
+        remarks: form.remarks,
+        verifiedBy: user?.name || 'Faculty',
+        received: 0,
+      };
+    });
+
+  const verifiedStudents = [...justVerifiedStudents, ...verifiedStudentList]
+    .sort((a, b) => {
+      const nameA = (a.Student_Name || '').trim().toLowerCase();
+      const nameB = (b.Student_Name || '').trim().toLowerCase();
+      return nameA.localeCompare(nameB);
+    });
+
+  const displayedList = activeTab === 'pending' ? pendingStudents : verifiedStudents;
+
   const toggleSelectAll = () => {
     setSelectedRolls(prev => {
       const pending = pendingStudents.map(s => s.Roll_No);
@@ -568,77 +641,6 @@ const UGLogbookScreen = ({ navigation }) => {
       ]
     );
   };
-
-  const handleSubmit = async (student) => {
-    const rollNo = student.Roll_No;
-    const form = verifyForms[rollNo] || {};
-    let compcode = selectedActivity?.comp_code || selectedActivity?.CompCode || selectedActivity?.compcode || selectedActivity?.value || '';
-    if (compcode && compcode.includes('_')) {
-      compcode = compcode.split('_')[0];
-    }
-    const activityName = selectedActivity?.ActivityName || selectedActivity?.comp_name || selectedActivity?.label || '';
-
-    setSubmitting(rollNo);
-
-    try {
-      await submitLogbookVerification(accessToken, {
-        roll_no: rollNo,
-        sub_code: subCode,
-        comp_code: compcode,
-        activity_name: activityName,
-        a1: form.a1 || 'F',
-        a2: form.a2 || 'M',
-        a3: form.a3 || 'C',
-        remarks: form.remarks || '',
-        verified_dt: formatDateISO(selectedDate),
-        phase: selectedPhase.value,
-        lbtype: selectedEvent.value,
-      });
-      setVerifiedRolls(prev => new Set([...prev, rollNo]));
-      setExpandedRoll(null);
-      Alert.alert('Verified', `${student.Student_Name} logbook signed off successfully.`);
-    } catch (e) {
-      console.warn('[UGLogbook] verify error:', e);
-      Alert.alert('Error', 'Verification failed. Please try again.');
-    } finally {
-      setSubmitting(null);
-    }
-  };
-
-  // ── Derived ───────────────────────────────────────────────────────────────
-
-  const pendingStudents = studentList
-    .filter(s => !verifiedRolls.has(s.Roll_No))
-    .sort((a, b) => {
-      const nameA = (a.Student_Name || '').trim().toLowerCase();
-      const nameB = (b.Student_Name || '').trim().toLowerCase();
-      return nameA.localeCompare(nameB);
-    });
-
-  const justVerifiedStudents = studentList
-    .filter(s => verifiedRolls.has(s.Roll_No))
-    .map(s => {
-      const form = verifyForms[s.Roll_No] || { a1: 'F', a2: 'M', a3: 'C', remarks: '' };
-      return {
-        ...s,
-        isAlreadyVerified: true,
-        A1: form.a1,
-        A2: form.a2,
-        A3: form.a3,
-        remarks: form.remarks,
-        verifiedBy: user?.name || 'Faculty',
-        received: 0,
-      };
-    });
-
-  const verifiedStudents = [...justVerifiedStudents, ...verifiedStudentList]
-    .sort((a, b) => {
-      const nameA = (a.Student_Name || '').trim().toLowerCase();
-      const nameB = (b.Student_Name || '').trim().toLowerCase();
-      return nameA.localeCompare(nameB);
-    });
-
-  const displayedList = activeTab === 'pending' ? pendingStudents : verifiedStudents;
 
   const activityLabel = selectedActivity
     ? (selectedActivity.ActivityName || selectedActivity.comp_name || selectedActivity.label || 'Selected')
