@@ -591,7 +591,14 @@ const UGLogbookScreen = ({ navigation }) => {
       return nameA.localeCompare(nameB);
     });
 
-  const displayedList = activeTab === 'pending' ? pendingStudents : verifiedStudents;
+  const verifiedPresentStudents = verifiedStudents.filter(s => s.A1 !== 'Absent' && s.a1 !== 'Absent');
+  const verifiedAbsentStudents = verifiedStudents.filter(s => s.A1 === 'Absent' || s.a1 === 'Absent');
+
+  const displayedList = activeTab === 'pending'
+    ? pendingStudents
+    : activeTab === 'verified'
+      ? verifiedPresentStudents
+      : verifiedAbsentStudents;
 
   const toggleSelectAll = () => {
     setSelectedRolls(prev => {
@@ -827,7 +834,15 @@ const UGLogbookScreen = ({ navigation }) => {
           onPress={() => setActiveTab('verified')}
         >
           <Text style={[styles.tabText, activeTab === 'verified' && styles.tabTextActive]}>
-            Verified ({verifiedStudents.length})
+            Verified ({verifiedPresentStudents.length})
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'absent' && styles.tabActive]}
+          onPress={() => setActiveTab('absent')}
+        >
+          <Text style={[styles.tabText, activeTab === 'absent' && styles.tabTextActive]}>
+            Absent ({verifiedAbsentStudents.length})
           </Text>
         </TouchableOpacity>
       </View>
@@ -842,18 +857,20 @@ const UGLogbookScreen = ({ navigation }) => {
       ) : displayedList.length === 0 ? (
         <View style={styles.emptyContainer}>
           <MaterialCommunityIcons
-            name={activeTab === 'pending' ? 'checkbox-multiple-marked-outline' : 'history'}
+            name={activeTab === 'pending' ? 'checkbox-multiple-marked-outline' : activeTab === 'verified' ? 'history' : 'account-minus-outline'}
             size={48}
             color="#D1D5DB"
             style={{ marginBottom: 12 }}
           />
           <Text style={styles.emptyText}>
-            {activeTab === 'pending' ? 'All caught up!' : 'No verified entries yet'}
+            {activeTab === 'pending' ? 'All caught up!' : activeTab === 'verified' ? 'No verified entries yet' : 'No absent entries yet'}
           </Text>
           <Text style={styles.emptySub}>
             {activeTab === 'pending'
               ? 'No students are pending verification for these filters.'
-              : 'Sign off students to see their records here.'}
+              : activeTab === 'verified'
+                ? 'Sign off students to see their records here.'
+                : 'Any students marked as Absent will appear here.'}
           </Text>
         </View>
       ) : (
