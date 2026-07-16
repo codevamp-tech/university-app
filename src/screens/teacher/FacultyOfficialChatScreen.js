@@ -439,6 +439,7 @@ const FacultyOfficialChatScreen = ({ navigation }) => {
           showsVerticalScrollIndicator={false}
           refreshing={refreshing}
           onRefresh={handleRefresh}
+          onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
         />
       )}
 
