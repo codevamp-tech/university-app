@@ -804,9 +804,12 @@ const AdminDashboardScreen = ({ navigation }) => {
               const filteredGlimpse = (leaderboardGlimpse || []).filter(item => {
                 const userLower = (item.rollno || item.username || '').toLowerCase();
                 const idLower = (item.id || '').toLowerCase();
+                const rollLower = (item.rollno || '').toLowerCase();
                 return !(
                   ['aarav', 'ishani', 'kabir', 'meera', 'rohan', 'dummy_user123', 'na'].includes(userLower) ||
-                  idLower.startsWith('10000000-0000-0000-0000-')
+                  ['aarav', 'ishani', 'kabir', 'meera', 'rohan', 'dummy_user123', 'na'].includes(idLower) ||
+                  ['aarav', 'ishani', 'kabir', 'meera', 'rohan', 'dummy_user123', 'na'].includes(rollLower) ||
+                  idLower.startsWith('10000000-0000-')
                 );
               });
 

@@ -95,6 +95,7 @@ const SuperAdminLeaderboardInsightsScreen = ({ navigation }) => {
             current_year: s.current_year || s.currentYear,
             phase: s.phase,
             rollno: s.rollno,
+            username: s.username,
           }));
           setStudents(mapped);
         }
@@ -121,12 +122,15 @@ const SuperAdminLeaderboardInsightsScreen = ({ navigation }) => {
     const isStudent = s.role?.toLowerCase() === 'student';
     if (!isStudent) return false;
 
-    // Filter out mock/seeded student accounts strictly by username or UUID prefix
+    // Filter out mock/seeded student accounts strictly by username, id, or rollno
     const userLower = (s.username || '').toLowerCase();
     const idLower = (s.id || '').toLowerCase();
+    const rollLower = (s.rollno || '').toLowerCase();
     if (
       ['aarav', 'ishani', 'kabir', 'meera', 'rohan', 'dummy_user123', 'na'].includes(userLower) ||
-      idLower.startsWith('10000000-0000-0000-0000-')
+      ['aarav', 'ishani', 'kabir', 'meera', 'rohan', 'dummy_user123', 'na'].includes(idLower) ||
+      ['aarav', 'ishani', 'kabir', 'meera', 'rohan', 'dummy_user123', 'na'].includes(rollLower) ||
+      idLower.startsWith('10000000-0000-')
     ) {
       return false;
     }
