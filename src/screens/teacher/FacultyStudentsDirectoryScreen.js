@@ -154,15 +154,15 @@ const FacultyStudentsDirectoryScreen = ({ navigation }) => {
         setLoading(false);
         return;
       }
-      // Serve from cache if still fresh
+      // Serve from in-memory cache if still fresh AND non-empty
       const now = Date.now();
-      if (_studentCache.data && (now - _studentCache.timestamp) < STUDENT_CACHE_TTL) {
+      if (_studentCache.data && _studentCache.data.length > 0 && (now - _studentCache.timestamp) < STUDENT_CACHE_TTL) {
         setStudents(_studentCache.data);
         setLoading(false);
         return;
       }
 
-      // Try loading from AsyncStorage cache first for instant display
+      // Try loading from AsyncStorage cache first for instant display (only if non-empty)
       const cacheKey = '@faculty_student_directory_cache';
       try {
         const cachedStr = await AsyncStorage.getItem(cacheKey);
@@ -181,19 +181,27 @@ const FacultyStudentsDirectoryScreen = ({ navigation }) => {
       try {
         const data = await getAllStudents(accessToken);
         const studentData = data || [];
-        _studentCache.data = studentData;
-        _studentCache.timestamp = Date.now();
+        // Only cache non-empty results to avoid poisoning the cache with empty arrays
+        if (studentData.length > 0) {
+          _studentCache.data = studentData;
+          _studentCache.timestamp = Date.now();
+          try {
+            await AsyncStorage.setItem(cacheKey, JSON.stringify({
+              data: studentData,
+              timestamp: Date.now()
+            }));
+          } catch (err) {
+            console.warn('[FacultyStudentsDirectory] AsyncStorage save failed:', err);
+          }
+        } else {
+          // Clear stale cache if server returned empty — triggers fresh fetch next time
+          _studentCache.data = null;
+          _studentCache.timestamp = 0;
+          await AsyncStorage.removeItem(cacheKey).catch(() => {});
+        }
         // Populate cross-screen avatar lookup so logbook can show real photos
         populateStudentAvatars(studentData);
         setStudents(studentData);
-        try {
-          await AsyncStorage.setItem(cacheKey, JSON.stringify({
-            data: studentData,
-            timestamp: Date.now()
-          }));
-        } catch (err) {
-          console.warn('[FacultyStudentsDirectory] AsyncStorage save failed:', err);
-        }
       } catch (e) {
         console.warn('[FacultyStudentsDirectory] Error fetching students:', e);
       } finally {
