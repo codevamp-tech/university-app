@@ -56,14 +56,68 @@ const FacultyOfficialChatScreen = ({ navigation }) => {
     if (!isRefresh) setLoadingChats(true);
     try {
       const chatHistory = await getFacultyGroupChats(user.emp_id, selectedBatch.name);
-      setMessages(chatHistory || []);
+      
+      // Resolve faculty department/subcode via emp_id mapping or user.department
+      const facultyIdNorm = String(user?.emp_id || '').trim().toUpperCase();
+      let facultyDept = (user?.department || '').trim().toLowerCase();
+      let targetSubcode = '';
+
+      if (facultyIdNorm === 'D/11/093' || facultyIdNorm === '202314130') {
+        facultyDept = 'physiology';
+        targetSubcode = 'PY';
+      } else if (facultyIdNorm === 'D/11/094') {
+        facultyDept = 'anatomy';
+        targetSubcode = 'AN';
+      } else if (facultyIdNorm === 'D/11/095') {
+        facultyDept = 'biochemistry';
+        targetSubcode = 'BI';
+      } else {
+        // Fallback mapping if not in list
+        const DEPT_TO_SUBCODE = {
+          'anatomy': 'AN',
+          'physiology': 'PY',
+          'biochemistry': 'BI',
+          'pharmacology': 'PH',
+          'pathology': 'PA',
+          'microbiology': 'MI',
+          'forensic medicine': 'FM',
+          'community medicine': 'CM',
+          'medicine': 'IM',
+          'surgery': 'SU',
+          'obstetrics & gynecology': 'OB',
+          'pediatrics': 'PE'
+        };
+        targetSubcode = DEPT_TO_SUBCODE[facultyDept];
+      }
+
+      const filtered = (chatHistory || []).filter(msg => {
+        const msgDept = (msg.department || '').trim().toLowerCase();
+        const msgSubcode = (msg.subcode || '').trim().toUpperCase();
+        
+        // If the logged-in faculty has no department name or code set, don't filter
+        if (!facultyDept || facultyDept === 'medical faculty') return true;
+        
+        // Match by department name
+        if (msgDept && msgDept.includes(facultyDept)) return true;
+        if (facultyDept.includes(msgDept) && msgDept) return true;
+        
+        // Match by subcode
+        if (targetSubcode && msgSubcode === targetSubcode) return true;
+        
+        // Fallback for messages with no department/subcode data to make sure we don't drop them
+        if (!msgDept && !msgSubcode) return true;
+        
+        return false;
+      });
+
+      setMessages(filtered);
     } catch (err) {
       console.warn(err);
     } finally {
       setLoadingChats(false);
       setRefreshing(false);
     }
-  }, [user?.emp_id, selectedBatch]);
+  }, [user, selectedBatch]);
 
   useEffect(() => {
     fetchChats();
