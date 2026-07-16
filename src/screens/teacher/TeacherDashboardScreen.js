@@ -8,7 +8,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useUser } from '../../context/UserContext';
-import { getFacultyTimetable, getFacultyTopics, uploadAvatarAPI, listGrievancesAPI, getFacultyAttendance } from '../../data/apiService';
+import { getFacultyTimetable, getFacultyTopics, uploadAvatarAPI, listGrievancesAPI, deleteGrievanceAPI, getFacultyAttendance } from '../../data/apiService';
 import ActivityRing from '../../components/ActivityRing';
 import { getAvatarUrl } from '../../utils/avatar';
 import { useHealthMetrics } from '../../hooks/useHealthMetrics';
@@ -86,6 +86,28 @@ const TeacherDashboardScreen = ({ navigation }) => {
       setIsLoadingIssues(false);
     }
   }, [accessToken]);
+
+  const handleDeleteIssue = useCallback((issueId) => {
+    Alert.alert(
+      "Delete Ticket",
+      "Are you sure you want to delete this support ticket?",
+      [
+        { text: "Cancel", style: "cancel" },
+        { 
+          text: "Delete", 
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await deleteGrievanceAPI(accessToken, issueId);
+              fetchRaisedIssues(); // Refresh list
+            } catch (error) {
+              Alert.alert("Error", error.message || "Failed to delete ticket");
+            }
+          }
+        }
+      ]
+    );
+  }, [accessToken, fetchRaisedIssues]);
 
   useEffect(() => {
     fetchRaisedIssues();
@@ -830,6 +852,16 @@ const TeacherDashboardScreen = ({ navigation }) => {
                       <Text style={styles.issueTimeText}>
                         {new Date(issue.created_at).toLocaleDateString()} {new Date(issue.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </Text>
+                      {statusLower === 'pending' && (
+                        <TouchableOpacity 
+                          style={styles.deleteIssueBtn}
+                          onPress={() => handleDeleteIssue(issue.id)}
+                          activeOpacity={0.7}
+                        >
+                          <MaterialIcons name="delete-outline" size={16} color="#EF4444" />
+                          <Text style={{ color: '#EF4444', fontSize: 13, fontWeight: '600' }}>Delete</Text>
+                        </TouchableOpacity>
+                      )}
                     </View>
                   </View>
                 );
@@ -1427,9 +1459,19 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   issueFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     borderTopWidth: 1,
     borderTopColor: 'rgba(128,128,128,0.1)',
     paddingTop: 8,
+  },
+  deleteIssueBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
   },
   issueTimeText: {
     fontSize: 11,
