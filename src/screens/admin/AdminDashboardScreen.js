@@ -803,11 +803,9 @@ const AdminDashboardScreen = ({ navigation }) => {
             {(() => {
               const filteredGlimpse = (leaderboardGlimpse || []).filter(item => {
                 const userLower = (item.rollno || item.username || '').toLowerCase();
-                const nameLower = (item.student_name || '').toLowerCase();
                 const idLower = (item.id || '').toLowerCase();
                 return !(
                   ['aarav', 'ishani', 'kabir', 'meera', 'rohan', 'dummy_user123', 'na'].includes(userLower) ||
-                  ['aarav', 'ishani', 'kabir', 'meera', 'rohan'].includes(nameLower) ||
                   idLower.startsWith('10000000-0000-0000-0000-')
                 );
               });

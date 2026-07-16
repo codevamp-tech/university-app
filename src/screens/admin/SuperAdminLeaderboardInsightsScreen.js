@@ -121,13 +121,11 @@ const SuperAdminLeaderboardInsightsScreen = ({ navigation }) => {
     const isStudent = s.role?.toLowerCase() === 'student';
     if (!isStudent) return false;
 
-    // Filter out mock/seeded student accounts strictly
-    const nameLower = (s.name || '').toLowerCase();
+    // Filter out mock/seeded student accounts strictly by username or UUID prefix
     const userLower = (s.username || '').toLowerCase();
     const idLower = (s.id || '').toLowerCase();
     if (
       ['aarav', 'ishani', 'kabir', 'meera', 'rohan', 'dummy_user123', 'na'].includes(userLower) ||
-      ['aarav', 'ishani', 'kabir', 'meera', 'rohan'].includes(nameLower) ||
       idLower.startsWith('10000000-0000-0000-0000-')
     ) {
       return false;
