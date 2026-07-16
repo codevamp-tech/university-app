@@ -85,10 +85,10 @@ const LoginScreen = ({ navigation }) => {
       console.warn('Login preparation error:', e);
     }
     
-    // Auto-detect role as a fallback only for clear non-student patterns
+    // Auto-detect role as a fallback only for clear non-student patterns when on the student tab
     let finalRole = role;
     const cleanId = loginId.trim();
-    if (/[a-zA-Z]/.test(cleanId) || cleanId.includes('/')) {
+    if (role === 'student' && (/[a-zA-Z]/.test(cleanId) || cleanId.includes('/'))) {
       if (cleanId.toLowerCase() === 'warden') {
         finalRole = 'warden';
       } else if (cleanId.toLowerCase() === 'admin') {
@@ -96,6 +96,8 @@ const LoginScreen = ({ navigation }) => {
       } else {
         finalRole = 'teacher';
       }
+    } else if (role === 'admin' && cleanId.toLowerCase() === 'warden') {
+      finalRole = 'warden';
     }
 
     console.log("loginId>>>>", loginId);
