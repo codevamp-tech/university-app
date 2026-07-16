@@ -143,9 +143,18 @@ export const UserProvider = ({ children }) => {
       }
     }
 
+    let fieldName = 'roll number';
+    if (role === 'teacher') {
+      fieldName = 'employee ID';
+    } else if (role === 'admin' || role === 'super_admin') {
+      fieldName = 'username';
+    } else if (role === 'warden') {
+      fieldName = 'warden username';
+    }
+
     Alert.alert(
       'Login Failed',
-      `Incorrect roll number or password.\nPlease check your credentials and try again.`
+      `Incorrect ${fieldName} or password.\nPlease check your credentials and try again.`
     );
     return false;
   };
