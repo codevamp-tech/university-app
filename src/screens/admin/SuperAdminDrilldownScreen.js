@@ -278,10 +278,41 @@ const SuperAdminDrilldownScreen = ({ route, navigation }) => {
         <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <View style={styles.cardHeader}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
-              <StudentAvatar uri={item.avatar_url} name={item.student_name} colors={colors} />
+              <StudentAvatar uri={item.avatar_url} name={item.student_name} rollno={item.rollno} colors={colors} />
               <View style={{ flex: 1 }}>
                 <Text style={[styles.founderName, { color: colors.textPrimary }]}>{item.student_name}</Text>
-                <Text style={[styles.rollnoText, { color: colors.textSecondary }]}>{item.rollno}</Text>
+                <Text style={[styles.rollnoText, { color: colors.textSecondary }]}>
+                  {(() => {
+                    const phase = getStudentPhase(item);
+                    const course = (item.course || '').trim();
+                    const branch = (item.branch || '').trim();
+                    let displayVal = 'MBBS';
+                    
+                    if (course || branch) {
+                      if (!course) {
+                        displayVal = branch;
+                      } else if (!branch) {
+                        displayVal = course;
+                      } else {
+                        const courseNorm = course.replace(/\./g, '').toUpperCase();
+                        const branchNorm = branch.replace(/\./g, '').toUpperCase();
+                        
+                        if (courseNorm.includes(branchNorm) || branchNorm.includes(courseNorm)) {
+                          displayVal = course;
+                        } else {
+                          displayVal = `${course} (${branch})`;
+                        }
+                      }
+                    }
+                    
+                    if (displayVal.toUpperCase() === 'MEDICAL' || displayVal.toUpperCase().includes('MEDICAL')) {
+                      displayVal = 'MBBS';
+                    }
+
+                    const phaseText = phase ? ` · Phase ${phase}` : '';
+                    return `${item.rollno || ''}  ·  ${displayVal}${phaseText}`;
+                  })()}
+                </Text>
               </View>
             </View>
             <View style={[styles.badge, { backgroundColor: badgeColor + '20' }]}>
@@ -304,10 +335,41 @@ const SuperAdminDrilldownScreen = ({ route, navigation }) => {
         <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.danger, borderLeftWidth: 4 }]}>
           <View style={styles.cardHeader}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
-              <StudentAvatar uri={item.avatar_url} name={item.student_name} colors={colors} />
+              <StudentAvatar uri={item.avatar_url} name={item.student_name} rollno={item.rollno} colors={colors} />
               <View style={{ flex: 1 }}>
                 <Text style={[styles.founderName, { color: colors.textPrimary }]}>{item.student_name}</Text>
-                <Text style={[styles.rollnoText, { color: colors.textSecondary }]}>{item.rollno}</Text>
+                <Text style={[styles.rollnoText, { color: colors.textSecondary }]}>
+                  {(() => {
+                    const phase = getStudentPhase(item);
+                    const course = (item.course || '').trim();
+                    const branch = (item.branch || '').trim();
+                    let displayVal = 'MBBS';
+                    
+                    if (course || branch) {
+                      if (!course) {
+                        displayVal = branch;
+                      } else if (!branch) {
+                        displayVal = course;
+                      } else {
+                        const courseNorm = course.replace(/\./g, '').toUpperCase();
+                        const branchNorm = branch.replace(/\./g, '').toUpperCase();
+                        
+                        if (courseNorm.includes(branchNorm) || branchNorm.includes(courseNorm)) {
+                          displayVal = course;
+                        } else {
+                          displayVal = `${course} (${branch})`;
+                        }
+                      }
+                    }
+                    
+                    if (displayVal.toUpperCase() === 'MEDICAL' || displayVal.toUpperCase().includes('MEDICAL')) {
+                      displayVal = 'MBBS';
+                    }
+
+                    const phaseText = phase ? ` · Phase ${phase}` : '';
+                    return `${item.rollno || ''}  ·  ${displayVal}${phaseText}`;
+                  })()}
+                </Text>
               </View>
             </View>
             <View style={[styles.badge, { backgroundColor: colors.danger + '20' }]}>
