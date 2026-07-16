@@ -172,7 +172,7 @@ const TeacherProfileScreen = ({ navigation }) => {
               <View style={[styles.menuIconBg, { backgroundColor: '#ECFDF5' }]}>
                 <Ionicons name="card-outline" size={20} color="#10B981" />
               </View>
-              <Text style={styles.menuLabel}>Payslip Downloads</Text>
+              <Text style={styles.menuLabel}>View Payslip</Text>
             </View>
             <Ionicons name="chevron-forward-outline" size={18} color="#9CA3AF" />
           </TouchableOpacity>
