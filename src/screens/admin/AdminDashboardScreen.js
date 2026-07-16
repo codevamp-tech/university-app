@@ -800,42 +800,57 @@ const AdminDashboardScreen = ({ navigation }) => {
           </Text>
 
           <View style={{ marginTop: 8 }}>
-            {leaderboardGlimpse && leaderboardGlimpse.length > 0 ? (
-              leaderboardGlimpse.map((item, idx) => (
-                <View key={item.id || idx} style={[styles.glimpseRow, { borderBottomColor: colors.border }]}>
-                  <Text style={[styles.glimpseRank, { color: colors.textMuted }, idx === 0 && { color: '#EA580C' }]}>
-                    #{idx + 1}
+            {(() => {
+              const filteredGlimpse = (leaderboardGlimpse || []).filter(item => {
+                const userLower = (item.rollno || item.username || '').toLowerCase();
+                const nameLower = (item.student_name || '').toLowerCase();
+                const idLower = (item.id || '').toLowerCase();
+                return !(
+                  ['aarav', 'ishani', 'kabir', 'meera', 'rohan', 'dummy_user123', 'na'].includes(userLower) ||
+                  ['aarav', 'ishani', 'kabir', 'meera', 'rohan'].includes(nameLower) ||
+                  idLower.startsWith('10000000-0000-0000-0000-')
+                );
+              });
+
+              if (filteredGlimpse.length > 0) {
+                return filteredGlimpse.map((item, idx) => (
+                  <View key={item.id || idx} style={[styles.glimpseRow, { borderBottomColor: colors.border }]}>
+                    <Text style={[styles.glimpseRank, { color: colors.textMuted }, idx === 0 && { color: '#EA580C' }]}>
+                      #{idx + 1}
+                    </Text>
+                    <SafeGlimpseAvatar
+                      uri={item.avatar_url}
+                      name={item.student_name}
+                      rollno={item.rollno}
+                      colors={colors}
+                    />
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.glimpseName, { color: colors.textPrimary }]} numberOfLines={1}>
+                        {item.student_name}
+                      </Text>
+                      <Text style={{ fontSize: 10, color: colors.textSecondary }} numberOfLines={1}>
+                        {(() => {
+                          const branch = item.branch === 'Medical' || item.branch === 'medical' ? 'MBBS' : (item.branch || '');
+                          const phase = getStudentPhase(item);
+                          return phase ? `${branch} · Phase ${phase}` : branch;
+                        })()}
+                      </Text>
+                    </View>
+                    <View style={[styles.glimpseScorePill, { backgroundColor: colors.border }]}>
+                      <Text style={[styles.glimpseScoreText, { color: colors.textSecondary }]}>
+                        {item.score} pts
+                      </Text>
+                    </View>
+                  </View>
+                ));
+              } else {
+                return (
+                  <Text style={{ color: colors.textSecondary, fontStyle: 'italic', paddingVertical: 8 }}>
+                    No standings loaded
                   </Text>
-                  <SafeGlimpseAvatar
-                    uri={item.avatar_url}
-                    name={item.student_name}
-                    rollno={item.rollno}
-                    colors={colors}
-                  />
-                  <View style={{ flex: 1 }}>
-                    <Text style={[styles.glimpseName, { color: colors.textPrimary }]} numberOfLines={1}>
-                      {item.student_name}
-                    </Text>
-                    <Text style={{ fontSize: 10, color: colors.textSecondary }} numberOfLines={1}>
-                      {(() => {
-                        const branch = item.branch === 'Medical' || item.branch === 'medical' ? 'MBBS' : (item.branch || '');
-                        const phase = getStudentPhase(item);
-                        return phase ? `${branch} · Phase ${phase}` : branch;
-                      })()}
-                    </Text>
-                  </View>
-                  <View style={[styles.glimpseScorePill, { backgroundColor: colors.border }]}>
-                    <Text style={[styles.glimpseScoreText, { color: colors.textSecondary }]}>
-                      {item.score} pts
-                    </Text>
-                  </View>
-                </View>
-              ))
-            ) : (
-              <Text style={{ color: colors.textSecondary, fontStyle: 'italic', paddingVertical: 8 }}>
-                No standings loaded
-              </Text>
-            )}
+                );
+              }
+            })()}
           </View>
         </TouchableOpacity>
 
