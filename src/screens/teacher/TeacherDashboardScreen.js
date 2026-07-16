@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, ActivityIndicator, Modal, Image, Alert,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, ActivityIndicator, Modal, Image, Alert, RefreshControl,
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -61,6 +61,7 @@ const TeacherDashboardScreen = ({ navigation }) => {
   const [timetable, setTimetable] = useState([]);
   const [topics, setTopics] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
 
   // ─── First-time Profile Image Setup Modal State ──────────────────────────────
@@ -247,6 +248,15 @@ const TeacherDashboardScreen = ({ navigation }) => {
 
   useEffect(() => { loadData(); }, [loadData]);
 
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await Promise.allSettled([
+      loadData(),
+      fetchRaisedIssues(),
+    ]);
+    setRefreshing(false);
+  }, [loadData, fetchRaisedIssues]);
+
   // Next 4 upcoming timetable slots
   const now = new Date();
   const upcoming = timetable
@@ -402,6 +412,14 @@ const TeacherDashboardScreen = ({ navigation }) => {
       <ScrollView
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor="#EA580C"
+            colors={['#EA580C']}
+          />
+        }
       >
         {/* Punch Time Card */}
         <View style={styles.punchCardContainer}>

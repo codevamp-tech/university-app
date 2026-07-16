@@ -1,7 +1,7 @@
 import React from 'react';
 import { getAvatarUrl } from "../../utils/avatar";
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Dimensions, Platform, Modal, Switch, TextInput, Alert, ActivityIndicator
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Dimensions, Platform, Modal, Switch, TextInput, Alert, ActivityIndicator, RefreshControl
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { MaterialIcons, MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
@@ -519,6 +519,29 @@ const DashboardScreen = ({ navigation }) => {
     }
   }, [isHostelMode, accessToken, loadOutpassStatus]);
 
+  const [refreshing, setRefreshing] = React.useState(false);
+
+  const handleRefresh = React.useCallback(async () => {
+    setRefreshing(true);
+    try {
+      if (user && accessToken) {
+        const key = `@ai_insight_v2_${user.id}`;
+        const freshInsight = await fetchDynamicLLMInsight(user, accessToken);
+        if (freshInsight) {
+          setCachedInsight(freshInsight);
+          await AsyncStorage.setItem(key, freshInsight);
+        }
+      }
+    } catch (e) {}
+
+    await Promise.allSettled([
+      fetchRaisedIssues(),
+      loadOutpassStatus(),
+      loadPathwayRetries(),
+    ]);
+    setRefreshing(false);
+  }, [accessToken, user, fetchRaisedIssues, loadOutpassStatus, loadPathwayRetries]);
+
   React.useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
       if (isHostelMode && accessToken) {
@@ -840,7 +863,13 @@ const DashboardScreen = ({ navigation }) => {
         </View>
       </Modal>
 
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        contentContainerStyle={styles.scroll} 
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={colors.primary} colors={[colors.primary]} />
+        }
+      >
 
         {/* Main User Card with Gradient */}
         <View style={styles.sectionContainer}>

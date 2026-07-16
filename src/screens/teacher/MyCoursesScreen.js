@@ -8,6 +8,7 @@ import {
   Dimensions,
   Image,
   ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -123,6 +124,7 @@ const MyCoursesScreen = ({ navigation }) => {
   const { user, accessToken } = useUser();
   const [timetable, setTimetable] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   const isMedical = 
     user?.department?.toUpperCase().includes('PAEDIATRICS') || 
@@ -156,6 +158,12 @@ const MyCoursesScreen = ({ navigation }) => {
 
   useEffect(() => {
     loadData();
+  }, [loadData]);
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await loadData();
+    setRefreshing(false);
   }, [loadData]);
 
   // Generate dynamic courses list from synced timetable if available
@@ -205,7 +213,9 @@ const MyCoursesScreen = ({ navigation }) => {
         </TouchableOpacity>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#EA580C" colors={['#EA580C']} />}
+      >
         {/* Stats Overview */}
         <View style={styles.statsOverview}>
           <LinearGradient

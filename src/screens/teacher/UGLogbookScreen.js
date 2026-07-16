@@ -2,7 +2,7 @@ import React, { useState, useCallback, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   ActivityIndicator, Alert, TextInput, Modal, Platform,
-  FlatList, Image,
+  FlatList, Image, RefreshControl,
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -298,6 +298,7 @@ const UGLogbookScreen = ({ navigation }) => {
   // Activities from ERP
   const [activities, setActivities] = useState([]);
   const [activitiesLoading, setActivitiesLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   // Students from ERP
   const [studentList, setStudentList] = useState([]);
@@ -592,6 +593,15 @@ const UGLogbookScreen = ({ navigation }) => {
       setStudentsLoading(false);
     }
   }, [accessToken, selectedActivity, selectedDate, selectedGroup.value, selectedPhase.value, selectedEvent.value, subCode]);
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    // Clear caches
+    for (const key in _activityCache) delete _activityCache[key];
+    for (const key in _studentsCache) delete _studentsCache[key];
+    await Promise.all([loadActivities(), loadStudents()]);
+    setRefreshing(false);
+  }, [loadActivities, loadStudents]);
 
   // Auto-load students when selectedActivity is set
   React.useEffect(() => {
@@ -1149,7 +1159,13 @@ const UGLogbookScreen = ({ navigation }) => {
             </View>
           )}
 
-          <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+          <ScrollView 
+            contentContainerStyle={styles.scroll} 
+            showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#EA580C" colors={['#EA580C']} />
+            }
+          >
             {displayedList.map(student => {
               const rollNo = student.Roll_No;
               const isExpanded = expandedRoll === rollNo;

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, Animated, Dimensions,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, Animated, Dimensions, RefreshControl,
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -25,6 +25,7 @@ const SalarySlipScreen = ({ navigation }) => {
   const [slip, setSlip] = useState(null);
   const [isSalaryVisible, setIsSalaryVisible] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
 
   // Skeleton animation
@@ -61,6 +62,12 @@ const SalarySlipScreen = ({ navigation }) => {
   }, [user?.emp_id, month, year]);
 
   useEffect(() => { fetchSlip(); }, [fetchSlip]);
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await fetchSlip();
+    setRefreshing(false);
+  }, [fetchSlip]);
 
   const changeMonth = (delta) => {
     let newMonth = month + delta;
@@ -160,7 +167,9 @@ const SalarySlipScreen = ({ navigation }) => {
         </View>
       </LinearGradient>
 
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#EA580C" colors={['#EA580C']} />}
+      >
         {loading ? renderSkeleton() : error ? (
           <View style={styles.errorCard}>
             <MaterialCommunityIcons name="file-document-remove-outline" size={48} color="#D1D5DB" />

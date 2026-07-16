@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   ActivityIndicator, Modal, FlatList, Animated, Easing,
-  Dimensions,
+  Dimensions, RefreshControl,
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -254,6 +254,7 @@ const PGLogbookScreen = ({ navigation }) => {
   const { user, accessToken } = useUser();
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
 
@@ -274,6 +275,12 @@ const PGLogbookScreen = ({ navigation }) => {
 
   useEffect(() => { fetchScheduler(); }, [fetchScheduler]);
 
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await fetchScheduler();
+    setRefreshing(false);
+  }, [fetchScheduler]);
+
   const closeModal = () => { setShowModal(false); setSelectedItem(null); };
 
   return (
@@ -293,7 +300,13 @@ const PGLogbookScreen = ({ navigation }) => {
         </TouchableOpacity>
       </LinearGradient>
 
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        contentContainerStyle={styles.scroll} 
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#059669" colors={['#059669']} />
+        }
+      >
         {/* PG Scheduler Card */}
         <LinearGradient colors={['#059669', '#047857']} style={styles.schedulerCard} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
           <View style={styles.cardTop}>

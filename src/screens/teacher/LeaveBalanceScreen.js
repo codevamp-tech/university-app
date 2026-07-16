@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, Animated, Dimensions, FlatList, Modal, TextInput, ActivityIndicator, Alert, Platform
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, Animated, Dimensions, FlatList, Modal, TextInput, ActivityIndicator, Alert, Platform, RefreshControl
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -283,6 +283,7 @@ const LeaveBalanceScreen = ({ navigation }) => {
 
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
   const [inchargeName, setInchargeName] = useState('');
 
@@ -490,6 +491,12 @@ const LeaveBalanceScreen = ({ navigation }) => {
     fetchLeaveSummary();
   }, [fetchLeaveSummary]);
 
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await Promise.allSettled([fetchLeaveSummary(), fetchFacultyList()]);
+    setRefreshing(false);
+  }, [fetchLeaveSummary, fetchFacultyList]);
+
   const SkeletonBlock = ({ w = '100%', h = 16, style }) => (
     <Animated.View style={[{ width: w, height: h, borderRadius: 8, backgroundColor: '#E5E7EB', opacity: pulseAnim }, style]} />
   );
@@ -558,7 +565,9 @@ const LeaveBalanceScreen = ({ navigation }) => {
         </View>
       </LinearGradient>
 
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#EA580C" colors={['#EA580C']} />}
+      >
         {loading ? renderSkeleton() : error ? (
           <View style={styles.errorCard}>
             <MaterialCommunityIcons name="calendar-remove-outline" size={48} color="#D1D5DB" />
