@@ -71,7 +71,7 @@ const SuperAdminLeaderboardInsightsScreen = ({ navigation }) => {
       if (accessToken) {
         const [stats, list] = await Promise.all([
           getSuperAdminAnalytics(accessToken),
-          getAllStudents(accessToken, true)
+          getAllStudents(accessToken, false)
         ]);
         if (stats) setData(stats);
         if (list) {
