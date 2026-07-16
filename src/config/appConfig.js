@@ -23,7 +23,7 @@ export const APP_CONFIG = {
   PRIMARY_COLOR: '#EA580C',
 
   // ─── UniCampus Backend API ───────────────────────────────────────────────
-  API_BASE_URL: process.env.EXPO_PUBLIC_API_BASE_URL || 'http://54.86.247.222:8000',
+  API_BASE_URL: process.env.EXPO_PUBLIC_API_BASE_URL || 'http://54.161.8.236:8000',
   TENANT_ID:    process.env.EXPO_PUBLIC_TENANT_ID    || 'd3b07384-d113-4956-a5db-e0e457e51c89',
   DEPT_ID:      process.env.EXPO_PUBLIC_DEPT_ID      || 'e0c46647-7ee9-4c12-97b7-580ea5d3bc7d',
   // Internal password — user types '1234' in app, this is what gets sent to the API

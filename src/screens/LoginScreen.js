@@ -52,6 +52,24 @@ const LoginScreen = ({ navigation }) => {
     return () => clearInterval(interval);
   }, [loading]);
 
+  React.useEffect(() => {
+    const loadSavedRole = async () => {
+      try {
+        const savedRole = await AsyncStorage.getItem('@last_login_role');
+        if (savedRole) {
+          setRole(savedRole);
+        }
+      } catch (e) {
+        console.warn('Error loading saved role:', e);
+      }
+    };
+    loadSavedRole();
+  }, []);
+
+  const handleLoginIdChange = (text) => {
+    setLoginId(text);
+  };
+
   console.log("role>>>>globle", role);
 
   const handleLogin = async () => {
@@ -66,16 +84,30 @@ const LoginScreen = ({ navigation }) => {
     } catch (e) {
       console.warn('Login preparation error:', e);
     }
+    
+    // Auto-detect role as a fallback only for clear non-student patterns
     let finalRole = role;
-    if (role === 'admin' && loginId.trim().toLowerCase() === 'warden') {
-      finalRole = 'warden';
+    const cleanId = loginId.trim();
+    if (/[a-zA-Z]/.test(cleanId) || cleanId.includes('/')) {
+      if (cleanId.toLowerCase() === 'warden') {
+        finalRole = 'warden';
+      } else if (cleanId.toLowerCase() === 'admin') {
+        finalRole = 'admin';
+      } else {
+        finalRole = 'teacher';
+      }
     }
 
     console.log("loginId>>>>", loginId);
     console.log("securityKey>>>>", securityKey);
     console.log("finalrole>>>>", finalRole);
-    const success = await login(loginId, securityKey, finalRole);
+    
+    // Save correct final role for next app restart
+    try {
+      await AsyncStorage.setItem('@last_login_role', finalRole === 'warden' ? 'admin' : finalRole);
+    } catch (_) {}
 
+    const success = await login(loginId, securityKey, finalRole);
 
     if (success) {
       console.log("resrole>>>>", success.role);
@@ -156,19 +188,28 @@ const LoginScreen = ({ navigation }) => {
             <View style={styles.roleContainer}>
               <TouchableOpacity
                 style={[styles.roleBtn, role === 'student' && styles.roleBtnActive]}
-                onPress={() => setRole('student')}
+                onPress={() => {
+                  setRole('student');
+                  AsyncStorage.setItem('@last_login_role', 'student').catch(() => {});
+                }}
               >
                 <Text style={[styles.roleText, role === 'student' && styles.roleTextActive]}>Student</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.roleBtn, role === 'teacher' && styles.roleBtnActive]}
-                onPress={() => setRole('teacher')}
+                onPress={() => {
+                  setRole('teacher');
+                  AsyncStorage.setItem('@last_login_role', 'teacher').catch(() => {});
+                }}
               >
                 <Text style={[styles.roleText, role === 'teacher' && styles.roleTextActive]}>Faculty</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.roleBtn, role === 'admin' && styles.roleBtnActive]}
-                onPress={() => setRole('admin')}
+                onPress={() => {
+                  setRole('admin');
+                  AsyncStorage.setItem('@last_login_role', 'admin').catch(() => {});
+                }}
               >
                 <Text style={[styles.roleText, role === 'admin' && styles.roleTextActive]}>Admin</Text>
               </TouchableOpacity>
@@ -194,7 +235,7 @@ const LoginScreen = ({ navigation }) => {
                 }
                 placeholderTextColor="#9CA3AF"
                 value={loginId}
-                onChangeText={setLoginId}
+                onChangeText={handleLoginIdChange}
                 autoCapitalize="none"
                 keyboardType={role === 'student' ? 'numeric' : 'default'}
               />

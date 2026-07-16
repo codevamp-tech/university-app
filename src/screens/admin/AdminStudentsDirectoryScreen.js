@@ -21,6 +21,27 @@ const _studentCache = { data: null, timestamp: 0 };
 const ALL_PHASES = [1, 2, 3];
 
 
+const SafeAvatar = ({ uri, name, style, gradientColors, fallbackStyle, initialsStyle }) => {
+  const [error, setError] = useState(false);
+  const displayInitial = (name || 'S').charAt(0).toUpperCase();
+
+  if (!uri || error || uri.includes('pravatar.cc')) {
+    return (
+      <LinearGradient colors={gradientColors || ['#EA580C', '#9A3412']} style={fallbackStyle}>
+        <Text style={initialsStyle}>{displayInitial}</Text>
+      </LinearGradient>
+    );
+  }
+
+  return (
+    <Image 
+      source={{ uri }} 
+      style={style} 
+      onError={() => setError(true)}
+    />
+  );
+};
+
 const getStudentPhase = (s) => {
   if (s.phase) return parseInt(s.phase);
   const batchYear = parseInt(s.batch_year || s.batchYear || 0);
@@ -69,10 +90,10 @@ const StudentListSkeleton = () => {
   );
 };
 
-const FacultyStudentsDirectoryScreen = ({ navigation }) => {
+const AdminStudentsDirectoryScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
-  const { user, accessToken } = useUser();
+  const { accessToken } = useUser();
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -91,15 +112,15 @@ const FacultyStudentsDirectoryScreen = ({ navigation }) => {
       populateStudentAvatars(studentData);
       setStudents(studentData);
       try {
-        await AsyncStorage.setItem('@faculty_student_directory_cache', JSON.stringify({
+        await AsyncStorage.setItem('@admin_student_directory_cache', JSON.stringify({
           data: studentData,
           timestamp: Date.now()
         }));
       } catch (err) {
-        console.warn('[FacultyStudentsDirectory] AsyncStorage refresh save failed:', err);
+        console.warn('[AdminStudentsDirectory] AsyncStorage refresh save failed:', err);
       }
     } catch (e) {
-      console.warn('[FacultyStudentsDirectory] Error refreshing students:', e);
+      console.warn('[AdminStudentsDirectory] Error refreshing students:', e);
     } finally {
       setRefreshing(false);
     }
@@ -107,9 +128,8 @@ const FacultyStudentsDirectoryScreen = ({ navigation }) => {
 
   const handleStudentClick = (student) => {
     // Fire-and-forget: trigger backend registration without blocking navigation
-    // (awaiting this was causing a re-fetch whose data dropped the student count by 1)
     getPublicProfile(accessToken, student.id).catch(e =>
-      console.warn('[FacultyStudentsDirectory] Registration error:', e)
+      console.warn('[AdminStudentsDirectory] Registration error:', e)
     );
     // Navigate directly to ERPHub landing on Results tab
     navigation.navigate('ERPHub', {
@@ -117,17 +137,9 @@ const FacultyStudentsDirectoryScreen = ({ navigation }) => {
       params: { student }
     });
   };
-  
-  // Parse faculty's phases (e.g. "1,2" -> [1, 2], "1" -> [1])
-  const facultyPhases = React.useMemo(() => {
-    if (!user?.phase) return [1];
-    return String(user.phase).split(',').map(p => parseInt(p.trim())).filter(Boolean);
-  }, [user?.phase]);
 
-  // Default filter: if multiple phases, show 'ALL' initially, otherwise show the single phase
-  const [selectedPhaseFilter, setSelectedPhaseFilter] = useState(
-    facultyPhases.length > 1 ? 'ALL' : facultyPhases[0]
-  );
+  // Default filter: show 'ALL' initially
+  const [selectedPhaseFilter, setSelectedPhaseFilter] = useState('ALL');
 
   const batchCounts = React.useMemo(() => {
     const counts = { ALL: 0, 1: 0, 2: 0, 3: 0 };
@@ -163,7 +175,7 @@ const FacultyStudentsDirectoryScreen = ({ navigation }) => {
       }
 
       // Try loading from AsyncStorage cache first for instant display
-      const cacheKey = '@faculty_student_directory_cache';
+      const cacheKey = '@admin_student_directory_cache';
       try {
         const cachedStr = await AsyncStorage.getItem(cacheKey);
         if (cachedStr) {
@@ -175,7 +187,7 @@ const FacultyStudentsDirectoryScreen = ({ navigation }) => {
           }
         }
       } catch (err) {
-        console.warn('[FacultyStudentsDirectory] AsyncStorage load failed:', err);
+        console.warn('[AdminStudentsDirectory] AsyncStorage load failed:', err);
       }
 
       try {
@@ -192,10 +204,10 @@ const FacultyStudentsDirectoryScreen = ({ navigation }) => {
             timestamp: Date.now()
           }));
         } catch (err) {
-          console.warn('[FacultyStudentsDirectory] AsyncStorage save failed:', err);
+          console.warn('[AdminStudentsDirectory] AsyncStorage save failed:', err);
         }
       } catch (e) {
-        console.warn('[FacultyStudentsDirectory] Error fetching students:', e);
+        console.warn('[AdminStudentsDirectory] Error fetching students:', e);
       } finally {
         setLoading(false);
       }
@@ -203,7 +215,7 @@ const FacultyStudentsDirectoryScreen = ({ navigation }) => {
     fetchStudents();
   }, [accessToken]);
 
-  // Filter students based on phase permissions, selected filter, and search query
+  // Filter students based on phase filter and search query
   const filteredStudents = React.useMemo(() => {
     const list = students.filter(s => {
       // Must be a student and belong to the medical/MBBS category
@@ -248,7 +260,7 @@ const FacultyStudentsDirectoryScreen = ({ navigation }) => {
     <View style={[styles.container, { paddingTop: insets.top }]}>
       {/* Header */}
       <LinearGradient colors={['#FFFFFF', '#F9FAFB']} style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.navigate('TeacherMain')} style={styles.backButton}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <LinearGradient colors={['#FFF7ED', '#FFEDD5']} style={styles.backButtonBg}>
             <Ionicons name="arrow-back" size={20} color="#EA580C" />
           </LinearGradient>
@@ -315,7 +327,7 @@ const FacultyStudentsDirectoryScreen = ({ navigation }) => {
           <Ionicons name="people-outline" size={48} color="#D1D5DB" style={{ marginBottom: 12 }} />
           <Text style={styles.emptyText}>No Students Found</Text>
           <Text style={styles.emptySub}>
-            {searchQuery ? 'Try adjusting your search filters.' : `No students registered under Phase ${user.phase || 1}.`}
+            {searchQuery ? 'Try adjusting your search filters.' : 'No students registered.'}
           </Text>
         </View>
       ) : (
@@ -347,13 +359,14 @@ const FacultyStudentsDirectoryScreen = ({ navigation }) => {
                 activeOpacity={0.8}
               >
                 <View style={styles.studentAvatar}>
-                  {student.avatar_url && !student.avatar_url.includes('pravatar.cc') ? (
-                    <Image source={{ uri: student.avatar_url }} style={styles.avatarImage} />
-                  ) : (
-                    <LinearGradient colors={['#EA580C', '#9A3412']} style={styles.avatarGradient}>
-                      <Text style={styles.avatarInitial}>{displayInitial}</Text>
-                    </LinearGradient>
-                  )}
+                  <SafeAvatar
+                    uri={student.avatar_url}
+                    name={student.full_name || student.username}
+                    style={styles.avatarImage}
+                    gradientColors={['#EA580C', '#9A3412']}
+                    fallbackStyle={styles.avatarGradient}
+                    initialsStyle={styles.avatarInitial}
+                  />
                 </View>
 
                 <View style={styles.studentInfo}>
@@ -422,7 +435,6 @@ const FacultyStudentsDirectoryScreen = ({ navigation }) => {
                 </TouchableOpacity>
 
               {ALL_PHASES.map(ph => {
-                // Phase 1 -> 2025 Batch, Phase 2 -> 2024 Batch, Phase 3 -> 2023 Batch
                 const year = 2026 - ph;
                 const label = `${year} Batch`;
                 const count = batchCounts[ph] || 0;
@@ -714,4 +726,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default FacultyStudentsDirectoryScreen;
+export default AdminStudentsDirectoryScreen;

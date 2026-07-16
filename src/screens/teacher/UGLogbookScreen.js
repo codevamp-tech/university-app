@@ -14,6 +14,8 @@ import {
   getLogbookStudents,
   getLogbookVerifiedStudents,
   submitLogbookVerification,
+  getStudentSubjectLogbook,
+  submitReflectionVerification,
 } from '../../data/apiService';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -346,20 +348,31 @@ const UGLogbookScreen = ({ navigation }) => {
     setActivitiesLoading(true);
     setSelectedActivity(null);
     try {
-      const batchyear = selectedPhase.value === '3' ? '2023' : '2024';
-      const cacheKey = `${selectedEvent.value}_${subCode}_${batchyear}`;
-      const now = Date.now();
-      const cached = _activityCache[cacheKey];
-      let list;
-      if (cached && (now - cached.timestamp) < ACTIVITY_CACHE_TTL) {
-        list = cached.data;
+      if (selectedEvent.value === 'RefSelfDirectedLearning') {
+        const list = [{
+          comp_code: "",
+          ActivityName: "Reflection on Self Directed Learning",
+          raw_activity_name: "Reflection on Self Directed Learning",
+          Activity: "Reflection on Self Directed Learning",
+        }];
+        setActivities(list);
+        setSelectedActivity(list[0]);
       } else {
-        const data = await getLogbookActivities(accessToken, selectedEvent.value, subCode, batchyear);
-        list = Array.isArray(data) ? data : [];
-        _activityCache[cacheKey] = { data: list, timestamp: now };
+        const batchyear = selectedPhase.value === '3' ? '2023' : '2024';
+        const cacheKey = `${selectedEvent.value}_${subCode}_${batchyear}`;
+        const now = Date.now();
+        const cached = _activityCache[cacheKey];
+        let list;
+        if (cached && (now - cached.timestamp) < ACTIVITY_CACHE_TTL) {
+          list = cached.data;
+        } else {
+          const data = await getLogbookActivities(accessToken, selectedEvent.value, subCode, batchyear);
+          list = Array.isArray(data) ? data : [];
+          _activityCache[cacheKey] = { data: list, timestamp: now };
+        }
+        setActivities(list);
+        if (list.length > 0) setSelectedActivity(list[0]);
       }
-      setActivities(list);
-      if (list.length > 0) setSelectedActivity(list[0]);
     } catch (e) {
       console.warn('[UGLogbook] activities error:', e);
     } finally {
@@ -403,50 +416,175 @@ const UGLogbookScreen = ({ navigation }) => {
     setExpandedRoll(null);
     setVerifiedRolls(new Set());
     try {
-      const [pendingData, verifiedData] = await Promise.all([
-        getLogbookStudents(accessToken, {
-          subCode,
-          compcode,
+      if (selectedEvent.value === 'RefSelfDirectedLearning') {
+        const batchyear = selectedPhase.value === '3' ? '2023' : '2024';
+        const batchcd = selectedPhase.value === '1' ? '66' : selectedPhase.value === '2' ? '63' : '60';
+
+        let querySubCode = subCode;
+        let queryPhase = selectedPhase.value;
+        if (batchcd === '60' || batchcd === '63') {
+          querySubCode = 'PA';
+          queryPhase = '2';
+        } else if (batchcd === '66') {
+          querySubCode = 'PY';
+          queryPhase = '1';
+        }
+
+        // 1. Fetch the raw list of all students in the group from ERP
+        const pendingData = await getLogbookStudents(accessToken, {
+          subCode: querySubCode,
+          compcode: "", // Custom reflections have no pre-defined competency code
           verifiedDt: dateStr,
           gcd: selectedGroup.value,
-          phase: selectedPhase.value,
-        }),
-        getLogbookVerifiedStudents(accessToken, {
-          subCode,
-          compcode,
-          activityName,
-          verifiedDt: dateStr,
-          phase: selectedPhase.value,
-          lbtype: selectedEvent.value,
-        })
-      ]);
+          phase: queryPhase,
+        });
+        const pending = Array.isArray(pendingData) ? pendingData : [];
 
-      const pending = Array.isArray(pendingData) ? pendingData : [];
+        // 2. Fetch logbooks in parallel for each student to find who submitted reflections on this date
+        const studentsWithLogs = await Promise.all(
+          pending.map(async (student) => {
+            try {
+              let subjectPhase = selectedPhase.value;
+              const subUpper = String(subCode).toUpperCase();
+              if (subUpper === 'PA') {
+                subjectPhase = '2';
+              } else if (['PE', 'IM', 'SU', 'OG', 'EN', 'OP', 'OR', 'RD', 'AS', 'DE'].includes(subUpper)) {
+                subjectPhase = '3';
+              } else if (['PY', 'AN', 'BI'].includes(subUpper)) {
+                subjectPhase = '1';
+              }
 
-      // Map verified students to uniform shape
-      const mappedVerified = (Array.isArray(verifiedData) ? verifiedData : []).map(item => {
-        const vBy = item.VerifiedBy || item.verifiedBy || item.verified_by || item.Verified_By || '';
-        console.log(`[UGLogbook] mapping verified student: ${item.rollno || item.stud_roll_no} | VerifiedBy: ${vBy}`);
-        return {
-          Roll_No: item.rollno || item.stud_roll_no || item.Roll_No,
-          Student_Name: item.stud_name || item.Student_Name || item.student_name || 'Unknown Student',
-          department: item.Department || item.department || 'Physiology',
-          isAlreadyVerified: true,
-          A1: item.A1,
-          A2: item.A2,
-          A3: item.A3,
-          remarks: item.remarks || '',
-          verifiedBy: vBy,
-          received: item.received,
-        };
-      });
+              const logs = await getStudentSubjectLogbook(
+                student.Roll_No,
+                subjectPhase,
+                subCode,
+                selectedEvent.value,
+                batchyear,
+                batchcd
+              );
+              const matchingLogs = (Array.isArray(logs) ? logs : []).filter(log => {
+                const logDate = log.Acdt || log.verified_dt || log.Acdt_str || '';
+                let logDateStr = '';
+                if (logDate && logDate.includes('Date(')) {
+                  const ts = parseInt(logDate.split('(')[1].split(')')[0], 10);
+                  if (ts > 0) {
+                    // Shift by 5.5 hours to represent IST date correctly
+                    const dt = new Date(ts + 19800000);
+                    logDateStr = dt.getUTCFullYear() + '-' + 
+                                 String(dt.getUTCMonth() + 1).padStart(2, '0') + '-' + 
+                                 String(dt.getUTCDate()).padStart(2, '0');
+                  }
+                } else if (logDate) {
+                  try {
+                    const dt = new Date(logDate);
+                    logDateStr = dt.getFullYear() + '-' + 
+                                 String(dt.getMonth() + 1).padStart(2, '0') + '-' + 
+                                 String(dt.getDate()).padStart(2, '0');
+                  } catch (e) {}
+                }
+                return logDateStr === dateStr;
+              }).sort((a, b) => {
+                const aVer = a.ac_status === 1 || (a.VerifiedBy && a.VerifiedBy.trim() !== "");
+                const bVer = b.ac_status === 1 || (b.VerifiedBy && b.VerifiedBy.trim() !== "");
+                if (aVer && !bVer) return 1;
+                if (!aVer && bVer) return -1;
+                return 0;
+              });
 
-      // Store in cache
-      _studentsCache[cacheKey] = { pending, verified: mappedVerified, timestamp: Date.now() };
+              if (matchingLogs.length > 0) {
+                return {
+                  ...student,
+                  submittedLog: matchingLogs[0],
+                };
+              }
+            } catch (err) {
+              console.warn(`[UGLogbook] failed to load log for student ${student.Roll_No}:`, err);
+            }
+            return null;
+          })
+        );
 
-      setStudentList(pending);
-      setVerifiedStudentList(mappedVerified);
-      setStudentsLoaded(true);
+        // Filter out students without reflections on this date
+        const activeReflections = studentsWithLogs.filter(s => s !== null);
+
+        // 3. Group students into pending vs verified lists based on reflection entry verification status
+        const pendingList = [];
+        const verifiedList = [];
+
+        activeReflections.forEach(student => {
+          const log = student.submittedLog;
+          const isVer = log.ac_status === 1 || log.status === 1 || (log.VerifiedBy && log.VerifiedBy.trim() !== "");
+          if (isVer) {
+            verifiedList.push({
+              Roll_No: student.Roll_No,
+              Student_Name: student.Student_Name,
+              department: student.department || 'Pathology',
+              isAlreadyVerified: true,
+              A1: log.A1 || 'Absent',
+              A2: log.A2 || 'Absent',
+              A3: log.A3 || 'Absent',
+              remarks: log.remarks || '',
+              verifiedBy: log.VerifiedBy,
+              received: log.received,
+              submittedLog: log,
+            });
+          } else {
+            pendingList.push(student);
+          }
+        });
+
+        // Store in cache
+        _studentsCache[cacheKey] = { pending: pendingList, verified: verifiedList, timestamp: Date.now() };
+
+        setStudentList(pendingList);
+        setVerifiedStudentList(verifiedList);
+        setStudentsLoaded(true);
+      } else {
+        const [pendingData, verifiedData] = await Promise.all([
+          getLogbookStudents(accessToken, {
+            subCode,
+            compcode,
+            verifiedDt: dateStr,
+            gcd: selectedGroup.value,
+            phase: selectedPhase.value,
+          }),
+          getLogbookVerifiedStudents(accessToken, {
+            subCode,
+            compcode,
+            activityName,
+            verifiedDt: dateStr,
+            phase: selectedPhase.value,
+            lbtype: selectedEvent.value,
+          })
+        ]);
+
+        const pending = Array.isArray(pendingData) ? pendingData : [];
+
+        // Map verified students to uniform shape
+        const mappedVerified = (Array.isArray(verifiedData) ? verifiedData : []).map(item => {
+          const vBy = item.VerifiedBy || item.verifiedBy || item.verified_by || item.Verified_By || '';
+          console.log(`[UGLogbook] mapping verified student: ${item.rollno || item.stud_roll_no} | VerifiedBy: ${vBy}`);
+          return {
+            Roll_No: item.rollno || item.stud_roll_no || item.Roll_No,
+            Student_Name: item.stud_name || item.Student_Name || item.student_name || 'Unknown Student',
+            department: item.Department || item.department || 'Physiology',
+            isAlreadyVerified: true,
+            A1: item.A1,
+            A2: item.A2,
+            A3: item.A3,
+            remarks: item.remarks || '',
+            verifiedBy: vBy,
+            received: item.received,
+          };
+        });
+
+        // Store in cache
+        _studentsCache[cacheKey] = { pending, verified: mappedVerified, timestamp: Date.now() };
+
+        setStudentList(pending);
+        setVerifiedStudentList(mappedVerified);
+        setStudentsLoaded(true);
+      }
     } catch (e) {
       console.warn('[UGLogbook] students load error:', e);
       Alert.alert('Error', 'Failed to load students. Please try again.');
@@ -524,24 +662,62 @@ const UGLogbookScreen = ({ navigation }) => {
     if (compcode && compcode.includes('_')) {
       compcode = compcode.split('_')[0];
     }
-    const activityName = selectedActivity?.ActivityName || selectedActivity?.comp_name || selectedActivity?.label || '';
+    let activityName = selectedActivity?.ActivityName || selectedActivity?.comp_name || selectedActivity?.label || '';
+    let actmstid = selectedActivity?.actmstid || 0;
+
+    if (student.submittedLog) {
+      compcode = student.submittedLog.comp_code || student.submittedLog.compCode || '';
+      activityName = student.submittedLog.ActivityName || student.submittedLog.activityName || '';
+      actmstid = student.submittedLog.actmstid || 0;
+    }
 
     setSubmitting(rollNo);
 
     try {
-      await submitLogbookVerification(accessToken, {
-        roll_no: rollNo,
-        sub_code: subCode,
-        comp_code: compcode,
-        activity_name: activityName,
-        a1: form.a1 || 'F',
-        a2: form.a2 || 'M',
-        a3: form.a3 || 'C',
-        remarks: form.remarks || '',
-        verified_dt: formatDateISO(selectedDate),
-        phase: selectedPhase.value,
-        lbtype: selectedEvent.value,
-      });
+      if (selectedEvent.value === 'RefSelfDirectedLearning') {
+        const batchyear = selectedPhase.value === '3' ? '2023' : '2024';
+        const batchcd = selectedPhase.value === '1' ? '66' : selectedPhase.value === '2' ? '63' : '60';
+        let subjectPhase = selectedPhase.value;
+        const subUpper = String(subCode).toUpperCase();
+        if (subUpper === 'PA') {
+          subjectPhase = '2';
+        } else if (['PE', 'IM', 'SU', 'OG', 'EN', 'OP', 'OR', 'RD', 'AS', 'DE'].includes(subUpper)) {
+          subjectPhase = '3';
+        } else if (['PY', 'AN', 'BI'].includes(subUpper)) {
+          subjectPhase = '1';
+        }
+
+        const refPayload = {
+          actmstid: String(actmstid),
+          cbme: String(batchyear),
+          batchcd: String(batchcd),
+          rollno: String(rollNo),
+          Department: String(user?.department || 'Physiology'),
+          lbtype: 'RefSelfDirectedLearning',
+          phase: String(subjectPhase),
+          ac_status: 1,
+          VerifiedBy: String(user?.name || 'Faculty'),
+          VerifiedId: String(user?.emp_id || ''),
+          received: 0,
+          remarks: String(form.remarks || ''),
+        };
+        await submitReflectionVerification(refPayload);
+      } else {
+        await submitLogbookVerification(accessToken, {
+          roll_no: rollNo,
+          sub_code: subCode,
+          comp_code: compcode,
+          activity_name: activityName,
+          a1: form.a1 || 'F',
+          a2: form.a2 || 'M',
+          a3: form.a3 || 'C',
+          remarks: form.remarks || '',
+          verified_dt: formatDateISO(selectedDate),
+          phase: selectedPhase.value,
+          lbtype: selectedEvent.value,
+          actmstid: actmstid,
+        });
+      }
       setVerifiedRolls(prev => new Set([...prev, rollNo]));
       setExpandedRoll(null);
 
@@ -623,9 +799,14 @@ const UGLogbookScreen = ({ navigation }) => {
       return;
     }
 
+    const isReflection = selectedEvent.value === 'RefSelfDirectedLearning';
+    const alertMsg = isReflection
+      ? `Are you sure you want to sign off logbooks for ${selectedRolls.size} selected students?`
+      : `Are you sure you want to sign off logbooks for ${selectedRolls.size} selected students with default options (Attempt first/only, Meets Expectations, Completed)?`;
+
     Alert.alert(
       'Verify Selected',
-      `Are you sure you want to sign off logbooks for ${selectedRolls.size} selected students with default options (Attempt first/only, Meets Expectations, Completed)?`,
+      alertMsg,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -644,20 +825,63 @@ const UGLogbookScreen = ({ navigation }) => {
 
             const promises = rollArray.map(async (rollNo) => {
               const form = verifyForms[rollNo] || {};
+              const studentObj = studentList.find(s => s.Roll_No === rollNo);
+
+              let finalCompcode = compcode;
+              let finalActivityName = activityName;
+              let finalActmstid = selectedActivity?.actmstid || 0;
+
+              if (studentObj && studentObj.submittedLog) {
+                finalCompcode = studentObj.submittedLog.comp_code || studentObj.submittedLog.compCode || '';
+                finalActivityName = studentObj.submittedLog.ActivityName || studentObj.submittedLog.activityName || '';
+                finalActmstid = studentObj.submittedLog.actmstid || 0;
+              }
+
               try {
-                await submitLogbookVerification(accessToken, {
-                  roll_no: rollNo,
-                  sub_code: subCode,
-                  comp_code: compcode,
-                  activity_name: activityName,
-                  a1: form.a1 || 'F',
-                  a2: form.a2 || 'M',
-                  a3: form.a3 || 'C',
-                  remarks: form.remarks || '',
-                  verified_dt: formatDateISO(selectedDate),
-                  phase: selectedPhase.value,
-                  lbtype: selectedEvent.value,
-                });
+                if (selectedEvent.value === 'RefSelfDirectedLearning') {
+                  const batchyear = selectedPhase.value === '3' ? '2023' : '2024';
+                  const batchcd = selectedPhase.value === '1' ? '66' : selectedPhase.value === '2' ? '63' : '60';
+                  let subjectPhase = selectedPhase.value;
+                  const subUpper = String(subCode).toUpperCase();
+                  if (subUpper === 'PA') {
+                    subjectPhase = '2';
+                  } else if (['PE', 'IM', 'SU', 'OG', 'EN', 'OP', 'OR', 'RD', 'AS', 'DE'].includes(subUpper)) {
+                    subjectPhase = '3';
+                  } else if (['PY', 'AN', 'BI'].includes(subUpper)) {
+                    subjectPhase = '1';
+                  }
+
+                  const refPayload = {
+                    actmstid: String(finalActmstid),
+                    cbme: String(batchyear),
+                    batchcd: String(batchcd),
+                    rollno: String(rollNo),
+                    Department: String(user?.department || 'Physiology'),
+                    lbtype: 'RefSelfDirectedLearning',
+                    phase: String(subjectPhase),
+                    ac_status: 1,
+                    VerifiedBy: String(user?.name || 'Faculty'),
+                    VerifiedId: String(user?.emp_id || ''),
+                    received: 0,
+                    remarks: String(form.remarks || ''),
+                  };
+                  await submitReflectionVerification(refPayload);
+                } else {
+                  await submitLogbookVerification(accessToken, {
+                    roll_no: rollNo,
+                    sub_code: subCode,
+                    comp_code: finalCompcode,
+                    activity_name: finalActivityName,
+                    a1: form.a1 || 'F',
+                    a2: form.a2 || 'M',
+                    a3: form.a3 || 'C',
+                    remarks: form.remarks || '',
+                    verified_dt: formatDateISO(selectedDate),
+                    phase: selectedPhase.value,
+                    lbtype: selectedEvent.value,
+                    actmstid: finalActmstid,
+                  });
+                }
                 successCount++;
                 setVerifiedRolls(prev => new Set([...prev, rollNo]));
               } catch (e) {
@@ -793,7 +1017,9 @@ const UGLogbookScreen = ({ navigation }) => {
                 <FilterRow label="BATCH / PHASE" value={selectedPhase.label} onPress={() => openModal('phase')} />
                 <FilterRow label="EVENT TYPE" value={selectedEvent.label} onPress={() => openModal('event')} />
                 <FilterRow label="GROUP" value={selectedGroup.label} onPress={() => openModal('group')} />
-                <FilterRow label="ACTIVITY" value={activityLabel} onPress={() => openModal('activity')} loading={activitiesLoading} />
+                {selectedEvent.value !== 'RefSelfDirectedLearning' && (
+                  <FilterRow label="ACTIVITY" value={activityLabel} onPress={() => openModal('activity')} loading={activitiesLoading} />
+                )}
                 <DatePicker date={selectedDate} onChange={setSelectedDate} />
               </ScrollView>
 
@@ -1024,37 +1250,62 @@ const UGLogbookScreen = ({ navigation }) => {
                     <View style={styles.accordion}>
                       <View style={styles.accordionDivider} />
 
-                      <Text style={styles.accordionSectionLabel}>ATTEMPT TYPE</Text>
-                      {isVerified ? (
-                        <View style={[styles.accordionDropdown, { backgroundColor: '#F3F4F6', borderColor: '#E5E7EB' }]}>
-                          <Text style={[styles.accordionDropdownText, { color: '#4B5563' }]}>
-                            {A1_OPTIONS.find(o => o.value === form.a1)?.label || form.a1}
-                          </Text>
+                      {student.submittedLog && (
+                        <View style={styles.reflectionDetailCard}>
+                          <Text style={styles.reflectionTopicTitle}>Topic: {student.submittedLog.ActivityName || 'Reflection Topic'}</Text>
+                          
+                          <View style={styles.reflectionField}>
+                            <Text style={styles.reflectionFieldLabel}>WHAT HAPPENED? (A1)</Text>
+                            <Text style={styles.reflectionFieldValue}>{student.submittedLog.A1 || 'No reflection entered'}</Text>
+                          </View>
+                          
+                          <View style={styles.reflectionField}>
+                            <Text style={styles.reflectionFieldLabel}>SO WHAT? (A2)</Text>
+                            <Text style={styles.reflectionFieldValue}>{student.submittedLog.A2 || 'No reflection entered'}</Text>
+                          </View>
+                          
+                          <View style={styles.reflectionField}>
+                            <Text style={styles.reflectionFieldLabel}>WHAT NEXT? (A3)</Text>
+                            <Text style={styles.reflectionFieldValue}>{student.submittedLog.A3 || 'No reflection entered'}</Text>
+                          </View>
                         </View>
-                      ) : (
-                        renderDropdown(rollNo, 'a1', A1_OPTIONS, 'Attempt Type')
                       )}
 
-                      <Text style={[styles.accordionSectionLabel, { marginTop: 12 }]}>PERFORMANCE RATING</Text>
-                      {isVerified ? (
-                        <View style={[styles.accordionDropdown, { backgroundColor: '#F3F4F6', borderColor: '#E5E7EB' }]}>
-                          <Text style={[styles.accordionDropdownText, { color: '#4B5563' }]}>
-                            {A2_OPTIONS.find(o => o.value === form.a2)?.label || form.a2}
-                          </Text>
-                        </View>
-                      ) : (
-                        renderDropdown(rollNo, 'a2', A2_OPTIONS, 'Performance Rating')
-                      )}
+                      {selectedEvent.value !== 'RefSelfDirectedLearning' && (
+                        <>
+                          <Text style={styles.accordionSectionLabel}>ATTEMPT TYPE</Text>
+                          {isVerified ? (
+                            <View style={[styles.accordionDropdown, { backgroundColor: '#F3F4F6', borderColor: '#E5E7EB' }]}>
+                              <Text style={[styles.accordionDropdownText, { color: '#4B5563' }]}>
+                                {A1_OPTIONS.find(o => o.value === form.a1)?.label || form.a1}
+                              </Text>
+                            </View>
+                          ) : (
+                            renderDropdown(rollNo, 'a1', A1_OPTIONS, 'Attempt Type')
+                          )}
 
-                      <Text style={[styles.accordionSectionLabel, { marginTop: 12 }]}>COMPLETION STATUS</Text>
-                      {isVerified ? (
-                        <View style={[styles.accordionDropdown, { backgroundColor: '#F3F4F6', borderColor: '#E5E7EB' }]}>
-                          <Text style={[styles.accordionDropdownText, { color: '#4B5563' }]}>
-                            {A3_OPTIONS.find(o => o.value === form.a3)?.label || form.a3}
-                          </Text>
-                        </View>
-                      ) : (
-                        renderDropdown(rollNo, 'a3', A3_OPTIONS, 'Completion Status')
+                          <Text style={[styles.accordionSectionLabel, { marginTop: 12 }]}>PERFORMANCE RATING</Text>
+                          {isVerified ? (
+                            <View style={[styles.accordionDropdown, { backgroundColor: '#F3F4F6', borderColor: '#E5E7EB' }]}>
+                              <Text style={[styles.accordionDropdownText, { color: '#4B5563' }]}>
+                                {A2_OPTIONS.find(o => o.value === form.a2)?.label || form.a2}
+                              </Text>
+                            </View>
+                          ) : (
+                            renderDropdown(rollNo, 'a2', A2_OPTIONS, 'Performance Rating')
+                          )}
+
+                          <Text style={[styles.accordionSectionLabel, { marginTop: 12 }]}>COMPLETION STATUS</Text>
+                          {isVerified ? (
+                            <View style={[styles.accordionDropdown, { backgroundColor: '#F3F4F6', borderColor: '#E5E7EB' }]}>
+                              <Text style={[styles.accordionDropdownText, { color: '#4B5563' }]}>
+                                {A3_OPTIONS.find(o => o.value === form.a3)?.label || form.a3}
+                              </Text>
+                            </View>
+                          ) : (
+                            renderDropdown(rollNo, 'a3', A3_OPTIONS, 'Completion Status')
+                          )}
+                        </>
                       )}
 
                       {isVerified ? (
@@ -1397,6 +1648,15 @@ const styles = StyleSheet.create({
     backgroundColor: '#10B981', borderRadius: 10, paddingVertical: 12, marginTop: 14,
   },
   submitBtnText: { color: '#FFFFFF', fontSize: 13, fontWeight: '800' },
+  
+  reflectionDetailCard: {
+    backgroundColor: '#FFF7ED', borderRadius: 10, borderWidth: 1, borderColor: '#FFEDD5',
+    padding: 12, marginBottom: 12, gap: 10,
+  },
+  reflectionTopicTitle: { fontSize: 13, fontWeight: '800', color: '#1F2937' },
+  reflectionField: { gap: 3 },
+  reflectionFieldLabel: { fontSize: 9, fontWeight: '800', color: '#EA580C', letterSpacing: 0.5 },
+  reflectionFieldValue: { fontSize: 13, color: '#4B5563', lineHeight: 18 },
 });
 
 const ddStyles = StyleSheet.create({

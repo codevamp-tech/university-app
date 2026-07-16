@@ -21,8 +21,45 @@ import { SkeletonBlock } from '../../components/SkeletonLoader';
 import ActivityRing from '../../components/ActivityRing';
 import { useHealthMetrics } from '../../hooks/useHealthMetrics';
 import { APP_CONFIG } from '../../config/appConfig';
+import { getStudentAvatar } from '../../utils/studentAvatarCache';
 
 const { width } = Dimensions.get('window');
+
+const getStudentPhase = (s) => {
+  if (s.phase) return parseInt(s.phase);
+  const batchYear = parseInt(s.batch_year || s.batchYear || 0);
+  if (batchYear >= 2025) return 1;
+  if (batchYear === 2024) return 2;
+  if (batchYear > 0 && batchYear <= 2023) return 3;
+
+  const sem = parseInt(s.semester || s.current_year * 2 - 1 || 1);
+  if (sem <= 2) return 1;
+  if (sem <= 4) return 2;
+  if (sem <= 6) return 3;
+  return 4;
+};
+
+const SafeGlimpseAvatar = ({ uri, name, rollno, colors }) => {
+  const [error, setError] = React.useState(false);
+  const initials = name ? name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() : 'ST';
+  
+  const avatarUri = uri || (rollno ? getStudentAvatar(rollno) : null);
+
+  if (!avatarUri || error || avatarUri.includes('pravatar.cc')) {
+    return (
+      <View style={[styles.glimpseAvatarInitials, { backgroundColor: colors.primaryLight }]}>
+        <Text style={[styles.glimpseAvatarText, { color: colors.primary }]}>{initials}</Text>
+      </View>
+    );
+  }
+  return (
+    <Image 
+      source={{ uri: avatarUri }} 
+      style={styles.glimpseAvatar} 
+      onError={() => setError(true)}
+    />
+  );
+};
 
 const AdminDashboardScreen = ({ navigation }) => {
   const { colors, isDark } = useTheme();
@@ -108,64 +145,14 @@ const AdminDashboardScreen = ({ navigation }) => {
             })
             .catch(err => console.warn('[AdminDashboard] Teachers list fetch error:', err));
 
-          // Fetch student list & fitness list in background
-          getSuperAdminDrilldown(accessToken, 'fitness_students')
-            .then(fitList => {
-              if (fitList && Array.isArray(fitList) && fitList.length > 0) {
-                setFitnessStudentsList(fitList);
-              } else {
-                // Fetch student directory fallback if no database fitness records
-                getAllStudents(accessToken)
-                  .then(sList => {
-                    if (sList && Array.isArray(sList)) {
-                      setStudentsList(sList);
-                      const mockFit = sList
-                        .filter(s => String(s?.category || '').toLowerCase() === 'medical')
-                        .map((s, idx) => {
-                          const steps = 7500 + (idx * 450) % 6500;
-                          const kcal = Math.round(steps / 20);
-                          const sleep = (6.2 + (idx * 0.3) % 2.0).toFixed(1);
-                          return {
-                            id: s?.id || s?.rollno || String(idx),
-                            student_name: s?.full_name || s?.username || 'Student',
-                            avatar_url: s?.avatar_url,
-                            steps: steps,
-                            sleep_hours: parseFloat(sleep),
-                            kcal: kcal
-                          };
-                        });
-                      setFitnessStudentsList(mockFit);
-                    }
-                  })
-                  .catch(err => console.warn('[AdminDashboard] Fallback student fetch error:', err));
+          // Fetch student list in background
+          getAllStudents(accessToken)
+            .then(sList => {
+              if (sList && Array.isArray(sList)) {
+                setStudentsList(sList);
               }
             })
-            .catch(err => {
-              console.warn('[AdminDashboard] Fitness drilldown fetch error, trying fallback:', err);
-              getAllStudents(accessToken)
-                .then(sList => {
-                  if (sList && Array.isArray(sList)) {
-                    setStudentsList(sList);
-                    const mockFit = sList
-                      .filter(s => String(s?.category || '').toLowerCase() === 'medical')
-                      .map((s, idx) => {
-                        const steps = 7500 + (idx * 450) % 6500;
-                        const kcal = Math.round(steps / 20);
-                        const sleep = (6.2 + (idx * 0.3) % 2.0).toFixed(1);
-                        return {
-                          id: s?.id || s?.rollno || String(idx),
-                          student_name: s?.full_name || s?.username || 'Student',
-                          avatar_url: s?.avatar_url,
-                          steps: steps,
-                          sleep_hours: parseFloat(sleep),
-                          kcal: kcal
-                        };
-                      });
-                    setFitnessStudentsList(mockFit);
-                  }
-                })
-                .catch(e => console.warn('[AdminDashboard] Fallback student fetch error:', e));
-            });
+            .catch(err => console.warn('[AdminDashboard] Student list fetch error:', err));
         }
       }
     } catch (err) {
@@ -616,20 +603,7 @@ const AdminDashboardScreen = ({ navigation }) => {
     const facStats = superStats?.faculty || { active_count: 0, average_attendance: '0%', sessional_marks_upload_pct: 0, active_logins: 0, average_cgpa: 0.0, dept_attendance: [] };
     const gStats = superStats?.grievance || { pending: 0, in_progress: 0, resolved: 0, total: 0 };
 
-    const studentFitCount = fitnessStudentsList.length;
-    const avgStudentSteps = studentFitCount > 0 
-      ? Math.round(fitnessStudentsList.reduce((acc, s) => acc + (s?.steps || 0), 0) / studentFitCount) 
-      : 8420;
-    const avgStudentKcal = studentFitCount > 0 
-      ? Math.round(fitnessStudentsList.reduce((acc, s) => acc + (s?.kcal || 0), 0) / studentFitCount) 
-      : 420;
-    const avgStudentSleep = studentFitCount > 0 
-      ? (fitnessStudentsList.reduce((acc, s) => acc + (parseFloat(s?.sleep_hours) || 0), 0) / studentFitCount).toFixed(1) 
-      : '7.2';
-
-    const avgFacultySteps = 6450;
-    const avgFacultyKcal = 310;
-    const avgFacultySleep = '6.8';
+    // Fitness calculations removed as campus fitness insights was deleted
 
     // Segment mappings for visual stacked charts
     const moodSegments = [
@@ -794,77 +768,7 @@ const AdminDashboardScreen = ({ navigation }) => {
           </View>
         </TouchableOpacity>
 
-        {/* Campus Fitness Insights (Students & Faculty) */}
-        <TouchableOpacity
-          style={[styles.insightCard, { backgroundColor: colors.card, borderColor: colors.border, borderLeftColor: '#EC4899', borderLeftWidth: 3 }]}
-          onPress={() => navigation.navigate('SuperAdminDrilldown', { category: 'fitness_students', title: 'Campus Fitness Standings' })}
-          activeOpacity={0.85}
-        >
-          <View style={styles.insightHeader}>
-            <View style={[styles.insightIconBg, { backgroundColor: '#EC489918' }]}>
-              <MaterialCommunityIcons name="heart-pulse" size={18} color="#EC4899" />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.insightTitle, { color: colors.textPrimary }]}>Campus Fitness Insights</Text>
-              <Text style={[styles.insightCategoryTag, { color: '#EC4899' }]}>PHYSICAL WELLBEING</Text>
-            </View>
-            <Feather name="chevron-right" size={16} color={colors.textMuted} />
-          </View>
-
-          <Text style={[styles.insightSubText, { color: colors.textMuted, marginBottom: 12 }]}>
-            Aggregate physical activity & health logs
-          </Text>
-
-          <View style={{ flexDirection: 'row', gap: 12, marginTop: 4 }}>
-            {/* Students Sub-card */}
-            <View style={{ flex: 1, backgroundColor: isDark ? 'rgba(255,255,255,0.02)' : '#F9FAFB', padding: 12, borderRadius: 16, borderWidth: 1, borderColor: colors.border }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 }}>
-                <MaterialCommunityIcons name="account-outline" size={16} color="#3B82F6" />
-                <Text style={{ fontWeight: '800', fontSize: 13, color: colors.textPrimary }}>Students</Text>
-              </View>
-              <View style={{ gap: 8 }}>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Text style={{ fontSize: 11, color: colors.textSecondary }}>Avg Steps</Text>
-                  <Text style={{ fontSize: 12, fontWeight: '700', color: colors.textPrimary }}>{avgStudentSteps.toLocaleString()}</Text>
-                </View>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Text style={{ fontSize: 11, color: colors.textSecondary }}>Avg Burn</Text>
-                  <Text style={{ fontSize: 12, fontWeight: '700', color: '#EF4444' }}>{avgStudentKcal} kcal</Text>
-                </View>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Text style={{ fontSize: 11, color: colors.textSecondary }}>Avg Sleep</Text>
-                  <Text style={{ fontSize: 12, fontWeight: '700', color: '#10B981' }}>{avgStudentSleep}h</Text>
-                </View>
-              </View>
-            </View>
-
-            {/* Faculty Sub-card */}
-            <View style={{ flex: 1, backgroundColor: isDark ? 'rgba(255,255,255,0.02)' : '#F9FAFB', padding: 12, borderRadius: 16, borderWidth: 1, borderColor: colors.border }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 }}>
-                <MaterialCommunityIcons name="school-outline" size={16} color="#10B981" />
-                <Text style={{ fontWeight: '800', fontSize: 13, color: colors.textPrimary }}>Faculty</Text>
-              </View>
-              <View style={{ gap: 8 }}>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Text style={{ fontSize: 11, color: colors.textSecondary }}>Avg Steps</Text>
-                  <Text style={{ fontSize: 12, fontWeight: '700', color: colors.textPrimary }}>{avgFacultySteps.toLocaleString()}</Text>
-                </View>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Text style={{ fontSize: 11, color: colors.textSecondary }}>Avg Burn</Text>
-                  <Text style={{ fontSize: 12, fontWeight: '700', color: '#EF4444' }}>{avgFacultyKcal} kcal</Text>
-                </View>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Text style={{ fontSize: 11, color: colors.textSecondary }}>Avg Sleep</Text>
-                  <Text style={{ fontSize: 12, fontWeight: '700', color: '#10B981' }}>{avgFacultySleep}h</Text>
-                </View>
-              </View>
-            </View>
-          </View>
-          
-          <Text style={{ fontSize: 11, color: colors.primary, fontWeight: '700', marginTop: 12, textAlign: 'right' }}>
-            View Standings & Leaderboard →
-          </Text>
-        </TouchableOpacity>
+        {/* Campus Fitness Insights removed */}
 
         {/* Leaderboard (The Hustle) Insights */}
         <TouchableOpacity
@@ -902,21 +806,22 @@ const AdminDashboardScreen = ({ navigation }) => {
                   <Text style={[styles.glimpseRank, { color: colors.textMuted }, idx === 0 && { color: '#EA580C' }]}>
                     #{idx + 1}
                   </Text>
-                  {item.avatar_url ? (
-                    <Image source={{ uri: item.avatar_url }} style={styles.glimpseAvatar} />
-                  ) : (
-                    <View style={[styles.glimpseAvatarInitials, { backgroundColor: colors.primaryLight }]}>
-                      <Text style={[styles.glimpseAvatarText, { color: colors.primary }]}>
-                        {item.student_name ? item.student_name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() : 'ST'}
-                      </Text>
-                    </View>
-                  )}
+                  <SafeGlimpseAvatar
+                    uri={item.avatar_url}
+                    name={item.student_name}
+                    rollno={item.rollno}
+                    colors={colors}
+                  />
                   <View style={{ flex: 1 }}>
                     <Text style={[styles.glimpseName, { color: colors.textPrimary }]} numberOfLines={1}>
                       {item.student_name}
                     </Text>
                     <Text style={{ fontSize: 10, color: colors.textSecondary }} numberOfLines={1}>
-                      {item.branch || ''}
+                      {(() => {
+                        const branch = item.branch === 'Medical' || item.branch === 'medical' ? 'MBBS' : (item.branch || '');
+                        const phase = getStudentPhase(item);
+                        return phase ? `${branch} · Phase ${phase}` : branch;
+                      })()}
                     </Text>
                   </View>
                   <View style={[styles.glimpseScorePill, { backgroundColor: colors.border }]}>
@@ -994,70 +899,84 @@ const AdminDashboardScreen = ({ navigation }) => {
           </View>
         </TouchableOpacity>
 
-        {/* Student Insights (Medical, Engineering, Management) */}
-        <View
+        {/* Students Directory (MBBS / Medical) */}
+        <TouchableOpacity
           style={[styles.insightCard, { backgroundColor: colors.card, borderColor: colors.border, borderLeftColor: '#3B82F6', borderLeftWidth: 3 }]}
+          onPress={() => navigation.navigate('AdminStudentsDirectory')}
+          activeOpacity={0.85}
         >
           <View style={styles.insightHeader}>
             <View style={[styles.insightIconBg, { backgroundColor: '#3B82F618' }]}>
               <MaterialCommunityIcons name="account-group-outline" size={18} color="#3B82F6" />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={[styles.insightTitle, { color: colors.textPrimary }]}>Student Insights</Text>
+              <Text style={[styles.insightTitle, { color: colors.textPrimary }]}>Students Directory</Text>
               <Text style={[styles.insightCategoryTag, { color: '#3B82F6' }]}>COLLEGE DIRECTORY</Text>
             </View>
-            <TouchableOpacity 
-              onPress={() => navigation.navigate('SuperAdminDrilldown', { category: 'student_directory', title: 'Student Directory', department: 'all' })}
-              activeOpacity={0.7}
-            >
-              <Feather name="chevron-right" size={16} color={colors.textMuted} />
-            </TouchableOpacity>
+            <Feather name="chevron-right" size={16} color={colors.textMuted} />
           </View>
           
           <Text style={[styles.insightBigVal, { color: colors.textPrimary }]}>
-            {studentsList.length}{' '}
-            <Text style={[styles.insightBigValSub, { color: colors.textSecondary }]}>Total Students</Text>
+            {(() => {
+              const mbbsCount = studentsList.filter(s => {
+                const isStudent = s.role?.toLowerCase() === 'student';
+                const isMedical = (!s.category && !s.branch && !s.course) ||
+                                  s.category === 'medical' || 
+                                  (s.branch && s.branch.toUpperCase() === 'MBBS') || 
+                                  (s.course && s.course.toUpperCase().includes('MBBS')) ||
+                                  (s.course && s.course.replace(/\./g, '').toUpperCase().includes('MBBS'));
+                return isStudent && isMedical;
+              }).length;
+              return mbbsCount;
+            })()}{' '}
+            <Text style={[styles.insightBigValSub, { color: colors.textSecondary }]}>MBBS Students</Text>
           </Text>
           <Text style={[styles.insightSubText, { color: colors.textMuted, marginBottom: 12 }]}>
-            Student distribution by department. Tap a department to view directory.
+            View all batches, students, and their ERP data (results, attendance, logbook etc.).
           </Text>
-
-          <View style={{ gap: 10, marginTop: 8 }}>
-            {[
-              { name: 'Medical', count: studentsList.filter(s => String(s.category).toLowerCase() === 'medical').length, color: '#EF4444', value: 'medical' },
-              { name: 'Engineering', count: studentsList.filter(s => String(s.category).toLowerCase() === 'engineering').length, color: '#3B82F6', value: 'engineering' },
-              { name: 'Management', count: studentsList.filter(s => String(s.category).toLowerCase() === 'management').length, color: '#10B981', value: 'management' }
-            ].map((dept) => {
-              const total = studentsList.length || 1;
-              const pct = Math.round((dept.count / total) * 100);
+          
+          <View style={{ flexDirection: 'row', gap: 10, marginTop: 8 }}>
+            {[1, 2, 3].map((phase) => {
+              const year = 2026 - phase;
+              const phaseCount = studentsList.filter(s => {
+                const isStudent = s.role?.toLowerCase() === 'student';
+                const isMedical = (!s.category && !s.branch && !s.course) ||
+                                  s.category === 'medical' || 
+                                  (s.branch && s.branch.toUpperCase() === 'MBBS') || 
+                                  (s.course && s.course.toUpperCase().includes('MBBS')) ||
+                                  (s.course && s.course.replace(/\./g, '').toUpperCase().includes('MBBS'));
+                if (!isStudent || !isMedical) return false;
+                
+                return getStudentPhase(s) === phase;
+              }).length;
+              
               return (
-                <TouchableOpacity
-                  key={dept.value}
-                  onPress={() => navigation.navigate('SuperAdminDrilldown', { category: 'student_directory', title: `${dept.name} Students`, department: dept.value })}
+                <View 
+                  key={phase}
                   style={{
+                    flex: 1,
                     backgroundColor: isDark ? 'rgba(255,255,255,0.02)' : '#F9FAFB',
-                    padding: 12,
+                    padding: 10,
                     borderRadius: 12,
                     borderWidth: 1,
-                    borderColor: colors.border
+                    borderColor: colors.border,
+                    alignItems: 'center'
                   }}
-                  activeOpacity={0.7}
                 >
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                      <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: dept.color }} />
-                      <Text style={{ fontWeight: '700', fontSize: 13, color: colors.textPrimary }}>{dept.name}</Text>
-                    </View>
-                    <Text style={{ fontWeight: '800', fontSize: 12, color: dept.color }}>{dept.count} Students ({pct}%)</Text>
-                  </View>
-                  <View style={{ height: 6, backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#E5E7EB', borderRadius: 3, overflow: 'hidden' }}>
-                    <View style={{ width: `${pct}%`, height: '100%', backgroundColor: dept.color, borderRadius: 3 }} />
-                  </View>
-                </TouchableOpacity>
+                  <Text style={{ fontSize: 10, fontWeight: '800', color: colors.textSecondary, marginBottom: 4 }}>
+                    PHASE {phase}
+                  </Text>
+                  <Text style={{ fontSize: 14, fontWeight: '800', color: colors.primary }}>
+                    {phaseCount}
+                  </Text>
+                  <Text style={{ fontSize: 9, color: colors.textMuted, marginTop: 2 }}>
+                    {year} Batch
+                  </Text>
+                </View>
               );
             })}
           </View>
-        </View>
+        </TouchableOpacity>
 
         {/* Teacher/Faculty Insights */}
         <TouchableOpacity

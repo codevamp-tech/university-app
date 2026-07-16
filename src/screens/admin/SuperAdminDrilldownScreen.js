@@ -18,21 +18,47 @@ import { useUser } from '../../context/UserContext';
 import { getSuperAdminDrilldown, getAllStudents } from '../../data/apiService';
 import { SkeletonBlock } from '../../components/SkeletonLoader';
 import { APP_CONFIG } from '../../config/appConfig';
+import { getStudentAvatar } from '../../utils/studentAvatarCache';
 
-const StudentAvatar = ({ uri, name, colors }) => {
-  if (uri) {
-    return <Image source={{ uri }} style={styles.avatar} />;
-  }
+const StudentAvatar = ({ uri, name, rollno, colors }) => {
+  const [error, setError] = useState(false);
   const initials = name
     ? name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
     : 'ST';
+    
+  const avatarUri = uri || (rollno ? getStudentAvatar(rollno) : null);
+
+  if (!avatarUri || error || avatarUri.includes('pravatar.cc')) {
+    return (
+      <View style={[styles.avatar, { backgroundColor: colors.primaryLight, justifyContent: 'center', alignItems: 'center' }]}>
+        <Text style={{ fontSize: 13, fontWeight: '700', color: colors.primary }}>
+          {initials}
+        </Text>
+      </View>
+    );
+  }
+
   return (
-    <View style={[styles.avatar, { backgroundColor: colors.primaryLight, justifyContent: 'center', alignItems: 'center' }]}>
-      <Text style={{ fontSize: 13, fontWeight: '700', color: colors.primary }}>
-        {initials}
-      </Text>
-    </View>
+    <Image 
+      source={{ uri: avatarUri }} 
+      style={styles.avatar} 
+      onError={() => setError(true)}
+    />
   );
+};
+
+const getStudentPhase = (s) => {
+  if (s.phase) return parseInt(s.phase);
+  const batchYear = parseInt(s.batch_year || s.batchYear || 0);
+  if (batchYear >= 2025) return 1;
+  if (batchYear === 2024) return 2;
+  if (batchYear > 0 && batchYear <= 2023) return 3;
+
+  const sem = parseInt(s.semester || s.current_year * 2 - 1 || 1);
+  if (sem <= 2) return 1;
+  if (sem <= 4) return 2;
+  if (sem <= 6) return 3;
+  return 4;
 };
 
 const SuperAdminDrilldownScreen = ({ route, navigation }) => {
@@ -45,6 +71,7 @@ const SuperAdminDrilldownScreen = ({ route, navigation }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDept, setSelectedDept] = useState(department || 'all');
   const [activeFitnessFilter, setActiveFitnessFilter] = useState('student');
+  const [selectedPhaseFilter, setSelectedPhaseFilter] = useState('ALL');
 
   useEffect(() => {
     if (route.params?.department) {
@@ -152,6 +179,9 @@ const SuperAdminDrilldownScreen = ({ route, navigation }) => {
     }
     if (category === 'fitness_students') {
       return matchesSearch && item?.type === activeFitnessFilter;
+    }
+    if (category === 'hustle_students' && selectedPhaseFilter !== 'ALL') {
+      return matchesSearch && getStudentPhase(item) === parseInt(selectedPhaseFilter);
     }
     return matchesSearch;
   });
@@ -299,16 +329,45 @@ const SuperAdminDrilldownScreen = ({ route, navigation }) => {
     }
 
     if (category === 'hustle_students') {
+      const phase = getStudentPhase(item);
+      const course = (item.course || '').trim();
+      const branch = (item.branch || '').trim();
+      let displayVal = 'MBBS';
+      
+      if (course || branch) {
+        if (!course) {
+          displayVal = branch;
+        } else if (!branch) {
+          displayVal = course;
+        } else {
+          const courseNorm = course.replace(/\./g, '').toUpperCase();
+          const branchNorm = branch.replace(/\./g, '').toUpperCase();
+          
+          if (courseNorm.includes(branchNorm) || branchNorm.includes(courseNorm)) {
+            displayVal = course;
+          } else {
+            displayVal = `${course} (${branch})`;
+          }
+        }
+      }
+      
+      // Override 'Medical' or 'medical' to 'MBBS'
+      if (displayVal && (displayVal.toUpperCase() === 'MEDICAL' || displayVal.toUpperCase().includes('MEDICAL'))) {
+        displayVal = 'MBBS';
+      }
+
+      const phaseText = phase ? ` · Phase ${phase}` : '';
+
       return (
         <TouchableOpacity 
           style={[styles.rowCard, { backgroundColor: colors.card, borderColor: colors.border }]}
           onPress={() => navigation.navigate('OtherStudentProfile', { student: { id: item.user_id || item.student_id || item.id, name: item.student_name, avatar: item.avatar_url } })}
         >
-          <StudentAvatar uri={item.avatar_url} name={item.student_name} colors={colors} />
+          <StudentAvatar uri={item.avatar_url} name={item.student_name} rollno={item.rollno} colors={colors} />
           <View style={{ flex: 1, marginLeft: 12 }}>
             <Text style={[styles.founderName, { color: colors.textPrimary }]}>{item.student_name}</Text>
             <Text style={[styles.rollnoText, { color: colors.textSecondary }]}>
-              {item.course} • {item.branch}
+              {displayVal}{phaseText}
             </Text>
           </View>
           <View style={[styles.scorePill, { backgroundColor: colors.primaryLight }]}>
@@ -518,6 +577,30 @@ const SuperAdminDrilldownScreen = ({ route, navigation }) => {
                     {pill.label}
                   </Text>
                 </View>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      )}
+
+      {/* Phase Filter Pills (Only for hustle_students category) */}
+      {category === 'hustle_students' && (
+        <View style={styles.filterContainer}>
+          {['ALL', '1', '2', '3'].map((phase) => {
+            const isSel = selectedPhaseFilter === phase;
+            return (
+              <TouchableOpacity
+                key={phase}
+                style={[
+                  styles.filterPill,
+                  isSel ? { backgroundColor: colors.primary } : { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }
+                ]}
+                onPress={() => setSelectedPhaseFilter(phase)}
+                activeOpacity={0.8}
+              >
+                <Text style={[styles.filterPillText, { color: isSel ? '#FFF' : colors.textPrimary }]}>
+                  {phase === 'ALL' ? 'All Batches' : `Phase ${phase}`}
+                </Text>
               </TouchableOpacity>
             );
           })}

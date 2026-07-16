@@ -672,9 +672,10 @@ export async function searchUsersAPI(token, query, filters = {}) {
   }
 }
 
-export async function getAllStudents(token) {
+export async function getAllStudents(token, dbOnly = false) {
   try {
-    const res = await apiCall(`/api/v1/users/students`, {
+    const url = dbOnly ? `/api/v1/users/students?db_only=true` : `/api/v1/users/students`;
+    const res = await apiCall(url, {
       method: 'GET',
       headers: authHeaders(token),
     });
@@ -1840,6 +1841,25 @@ export async function submitLogbookVerification(token, body) {
   });
   return unwrap(res, null);
 }
+
+/**
+ * Submit faculty reflection sign-off directly to ERP refselfdirectedUpdate (POST).
+ */
+export async function submitReflectionVerification(payload) {
+  try {
+    const response = await fetch('https://myportal.srms.ac.in/SRMSERP/PGMBBS/refselfdirectedUpdate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await response.json();
+    return data;
+  } catch (err) {
+    console.warn('[apiService] submitReflectionVerification failed:', err);
+    throw err;
+  }
+}
+
 
 // ─── Phase → Subject Batch Year Map ──────────────────────────────────────────
 const PHASE_BATCH_YEAR = { '1': '2024', '2': '2024', '3': '2023' };

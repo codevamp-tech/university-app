@@ -25,6 +25,7 @@ import AdminGrievanceInboxScreen from '../screens/admin/AdminGrievanceInboxScree
 import AdminVentureReviewScreen from '../screens/admin/AdminVentureReviewScreen';
 import AdminMarketplaceReviewScreen from '../screens/admin/AdminMarketplaceReviewScreen';
 import WardenOutpassesScreen from '../screens/admin/WardenOutpassesScreen';
+import AdminStudentsDirectoryScreen from '../screens/admin/AdminStudentsDirectoryScreen';
 
 // Campus Food Ordering
 import CampusBitesMenuScreen from '../screens/student/CampusBitesMenuScreen';
@@ -130,6 +131,7 @@ const AppNavigator = () => {
       <Stack.Screen name="MarketplaceManager" component={AdminMarketplaceReviewScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="OutpassManager" component={WardenOutpassesScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="AdminFacultyDetail" component={AdminFacultyDetailScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="AdminStudentsDirectory" component={AdminStudentsDirectoryScreen} options={{ animation: 'slide_from_right' }} />
 
       {/* Guest Flow */}
       <Stack.Screen name="GuestOnboarding" component={GuestOnboardingScreen} options={{ animation: 'slide_from_right' }} />

@@ -469,6 +469,8 @@ const ERPLogBookScreen = ({ route, navigation }) => {
           <TouchableOpacity onPress={() => {
             if (isFaculty) {
               navigation.navigate('FacultyStudentsDirectory');
+            } else if (passedStudent) {
+              navigation.goBack();
             } else {
               navigation.navigate('ERPHome');
             }

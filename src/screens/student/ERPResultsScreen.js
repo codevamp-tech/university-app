@@ -624,90 +624,100 @@ const SubjectDetailModal = ({ visible, subject, onClose, accessToken, student })
         <Text style={{ fontSize: 11, fontWeight: '800', color: colors.textSecondary, marginBottom: 4, letterSpacing: 0.5 }}>
           EXAMS & PAPERS
         </Text>
-        {allPapers.map((paper, idx) => {
-          const isGap = paper.pct < 50;
-          return (
-            <TouchableOpacity
-              key={idx}
-              style={{
-                backgroundColor: colors.card,
-                borderRadius: 16,
-                borderWidth: 1,
-                borderColor: isGap ? '#FCA5A5' : colors.border,
-                padding: 16,
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-              }}
-              onPress={() => handleSelectPaper(paper)}
-              activeOpacity={0.8}
-            >
-              <View style={{ flex: 1, marginRight: 16 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                  {(() => {
-                    const nameLower = paper.paper_name.toLowerCase();
-                    const isPreUni = nameLower.includes('pre-uni') || nameLower.includes('pre university') || nameLower.includes('preuniversity');
-                    const isUni = nameLower.includes('university') && !isPreUni;
-                    
-                    let bg = isDark ? 'rgba(99,102,241,0.15)' : '#EEF2FF';
-                    let textCol = '#6366F1';
-                    let label = 'Internal';
+        {allPapers.length === 0 ? (
+          <View style={{ padding: 32, alignItems: 'center', justifyContent: 'center' }}>
+            <MaterialCommunityIcons name="clipboard-text-outline" size={48} color={colors.textMuted} style={{ marginBottom: 12 }} />
+            <Text style={{ fontSize: 14, fontWeight: '700', color: colors.textPrimary, marginBottom: 4 }}>No Exams Taken Yet</Text>
+            <Text style={{ fontSize: 12, color: colors.textMuted, textAlign: 'center' }}>
+              Results will appear here as soon as exams are conducted and marks are updated.
+            </Text>
+          </View>
+        ) : (
+          allPapers.map((paper, idx) => {
+            const isGap = paper.pct < 50;
+            return (
+              <TouchableOpacity
+                key={idx}
+                style={{
+                  backgroundColor: colors.card,
+                  borderRadius: 16,
+                  borderWidth: 1,
+                  borderColor: isGap ? '#FCA5A5' : colors.border,
+                  padding: 16,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                }}
+                onPress={() => handleSelectPaper(paper)}
+                activeOpacity={0.8}
+              >
+                <View style={{ flex: 1, marginRight: 16 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                    {(() => {
+                      const nameLower = paper.paper_name.toLowerCase();
+                      const isPreUni = nameLower.includes('pre-uni') || nameLower.includes('pre university') || nameLower.includes('preuniversity');
+                      const isUni = nameLower.includes('university') && !isPreUni;
+                      
+                      let bg = isDark ? 'rgba(99,102,241,0.15)' : '#EEF2FF';
+                      let textCol = '#6366F1';
+                      let label = 'Internal';
 
-                    if (isPreUni) {
-                      bg = isDark ? 'rgba(13,148,136,0.15)' : '#E6F4F1';
-                      textCol = '#0D9488';
-                      label = 'Pre-University';
-                    } else if (isUni) {
-                      bg = isDark ? 'rgba(245,158,11,0.15)' : '#FFFBEB';
-                      textCol = '#D97706';
-                      label = 'University';
-                    }
+                      if (isPreUni) {
+                        bg = isDark ? 'rgba(13,148,136,0.15)' : '#E6F4F1';
+                        textCol = '#0D9488';
+                        label = 'Pre-University';
+                      } else if (isUni) {
+                        bg = isDark ? 'rgba(245,158,11,0.15)' : '#FFFBEB';
+                        textCol = '#D97706';
+                        label = 'University';
+                      }
 
-                    return (
-                      <View style={{
-                        paddingHorizontal: 8,
-                        paddingVertical: 2,
-                        borderRadius: 6,
-                        backgroundColor: bg,
-                      }}>
-                        <Text style={{
-                          fontSize: 10,
-                          fontWeight: '800',
-                          color: textCol,
-                          textTransform: 'uppercase',
+                      return (
+                        <View style={{
+                          paddingHorizontal: 8,
+                          paddingVertical: 2,
+                          borderRadius: 6,
+                          backgroundColor: bg,
                         }}>
-                          {label}
-                        </Text>
+                          <Text style={{
+                            fontSize: 10,
+                            fontWeight: '800',
+                            color: textCol,
+                            textTransform: 'uppercase',
+                          }}>
+                            {label}
+                          </Text>
+                        </View>
+                      );
+                    })()}
+                    {isGap && (
+                      <View style={{ backgroundColor: '#FEE2E2', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 }}>
+                        <Text style={{ fontSize: 9, fontWeight: '800', color: '#EF4444' }}>GAP DETECTED</Text>
                       </View>
-                    );
-                  })()}
-                  {isGap && (
-                    <View style={{ backgroundColor: '#FEE2E2', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 }}>
-                      <Text style={{ fontSize: 9, fontWeight: '800', color: '#EF4444' }}>GAP DETECTED</Text>
-                    </View>
-                  )}
-                </View>
-                <Text style={{ fontSize: 15, fontWeight: '800', color: colors.textPrimary }}>
-                  {paper.paper_name}
-                </Text>
-                <Text style={{ fontSize: 12, color: colors.textMuted, marginTop: 4 }}>
-                  Paper Code: {paper.paper_code}
-                </Text>
-              </View>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                <View style={{ alignItems: 'flex-end' }}>
-                  <Text style={{ fontSize: 16, fontWeight: '900', color: isGap ? '#EF4444' : '#10B981' }}>
-                    {paper.pct}%
+                    )}
+                  </View>
+                  <Text style={{ fontSize: 15, fontWeight: '800', color: colors.textPrimary }}>
+                    {paper.paper_name}
                   </Text>
-                  <Text style={{ fontSize: 11, color: colors.textMuted }}>
-                    {paper.obtained_marks} / {paper.total_marks} M
+                  <Text style={{ fontSize: 12, color: colors.textMuted, marginTop: 4 }}>
+                    Paper Code: {paper.paper_code}
                   </Text>
                 </View>
-                <MaterialIcons name="chevron-right" size={20} color={colors.textMuted} />
-              </View>
-            </TouchableOpacity>
-          );
-        })}
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <View style={{ alignItems: 'flex-end' }}>
+                    <Text style={{ fontSize: 16, fontWeight: '900', color: isGap ? '#EF4444' : '#10B981' }}>
+                      {paper.pct}%
+                    </Text>
+                    <Text style={{ fontSize: 11, color: colors.textMuted }}>
+                      {paper.obtained_marks} / {paper.total_marks} M
+                    </Text>
+                  </View>
+                  <MaterialIcons name="chevron-right" size={20} color={colors.textMuted} />
+                </View>
+              </TouchableOpacity>
+            );
+          })
+        )}
       </ScrollView>
     );
   };
@@ -1337,7 +1347,9 @@ const ERPResultsScreen = ({ route, navigation }) => {
               papers: []
             };
           }
-          subjMap[subjectName].papers.push(paperObj);
+          if (!paperObj.notTaken) {
+            subjMap[subjectName].papers.push(paperObj);
+          }
         });
       });
 

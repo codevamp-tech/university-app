@@ -8,13 +8,53 @@ import {
   RefreshControl,
   Image,
   TouchableOpacity,
+  Modal,
+  Platform,
 } from 'react-native';
-import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Feather, MaterialCommunityIcons, MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../hooks/useTheme';
 import { useUser } from '../../context/UserContext';
 import { getSuperAdminAnalytics, getAllStudents } from '../../data/apiService';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SkeletonBlock } from '../../components/SkeletonLoader';
+import { getStudentAvatar } from '../../utils/studentAvatarCache';
+
+const SafeLeaderboardAvatar = ({ uri, name, style, colors }) => {
+  const [error, setError] = useState(false);
+  const initials = name ? name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() : 'ST';
+
+  if (!uri || error || uri.includes('pravatar.cc')) {
+    return (
+      <View style={[styles.avatarInitialsContainer, { backgroundColor: colors.primaryLight }]}>
+        <Text style={[styles.avatarInitialsText, { color: colors.primary }]}>
+          {initials}
+        </Text>
+      </View>
+    );
+  }
+
+  return (
+    <Image 
+      source={{ uri }} 
+      style={style} 
+      onError={() => setError(true)}
+    />
+  );
+};
+
+const getStudentPhase = (s) => {
+  if (s.phase) return parseInt(s.phase);
+  const batchYear = parseInt(s.batch_year || s.batchYear || 0);
+  if (batchYear >= 2025) return 1;
+  if (batchYear === 2024) return 2;
+  if (batchYear > 0 && batchYear <= 2023) return 3;
+
+  const sem = parseInt(s.semester || s.current_year * 2 - 1 || 1);
+  if (sem <= 2) return 1;
+  if (sem <= 4) return 2;
+  if (sem <= 6) return 3;
+  return 4;
+};
 
 const SuperAdminLeaderboardInsightsScreen = ({ navigation }) => {
   const { colors, isDark } = useTheme();
@@ -23,13 +63,15 @@ const SuperAdminLeaderboardInsightsScreen = ({ navigation }) => {
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [selectedPhaseFilter, setSelectedPhaseFilter] = useState('ALL');
+  const [dropdownVisible, setDropdownVisible] = useState(false);
 
   const loadData = async () => {
     try {
       if (accessToken) {
         const [stats, list] = await Promise.all([
           getSuperAdminAnalytics(accessToken),
-          getAllStudents(accessToken)
+          getAllStudents(accessToken, true)
         ]);
         if (stats) setData(stats);
         if (list) {
@@ -39,6 +81,7 @@ const SuperAdminLeaderboardInsightsScreen = ({ navigation }) => {
             course: s.course,
             branch: s.branch,
             category: s.category,
+            role: s.role,
             cgpa: s.cgpa || 0,
             attendance: s.attendance || 0,
             certsDone: s.certificates_done || [],
@@ -47,6 +90,11 @@ const SuperAdminLeaderboardInsightsScreen = ({ navigation }) => {
             extracurricular: [],
             gender: 'M',
             avatar_url: s.avatar_url,
+            batch_year: s.batch_year || s.batchYear,
+            semester: s.semester,
+            current_year: s.current_year || s.currentYear,
+            phase: s.phase,
+            rollno: s.rollno,
           }));
           setStudents(mapped);
         }
@@ -67,6 +115,31 @@ const SuperAdminLeaderboardInsightsScreen = ({ navigation }) => {
     setRefreshing(true);
     loadData();
   };
+
+  // Only include Medical/MBBS students (filter out non-student roles and explicit engineering/management)
+  const medicalStudents = students.filter(s => {
+    const isStudent = s.role?.toLowerCase() === 'student';
+    if (!isStudent) return false;
+
+    const cat = (s.category || '').toLowerCase();
+    if (cat === 'engineering' || cat === 'management') {
+      return false;
+    }
+    return true;
+  });
+
+  // Compute batch counts for filter selector
+  const batchCounts = React.useMemo(() => {
+    const counts = { ALL: 0, 1: 0, 2: 0, 3: 0 };
+    medicalStudents.forEach(s => {
+      const studentPhase = getStudentPhase(s);
+      if (counts[studentPhase] !== undefined) {
+        counts[studentPhase] += 1;
+      }
+      counts.ALL += 1;
+    });
+    return counts;
+  }, [medicalStudents]);
 
   const renderSkeleton = () => (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
@@ -91,45 +164,52 @@ const SuperAdminLeaderboardInsightsScreen = ({ navigation }) => {
 
   const lStats = data?.leaderboard || { top_dept: 'Medical', avg_social_credits: 0, rewards_claimed: 0 };
 
-  // Only include Medical students
-  const medicalStudents = students.filter(s => s.category === 'medical');
-
   // Compute leaderboard scores for medical students only
-  const computedLeaderboard = medicalStudents.map(s => {
-    const certCount = (s.certsDone || []).filter(c => {
-      const cl = c.toLowerCase();
-      return cl !== 'yes' && cl !== 'no' && cl !== 'na' && cl !== 'n/a' && cl !== 'none' && cl !== '';
-    }).length;
+  const computedLeaderboard = medicalStudents
+    .filter(s => {
+      if (selectedPhaseFilter === 'ALL') return true;
+      return getStudentPhase(s) === selectedPhaseFilter;
+    })
+    .map(s => {
+      const certCount = (s.certsDone || []).filter(c => {
+        const cl = c.toLowerCase();
+        return cl !== 'yes' && cl !== 'no' && cl !== 'na' && cl !== 'n/a' && cl !== 'none' && cl !== '';
+      }).length;
 
-    const leadCount = (s.leadership || []).filter(c => c && c.toLowerCase() !== 'no' && c.toLowerCase() !== 'na' && c.toLowerCase() !== 'n/a' && c.toLowerCase() !== 'none').length;
-    const extraCount = (s.extracurricular || []).filter(c => c && c.toLowerCase() !== 'no' && c.toLowerCase() !== 'na' && c.toLowerCase() !== 'n/a' && c.toLowerCase() !== 'none').length;
-    const cgpaVal = Math.min(s.cgpa > 10 ? s.cgpa / 10 : s.cgpa, 10.0);
-    const academicScore = Math.round(cgpaVal * 200) + Math.round((s.attendance || 0) * 5);
-    const hasAmbassador = (s.leadership || []).some(l => l && (l.toLowerCase().includes('ambassador') || l.toLowerCase().includes('ambassasor')));
-    const ambassadorBonus = hasAmbassador ? 5000 : 0;
-    const totalScore = (certCount * 500) + (extraCount * 500) + (leadCount * 1000) + academicScore + ambassadorBonus;
+      const leadCount = (s.leadership || []).filter(c => c && c.toLowerCase() !== 'no' && c.toLowerCase() !== 'na' && c.toLowerCase() !== 'n/a' && c.toLowerCase() !== 'none').length;
+      const extraCount = (s.extracurricular || []).filter(c => c && c.toLowerCase() !== 'no' && c.toLowerCase() !== 'na' && c.toLowerCase() !== 'n/a' && c.toLowerCase() !== 'none').length;
+      const cgpaVal = Math.min(s.cgpa > 10 ? s.cgpa / 10 : s.cgpa, 10.0);
+      const academicScore = Math.round(cgpaVal * 200) + Math.round((s.attendance || 0) * 5);
+      const hasAmbassador = (s.leadership || []).some(l => l && (l.toLowerCase().includes('ambassador') || l.toLowerCase().includes('ambassasor')));
+      const ambassadorBonus = hasAmbassador ? 5000 : 0;
+      const totalScore = (certCount * 500) + (extraCount * 500) + (leadCount * 1000) + academicScore + ambassadorBonus;
 
-    let avatar = s.avatar_url || null;
+      let avatar = s.avatar_url || getStudentAvatar(s.rollno) || null;
 
-    return {
-      id: s.id,
-      name: s.name,
-      score: totalScore,
-      avatar,
-      course: s.course,
-      branch: s.branch,
-    };
-  });
+      return {
+        id: s.id,
+        name: s.name,
+        score: totalScore,
+        avatar,
+        course: s.course,
+        branch: s.branch,
+        category: s.category,
+        batch_year: s.batch_year,
+        semester: s.semester,
+        current_year: s.current_year,
+        phase: s.phase,
+      };
+    });
 
   // Sort by score descending
   computedLeaderboard.sort((a, b) => b.score - a.score);
 
-  // Assign ranks
+  // Assign ranks based on sorted scores
   computedLeaderboard.forEach((item, index) => {
     item.rank = index + 1;
   });
 
-  const displayLeaderboard = computedLeaderboard.slice(0, 10);
+  const displayLeaderboard = computedLeaderboard; // Show all students
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
@@ -153,15 +233,46 @@ const SuperAdminLeaderboardInsightsScreen = ({ navigation }) => {
             <MaterialCommunityIcons name="trophy" size={28} color="#FBBF24" />
             <View style={{ marginLeft: 12 }}>
               <Text style={[styles.title, { color: colors.textPrimary }]}>The Hustle Leaderboard</Text>
-              <Text style={[styles.subtitle, { color: colors.textSecondary }]}>Medical students — gamification insights</Text>
+              <Text style={[styles.subtitle, { color: colors.textSecondary }]}>Showing {medicalStudents.length} registered MBBS students</Text>
             </View>
           </View>
         </LinearGradient>
 
 
 
+        {/* Phase Filter Selector */}
+        {(() => {
+          const getBatchLabel = (phase) => {
+            if (phase === 'ALL') return 'All Batches';
+            const year = 2026 - parseInt(phase);
+            return `${year} Batch`;
+          };
+
+          const getSelectedLabel = () => {
+            const label = getBatchLabel(selectedPhaseFilter);
+            const count = batchCounts[selectedPhaseFilter] || 0;
+            return `${label} (${count})`;
+          };
+
+          return (
+            <View style={styles.dropdownWrapper}>
+              <Text style={[styles.dropdownLabel, { color: colors.textMuted }]}>SELECT BATCH / PHASE</Text>
+              <TouchableOpacity 
+                style={[styles.dropdownButton, { backgroundColor: colors.card, borderColor: colors.border }]} 
+                onPress={() => setDropdownVisible(true)}
+                activeOpacity={0.8}
+              >
+                <Text style={[styles.dropdownButtonText, { color: colors.textPrimary }]}>
+                  {getSelectedLabel()}
+                </Text>
+                <MaterialIcons name="keyboard-arrow-down" size={20} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+          );
+        })()}
+
         {/* Dynamic Leaderboard matching student design */}
-        <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Medical Student Standings</Text>
+        <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>MBBS Student Standings</Text>
         <View style={[styles.leaderboardCard, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
           {displayLeaderboard.length === 0 ? (
             <Text style={{ padding: 16, textAlign: 'center', color: colors.textSecondary }}>No student leaderboard data found.</Text>
@@ -174,21 +285,51 @@ const SuperAdminLeaderboardInsightsScreen = ({ navigation }) => {
               ]}>
                 <View style={[styles.boardItemLeft, { flex: 1, marginRight: 8 }]}>
                   <Text style={[styles.boardRank, { color: colors.textMuted }, item.rank <= 3 && { color: '#EA580C' }]}>{item.rank}</Text>
-                  {item.avatar ? (
-                    <Image source={{ uri: item.avatar }} style={styles.boardAvatar} />
-                  ) : (
-                    <View style={[styles.avatarInitialsContainer, { backgroundColor: colors.primaryLight }]}>
-                      <Text style={[styles.avatarInitialsText, { color: colors.primary }]}>
-                        {item.name ? item.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() : 'ST'}
-                      </Text>
-                    </View>
-                  )}
+                  <SafeLeaderboardAvatar
+                    uri={item.avatar}
+                    name={item.name}
+                    style={styles.boardAvatar}
+                    colors={colors}
+                  />
                   <View style={{ flex: 1 }}>
                     <Text style={[styles.boardName, { color: colors.textPrimary }]} numberOfLines={1}>
                       {item.name}
                     </Text>
                     <Text style={{ fontSize: 10, color: colors.textSecondary || '#6B7280' }} numberOfLines={1}>
-                      {item.course || ''} {item.branch || ''}
+                      {(() => {
+                        const course = (item.course || '').trim();
+                        const branch = (item.branch || '').trim();
+                        let displayVal = '';
+                        
+                        if (item.category === 'medical' || (!course && !branch)) {
+                          displayVal = 'MBBS';
+                        } else if (!course) {
+                          displayVal = branch;
+                        } else if (!branch) {
+                          displayVal = course;
+                        } else {
+                          const courseNorm = course.replace(/\./g, '').toUpperCase();
+                          const branchNorm = branch.replace(/\./g, '').toUpperCase();
+                          
+                          if (courseNorm.includes(branchNorm) || branchNorm.includes(courseNorm)) {
+                            displayVal = course;
+                          } else {
+                            displayVal = `${course} (${branch})`;
+                          }
+                        }
+                        
+                        // Override 'Medical' or 'medical' to 'MBBS'
+                        if (displayVal && (displayVal.toUpperCase() === 'MEDICAL' || displayVal.toUpperCase().includes('MEDICAL'))) {
+                          displayVal = 'MBBS';
+                        }
+                        
+                        // Compute Phase
+                        const phase = getStudentPhase(item);
+                        if (phase) {
+                          return `${displayVal} · Phase ${phase}`;
+                        }
+                        return displayVal;
+                      })()}
                     </Text>
                   </View>
                 </View>
@@ -205,6 +346,93 @@ const SuperAdminLeaderboardInsightsScreen = ({ navigation }) => {
         {/* Padding for absolute bottom tab bar */}
         <View style={{ height: 80 }} />
       </ScrollView>
+
+      {/* Dropdown Selection Modal */}
+      <Modal
+        visible={dropdownVisible}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setDropdownVisible(false)}
+      >
+        <TouchableOpacity 
+          style={styles.modalOverlay} 
+          activeOpacity={1} 
+          onPress={() => setDropdownVisible(false)}
+        >
+          <View style={[styles.modalSheet, { backgroundColor: colors.card }]}>
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>Select Batch / Phase</Text>
+              <TouchableOpacity onPress={() => setDropdownVisible(false)}>
+                <Ionicons name="close" size={24} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+
+             <ScrollView style={styles.modalOptionsList} showsVerticalScrollIndicator={false}>
+                <TouchableOpacity
+                  style={[
+                    styles.optionItem,
+                    selectedPhaseFilter === 'ALL' && [styles.optionItemActive, { backgroundColor: isDark ? 'rgba(234, 88, 12, 0.1)' : '#FFF7ED' }]
+                  ]}
+                  onPress={() => {
+                    setSelectedPhaseFilter('ALL');
+                    setDropdownVisible(false);
+                  }}
+                >
+                  <Text style={[
+                    styles.optionText, 
+                    { color: colors.textPrimary },
+                    selectedPhaseFilter === 'ALL' && { color: '#EA580C', fontWeight: '700' }
+                  ]}>
+                    All Batches
+                  </Text>
+                  <Text style={[
+                    styles.optionCount, 
+                    { color: colors.textMuted },
+                    selectedPhaseFilter === 'ALL' && { color: '#EA580C', fontWeight: '700' }
+                  ]}>
+                    {batchCounts.ALL} students
+                  </Text>
+                </TouchableOpacity>
+
+              {[1, 2, 3].map(ph => {
+                const year = 2026 - ph;
+                const label = `${year} Batch`;
+                const count = batchCounts[ph] || 0;
+                const isSelected = selectedPhaseFilter === ph;
+
+                return (
+                  <TouchableOpacity
+                    key={ph}
+                    style={[
+                      styles.optionItem,
+                      isSelected && [styles.optionItemActive, { backgroundColor: isDark ? 'rgba(234, 88, 12, 0.1)' : '#FFF7ED' }]
+                    ]}
+                    onPress={() => {
+                      setSelectedPhaseFilter(ph);
+                      setDropdownVisible(false);
+                    }}
+                  >
+                    <Text style={[
+                      styles.optionText, 
+                      { color: colors.textPrimary },
+                      isSelected && { color: '#EA580C', fontWeight: '700' }
+                    ]}>
+                      {label} (Phase {ph})
+                    </Text>
+                    <Text style={[
+                      styles.optionCount, 
+                      { color: colors.textMuted },
+                      isSelected && { color: '#EA580C', fontWeight: '700' }
+                    ]}>
+                      {count} students
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -363,6 +591,76 @@ const styles = StyleSheet.create({
   progressBar: {
     height: '100%',
     borderRadius: 3,
+  },
+  dropdownWrapper: {
+    marginTop: 12,
+    marginHorizontal: 16,
+    marginBottom: 8,
+  },
+  dropdownLabel: {
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 1,
+    marginBottom: 6,
+  },
+  dropdownButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  dropdownButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalSheet: {
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: Platform.OS === 'ios' ? 40 : 25,
+    maxHeight: '50%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  modalTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  modalOptionsList: {
+    marginTop: 8,
+  },
+  optionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  optionItemActive: {
+    borderColor: '#EA580C',
+    borderWidth: 1,
+  },
+  optionText: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  optionCount: {
+    fontSize: 12,
   },
 });
 
