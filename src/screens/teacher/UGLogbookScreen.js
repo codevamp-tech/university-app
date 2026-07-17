@@ -280,6 +280,69 @@ const DatePicker = ({ date, onChange }) => {
 };
 
 
+const SkeletonCard = () => (
+  <View style={skStyles.card}>
+    <View style={skStyles.avatar} />
+    <View style={skStyles.info}>
+      <View style={skStyles.nameLine} />
+      <View style={skStyles.rollLine} />
+    </View>
+    <View style={skStyles.chevron} />
+  </View>
+);
+
+const SkeletonLoaderList = () => (
+  <View style={{ flex: 1, padding: 16 }}>
+    <SkeletonCard />
+    <SkeletonCard />
+    <SkeletonCard />
+    <SkeletonCard />
+    <SkeletonCard />
+  </View>
+);
+
+const skStyles = StyleSheet.create({
+  card: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
+  },
+  avatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#E5E7EB',
+    marginRight: 12,
+  },
+  info: {
+    flex: 1,
+    gap: 8,
+  },
+  nameLine: {
+    width: '60%',
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: '#E5E7EB',
+  },
+  rollLine: {
+    width: '40%',
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#F3F4F6',
+  },
+  chevron: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: '#F3F4F6',
+  },
+});
+
 // ─── Main Screen ─────────────────────────────────────────────────────────────
 
 const UGLogbookScreen = ({ navigation }) => {
@@ -1165,7 +1228,9 @@ const UGLogbookScreen = ({ navigation }) => {
       </View>
 
       {/* Body */}
-      {!studentsLoaded ? (
+      {studentsLoading ? (
+        <SkeletonLoaderList />
+      ) : !studentsLoaded ? (
         <View style={styles.emptyContainer}>
           <MaterialCommunityIcons name="filter-outline" size={48} color="#D1D5DB" style={{ marginBottom: 12 }} />
           <Text style={styles.emptyText}>Set filters and tap Load Students</Text>
