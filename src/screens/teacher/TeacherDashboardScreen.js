@@ -73,19 +73,23 @@ const TeacherDashboardScreen = ({ navigation }) => {
   const [isLoadingIssues, setIsLoadingIssues] = useState(false);
 
   const fetchRaisedIssues = useCallback(async () => {
-    if (!accessToken) return;
+    if (!accessToken || !user?.id) return;
     setIsLoadingIssues(true);
     try {
       const data = await listGrievancesAPI(accessToken);
       if (data) {
-        setRaisedIssues(data);
+        // Filter out tickets that do not belong to this teacher/user
+        const ownTickets = data.filter(ticket => 
+          ticket && String(ticket.student_id || '').trim().toLowerCase() === String(user.id).trim().toLowerCase()
+        );
+        setRaisedIssues(ownTickets);
       }
     } catch (error) {
       console.warn('[TeacherDashboard] Failed to fetch issues:', error);
     } finally {
       setIsLoadingIssues(false);
     }
-  }, [accessToken]);
+  }, [accessToken, user?.id]);
 
   const handleDeleteIssue = useCallback((issueId) => {
     Alert.alert(
