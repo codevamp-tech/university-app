@@ -500,8 +500,8 @@ const TeacherDashboardScreen = ({ navigation }) => {
                 style={styles.scheduleCard}
               >
                 <View style={styles.scheduleTime}>
-                  <Text style={styles.scheduleTimeHour}>{formatTime(scheduleToShow[0].start_time).split(' ')[0]}</Text>
-                  <Text style={styles.scheduleTimePeriod}>{formatTime(scheduleToShow[0].start_time).split(' ')[1]}</Text>
+                  <Text style={styles.scheduleTimeHour} numberOfLines={1}>{formatTime(scheduleToShow[0].start_time).split(' ')[0]}</Text>
+                  <Text style={styles.scheduleTimePeriod} numberOfLines={1}>{formatTime(scheduleToShow[0].start_time).split(' ')[1]}</Text>
                   <Text style={{ fontSize: 9, fontWeight: '800', color: '#6B7280', marginTop: 3 }}>
                     {formatDay(scheduleToShow[0].start_time).toUpperCase()}
                   </Text>
@@ -545,8 +545,8 @@ const TeacherDashboardScreen = ({ navigation }) => {
                   ]}
                 >
                   <View style={styles.scheduleTime}>
-                    <Text style={styles.scheduleTimeHour}>{formatTime(item.start_time).split(' ')[0]}</Text>
-                    <Text style={styles.scheduleTimePeriod}>{formatTime(item.start_time).split(' ')[1]}</Text>
+                    <Text style={styles.scheduleTimeHour} numberOfLines={1}>{formatTime(item.start_time).split(' ')[0]}</Text>
+                    <Text style={styles.scheduleTimePeriod} numberOfLines={1}>{formatTime(item.start_time).split(' ')[1]}</Text>
                     <Text style={{ fontSize: 9, fontWeight: '800', color: '#6B7280', marginTop: 3 }}>
                       {formatDay(item.start_time).toUpperCase()}
                     </Text>
@@ -1113,7 +1113,7 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: '#FFFFFF',
     shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.04, shadowRadius: 12, elevation: 3,
   },
-  scheduleTime: { width: 55, alignItems: 'flex-end' },
+  scheduleTime: { width: 68, alignItems: 'flex-end' },
   scheduleTimeHour: { fontSize: 15, fontWeight: '800', color: '#EA580C', letterSpacing: -0.3 },
   scheduleTimePeriod: { fontSize: 10, color: '#6B7280', fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 },
   scheduleLine: { alignItems: 'center', width: 18, position: 'relative' },
