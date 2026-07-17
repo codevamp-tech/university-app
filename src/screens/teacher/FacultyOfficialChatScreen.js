@@ -136,9 +136,12 @@ const FacultyOfficialChatScreen = ({ navigation }) => {
 
   useEffect(() => {
     if (messages.length > 0) {
-      setTimeout(() => {
-        flatListRef.current?.scrollToEnd({ animated: true });
-      }, 100);
+      const scroll = () => flatListRef.current?.scrollToOffset({ offset: 0, animated: false });
+      scroll();
+      const t = setTimeout(() => {
+        flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+      }, 150);
+      return () => clearTimeout(t);
     }
   }, [messages.length]);
 
@@ -476,14 +479,14 @@ const FacultyOfficialChatScreen = ({ navigation }) => {
       ) : (
         <FlatList
           ref={flatListRef}
-          data={messages}
+          data={[...messages].reverse()}
           keyExtractor={(item) => item.id}
           renderItem={renderMessageItem}
+          inverted
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
           refreshing={refreshing}
           onRefresh={handleRefresh}
-          onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
         />
       )}
 

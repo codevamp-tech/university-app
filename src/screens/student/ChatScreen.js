@@ -419,7 +419,12 @@ const ChatScreen = ({ navigation }) => {
   // Scroll to latest when messages update
   useEffect(() => {
     if (messages.length > 0) {
-      setTimeout(() => flatListRef.current?.scrollToOffset({ offset: 0, animated: true }), 100);
+      const scroll = () => flatListRef.current?.scrollToOffset({ offset: 0, animated: false });
+      scroll();
+      const t = setTimeout(() => {
+        flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+      }, 150);
+      return () => clearTimeout(t);
     }
   }, [messages.length]);
 
