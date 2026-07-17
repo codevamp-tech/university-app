@@ -280,13 +280,60 @@ const DatePicker = ({ date, onChange }) => {
 };
 
 
+const getFacultySubCode = (user) => {
+  if (!user) return 'PY';
+  const facultyIdNorm = String(user.emp_id || '').trim().toUpperCase();
+  let facultyDept = (user.department || '').trim().toLowerCase();
+  
+  if (facultyIdNorm === 'D/11/093' || facultyIdNorm === '202314130') {
+    return 'PY';
+  } else if (facultyIdNorm === 'D/11/094') {
+    return 'AN';
+  } else if (facultyIdNorm === 'D/11/095') {
+    return 'BI';
+  }
+  
+  const DEPT_TO_SUBCODE = {
+    'anatomy': 'AN',
+    'physiology': 'PY',
+    'biochemistry': 'BI',
+    'pharmacology': 'PH',
+    'pathology': 'PA',
+    'microbiology': 'MI',
+    'forensic medicine': 'FM',
+    'community medicine': 'CM',
+    'medicine': 'IM',
+    'surgery': 'SU',
+    'obstetrics': 'OG',
+    'gynaecology': 'OG',
+    'obg': 'OG',
+    'pediatrics': 'PE',
+    'paediatrics': 'PE',
+    'ophthalmology': 'OP',
+    'orthopedics': 'OR',
+    'ent': 'EN',
+    'otorhinolaryngology': 'EN',
+    'radio': 'RD',
+    'dentistry': 'DE',
+    'anesthesiology': 'AS'
+  };
+  
+  for (const [deptKey, code] of Object.entries(DEPT_TO_SUBCODE)) {
+    if (facultyDept.includes(deptKey) || deptKey.includes(facultyDept)) {
+      return code;
+    }
+  }
+  
+  return 'PY';
+};
+
 // ─── Main Screen ─────────────────────────────────────────────────────────────
 
 const UGLogbookScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const { user, accessToken } = useUser();
 
-  const subCode = user?.sub_code || 'PY';
+  const subCode = getFacultySubCode(user);
 
   // Filters
   const [selectedPhase, setSelectedPhase] = useState(PHASE_OPTIONS[0]);
