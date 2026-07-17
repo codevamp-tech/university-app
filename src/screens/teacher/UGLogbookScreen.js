@@ -295,6 +295,16 @@ const UGLogbookScreen = ({ navigation }) => {
   const [selectedActivity, setSelectedActivity] = useState(null);
   const [selectedDate, setSelectedDate] = useState(new Date());
 
+  // Initialize selectedPhase from user.phase context dynamically on mount/load
+  useEffect(() => {
+    if (user?.phase) {
+      const matchedPhase = PHASE_OPTIONS.find(p => p.value === String(user.phase));
+      if (matchedPhase) {
+        setSelectedPhase(matchedPhase);
+      }
+    }
+  }, [user?.phase]);
+
   // Activities from ERP
   const [activities, setActivities] = useState([]);
   const [activitiesLoading, setActivitiesLoading] = useState(false);
@@ -359,7 +369,7 @@ const UGLogbookScreen = ({ navigation }) => {
         setActivities(list);
         setSelectedActivity(list[0]);
       } else {
-        const batchyear = selectedPhase.value === '3' ? '2023' : '2024';
+        const batchyear = selectedPhase.value === '1' ? '2025' : selectedPhase.value === '2' ? '2024' : '2023';
         const cacheKey = `${selectedEvent.value}_${subCode}_${batchyear}`;
         const now = Date.now();
         const cached = _activityCache[cacheKey];
@@ -418,7 +428,7 @@ const UGLogbookScreen = ({ navigation }) => {
     setVerifiedRolls(new Set());
     try {
       if (selectedEvent.value === 'RefSelfDirectedLearning') {
-        const batchyear = selectedPhase.value === '3' ? '2023' : '2024';
+        const batchyear = selectedPhase.value === '1' ? '2025' : selectedPhase.value === '2' ? '2024' : '2023';
         const batchcd = selectedPhase.value === '1' ? '66' : selectedPhase.value === '2' ? '63' : '60';
 
         let querySubCode = subCode;
@@ -685,7 +695,7 @@ const UGLogbookScreen = ({ navigation }) => {
 
     try {
       if (selectedEvent.value === 'RefSelfDirectedLearning') {
-        const batchyear = selectedPhase.value === '3' ? '2023' : '2024';
+        const batchyear = selectedPhase.value === '1' ? '2025' : selectedPhase.value === '2' ? '2024' : '2023';
         const batchcd = selectedPhase.value === '1' ? '66' : selectedPhase.value === '2' ? '63' : '60';
         let subjectPhase = selectedPhase.value;
         const subUpper = String(subCode).toUpperCase();
@@ -849,7 +859,7 @@ const UGLogbookScreen = ({ navigation }) => {
 
               try {
                 if (selectedEvent.value === 'RefSelfDirectedLearning') {
-                  const batchyear = selectedPhase.value === '3' ? '2023' : '2024';
+                  const batchyear = selectedPhase.value === '1' ? '2025' : selectedPhase.value === '2' ? '2024' : '2023';
                   const batchcd = selectedPhase.value === '1' ? '66' : selectedPhase.value === '2' ? '63' : '60';
                   let subjectPhase = selectedPhase.value;
                   const subUpper = String(subCode).toUpperCase();
