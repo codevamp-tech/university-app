@@ -159,7 +159,11 @@ export const UserProvider = ({ children }) => {
     return false;
   };
 
+  const isLoggingOutRef = React.useRef(false);
+  const isSessionExpiredAlertVisibleRef = React.useRef(false);
+
   const logout = async () => {
+    isLoggingOutRef.current = true;
     if (accessToken) {
       try { await logoutAPI(accessToken); } catch (_) {}
     }
@@ -174,15 +178,32 @@ export const UserProvider = ({ children }) => {
       index: 0,
       routes: [{ name: 'Login' }],
     });
+    // Reset manual logout flag after redirect complete
+    setTimeout(() => {
+      isLoggingOutRef.current = false;
+    }, 1000);
   };
 
   useEffect(() => {
     setUnauthorizedCallback(() => {
-      logout();
-      Alert.alert(
-        'Session Expired',
-        'Your session has expired or is invalid. Please log in again.'
-      );
+      if (isLoggingOutRef.current) return;
+      if (isSessionExpiredAlertVisibleRef.current) return;
+      isSessionExpiredAlertVisibleRef.current = true;
+
+      logout().finally(() => {
+        Alert.alert(
+          'Session Expired',
+          'Your session has expired or is invalid. Please log in again.',
+          [
+            {
+              text: 'OK',
+              onPress: () => {
+                isSessionExpiredAlertVisibleRef.current = false;
+              }
+            }
+          ]
+        );
+      });
     });
     return () => setUnauthorizedCallback(null);
   }, [logout]);
