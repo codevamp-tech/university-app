@@ -346,7 +346,7 @@ const VentureScreen = ({ navigation }) => {
     }
   };
 
-  const avatarUrl = user?.avatar_url || getAvatarUrl(user?.name);
+  const avatarUrl = user?.avatar_url || getAvatarUrl(user?.name, user?.rollno);
 
   return (
     <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>

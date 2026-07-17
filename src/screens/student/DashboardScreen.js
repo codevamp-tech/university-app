@@ -282,7 +282,7 @@ const DashboardScreen = ({ navigation }) => {
     return sorted.slice(0, 4);
   }, [user]);
 
-  const avatarUrl = getAvatarUrl(user?.avatar_url || user?.name);
+  const avatarUrl = getAvatarUrl(user?.avatar_url || user?.name, user?.rollno);
   const isMed = user && (isMedicalStudent(user) || (user.course || '').toLowerCase().includes('mbbs') || (user.category || '').toLowerCase().includes('medical'));
   const [activeMood, setActiveMood] = React.useState(2);
 

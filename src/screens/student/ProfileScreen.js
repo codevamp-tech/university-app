@@ -94,7 +94,7 @@ const ProfileScreen = () => {
       }))
     : [];
 
-  const avatarUrl = getAvatarUrl(user.avatar_url || user.name);
+  const avatarUrl = getAvatarUrl(user.avatar_url || user.name, user?.rollno);
 
 
   const handlePickImage = async () => {

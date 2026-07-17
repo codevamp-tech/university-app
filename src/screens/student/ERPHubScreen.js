@@ -563,7 +563,7 @@ const ERPHubScreen = ({ navigation }) => {
 
               <View style={styles.lcStudentRow}>
                 <Image
-                  source={{ uri: getAvatarUrl(user?.avatar_url || user?.name || user?.id || 'me') }}
+                  source={{ uri: getAvatarUrl(user?.avatar_url || user?.name || user?.id || 'me', user?.rollno) }}
                   style={styles.lcAvatar}
                 />
                 <View style={styles.lcStudentInfo}>
@@ -1036,7 +1036,7 @@ const ERPHubScreen = ({ navigation }) => {
             <TouchableOpacity activeOpacity={1}>
               <LinearGradient colors={['#EA580C', '#9A3412']} style={styles.drawerHeader}>
                 <Image
-                  source={{ uri: getAvatarUrl(user?.avatar_url || user?.name || user?.id || 'me') }}
+                  source={{ uri: getAvatarUrl(user?.avatar_url || user?.name || user?.id || 'me', user?.rollno) }}
                   style={styles.drawerAvatar}
                 />
                 <Text style={styles.drawerName}>{user?.name || 'Aryan Kumar'}</Text>
