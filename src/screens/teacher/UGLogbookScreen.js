@@ -280,67 +280,77 @@ const DatePicker = ({ date, onChange }) => {
 };
 
 
-const getFacultySubCode = (user) => {
-  if (!user) return 'PY';
-  let facultyDept = (user.department || '').trim().toLowerCase();
-  
-  const DEPT_TO_SUBCODE = {
-    'anatomy': 'AN',
-    'physiology': 'PY',
-    'biochemistry': 'BI',
-    'pharmacology': 'PH',
-    'pathology': 'PA',
-    'microbiology': 'MI',
-    'forensic medicine': 'FM',
-    'community medicine': 'CM',
-    'medicine': 'IM',
-    'surgery': 'SU',
-    'obstetrics': 'OG',
-    'gynaecology': 'OG',
-    'obg': 'OG',
-    'pediatrics': 'PE',
-    'paediatrics': 'PE',
-    'ophthalmology': 'OP',
-    'orthopedics': 'OR',
-    'ent': 'EN',
-    'otorhinolaryngology': 'EN',
-    'radio': 'RD',
-    'dentistry': 'DE',
-    'anesthesiology': 'AS'
-  };
-  
-  // 1. Try to match by department name first (highly dynamic for any faculty member)
-  if (facultyDept && facultyDept !== 'medical faculty' && facultyDept !== 'teacher') {
-    for (const [deptKey, code] of Object.entries(DEPT_TO_SUBCODE)) {
-      if (facultyDept.includes(deptKey) || deptKey.includes(facultyDept)) {
-        return code;
-      }
-    }
-  }
-  
-  // 2. Fall back to hardcoded employee ID overrides if department is generic/missing
-  const facultyIdNorm = String(user.emp_id || '').trim().toUpperCase();
-  if (facultyIdNorm === 'D/11/093' || facultyIdNorm === '202314130') {
-    return 'PY';
-  } else if (facultyIdNorm === 'D/11/094') {
-    return 'AN';
-  } else if (facultyIdNorm === 'D/11/095') {
-    return 'BI';
-  }
-  
-  return 'PY';
-};
-
 // ─── Main Screen ─────────────────────────────────────────────────────────────
 
 const UGLogbookScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const { user, accessToken } = useUser();
 
-  const subCode = getFacultySubCode(user);
-
   // Filters
   const [selectedPhase, setSelectedPhase] = useState(PHASE_OPTIONS[0]);
+
+  // Resolve faculty subcode dynamically based on user context and current filter selection
+  const getSubCodeForState = () => {
+    if (!user) return 'PY';
+    let facultyDept = (user.department || '').trim().toLowerCase();
+    
+    const DEPT_TO_SUBCODE = {
+      'anatomy': 'AN',
+      'physiology': 'PY',
+      'biochemistry': 'BI',
+      'pharmacology': 'PH',
+      'pathology': 'PA',
+      'microbiology': 'MI',
+      'forensic medicine': 'FM',
+      'community medicine': 'CM',
+      'medicine': 'IM',
+      'surgery': 'SU',
+      'obstetrics': 'OG',
+      'gynaecology': 'OG',
+      'obg': 'OG',
+      'pediatrics': 'PE',
+      'paediatrics': 'PE',
+      'ophthalmology': 'OP',
+      'orthopedics': 'OR',
+      'ent': 'EN',
+      'otorhinolaryngology': 'EN',
+      'radio': 'RD',
+      'dentistry': 'DE',
+      'anesthesiology': 'AS'
+    };
+    
+    // 1. Try to match by department name first (highly dynamic for any faculty member)
+    if (facultyDept && facultyDept !== 'medical faculty' && facultyDept !== 'teacher') {
+      for (const [deptKey, code] of Object.entries(DEPT_TO_SUBCODE)) {
+        if (facultyDept.includes(deptKey) || deptKey.includes(facultyDept)) {
+          return code;
+        }
+      }
+    }
+    
+    // 2. Fall back to hardcoded employee ID overrides if department is generic/missing
+    const facultyIdNorm = String(user.emp_id || '').trim().toUpperCase();
+    if (facultyIdNorm === 'D/11/093' || facultyIdNorm === '202314130') {
+      return 'PY';
+    } else if (facultyIdNorm === 'D/11/094') {
+      return 'AN';
+    } else if (facultyIdNorm === 'D/11/095') {
+      return 'BI';
+    }
+    
+    // 3. If generic department (e.g. "Medical Faculty") and not overridden by ID,
+    // match the subcode dynamically to the currently selected Phase filter
+    // to prevent phase-subject mismatch errors
+    if (selectedPhase.value === '2') {
+      return 'PA'; // Pathology for Phase 2
+    } else if (selectedPhase.value === '3') {
+      return 'IM'; // Medicine for Phase 3
+    }
+    return 'PY'; // Physiology for Phase 1
+  };
+
+  const subCode = getSubCodeForState();
+
   const [selectedEvent, setSelectedEvent] = useState(EVENT_OPTIONS[0]);
   const [selectedGroup, setSelectedGroup] = useState(GROUP_OPTIONS[3]); // A1
   const [selectedActivity, setSelectedActivity] = useState(null);
