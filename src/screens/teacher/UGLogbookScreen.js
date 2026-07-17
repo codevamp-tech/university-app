@@ -282,16 +282,7 @@ const DatePicker = ({ date, onChange }) => {
 
 const getFacultySubCode = (user) => {
   if (!user) return 'PY';
-  const facultyIdNorm = String(user.emp_id || '').trim().toUpperCase();
   let facultyDept = (user.department || '').trim().toLowerCase();
-  
-  if (facultyIdNorm === 'D/11/093' || facultyIdNorm === '202314130') {
-    return 'PY';
-  } else if (facultyIdNorm === 'D/11/094') {
-    return 'AN';
-  } else if (facultyIdNorm === 'D/11/095') {
-    return 'BI';
-  }
   
   const DEPT_TO_SUBCODE = {
     'anatomy': 'AN',
@@ -318,10 +309,23 @@ const getFacultySubCode = (user) => {
     'anesthesiology': 'AS'
   };
   
-  for (const [deptKey, code] of Object.entries(DEPT_TO_SUBCODE)) {
-    if (facultyDept.includes(deptKey) || deptKey.includes(facultyDept)) {
-      return code;
+  // 1. Try to match by department name first (highly dynamic for any faculty member)
+  if (facultyDept && facultyDept !== 'medical faculty' && facultyDept !== 'teacher') {
+    for (const [deptKey, code] of Object.entries(DEPT_TO_SUBCODE)) {
+      if (facultyDept.includes(deptKey) || deptKey.includes(facultyDept)) {
+        return code;
+      }
     }
+  }
+  
+  // 2. Fall back to hardcoded employee ID overrides if department is generic/missing
+  const facultyIdNorm = String(user.emp_id || '').trim().toUpperCase();
+  if (facultyIdNorm === 'D/11/093' || facultyIdNorm === '202314130') {
+    return 'PY';
+  } else if (facultyIdNorm === 'D/11/094') {
+    return 'AN';
+  } else if (facultyIdNorm === 'D/11/095') {
+    return 'BI';
   }
   
   return 'PY';
