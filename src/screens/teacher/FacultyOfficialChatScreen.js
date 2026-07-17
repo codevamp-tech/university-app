@@ -13,6 +13,45 @@ import { getFacultyBatches, getFacultyGroupChats, sendPortalChatMessage, uploadL
 
 const { width } = Dimensions.get('window');
 
+const ChatSkeletonLoader = () => {
+  const bubbleMeBg = '#FFF7ED';
+  const bubbleOtherBg = '#F3F4F6';
+  const lineBg = '#E5E7EB';
+
+  const ChatSkeletonItem = ({ isMe, width: itemWidth }) => (
+    <View style={{
+      flexDirection: 'row',
+      justifyContent: isMe ? 'flex-end' : 'flex-start',
+      marginVertical: 8,
+      width: '100%',
+    }}>
+      {!isMe && <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: lineBg, marginRight: 8, alignSelf: 'flex-end' }} />}
+      <View style={{
+        borderRadius: 16,
+        padding: 12,
+        gap: 6,
+        width: itemWidth,
+        backgroundColor: isMe ? bubbleMeBg : bubbleOtherBg,
+        borderBottomRightRadius: isMe ? 4 : 16,
+        borderBottomLeftRadius: isMe ? 16 : 4,
+      }}>
+        <View style={{ height: 10, borderRadius: 5, backgroundColor: lineBg, width: '100%' }} />
+        <View style={{ height: 10, borderRadius: 5, backgroundColor: lineBg, width: '60%' }} />
+      </View>
+    </View>
+  );
+
+  return (
+    <View style={{ flex: 1, padding: 16 }}>
+      <ChatSkeletonItem isMe={false} width="70%" />
+      <ChatSkeletonItem isMe={true} width="50%" />
+      <ChatSkeletonItem isMe={false} width="85%" />
+      <ChatSkeletonItem isMe={true} width="60%" />
+      <ChatSkeletonItem isMe={false} width="40%" />
+    </View>
+  );
+};
+
 const FacultyOfficialChatScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const { user, accessToken } = useUser();
@@ -466,10 +505,7 @@ const FacultyOfficialChatScreen = ({ navigation }) => {
 
       {/* Message Area */}
       {loadingChats ? (
-        <View style={styles.center}>
-          <ActivityIndicator size="large" color="#EA580C" />
-          <Text style={styles.loadingText}>Fetching portal chats...</Text>
-        </View>
+        <ChatSkeletonLoader />
       ) : messages.length === 0 ? (
         <View style={styles.center}>
           <MaterialCommunityIcons name="chat-remove-outline" size={48} color="#D1D5DB" />

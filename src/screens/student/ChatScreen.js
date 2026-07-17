@@ -43,6 +43,45 @@ const DEFAULT_CHANNELS = [
   { id: null, name: "Maker's Den",     slug: 'makers-den',      icon: 'hammer-wrench',  desc: 'Hackathons & side projects 🛠️' },
 ];
 
+const ChatSkeletonLoader = ({ isDark }) => {
+  const bubbleMeBg = isDark ? '#374151' : '#FFF7ED';
+  const bubbleOtherBg = isDark ? '#1F2937' : '#F3F4F6';
+  const lineBg = isDark ? '#4B5563' : '#E5E7EB';
+
+  const ChatSkeletonItem = ({ isMe, width }) => (
+    <View style={{
+      flexDirection: 'row',
+      justifyContent: isMe ? 'flex-end' : 'flex-start',
+      marginVertical: 8,
+      width: '100%',
+    }}>
+      {!isMe && <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: lineBg, marginRight: 8, alignSelf: 'flex-end' }} />}
+      <View style={{
+        borderRadius: 16,
+        padding: 12,
+        gap: 6,
+        width,
+        backgroundColor: isMe ? bubbleMeBg : bubbleOtherBg,
+        borderBottomRightRadius: isMe ? 4 : 16,
+        borderBottomLeftRadius: isMe ? 16 : 4,
+      }}>
+        <View style={{ height: 10, borderRadius: 5, backgroundColor: lineBg, width: '100%' }} />
+        <View style={{ height: 10, borderRadius: 5, backgroundColor: lineBg, width: '60%' }} />
+      </View>
+    </View>
+  );
+
+  return (
+    <View style={{ flex: 1, padding: 16 }}>
+      <ChatSkeletonItem isMe={false} width="70%" />
+      <ChatSkeletonItem isMe={true} width="50%" />
+      <ChatSkeletonItem isMe={false} width="85%" />
+      <ChatSkeletonItem isMe={true} width="60%" />
+      <ChatSkeletonItem isMe={false} width="40%" />
+    </View>
+  );
+};
+
 const ChatScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const { accessToken, user } = useUser();
@@ -596,10 +635,7 @@ const ChatScreen = ({ navigation }) => {
 
       {/* Messages */}
       {activeChannel?.id === 'official-batch-chat' && loadingPortal && portalMessages.length === 0 ? (
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={{ color: colors.textSecondary, marginTop: 12, fontSize: 14 }}>Fetching portal messages...</Text>
-        </View>
+        <ChatSkeletonLoader isDark={isDark} />
       ) : (
         <FlatList
           ref={flatListRef}
