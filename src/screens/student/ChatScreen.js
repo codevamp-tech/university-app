@@ -157,7 +157,15 @@ const ChatScreen = ({ navigation }) => {
           };
         })
         .filter(msg => {
-          return String(msg.subcode || 'PY').trim().toUpperCase() === String(activePortalSubject.subcode).trim().toUpperCase();
+          const batchYear = isSuperAdmin ? selectedBatch : (user?.batch_year || user?.batch || '2025');
+          const batchYearStr = String(batchYear).trim();
+          const isBCBatch = ['2024', '2025', '2026'].includes(batchYearStr);
+          
+          const currentSubcode = (activePortalSubject.department === 'BIOCHEMISTRY')
+            ? (isBCBatch ? 'BC' : 'BI')
+            : activePortalSubject.subcode;
+
+          return String(msg.subcode || 'PY').trim().toUpperCase() === String(currentSubcode).trim().toUpperCase();
         });
       console.log('[ChatScreen] Mapped and filtered history length:', mappedHistory.length);
       setPortalMessages([...mappedHistory].reverse());
@@ -521,23 +529,33 @@ const ChatScreen = ({ navigation }) => {
         {activeChannel?.id === 'official-batch-chat' && (
           <View style={[styles.subjectSelector, { borderBottomColor: colors.border, backgroundColor: isDark ? colors.card : '#F3F4F6' }]}>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.subjectScrollContent}>
-              {PORTAL_SUBJECTS.map((sub) => {
-                const isSel = activePortalSubject.id === sub.id;
-                return (
-                  <TouchableOpacity
-                    key={sub.id}
-                    style={[
-                      styles.subjectPill,
-                      { backgroundColor: isSel ? colors.primary : (isDark ? '#1F2937' : '#FFFFFF'), borderColor: isSel ? colors.primary : colors.border }
-                    ]}
-                    onPress={() => setActivePortalSubject(sub)}
-                  >
-                    <Text style={[styles.subjectPillText, { color: isSel ? '#FFFFFF' : colors.textPrimary }]}>
-                      {sub.name} ({sub.subcode})
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
+              {(() => {
+                const batchYear = isSuperAdmin ? selectedBatch : (user?.batch_year || user?.batch || '2025');
+                const batchYearStr = String(batchYear).trim();
+                const isBCBatch = ['2024', '2025', '2026'].includes(batchYearStr);
+
+                return PORTAL_SUBJECTS.map((sub) => {
+                  const isSel = activePortalSubject.id === sub.id;
+                  const resolvedSubcode = sub.department === 'BIOCHEMISTRY'
+                    ? (isBCBatch ? 'BC' : 'BI')
+                    : sub.subcode;
+
+                  return (
+                    <TouchableOpacity
+                      key={sub.id}
+                      style={[
+                        styles.subjectPill,
+                        { backgroundColor: isSel ? colors.primary : (isDark ? '#1F2937' : '#FFFFFF'), borderColor: isSel ? colors.primary : colors.border }
+                      ]}
+                      onPress={() => setActivePortalSubject({ ...sub, subcode: resolvedSubcode })}
+                    >
+                      <Text style={[styles.subjectPillText, { color: isSel ? '#FFFFFF' : colors.textPrimary }]}>
+                        {sub.name} ({resolvedSubcode})
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                });
+              })()}
             </ScrollView>
           </View>
         )}

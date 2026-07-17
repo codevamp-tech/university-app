@@ -62,6 +62,8 @@ const FacultyOfficialChatScreen = ({ navigation }) => {
       let facultyDept = (user?.department || '').trim().toLowerCase();
       let targetSubcode = '';
 
+      const isBCBatch = ['2024', '2025', '2026'].includes(String(selectedBatch?.name || '').trim());
+
       if (facultyIdNorm === 'D/11/093' || facultyIdNorm === '202314130') {
         facultyDept = 'physiology';
         targetSubcode = 'PY';
@@ -70,13 +72,13 @@ const FacultyOfficialChatScreen = ({ navigation }) => {
         targetSubcode = 'AN';
       } else if (facultyIdNorm === 'D/11/095') {
         facultyDept = 'biochemistry';
-        targetSubcode = 'BI';
+        targetSubcode = isBCBatch ? 'BC' : 'BI';
       } else {
         // Fallback mapping if not in list
         const DEPT_TO_SUBCODE = {
           'anatomy': 'AN',
           'physiology': 'PY',
-          'biochemistry': 'BI',
+          'biochemistry': isBCBatch ? 'BC' : 'BI',
           'pharmacology': 'PH',
           'pathology': 'PA',
           'microbiology': 'MI',
@@ -87,7 +89,7 @@ const FacultyOfficialChatScreen = ({ navigation }) => {
           'obstetrics & gynecology': 'OB',
           'pediatrics': 'PE'
         };
-        targetSubcode = DEPT_TO_SUBCODE[facultyDept];
+        targetSubcode = DEPT_TO_SUBCODE[facultyDept] || '';
       }
 
       const filtered = (chatHistory || []).filter(msg => {
@@ -271,6 +273,39 @@ const FacultyOfficialChatScreen = ({ navigation }) => {
         }
       } catch {}
 
+      // Resolve faculty department/subcode via emp_id mapping or user.department
+      const facultyIdNorm = String(user?.emp_id || '').trim().toUpperCase();
+      let facultyDept = (user?.department || '').trim().toLowerCase();
+      let targetSubcode = 'PY';
+      const isBCBatch = ['2024', '2025', '2026'].includes(String(batchName).trim());
+
+      if (facultyIdNorm === 'D/11/093' || facultyIdNorm === '202314130') {
+        facultyDept = 'physiology';
+        targetSubcode = 'PY';
+      } else if (facultyIdNorm === 'D/11/094') {
+        facultyDept = 'anatomy';
+        targetSubcode = 'AN';
+      } else if (facultyIdNorm === 'D/11/095') {
+        facultyDept = 'biochemistry';
+        targetSubcode = isBCBatch ? 'BC' : 'BI';
+      } else {
+        const DEPT_TO_SUBCODE = {
+          'anatomy': 'AN',
+          'physiology': 'PY',
+          'biochemistry': isBCBatch ? 'BC' : 'BI',
+          'pharmacology': 'PH',
+          'pathology': 'PA',
+          'microbiology': 'MI',
+          'forensic medicine': 'FM',
+          'community medicine': 'CM',
+          'medicine': 'IM',
+          'surgery': 'SU',
+          'obstetrics & gynecology': 'OB',
+          'pediatrics': 'PE'
+        };
+        targetSubcode = DEPT_TO_SUBCODE[facultyDept] || 'PY';
+      }
+
       const payload = {
         chatid: 0,
         ChatFacId: String(user.emp_id),
@@ -292,7 +327,7 @@ const FacultyOfficialChatScreen = ({ navigation }) => {
         sub_phase_part: '1',
         department: String(user.department || 'PHYSIOLOGY'),
         attachfile: attachmentUrl,
-        subcode: 'PY',
+        subcode: targetSubcode,
         msgflg: 0,
         ctype: 'GROUP'
       };
