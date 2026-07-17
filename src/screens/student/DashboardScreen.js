@@ -1,5 +1,6 @@
 import React from 'react';
 import { getAvatarUrl } from "../../utils/avatar";
+import { SafeStudentAvatar } from '../../components/SafeStudentAvatar';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Dimensions, Platform, Modal, Switch, TextInput, Alert, ActivityIndicator, RefreshControl
 } from 'react-native';
@@ -583,8 +584,9 @@ const DashboardScreen = ({ navigation }) => {
             />
           </TouchableOpacity>
           <TouchableOpacity onPress={() => setShowProfileMenu(true)}>
-            <Image
-              source={{ uri: avatarUrl }}
+            <SafeStudentAvatar
+              uri={avatarUrl}
+              name={user?.name || 'S'}
               style={[styles.avatarSmall, { borderColor: colors.primary }]}
             />
           </TouchableOpacity>
@@ -608,8 +610,9 @@ const DashboardScreen = ({ navigation }) => {
           <View style={[styles.profileMenu, { top: insets.top + 50, backgroundColor: colors.card, borderColor: colors.border }]}>
 
             <View style={styles.menuHeader}>
-              <Image
-                source={{ uri: avatarUrl }}
+              <SafeStudentAvatar
+                uri={avatarUrl}
+                name={user?.name || 'S'}
                 style={styles.menuAvatar}
               />
               <View>

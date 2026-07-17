@@ -11,6 +11,7 @@ import { useUser } from '../../context/UserContext';
 import { getPersonaBadge } from '../../data/aiEngine';
 import { uploadAvatarAPI, connectionStatsAPI, getStartups, getConnectionList } from '../../data/apiService';
 import { getAvatarUrl } from '../../utils/avatar';
+import { SafeStudentAvatar } from '../../components/SafeStudentAvatar';
 import { isMedicalStudent, getDisplayCourse, getMBBSProfLabel } from '../../utils/courseDisplay';
 
 
@@ -151,8 +152,9 @@ const ProfileScreen = () => {
           <TouchableOpacity style={styles.headerIconBtn}>
             <MaterialIcons name="smart-toy" size={22} color="#6B7280" />
           </TouchableOpacity>
-          <Image
-            source={{ uri: avatarUrl }}
+          <SafeStudentAvatar
+            uri={avatarUrl}
+            name={user?.name || 'S'}
             style={styles.avatarTiny}
           />
         </View>
