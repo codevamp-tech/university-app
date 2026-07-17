@@ -59,8 +59,12 @@ const NotificationsScreen = ({ navigation }) => {
 
   const renderRequest = ({ item }) => {
     const usernameLower = item.username ? item.username.toLowerCase() : '';
-    const displayName = item.full_name || item.name || studentMap[usernameLower]?.name || item.username || 'Student';
-    const avatarUrl = item.avatar_url || studentMap[usernameLower]?.avatar || getAvatarUrl(item.username);
+    const dirStudent = studentMap[usernameLower];
+    // Priority: API full_name → student directory name/full_name → generic fallback (never raw username/roll no)
+    const displayName = item.full_name || item.name
+      || dirStudent?.full_name || dirStudent?.name
+      || 'Student';
+    const avatarUrl = item.avatar_url || dirStudent?.avatar || getAvatarUrl(item.username);
 
     return (
       <View style={[styles.requestCard, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
