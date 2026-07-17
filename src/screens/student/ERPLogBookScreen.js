@@ -9,7 +9,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../hooks/useTheme';
 import { useUser } from '../../context/UserContext';
 import { getLogbook, getSubjectList, getStudentSubjectLogbook } from '../../data/apiService';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width } = Dimensions.get('window');
 
@@ -124,50 +123,84 @@ const LogBookSkeleton = ({ colors }) => (
 );
 
 // ─── Reflection Card (for RefSelfDirectedLearning entries) ───────────────────
-const ReflectionCard = ({ entry, colors, isDark }) => {
-  // The A1/A2/A3 fields from ERP hold the question labels for Reflection entries
+const ReflectionCard = ({ entry, colors, isDark, user }) => {
+  // A1/A2/A3 fields from ERP hold the question labels for Reflection entries
   const questions = [
-    { key: 'a1', label: entry.a1 && entry.a1 !== '-' ? entry.a1 : 'What Happened? (Describe the event or learning experience)', icon: 'help-outline' },
-    { key: 'a2', label: entry.a2 && entry.a2 !== '-' ? entry.a2 : 'So What? (What did it mean to you / what did you learn?)', icon: 'lightbulb-outline' },
-    { key: 'a3', label: entry.a3 && entry.a3 !== '-' ? entry.a3 : 'What Next? (How will you apply this learning?)', icon: 'arrow-forward' },
+    { key: 'a1', label: entry.a1 && entry.a1 !== '-' ? entry.a1 : 'What Happened? (Describe the event or learning experience)' },
+    { key: 'a2', label: entry.a2 && entry.a2 !== '-' ? entry.a2 : 'So What? (What did it mean to you / what did you learn?)' },
+    { key: 'a3', label: entry.a3 && entry.a3 !== '-' ? entry.a3 : 'What Next? (How will you apply this learning?)' },
   ];
 
-  const storageKey = `@reflection_${entry.actmstid || entry.competency || entry.activity}`;
   const [answers, setAnswers] = useState({ a1: '', a2: '', a3: '' });
-  const [saved, setSaved] = useState(false);
-  const [saving, setSaving] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
-  useEffect(() => {
-    AsyncStorage.getItem(storageKey).then(val => {
-      if (val) {
-        try { setAnswers(JSON.parse(val)); } catch (_) {}
-      }
-    });
-  }, [storageKey]);
-
-  const handleSave = async () => {
+  const handleSubmit = async () => {
     const anyFilled = answers.a1.trim() || answers.a2.trim() || answers.a3.trim();
     if (!anyFilled) {
-      Alert.alert('Empty Reflection', 'Please write at least one answer before saving.');
+      Alert.alert('Empty Reflection', 'Please answer at least one question before submitting.');
       return;
     }
-    setSaving(true);
+
+    const rollNumber = String(user?.username || user?.rollno || user?.id || '');
+    if (!rollNumber) {
+      Alert.alert('Error', 'Unable to retrieve your roll number. Please log in again.');
+      return;
+    }
+    const batchYear = String(user?.batch_year || user?.year || '');
+
+    setSubmitting(true);
     try {
-      await AsyncStorage.setItem(storageKey, JSON.stringify(answers));
-      setSaved(true);
-      Alert.alert('Saved', 'Your reflection has been saved locally.');
-      setTimeout(() => setSaved(false), 3000);
-    } catch (_) {
-      Alert.alert('Error', 'Could not save your reflection. Please try again.');
+      const payload = {
+        LMS_LogBook_ActivityData: {
+          rollno: rollNumber,
+          lbtype: 'SelfDirectedLearning',   // ERP uses SelfDirectedLearning for Ref type too
+          comp_code: entry.comp_code || entry.competency || '',
+          actmstid: String(entry.actmstid || ''),
+          cbmeyear: String(entry.cbmeyear || batchYear),
+          received: 1,
+          // Reflection answer text — ERP field names match its own A1/A2/A3 schema
+          A1: answers.a1.trim(),
+          A2: answers.a2.trim(),
+          A3: answers.a3.trim(),
+        }
+      };
+
+      const response = await fetch('https://myportal.srms.ac.in/SRMSERP/PGMBBS/updateReceivedstud', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'User-Agent': 'Mozilla/5.0'
+        },
+        body: JSON.stringify(payload)
+      });
+
+      const res = await response.json();
+      const isSuccess = res && (
+        res.success ||
+        res.message === 'Success' ||
+        res.Mess === 'Update' ||
+        res.message === 'Update'
+      );
+
+      if (isSuccess) {
+        setSubmitted(true);
+        Alert.alert('Submitted!', 'Your reflection has been submitted to the ERP successfully.');
+      } else {
+        Alert.alert('Submission Failed', res?.Mess || res?.message || 'The ERP did not accept the submission. Please try again.');
+      }
+    } catch (err) {
+      console.warn('[ReflectionCard] Submit error:', err);
+      Alert.alert('Error', 'Could not reach the ERP server. Please check your connection and try again.');
     } finally {
-      setSaving(false);
+      setSubmitting(false);
     }
   };
 
   return (
     <View style={[
       styles.logbookCard,
-      { backgroundColor: colors.card, borderColor: '#3B82F6', borderLeftWidth: 3 }
+      { backgroundColor: colors.card, borderColor: submitted ? '#10B981' : '#3B82F6', borderLeftWidth: 3 }
     ]}>
       {/* Header */}
       <View style={styles.cardHeader}>
@@ -180,9 +213,14 @@ const ReflectionCard = ({ entry, colors, isDark }) => {
             <MaterialIcons name="check" size={10} color="#059669" />
             <Text style={[styles.statusBadgeText, { color: '#059669' }]}>FACULTY: VERIFIED</Text>
           </View>
-          <View style={[styles.statusBadge, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F3F4F6' }]}>
-            <MaterialIcons name="pending" size={10} color="#9CA3AF" />
-            <Text style={[styles.statusBadgeText, { color: '#9CA3AF' }]}>STUDENT: PENDING</Text>
+          <View style={[
+            styles.statusBadge,
+            { backgroundColor: submitted ? (isDark ? 'rgba(16,185,129,0.15)' : '#ECFDF5') : (isDark ? 'rgba(255,255,255,0.05)' : '#F3F4F6') }
+          ]}>
+            <MaterialIcons name={submitted ? 'done-all' : 'pending'} size={10} color={submitted ? '#10B981' : '#9CA3AF'} />
+            <Text style={[styles.statusBadgeText, { color: submitted ? '#10B981' : '#9CA3AF' }]}>
+              STUDENT: {submitted ? 'SUBMITTED' : 'PENDING'}
+            </Text>
           </View>
         </View>
       </View>
@@ -195,58 +233,81 @@ const ReflectionCard = ({ entry, colors, isDark }) => {
         </View>
       </View>
 
-      {/* Reflection Question Input Fields */}
+      {/* Reflection Question Input Fields or Read-only submitted view */}
       <View style={{ marginTop: 16, gap: 14 }}>
         {questions.map((q, qi) => (
           <View key={qi}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 }}>
-              <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: '#3B82F6', alignItems: 'center', justifyContent: 'center' }}>
+              <View style={[
+                { width: 22, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
+                { backgroundColor: submitted ? '#10B981' : '#3B82F6' }
+              ]}>
                 <Text style={{ color: '#FFF', fontSize: 11, fontWeight: '900' }}>{qi + 1}</Text>
               </View>
               <Text style={{ fontSize: 12, fontWeight: '700', color: colors.textPrimary, flex: 1 }} numberOfLines={2}>
                 {q.label}
               </Text>
             </View>
-            <TextInput
-              value={answers[q.key]}
-              onChangeText={val => setAnswers(prev => ({ ...prev, [q.key]: val }))}
-              placeholder={`Write your answer here...`}
-              placeholderTextColor={colors.textMuted}
-              multiline
-              numberOfLines={4}
-              textAlignVertical="top"
-              style={[
+            {submitted ? (
+              // Read-only view after submission
+              <View style={[
                 styles.reflectionInput,
                 {
-                  backgroundColor: isDark ? 'rgba(59,130,246,0.05)' : '#F0F7FF',
-                  borderColor: isDark ? 'rgba(59,130,246,0.3)' : '#BFDBFE',
-                  color: colors.textPrimary,
+                  backgroundColor: isDark ? 'rgba(16,185,129,0.05)' : '#F0FDF4',
+                  borderColor: isDark ? 'rgba(16,185,129,0.25)' : '#BBF7D0',
+                  justifyContent: 'center',
                 }
-              ]}
-            />
+              ]}>
+                <Text style={{ fontSize: 13, color: colors.textPrimary, lineHeight: 20 }}>
+                  {answers[q.key] || '—'}
+                </Text>
+              </View>
+            ) : (
+              <TextInput
+                value={answers[q.key]}
+                onChangeText={val => setAnswers(prev => ({ ...prev, [q.key]: val }))}
+                placeholder="Write your answer here..."
+                placeholderTextColor={colors.textMuted}
+                multiline
+                numberOfLines={4}
+                textAlignVertical="top"
+                style={[
+                  styles.reflectionInput,
+                  {
+                    backgroundColor: isDark ? 'rgba(59,130,246,0.05)' : '#F0F7FF',
+                    borderColor: isDark ? 'rgba(59,130,246,0.3)' : '#BFDBFE',
+                    color: colors.textPrimary,
+                  }
+                ]}
+              />
+            )}
           </View>
         ))}
       </View>
 
-      {/* Save Button */}
-      <TouchableOpacity
-        onPress={handleSave}
-        disabled={saving}
-        activeOpacity={0.85}
-        style={[
-          styles.reflectionSaveBtn,
-          { backgroundColor: saved ? '#10B981' : '#3B82F6', opacity: saving ? 0.7 : 1 }
-        ]}
-      >
-        {saving ? (
-          <ActivityIndicator size="small" color="#FFF" />
-        ) : (
-          <MaterialIcons name={saved ? 'check-circle' : 'save'} size={16} color="#FFF" />
-        )}
-        <Text style={styles.reflectionSaveBtnText}>
-          {saving ? 'Saving...' : saved ? 'Saved!' : 'Save Reflection'}
-        </Text>
-      </TouchableOpacity>
+      {/* Submit / Locked row */}
+      {submitted ? (
+        <View style={[styles.reflectionSaveBtn, { backgroundColor: 'rgba(16,185,129,0.12)' }]}>
+          <MaterialIcons name="lock" size={16} color="#10B981" />
+          <Text style={[styles.reflectionSaveBtnText, { color: '#10B981' }]}>Submitted to ERP</Text>
+        </View>
+      ) : (
+        <TouchableOpacity
+          onPress={handleSubmit}
+          disabled={submitting}
+          activeOpacity={0.85}
+          style={[styles.reflectionSaveBtn, { backgroundColor: '#3B82F6', opacity: submitting ? 0.7 : 1 }]}
+        >
+          {submitting ? (
+            <ActivityIndicator size="small" color="#FFF" />
+          ) : (
+            <MaterialIcons name="send" size={16} color="#FFF" />
+          )}
+          <Text style={styles.reflectionSaveBtnText}>
+            {submitting ? 'Submitting...' : 'Submit to ERP'}
+          </Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 };
@@ -932,7 +993,7 @@ const ERPLogBookScreen = ({ route, navigation }) => {
               filteredLogbook.map((entry, i) => {
                 // Reflection on Self-Directed Learning entries get a dedicated reflection UI
                 if (entry.category === 'RefSelfDirectedLearning') {
-                  return <ReflectionCard key={i} entry={entry} colors={colors} isDark={isDark} />;
+                  return <ReflectionCard key={i} entry={entry} colors={colors} isDark={isDark} user={user} />;
                 }
                 const catInfo = CATEGORY_MAP[entry.category] || CATEGORY_MAP['default'];
                 return (
