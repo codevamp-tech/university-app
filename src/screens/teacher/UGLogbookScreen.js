@@ -428,7 +428,13 @@ const UGLogbookScreen = ({ navigation }) => {
           list = cached.data;
         } else {
           const data = await getLogbookActivities(accessToken, selectedEvent.value, subCode, batchyear);
-          list = Array.isArray(data) ? data : [];
+          const rawList = Array.isArray(data) ? data : [];
+          list = rawList.map(a => ({
+            ...a,
+            comp_code: String(a.comp_code || '').trim(),
+            ActivityName: String(a.ActivityName || '').trim(),
+            Activity: String(a.Activity || '').trim(),
+          }));
           _activityCache[cacheKey] = { data: list, timestamp: now };
         }
         setActivities(list);
