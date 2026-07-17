@@ -328,19 +328,8 @@ const UGLogbookScreen = ({ navigation }) => {
       }
     }
     
-    // 2. Fall back to hardcoded employee ID overrides if department is generic/missing
-    const facultyIdNorm = String(user.emp_id || '').trim().toUpperCase();
-    if (facultyIdNorm === 'D/11/093' || facultyIdNorm === '202314130') {
-      return 'PY';
-    } else if (facultyIdNorm === 'D/11/094') {
-      return 'AN';
-    } else if (facultyIdNorm === 'D/11/095') {
-      return 'BI';
-    }
-    
-    // 3. If generic department (e.g. "Medical Faculty") and not overridden by ID,
-    // match the subcode dynamically to the currently selected Phase filter
-    // to prevent phase-subject mismatch errors
+    // 2. If generic department (e.g. "Medical Faculty" or "Teacher"), match the subcode dynamically
+    // to the currently selected Phase filter to prevent phase-subject mismatch errors
     if (selectedPhase.value === '2') {
       return 'PA'; // Pathology for Phase 2
     } else if (selectedPhase.value === '3') {

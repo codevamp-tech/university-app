@@ -64,32 +64,36 @@ const FacultyOfficialChatScreen = ({ navigation }) => {
 
       const isBCBatch = ['2024', '2025', '2026'].includes(String(selectedBatch?.name || '').trim());
 
-      if (facultyIdNorm === 'D/11/093' || facultyIdNorm === '202314130') {
-        facultyDept = 'physiology';
-        targetSubcode = 'PY';
-      } else if (facultyIdNorm === 'D/11/094') {
-        facultyDept = 'anatomy';
-        targetSubcode = 'AN';
-      } else if (facultyIdNorm === 'D/11/095') {
-        facultyDept = 'biochemistry';
-        targetSubcode = isBCBatch ? 'BC' : 'BI';
-      } else {
-        // Fallback mapping if not in list
-        const DEPT_TO_SUBCODE = {
-          'anatomy': 'AN',
-          'physiology': 'PY',
-          'biochemistry': isBCBatch ? 'BC' : 'BI',
-          'pharmacology': 'PH',
-          'pathology': 'PA',
-          'microbiology': 'MI',
-          'forensic medicine': 'FM',
-          'community medicine': 'CM',
-          'medicine': 'IM',
-          'surgery': 'SU',
-          'obstetrics & gynecology': 'OB',
-          'pediatrics': 'PE'
-        };
-        targetSubcode = DEPT_TO_SUBCODE[facultyDept] || '';
+      const DEPT_TO_SUBCODE = {
+        'anatomy': 'AN',
+        'physiology': 'PY',
+        'biochemistry': isBCBatch ? 'BC' : 'BI',
+        'pharmacology': 'PH',
+        'pathology': 'PA',
+        'microbiology': 'MI',
+        'forensic medicine': 'FM',
+        'community medicine': 'CM',
+        'medicine': 'IM',
+        'surgery': 'SU',
+        'obstetrics': 'OG',
+        'gynaecology': 'OG',
+        'obg': 'OG',
+        'pediatrics': 'PE',
+        'paediatrics': 'PE',
+        'ophthalmology': 'OP',
+        'orthopedics': 'OR',
+        'ent': 'EN',
+        'otorhinolaryngology': 'EN',
+        'radio': 'RD',
+        'dentistry': 'DE',
+        'anesthesiology': 'AS'
+      };
+      
+      for (const [deptKey, code] of Object.entries(DEPT_TO_SUBCODE)) {
+        if (facultyDept.includes(deptKey) || deptKey.includes(facultyDept)) {
+          targetSubcode = code;
+          break;
+        }
       }
 
       const filtered = (chatHistory || []).filter(msg => {
@@ -279,31 +283,36 @@ const FacultyOfficialChatScreen = ({ navigation }) => {
       let targetSubcode = 'PY';
       const isBCBatch = ['2024', '2025', '2026'].includes(String(batchName).trim());
 
-      if (facultyIdNorm === 'D/11/093' || facultyIdNorm === '202314130') {
-        facultyDept = 'physiology';
-        targetSubcode = 'PY';
-      } else if (facultyIdNorm === 'D/11/094') {
-        facultyDept = 'anatomy';
-        targetSubcode = 'AN';
-      } else if (facultyIdNorm === 'D/11/095') {
-        facultyDept = 'biochemistry';
-        targetSubcode = isBCBatch ? 'BC' : 'BI';
-      } else {
-        const DEPT_TO_SUBCODE = {
-          'anatomy': 'AN',
-          'physiology': 'PY',
-          'biochemistry': isBCBatch ? 'BC' : 'BI',
-          'pharmacology': 'PH',
-          'pathology': 'PA',
-          'microbiology': 'MI',
-          'forensic medicine': 'FM',
-          'community medicine': 'CM',
-          'medicine': 'IM',
-          'surgery': 'SU',
-          'obstetrics & gynecology': 'OB',
-          'pediatrics': 'PE'
-        };
-        targetSubcode = DEPT_TO_SUBCODE[facultyDept] || 'PY';
+      const DEPT_TO_SUBCODE = {
+        'anatomy': 'AN',
+        'physiology': 'PY',
+        'biochemistry': isBCBatch ? 'BC' : 'BI',
+        'pharmacology': 'PH',
+        'pathology': 'PA',
+        'microbiology': 'MI',
+        'forensic medicine': 'FM',
+        'community medicine': 'CM',
+        'medicine': 'IM',
+        'surgery': 'SU',
+        'obstetrics': 'OG',
+        'gynaecology': 'OG',
+        'obg': 'OG',
+        'pediatrics': 'PE',
+        'paediatrics': 'PE',
+        'ophthalmology': 'OP',
+        'orthopedics': 'OR',
+        'ent': 'EN',
+        'otorhinolaryngology': 'EN',
+        'radio': 'RD',
+        'dentistry': 'DE',
+        'anesthesiology': 'AS'
+      };
+      
+      for (const [deptKey, code] of Object.entries(DEPT_TO_SUBCODE)) {
+        if (facultyDept.includes(deptKey) || deptKey.includes(facultyDept)) {
+          targetSubcode = code;
+          break;
+        }
       }
 
       const payload = {
