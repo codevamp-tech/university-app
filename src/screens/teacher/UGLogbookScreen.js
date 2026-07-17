@@ -1059,18 +1059,32 @@ const UGLogbookScreen = ({ navigation }) => {
         onPress={() => setShowFiltersModal(true)}
         activeOpacity={0.9}
       >
-        <View style={styles.collapsedFilterBarLeft}>
-          <Ionicons name="funnel" size={14} color="#EA580C" style={{ marginRight: 8 }} />
-          <Text style={styles.collapsedFilterText} numberOfLines={1}>
-            Phase {selectedPhase.value} · {selectedGroup.value} · {formatDateDisplay(selectedDate)}
-          </Text>
+        {/* Meta Row: Phase, Group, Date */}
+        <View style={styles.filterBarMetaRow}>
+          <View style={styles.filterMetaBadges}>
+            <Ionicons name="funnel" size={12} color="#EA580C" style={{ marginRight: 6 }} />
+            <Text style={styles.collapsedFilterText} numberOfLines={1}>
+              Phase {selectedPhase.value} · {selectedGroup.value} · {formatDateDisplay(selectedDate)}
+            </Text>
+          </View>
+          <View style={styles.filterEditButton}>
+            <Text style={styles.filterEditButtonText}>Modify</Text>
+            <Ionicons name="options-outline" size={12} color="#EA580C" style={{ marginLeft: 4 }} />
+          </View>
         </View>
-        <View style={styles.collapsedFilterBarRight}>
-          <Text style={styles.filterSummaryActivity} numberOfLines={1}>
-            {activityLabel}
-          </Text>
-          <Ionicons name="chevron-down" size={14} color="#9CA3AF" style={{ marginLeft: 6 }} />
-        </View>
+
+        {/* Activity Row: Full Width selected Activity name */}
+        {selectedEvent.value !== 'RefSelfDirectedLearning' && (
+          <View style={styles.filterBarActivityRow}>
+            <View style={styles.activityBadge}>
+              <Ionicons name="document-text-outline" size={14} color="#EA580C" style={{ marginRight: 6 }} />
+              <Text style={styles.filterSummaryActivity} numberOfLines={1}>
+                {activityLabel}
+              </Text>
+            </View>
+            <Ionicons name="chevron-down" size={14} color="#9CA3AF" style={{ marginLeft: 6 }} />
+          </View>
+        )}
       </TouchableOpacity>
 
       {/* Filters Modal Sheet */}
@@ -1504,14 +1518,31 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 18, fontWeight: '900', color: '#111827', letterSpacing: -0.5 },
 
   collapsedFilterBar: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    backgroundColor: '#FFFFFF', paddingHorizontal: 16, paddingVertical: 12,
+    backgroundColor: '#FFFFFF', paddingHorizontal: 16, paddingVertical: 10,
     borderBottomWidth: 1, borderBottomColor: '#E5E7EB',
+    gap: 8,
   },
-  collapsedFilterBarLeft: { flexDirection: 'row', alignItems: 'center', flex: 0.5 },
-  collapsedFilterBarRight: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', flex: 0.5 },
-  collapsedFilterText: { fontSize: 13, fontWeight: '800', color: '#1F2937' },
-  filterSummaryActivity: { fontSize: 12, fontWeight: '600', color: '#EA580C', textAlign: 'right', flex: 1 },
+  filterBarMetaRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+  },
+  filterMetaBadges: {
+    flexDirection: 'row', alignItems: 'center',
+  },
+  collapsedFilterText: { fontSize: 13, fontWeight: '800', color: '#4B5563' },
+  filterEditButton: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: '#FFF7ED', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8,
+  },
+  filterEditButtonText: { fontSize: 11, fontWeight: '800', color: '#EA580C' },
+  filterBarActivityRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    backgroundColor: '#F9FAFB', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8,
+    borderWidth: 1, borderColor: '#F3F4F6',
+  },
+  activityBadge: {
+    flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 8,
+  },
+  filterSummaryActivity: { fontSize: 13, fontWeight: '700', color: '#1F2937', flex: 1 },
 
   absoluteFiltersOverlay: {
     position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
