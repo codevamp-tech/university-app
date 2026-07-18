@@ -122,192 +122,212 @@ const LogBookSkeleton = ({ colors }) => (
   </View>
 );
 
-// ─── Reflection Card (for RefSelfDirectedLearning entries) ───────────────────
-const ReflectionCard = ({ entry, colors, isDark, user }) => {
-  // A1/A2/A3 fields from ERP hold the question labels for Reflection entries
-  const questions = [
-    { key: 'a1', label: entry.a1 && entry.a1 !== '-' ? entry.a1 : 'What Happened? (Describe the event or learning experience)' },
-    { key: 'a2', label: entry.a2 && entry.a2 !== '-' ? entry.a2 : 'So What? (What did it mean to you / what did you learn?)' },
-    { key: 'a3', label: entry.a3 && entry.a3 !== '-' ? entry.a3 : 'What Next? (How will you apply this learning?)' },
-  ];
+// ─── CalendarModal ───────────────────────────────────────────────────────────
+const CalendarModal = ({ visible, date, colors, isDark, onSelect, onClose }) => {
+  const [viewYear, setViewYear] = useState(date.getFullYear());
+  const [viewMonth, setViewMonth] = useState(date.getMonth());
 
-  const [answers, setAnswers] = useState({ a1: '', a2: '', a3: '' });
-  const [submitted, setSubmitted] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-
-  const handleSubmit = async () => {
-    const anyFilled = answers.a1.trim() || answers.a2.trim() || answers.a3.trim();
-    if (!anyFilled) {
-      Alert.alert('Empty Reflection', 'Please answer at least one question before submitting.');
-      return;
+  useEffect(() => {
+    if (visible) {
+      setViewYear(date.getFullYear());
+      setViewMonth(date.getMonth());
     }
+  }, [visible, date]);
 
-    const rollNumber = String(user?.username || user?.rollno || user?.id || '');
-    if (!rollNumber) {
-      Alert.alert('Error', 'Unable to retrieve your roll number. Please log in again.');
-      return;
-    }
-    const batchYear = String(user?.batch_year || user?.year || '');
-
-    setSubmitting(true);
-    try {
-      const payload = {
-        LMS_LogBook_ActivityData: {
-          rollno: rollNumber,
-          lbtype: 'SelfDirectedLearning',   // ERP uses SelfDirectedLearning for Ref type too
-          comp_code: entry.comp_code || entry.competency || '',
-          actmstid: String(entry.actmstid || ''),
-          cbmeyear: String(entry.cbmeyear || batchYear),
-          received: 1,
-          // Reflection answer text — ERP field names match its own A1/A2/A3 schema
-          A1: answers.a1.trim(),
-          A2: answers.a2.trim(),
-          A3: answers.a3.trim(),
-        }
-      };
-
-      const response = await fetch('https://myportal.srms.ac.in/SRMSERP/PGMBBS/updateReceivedstud', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'User-Agent': 'Mozilla/5.0'
-        },
-        body: JSON.stringify(payload)
-      });
-
-      const res = await response.json();
-      const isSuccess = res && (
-        res.success ||
-        res.message === 'Success' ||
-        res.Mess === 'Update' ||
-        res.message === 'Update'
-      );
-
-      if (isSuccess) {
-        setSubmitted(true);
-        Alert.alert('Submitted!', 'Your reflection has been submitted to the ERP successfully.');
-      } else {
-        Alert.alert('Submission Failed', res?.Mess || res?.message || 'The ERP did not accept the submission. Please try again.');
-      }
-    } catch (err) {
-      console.warn('[ReflectionCard] Submit error:', err);
-      Alert.alert('Error', 'Could not reach the ERP server. Please check your connection and try again.');
-    } finally {
-      setSubmitting(false);
-    }
+  const prevMonth = () => {
+    if (viewMonth === 0) { setViewMonth(11); setViewYear(y => y - 1); }
+    else setViewMonth(m => m - 1);
   };
+  const nextMonth = () => {
+    if (viewMonth === 11) { setViewMonth(0); setViewYear(y => y + 1); }
+    else setViewMonth(m => m + 1);
+  };
+
+  const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  const DAY_NAMES = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+
+  // Build day grid
+  const firstDay = new Date(viewYear, viewMonth, 1).getDay();
+  const daysInMon = new Date(viewYear, viewMonth + 1, 0).getDate();
+  const cells = [];
+  for (let i = 0; i < firstDay; i++) cells.push(null);
+  for (let d = 1; d <= daysInMon; d++) cells.push(d);
+  while (cells.length % 7 !== 0) cells.push(null);
+  const weeks = [];
+  for (let i = 0; i < cells.length; i += 7) weeks.push(cells.slice(i, i + 7));
+
+  const isSelected = (d) =>
+    d && date.getDate() === d && date.getMonth() === viewMonth && date.getFullYear() === viewYear;
+  const isToday = (d) => {
+    const t = new Date();
+    return d && t.getDate() === d && t.getMonth() === viewMonth && t.getFullYear() === viewYear;
+  };
+
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={onClose}>
+        <View style={[styles.modalSheet, { backgroundColor: colors.card }]}>
+          {/* Month nav */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+            <TouchableOpacity onPress={prevMonth} style={{ padding: 6, borderRadius: 8, backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#FFF7ED' }}>
+              <Ionicons name="chevron-back" size={20} color={colors.primary} />
+            </TouchableOpacity>
+            <Text style={{ fontSize: 16, fontWeight: '800', color: colors.textPrimary }}>{MONTH_NAMES[viewMonth]} {viewYear}</Text>
+            <TouchableOpacity onPress={nextMonth} style={{ padding: 6, borderRadius: 8, backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#FFF7ED' }}>
+              <Ionicons name="chevron-forward" size={20} color={colors.primary} />
+            </TouchableOpacity>
+          </View>
+
+          {/* Day labels */}
+          <View style={{ flexDirection: 'row', marginBottom: 8 }}>
+            {DAY_NAMES.map(d => (
+              <Text key={d} style={{ flex: 1, textAlign: 'center', fontSize: 11, fontWeight: '700', color: colors.textSecondary }}>{d}</Text>
+            ))}
+          </View>
+
+          {/* Date grid */}
+          {weeks.map((week, wi) => (
+            <View key={wi} style={{ flexDirection: 'row', marginBottom: 4 }}>
+              {week.map((day, di) => {
+                const sel = isSelected(day);
+                const tod = isToday(day);
+                return (
+                  <TouchableOpacity
+                    key={di}
+                    style={[
+                      { flex: 1, height: 38, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+                      sel && { backgroundColor: colors.primary },
+                      tod && !sel && { backgroundColor: isDark ? 'rgba(245,158,11,0.15)' : '#FFF7ED', borderWidth: 1, borderColor: colors.primary }
+                    ]}
+                    onPress={() => {
+                      if (day) { onSelect(new Date(viewYear, viewMonth, day)); onClose(); }
+                    }}
+                    activeOpacity={day ? 0.7 : 1}
+                  >
+                    <Text style={[
+                      { fontSize: 14, color: colors.textPrimary, fontWeight: '500' },
+                      sel && { color: '#FFFFFF', fontWeight: '800' },
+                      tod && !sel && { color: colors.primary, fontWeight: '700' },
+                      !day && { opacity: 0 },
+                    ]}>
+                      {day || ''}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          ))}
+
+          {/* Today shortcut */}
+          <TouchableOpacity
+            style={{ marginTop: 12, alignSelf: 'center', paddingVertical: 10, paddingHorizontal: 32, backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#FFF7ED', borderRadius: 12, borderWidth: 1, borderColor: colors.primary }}
+            onPress={() => { onSelect(new Date()); onClose(); }}
+          >
+            <Text style={{ fontSize: 14, fontWeight: '800', color: colors.primary }}>Today</Text>
+          </TouchableOpacity>
+        </View>
+      </TouchableOpacity>
+    </Modal>
+  );
+};
+
+// ─── Reflection Summary Card (for RefSelfDirectedLearning entries) ───────────────────
+const RefSummaryCard = ({ entry, colors, isDark, onSignOff, signingOffId }) => {
+  const isSignedOff = entry.student_verified;
+  const isVerified = entry.verified;
+  const isSubmitting = signingOffId === entry.actmstid;
 
   return (
     <View style={[
       styles.logbookCard,
-      { backgroundColor: colors.card, borderColor: submitted ? '#10B981' : '#3B82F6', borderLeftWidth: 3 }
+      { backgroundColor: colors.card, borderColor: colors.border, borderLeftWidth: 4, borderLeftColor: isVerified ? '#10B981' : '#F59E0B' }
     ]}>
-      {/* Header */}
-      <View style={styles.cardHeader}>
-        <View style={[styles.categoryBadge, { backgroundColor: isDark ? 'rgba(59,130,246,0.12)' : '#EFF6FF', borderColor: '#BFDBFE' }]}>
-          <MaterialIcons name="menu-book" size={12} color="#3B82F6" />
-          <Text style={[styles.categoryBadgeText, { color: '#3B82F6' }]}>Reflection on Self-Directed Learning</Text>
-        </View>
-        <View style={{ alignItems: 'flex-end', gap: 4, flexShrink: 0 }}>
-          <View style={[styles.statusBadge, { backgroundColor: isDark ? 'rgba(5,150,105,0.15)' : '#D1FAE5' }]}>
-            <MaterialIcons name="check" size={10} color="#059669" />
-            <Text style={[styles.statusBadgeText, { color: '#059669' }]}>FACULTY: VERIFIED</Text>
-          </View>
-          <View style={[
-            styles.statusBadge,
-            { backgroundColor: submitted ? (isDark ? 'rgba(16,185,129,0.15)' : '#ECFDF5') : (isDark ? 'rgba(255,255,255,0.05)' : '#F3F4F6') }
-          ]}>
-            <MaterialIcons name={submitted ? 'done-all' : 'pending'} size={10} color={submitted ? '#10B981' : '#9CA3AF'} />
-            <Text style={[styles.statusBadgeText, { color: submitted ? '#10B981' : '#9CA3AF' }]}>
-              STUDENT: {submitted ? 'SUBMITTED' : 'PENDING'}
+      {/* Date & Status */}
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+        <Text style={{ fontSize: 11, fontWeight: '700', color: colors.textSecondary }}>
+          SUBMITTED ON: {entry.date}
+        </Text>
+        <View style={{ flexDirection: 'row', gap: 6 }}>
+          <View style={[styles.statusBadge, { backgroundColor: isVerified ? 'rgba(16,185,129,0.1)' : 'rgba(245,158,11,0.1)' }]}>
+            <Text style={{ fontSize: 9, fontWeight: '800', color: isVerified ? '#10B981' : '#F59E0B' }}>
+              {isVerified ? 'FACULTY: VERIFIED' : 'FACULTY: PENDING'}
             </Text>
           </View>
         </View>
       </View>
 
-      {/* Activity Title */}
-      <View style={styles.logbookBody}>
-        <Text style={[styles.logbookActivity, { color: colors.textPrimary }]}>{entry.activity}</Text>
-        <View style={[styles.logCompBadge, { backgroundColor: isDark ? 'rgba(59,130,246,0.1)' : '#DBEAFE' }]}>
-          <Text style={[styles.logCompText, { color: '#3B82F6' }]}>{entry.competency}{entry.department ? ` • ${entry.department}` : ''}</Text>
+      {/* Topic */}
+      <Text style={{ fontSize: 14, fontWeight: '800', color: colors.textPrimary }}>
+        Topic: {entry.activity}
+      </Text>
+
+      {/* A1, A2, A3 Q&As */}
+      <View style={{ gap: 8, marginTop: 4 }}>
+        <View style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#F8FAFC', padding: 8, borderRadius: 8 }}>
+          <Text style={{ fontSize: 10, fontWeight: '700', color: colors.textSecondary }}>What Happened?</Text>
+          <Text style={{ fontSize: 12, color: colors.textPrimary, marginTop: 2 }}>{entry.a1 || '—'}</Text>
+        </View>
+        <View style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#F8FAFC', padding: 8, borderRadius: 8 }}>
+          <Text style={{ fontSize: 10, fontWeight: '700', color: colors.textSecondary }}>So What?</Text>
+          <Text style={{ fontSize: 12, color: colors.textPrimary, marginTop: 2 }}>{entry.a2 || '—'}</Text>
+        </View>
+        <View style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#F8FAFC', padding: 8, borderRadius: 8 }}>
+          <Text style={{ fontSize: 10, fontWeight: '700', color: colors.textSecondary }}>What Next?</Text>
+          <Text style={{ fontSize: 12, color: colors.textPrimary, marginTop: 2 }}>{entry.a3 || '—'}</Text>
         </View>
       </View>
 
-      {/* Reflection Question Input Fields or Read-only submitted view */}
-      <View style={{ marginTop: 16, gap: 14 }}>
-        {questions.map((q, qi) => (
-          <View key={qi}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 }}>
-              <View style={[
-                { width: 22, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
-                { backgroundColor: submitted ? '#10B981' : '#3B82F6' }
-              ]}>
-                <Text style={{ color: '#FFF', fontSize: 11, fontWeight: '900' }}>{qi + 1}</Text>
-              </View>
-              <Text style={{ fontSize: 12, fontWeight: '700', color: colors.textPrimary, flex: 1 }} numberOfLines={2}>
-                {q.label}
-              </Text>
-            </View>
-            {submitted ? (
-              // Read-only view after submission
-              <View style={[
-                styles.reflectionInput,
-                {
-                  backgroundColor: isDark ? 'rgba(16,185,129,0.05)' : '#F0FDF4',
-                  borderColor: isDark ? 'rgba(16,185,129,0.25)' : '#BBF7D0',
-                  justifyContent: 'center',
-                }
-              ]}>
-                <Text style={{ fontSize: 13, color: colors.textPrimary, lineHeight: 20 }}>
-                  {answers[q.key] || '—'}
-                </Text>
-              </View>
-            ) : (
-              <TextInput
-                value={answers[q.key]}
-                onChangeText={val => setAnswers(prev => ({ ...prev, [q.key]: val }))}
-                placeholder="Write your answer here..."
-                placeholderTextColor={colors.textMuted}
-                multiline
-                numberOfLines={4}
-                textAlignVertical="top"
-                style={[
-                  styles.reflectionInput,
-                  {
-                    backgroundColor: isDark ? 'rgba(59,130,246,0.05)' : '#F0F7FF',
-                    borderColor: isDark ? 'rgba(59,130,246,0.3)' : '#BFDBFE',
-                    color: colors.textPrimary,
-                  }
-                ]}
-              />
-            )}
-          </View>
-        ))}
-      </View>
-
-      {/* Submit / Locked row */}
-      {submitted ? (
-        <View style={[styles.reflectionSaveBtn, { backgroundColor: 'rgba(16,185,129,0.12)' }]}>
-          <MaterialIcons name="lock" size={16} color="#10B981" />
-          <Text style={[styles.reflectionSaveBtnText, { color: '#10B981' }]}>Submitted to ERP</Text>
-        </View>
-      ) : (
-        <TouchableOpacity
-          onPress={handleSubmit}
-          disabled={submitting}
-          activeOpacity={0.85}
-          style={[styles.reflectionSaveBtn, { backgroundColor: '#3B82F6', opacity: submitting ? 0.7 : 1 }]}
-        >
-          {submitting ? (
-            <ActivityIndicator size="small" color="#FFF" />
-          ) : (
-            <MaterialIcons name="send" size={16} color="#FFF" />
-          )}
-          <Text style={styles.reflectionSaveBtnText}>
-            {submitting ? 'Submitting...' : 'Submit to ERP'}
+      {/* Faculty Sign-off details */}
+      {isVerified && (
+        <View style={{ marginTop: 6, gap: 2 }}>
+          <Text style={{ fontSize: 10, color: colors.textMuted, fontStyle: 'italic' }}>
+            Verified by {entry.faculty}
           </Text>
-        </TouchableOpacity>
+          {entry.verifiedDate && entry.verifiedDate !== 'Pending' && (
+            <Text style={{ fontSize: 10, color: colors.textMuted, fontStyle: 'italic' }}>
+              Verification Date: {entry.verifiedDate}
+            </Text>
+          )}
+        </View>
       )}
+
+      {/* Faculty Remarks */}
+      {entry.remarks && entry.remarks.trim() !== '' && (
+        <View style={{ marginTop: 8, backgroundColor: isDark ? 'rgba(239,68,68,0.05)' : '#FEF2F2', padding: 8, borderRadius: 8, borderWidth: 1, borderColor: isDark ? 'rgba(239,68,68,0.15)' : '#FEE2E2' }}>
+          <Text style={{ fontSize: 10, fontWeight: '700', color: '#DC2626' }}>Faculty Remarks:</Text>
+          <Text style={{ fontSize: 12, color: colors.textPrimary, marginTop: 2 }}>{entry.remarks}</Text>
+        </View>
+      )}
+
+      {/* Bottom Action Row (Student Sign-Off/Initial of learner) */}
+      <View style={{ borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 10, marginTop: 4, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Text style={{ fontSize: 10, fontWeight: '700', color: colors.textSecondary }}>
+          STUDENT SIGN-OFF:
+        </Text>
+        {isSignedOff ? (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+            <Ionicons name="checkmark-circle" size={14} color="#10B981" />
+            <Text style={{ fontSize: 11, fontWeight: '800', color: '#10B981' }}>COMPLETED</Text>
+          </View>
+        ) : isVerified ? (
+          <TouchableOpacity
+            onPress={() => onSignOff(entry)}
+            disabled={isSubmitting}
+            style={{ backgroundColor: '#10B981', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, flexDirection: 'row', alignItems: 'center', gap: 4 }}
+          >
+            {isSubmitting ? (
+              <ActivityIndicator size="small" color="#FFF" />
+            ) : (
+              <Ionicons name="create-outline" size={12} color="#FFF" />
+            )}
+            <Text style={{ fontSize: 11, fontWeight: '800', color: '#FFF' }}>Sign Off Reflection</Text>
+          </TouchableOpacity>
+        ) : (
+          <Text style={{ fontSize: 11, fontWeight: '700', color: colors.textMuted }}>
+            Waiting for Faculty Verification
+          </Text>
+        )}
+      </View>
     </View>
   );
 };
@@ -326,9 +346,137 @@ const ERPLogBookScreen = ({ route, navigation }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState('ALL');
   const [activeCategory, setActiveCategory] = useState('ALL');
-  const [activePhase, setActivePhase] = useState('ALL');
+  const getInitialPhase = () => {
+    const yr = parseInt(user?.batch_year || user?.year || '2024', 10);
+    if (yr >= 2025) return '1';
+    if (yr === 2024) return '2';
+    if (yr === 2023) return '2';
+    return '2';
+  };
+
+  const [activePhase, setActivePhase] = useState(getInitialPhase());
   const [showFilters, setShowFilters] = useState(false);
   const [showLegendModal, setShowLegendModal] = useState(false);
+  const [showStatusPicker, setShowStatusPicker] = useState(false);
+  const [showCategoryPicker, setShowCategoryPicker] = useState(false);
+  const [showSubjectPicker, setShowSubjectPicker] = useState(false);
+  const [showReflectionForm, setShowReflectionForm] = useState(false);
+
+  const STATUS_MAP = {
+    'ALL': 'All Statuses',
+    'FAC_VERIFIED': 'Faculty Verified',
+    'FAC_PENDING': 'Faculty Pending',
+    'STUD_VERIFIED': 'Student Verified',
+    'STUD_PENDING': 'Student Pending'
+  };
+  const activeFilterLabel = STATUS_MAP[activeFilter] || 'All Statuses';
+  const activeCategoryLabel = CATEGORY_PILLS.find(p => p.key === activeCategory)?.label || 'All Categories';
+
+  const [formDate, setFormDate] = useState(new Date().toISOString().split('T')[0]);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [formTopic, setFormTopic] = useState('');
+  const [formWhatHappened, setFormWhatHappened] = useState('');
+  const [formSoWhat, setFormSoWhat] = useState('');
+  const [formWhatNext, setFormWhatNext] = useState('');
+  const [formSaving, setFormSaving] = useState(false);
+
+  const handleSaveReflection = async () => {
+    if (!activeSubject) {
+      Alert.alert('Subject Required', 'Please select a Subject from the filters before submitting a reflection.');
+      return;
+    }
+
+    if (!formTopic.trim() || !formWhatHappened.trim() || !formSoWhat.trim() || !formWhatNext.trim()) {
+      Alert.alert('Incomplete Form', 'Please fill in all fields (Topic, What Happened, So What, What Next) before saving.');
+      return;
+    }
+
+    const rollNumber = String(user?.username || user?.rollno || user?.id || '');
+    if (!rollNumber) {
+      Alert.alert('Error', 'Unable to retrieve your roll number. Please log in again.');
+      return;
+    }
+    
+    const userBatchYear = parseInt(user?.batch_year || user?.year || '2024', 10);
+    const BATCH_YEAR_TO_CD = {
+      2025: "66", 2024: "63", 2023: "60", 2022: "61",
+      2021: "62", 2020: "64", 2019: "65"
+    };
+    const finalBatchcd = BATCH_YEAR_TO_CD[userBatchYear] || '63';
+    const finalCbmeyear = userBatchYear <= 2023 ? '2023' : '2024';
+
+    setFormSaving(true);
+    try {
+      const payload = {
+        LMS_LogBook_ActivityData: {
+          rollno: rollNumber,
+          lbtype: 'RefSelfDirectedLearning',
+          comp_code: '',
+          actmstid: 0,
+          cbmeyear: finalCbmeyear,
+          batchcd: finalBatchcd,
+          received: 0,
+          colgcd: '11',
+          coursetype: 'UG',
+          coursecd: '1',
+          branchcd: '1',
+          phase: String(activePhase),
+          subjcode: String(activeSubject.subject_Code),
+          ActivityName: formTopic.trim(),
+          Acdt: formDate,
+          crtdt: formDate,
+          A1: formWhatHappened.trim(),
+          A2: formSoWhat.trim(),
+          A3: formWhatNext.trim(),
+          topiccode: 0,
+          empid: '',
+          VerifiedBy: '',
+          VerifiedId: '',
+          remarks: '',
+          ac_status: 0,
+          verified_dt: '1900-01-01 00:00:00'
+        }
+      };
+
+      const response = await fetch('https://myportal.srms.ac.in/SRMSERP/PGMBBS/PracticalStudLabSave', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'User-Agent': 'Mozilla/5.0'
+        },
+        body: JSON.stringify(payload)
+      });
+
+      const res = await response.json();
+      const isSuccess = res && (
+        res.success ||
+        res.message === 'Success' ||
+        res.Mess === 'Save' ||
+        res.message === 'Save' ||
+        res.Mess === 'Update' ||
+        res.message === 'Update'
+      );
+
+      if (isSuccess) {
+        Alert.alert('Saved!', 'Your reflection has been submitted to the ERP successfully.');
+        setFormTopic('');
+        setFormWhatHappened('');
+        setFormSoWhat('');
+        setFormWhatNext('');
+        setShowReflectionForm(false);
+        // Refresh the list!
+        loadLogbook(false);
+        loadSubjectEntries(false);
+      } else {
+        Alert.alert('Save Failed', res?.Mess || res?.message || 'The ERP did not accept the submission. Please try again.');
+      }
+    } catch (err) {
+      console.warn('[LogBookScreen] Save Reflection error:', err);
+      Alert.alert('Error', 'Could not reach the ERP server. Please check your connection and try again.');
+    } finally {
+      setFormSaving(false);
+    }
+  };
 
   // Subject filter state
   const [subjectList, setSubjectList] = useState([]);
@@ -359,15 +507,16 @@ const ERPLogBookScreen = ({ route, navigation }) => {
             const catName = catGroup.category || 'default';
             const activities = catGroup.activities || [];
             activities.forEach(act => {
-              let dateStr = 'Pending';
-              if (act.verified_dt) {
-                const match = act.verified_dt.match(/\d+/);
-                if (match) {
-                  const ms = parseInt(match[0], 10);
-                  const dt = new Date(ms);
-                  dateStr = dt.toISOString().split('T')[0];
-                }
-              }
+              const parseErpDate = (dateStr) => {
+                if (!dateStr) return 'Pending';
+                const match = String(dateStr).match(/-?\d+/);
+                if (!match) return 'Pending';
+                const ms = parseInt(match[0], 10);
+                if (ms <= 0) return 'Pending';
+                return new Date(ms).toISOString().split('T')[0];
+              };
+              const dateStr = parseErpDate(act.Acdt || act.crtdt);
+              const verifiedDate = parseErpDate(act.verified_dt);
 
               const isVerified = act.VerifiedBy ? true : false;
 
@@ -383,6 +532,7 @@ const ERPLogBookScreen = ({ route, navigation }) => {
                 a3: act.A3 || '-',
                 faculty: act.VerifiedBy ? act.VerifiedBy.trim() : 'Faculty Desk',
                 date: dateStr,
+                verifiedDate: verifiedDate,
                 category: catName,
                 department: deptName,
                 comp_code: act.compCode || act.code || '',
@@ -442,101 +592,106 @@ const ERPLogBookScreen = ({ route, navigation }) => {
     return () => { cancelled = true; };
   }, [activePhase]);
 
-  // When a subject is selected, fetch its logbook entries directly from ERP
-  useEffect(() => {
+  const loadSubjectEntries = async (showLoading = true) => {
     if (!activeSubject) {
       setSubjectEntries([]);
       return;
     }
-    let cancelled = false;
-    const fetchSubjectEntries = async () => {
-      const rollno = user?.rollno || user?.id || user?.username;
-      if (!rollno) return;
-      setSubjectEntriesLoading(true);
+    const rollno = user?.rollno || user?.id || user?.username;
+    if (!rollno) return;
+    if (showLoading) setSubjectEntriesLoading(true);
 
-      // Resolve student entry batch details to determine batchcd
-      const userBatchYear = parseInt(user?.batch_year || user?.year || '2024', 10);
-      const BATCH_YEAR_TO_CD = {
-        2025: "66", 2024: "63", 2023: "60", 2022: "61",
-        2021: "62", 2020: "64", 2019: "65"
-      };
-      const finalBatchcd = BATCH_YEAR_TO_CD[userBatchYear] || '63';
-
-      // cbmeyear corresponds to curriculum year: Phase 1 & 2 use 2024, Phase 3 uses 2023
-      const finalCbmeyear = activePhase === '3' ? '2023' : '2024';
-
-      let raw = [];
-      if (activeCategory === 'ALL') {
-        const categoriesToFetch = [
-          'SelfDirectedLearning',
-          'PracticalStudentLab',
-          'CertificationSkills',
-          'Vertical integration',
-          'Early clinical exposure',
-          'Visit to clinical department'
-        ];
-        try {
-          const results = await Promise.all(
-            categoriesToFetch.map(cat =>
-              getStudentSubjectLogbook(
-                rollno,
-                activePhase,
-                activeSubject.subject_Code,
-                cat,
-                finalCbmeyear,
-                finalBatchcd
-              )
-            )
-          );
-          raw = results.flat();
-        } catch (e) {
-          console.warn('[LogBookScreen] Error in parallel category fetch:', e);
-          raw = [];
-        }
-      } else {
-        raw = await getStudentSubjectLogbook(
-          rollno,
-          activePhase,
-          activeSubject.subject_Code,
-          activeCategory,
-          finalCbmeyear,
-          finalBatchcd
-        );
-      }
-
-      if (!cancelled) {
-        // Normalise ERP raw entries to match existing logbook entry shape
-        const parseErpDate = (dateStr) => {
-          if (!dateStr) return 'Pending';
-          const match = String(dateStr).match(/\d+/);
-          if (!match) return 'Pending';
-          const ms = parseInt(match[0], 10);
-          if (ms <= 0) return 'Pending';
-          return new Date(ms).toISOString().split('T')[0];
-        };
-        const normalised = raw.map((act) => ({
-          activity: act.ActivityName || act.activityName || 'Clinical Rotation',
-          competency: act.comp_code || act.compCode || '',
-          verified: !!act.VerifiedBy,
-          student_verified: act.received === 1,
-          a1: act.A1 || '-',
-          a2: act.A2 || '-',
-          a3: act.A3 || '-',
-          faculty: act.VerifiedBy ? act.VerifiedBy.trim() : 'Faculty Desk',
-          date: parseErpDate(act.verified_dt || act.Acdt),
-          category: act.lbtype || (activeCategory !== 'ALL' ? activeCategory : 'PracticalStudentLab'),
-          department: act.Department || activeSubject.subject_name || '',
-          comp_code: act.comp_code || act.compCode || '',
-          actmstid: act.actmstid ? String(act.actmstid) : '',
-          cbmeyear: act.cbmeyear ? String(act.cbmeyear) : '',
-          phase: String(activePhase),
-          remarks: (act.remarks || act.Remarks || '').trim(),
-        }));
-        setSubjectEntries(normalised);
-      }
-      setSubjectEntriesLoading(false);
+    // Resolve student entry batch details to determine batchcd
+    const userBatchYear = parseInt(user?.batch_year || user?.year || '2024', 10);
+    const BATCH_YEAR_TO_CD = {
+      2025: "66", 2024: "63", 2023: "60", 2022: "61",
+      2021: "62", 2020: "64", 2019: "65"
     };
-    fetchSubjectEntries();
+    const finalBatchcd = BATCH_YEAR_TO_CD[userBatchYear] || '63';
+
+    // cbmeyear corresponds to regulations curriculum year dynamically determined by student batch
+    const finalCbmeyear = userBatchYear <= 2023 ? '2023' : '2024';
+
+    let raw = [];
+    if (activeCategory === 'ALL') {
+      const categoriesToFetch = [
+        'RefSelfDirectedLearning',
+        'PracticalStudentLab',
+        'CertificationSkills',
+        'Vertical integration',
+        'Early clinical exposure',
+        'Visit to clinical department'
+      ];
+      try {
+        const results = await Promise.all(
+          categoriesToFetch.map(cat =>
+            getStudentSubjectLogbook(
+              rollno,
+              activePhase,
+              activeSubject.subject_Code,
+              cat,
+              finalCbmeyear,
+              finalBatchcd
+            )
+          )
+        );
+        raw = results.flat();
+      } catch (e) {
+        console.warn('[LogBookScreen] Error in parallel category fetch:', e);
+        raw = [];
+      }
+    } else {
+      const fetchCat = activeCategory;
+      raw = await getStudentSubjectLogbook(
+        rollno,
+        activePhase,
+        activeSubject.subject_Code,
+        fetchCat,
+        finalCbmeyear,
+        finalBatchcd
+      );
+    }
+
+    // Normalise ERP raw entries to match existing logbook entry shape
+    const parseErpDate = (dateStr) => {
+      if (!dateStr) return 'Pending';
+      const match = String(dateStr).match(/-?\d+/);
+      if (!match) return 'Pending';
+      const ms = parseInt(match[0], 10);
+      if (ms <= 0) return 'Pending';
+      return new Date(ms).toISOString().split('T')[0];
+    };
+    const normalised = raw.map((act) => ({
+      activity: act.ActivityName || act.activityName || 'Clinical Rotation',
+      competency: act.comp_code || act.compCode || '',
+      verified: !!act.VerifiedBy,
+      student_verified: act.received === 1,
+      a1: act.A1 || '-',
+      a2: act.A2 || '-',
+      a3: act.A3 || '-',
+      faculty: act.VerifiedBy ? act.VerifiedBy.trim() : 'Faculty Desk',
+      date: parseErpDate(act.Acdt || act.crtdt),
+      verifiedDate: parseErpDate(act.verified_dt),
+      category: activeCategory === 'RefSelfDirectedLearning' ? 'RefSelfDirectedLearning' : (act.lbtype || (activeCategory !== 'ALL' ? activeCategory : 'PracticalStudentLab')),
+      department: act.Department || activeSubject.subject_name || '',
+      comp_code: act.comp_code || act.compCode || '',
+      actmstid: act.actmstid ? String(act.actmstid) : '',
+      cbmeyear: act.cbmeyear ? String(act.cbmeyear) : '',
+      phase: String(activePhase),
+      remarks: (act.remarks || act.Remarks || '').trim(),
+    }));
+    setSubjectEntries(normalised);
+    setSubjectEntriesLoading(false);
+  };
+
+  // When a subject is selected, fetch its logbook entries directly from ERP
+  useEffect(() => {
+    let cancelled = false;
+    if (!activeSubject) {
+      setSubjectEntries([]);
+      return;
+    }
+    loadSubjectEntries();
     return () => { cancelled = true; };
   }, [activeSubject, activePhase, activeCategory]);
 
@@ -554,10 +709,12 @@ const ERPLogBookScreen = ({ route, navigation }) => {
     Alert.alert('Success', 'Faculty verification completed successfully.');
   };
 
-  const handleStudentSignOff = async (index) => {
-    const entry = logbook[index];
+  const [signingOffId, setSigningOffId] = useState(null);
+
+  const handleStudentSignOff = async (entry) => {
+    setSigningOffId(entry.actmstid);
     try {
-      const rollNumber = String(user?.username || '');
+      const rollNumber = String(user?.username || user?.rollno || '');
       if (!rollNumber) {
         Alert.alert('Error', 'Unable to retrieve student roll number. Please try logging in again.');
         return;
@@ -567,8 +724,8 @@ const ERPLogBookScreen = ({ route, navigation }) => {
       const payload = {
         LMS_LogBook_ActivityData: {
           rollno: rollNumber,
-          lbtype: entry.category || '',
-          comp_code: entry.comp_code || entry.competency || '',
+          lbtype: 'SelfDirectedLearning',
+          comp_code: entry.comp_code || entry.competency || 'SDL',
           actmstid: String(entry.actmstid || ''),
           cbmeyear: String(entry.cbmeyear || batchYear),
           received: 1
@@ -593,20 +750,20 @@ const ERPLogBookScreen = ({ route, navigation }) => {
       );
 
       if (isSuccess) {
-        const updated = [...logbook];
-        updated[index].student_verified = true;
-        setLogbook(updated);
-        Alert.alert('Success', 'Logbook entry verified and locked by student.');
+        Alert.alert('Success', 'Reflection verification completed successfully.');
+        loadLogbook(false);
       } else {
         Alert.alert('Error', res?.Mess || res?.message || 'Failed to verify log entry on ERP.');
       }
     } catch (err) {
       console.warn('[LogBookScreen] Error signing off:', err);
       Alert.alert('Error', 'An error occurred while communicating with the ERP.');
+    } finally {
+      setSigningOffId(null);
     }
   };
 
-  // Use subjectEntries when a subject is selected, otherwise use the full logbook
+  // Use subjectEntries when a subject is selected, otherwise use the full logbook.
   const baseList = activeSubject ? subjectEntries : logbook;
 
   const filteredLogbook = baseList.filter(entry => {
@@ -629,10 +786,14 @@ const ERPLogBookScreen = ({ route, navigation }) => {
       matchesStatus = !entry.student_verified;
     }
 
-    // Filter by Category (not applied when subject-mode is active, since lbtype was used in the API call)
+    // Filter by Category. Reflections are always filtered to SDL category regardless of subject state.
     let matchesCategory = true;
-    if (!activeSubject && activeCategory !== 'ALL') {
-      matchesCategory = entry.category === activeCategory;
+    if (activeCategory !== 'ALL') {
+      if (activeCategory === 'RefSelfDirectedLearning') {
+        matchesCategory = entry.category === 'SelfDirectedLearning' || entry.category === 'RefSelfDirectedLearning';
+      } else {
+        matchesCategory = entry.category === activeCategory;
+      }
     }
 
     // Filter by Phase (not applied when subject-mode is active — phase was the API param)
@@ -805,166 +966,65 @@ const ERPLogBookScreen = ({ route, navigation }) => {
             {/* Collapsible filters panel */}
             {showFilters && (
               <View style={[styles.collapsibleFilterPanel, { backgroundColor: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)', borderColor: colors.border, borderRadius: 12, padding: 12, gap: 12, borderWidth: 1, marginTop: 4 }]}>
-                {/* Verification Status Filter pills */}
+                {/* 1. Subject Dropdown Filter (Locked to student's phase) */}
                 <View>
-                  <Text style={[styles.filterSectionTitle, { color: colors.textSecondary }]}>Verification Status</Text>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, paddingVertical: 2, marginTop: 4 }}>
-                    {[
-                      ['ALL', 'All Statuses'],
-                      ['FAC_VERIFIED', 'Faculty Verified'],
-                      ['FAC_PENDING', 'Faculty Pending'],
-                      ['STUD_VERIFIED', 'Student Verified'],
-                      ['STUD_PENDING', 'Student Pending']
-                    ].map(([key, label]) => {
-                      const isActive = activeFilter === key;
-                      return (
-                        <TouchableOpacity
-                          key={key}
-                          onPress={() => setActiveFilter(key)}
-                          style={[
-                            styles.filterPill,
-                            { backgroundColor: colors.card, borderColor: colors.border },
-                            isActive && { backgroundColor: colors.primary, borderColor: colors.primary }
-                          ]}
-                        >
-                          <Text style={[styles.filterText, { color: colors.textSecondary }, isActive && { color: '#FFF', fontWeight: '800' }]}>
-                            {label}
-                          </Text>
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </ScrollView>
-                </View>
-
-                {/* Phase Filter pills */}
-                <View>
-                  <Text style={[styles.filterSectionTitle, { color: colors.textSecondary }]}>Phase</Text>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, paddingVertical: 2, marginTop: 4 }}>
-                    {availablePhases.map((ph) => {
-                      const isActive = activePhase === ph;
-                      const label = ph === 'ALL' ? 'All Phases' : `Phase ${ph}`;
-                      return (
-                        <TouchableOpacity
-                          key={ph}
-                          onPress={() => setActivePhase(ph)}
-                          style={[
-                            styles.filterPill,
-                            { backgroundColor: colors.card, borderColor: colors.border },
-                            isActive && { backgroundColor: '#8B5CF6', borderColor: '#8B5CF6' }
-                          ]}
-                        >
-                          <Text style={[styles.filterText, { color: colors.textSecondary }, isActive && { color: '#FFF', fontWeight: '800' }]}>
-                            {label}
-                          </Text>
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </ScrollView>
-                </View>
-
-                {/* Subject Filter pills — only shown when a phase is selected */}
-                {activePhase !== 'ALL' && (
-                  <View>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 2 }}>
-                      <Text style={[styles.filterSectionTitle, { color: colors.textSecondary }]}>Subject</Text>
-                      {subjectsLoading && (
-                        <ActivityIndicator size={12} color={colors.primary} style={{ marginLeft: 6 }} />
-                      )}
-                    </View>
-                    {!subjectsLoading && subjectList.length === 0 ? (
-                      <Text style={{ fontSize: 12, color: colors.textMuted, marginTop: 4 }}>No subjects found for this phase.</Text>
-                    ) : (
-                      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, paddingVertical: 2, marginTop: 4 }}>
-                        {/* All subjects (clear) pill */}
-                        <TouchableOpacity
-                          onPress={() => setActiveSubject(null)}
-                          style={[
-                            styles.filterPill,
-                            { backgroundColor: colors.card, borderColor: colors.border },
-                            !activeSubject && { backgroundColor: '#F59E0B', borderColor: '#F59E0B' }
-                          ]}
-                        >
-                          <Text style={[styles.filterText, { color: colors.textSecondary }, !activeSubject && { color: '#FFF', fontWeight: '800' }]}>
-                            All Subjects
-                          </Text>
-                        </TouchableOpacity>
-                        {subjectList.map((subj, idx) => {
-                          const isActive = activeSubject?.subject_Code === subj.subject_Code;
-                          return (
-                            <TouchableOpacity
-                              key={`${subj.subject_Code}-${idx}`}
-                              onPress={() => setActiveSubject(subj)}
-                              style={[
-                                styles.filterPill,
-                                { backgroundColor: colors.card, borderColor: colors.border },
-                                isActive && { backgroundColor: '#F59E0B', borderColor: '#F59E0B' }
-                              ]}
-                            >
-                              <Text style={[styles.filterText, { color: colors.textSecondary }, isActive && { color: '#FFF', fontWeight: '800' }]}>
-                                {subj.subject_name}
-                              </Text>
-                            </TouchableOpacity>
-                          );
-                        })}
-                      </ScrollView>
-                    )}
-                    {/* Loading overlay when fetching subject entries */}
-                    {subjectEntriesLoading && (
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6 }}>
-                        <ActivityIndicator size={12} color='#F59E0B' />
-                        <Text style={{ fontSize: 11, color: '#F59E0B' }}>Loading {activeSubject?.subject_name} entries…</Text>
-                      </View>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+                    <Text style={[styles.filterSectionTitle, { color: colors.textSecondary }]}>Subject</Text>
+                    {subjectsLoading && (
+                      <ActivityIndicator size={12} color={colors.primary} style={{ marginLeft: 6 }} />
                     )}
                   </View>
-                )}
+                  <TouchableOpacity
+                    onPress={() => setShowSubjectPicker(true)}
+                    activeOpacity={0.8}
+                    style={[styles.dropdownTrigger, { backgroundColor: colors.card, borderColor: colors.border }]}
+                  >
+                    <Text style={[styles.dropdownTriggerText, { color: colors.textPrimary }]} numberOfLines={1}>
+                      {activeSubject?.subject_name || 'All Subjects'}
+                    </Text>
+                    <Ionicons name="chevron-down" size={14} color={colors.textSecondary} />
+                  </TouchableOpacity>
 
-                {/* Category Filter Pills (Horizontal Scroll) */}
-                <View>
-                  <Text style={[styles.filterSectionTitle, { color: colors.textSecondary }]}>Category</Text>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, paddingVertical: 2, marginTop: 4 }}>
-                    {CATEGORY_PILLS.map((pill) => {
-                      const isActive = activeCategory === pill.key;
-                      const catInfo = CATEGORY_MAP[pill.key] || CATEGORY_MAP['default'];
-                      const accentColor = pill.key === 'ALL' ? colors.primary : catInfo.color;
+                  {/* Loading overlay when fetching subject entries */}
+                  {subjectEntriesLoading && (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6 }}>
+                      <ActivityIndicator size={12} color={colors.primary} />
+                      <Text style={{ fontSize: 11, color: colors.primary }}>Loading {activeSubject?.subject_name} entries…</Text>
+                    </View>
+                  )}
+                </View>
 
-                      return (
-                        <TouchableOpacity
-                          key={pill.key}
-                          onPress={() => setActiveCategory(pill.key)}
-                          style={[
-                            styles.catFilterPill,
-                            { backgroundColor: colors.card, borderColor: colors.border },
-                            isActive && { backgroundColor: accentColor, borderColor: accentColor }
-                          ]}
-                        >
-                          {pill.key !== 'ALL' && (
-                            catInfo.iconType === 'materialcommunity' ? (
-                              <MaterialCommunityIcons
-                                name={catInfo.icon}
-                                size={11}
-                                color={isActive ? '#FFF' : accentColor}
-                                style={{ marginRight: 4 }}
-                              />
-                            ) : (
-                              <MaterialIcons
-                                name={catInfo.icon}
-                                size={11}
-                                color={isActive ? '#FFF' : accentColor}
-                                style={{ marginRight: 4 }}
-                              />
-                            )
-                          )}
-                          <Text style={[
-                            styles.catFilterText,
-                            { color: colors.textSecondary },
-                            isActive && { color: '#FFF', fontWeight: '800' }
-                          ]}>
-                            {pill.label}
-                          </Text>
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </ScrollView>
+                {/* 2. Status and Category Dropdowns (Side-by-Side) */}
+                <View style={{ flexDirection: 'row', gap: 10, marginTop: 4 }}>
+                  {/* Status Dropdown */}
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.filterSectionTitle, { color: colors.textSecondary, marginBottom: 4 }]}>Status</Text>
+                    <TouchableOpacity
+                      onPress={() => setShowStatusPicker(true)}
+                      activeOpacity={0.8}
+                      style={[styles.dropdownTrigger, { backgroundColor: colors.card, borderColor: colors.border }]}
+                    >
+                      <Text style={[styles.dropdownTriggerText, { color: colors.textPrimary }]} numberOfLines={1}>
+                        {activeFilterLabel}
+                      </Text>
+                      <Ionicons name="chevron-down" size={14} color={colors.textSecondary} />
+                    </TouchableOpacity>
+                  </View>
+
+                  {/* Category Dropdown */}
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.filterSectionTitle, { color: colors.textSecondary, marginBottom: 4 }]}>Category</Text>
+                    <TouchableOpacity
+                      onPress={() => setShowCategoryPicker(true)}
+                      activeOpacity={0.8}
+                      style={[styles.dropdownTrigger, { backgroundColor: colors.card, borderColor: colors.border }]}
+                    >
+                      <Text style={[styles.dropdownTriggerText, { color: colors.textPrimary }]} numberOfLines={1}>
+                        {activeCategoryLabel}
+                      </Text>
+                      <Ionicons name="chevron-down" size={14} color={colors.textSecondary} />
+                    </TouchableOpacity>
+                  </View>
                 </View>
               </View>
             )}
@@ -972,6 +1032,174 @@ const ERPLogBookScreen = ({ route, navigation }) => {
 
           {/* Logbook entries list */}
           <View style={{ padding: 16, gap: 12 }}>
+            {/* Show Subject Selection warning if Category is Reflection on Self-Directed Learning but no subject is selected */}
+            {activeCategory === 'RefSelfDirectedLearning' && !activeSubject && (
+              <View style={[styles.logbookCard, { backgroundColor: colors.card, borderColor: '#EF4444', borderLeftWidth: 4, borderLeftColor: '#EF4444', padding: 16, alignItems: 'center' }]}>
+                <Ionicons name="alert-circle-outline" size={32} color="#EF4444" style={{ marginBottom: 8 }} />
+                <Text style={{ fontSize: 14, fontWeight: '700', color: colors.textPrimary, textAlign: 'center', marginBottom: 4 }}>
+                  Subject Selection Required
+                </Text>
+                <Text style={{ fontSize: 12, color: colors.textSecondary, textAlign: 'center' }}>
+                  Please select a Subject from the filters above to submit or view your reflections.
+                </Text>
+              </View>
+            )}
+
+            {/* Show New Reflection Form Card if Category is Reflection on Self-Directed Learning, subject is selected, and form is active or no entries exist yet */}
+            {activeCategory === 'RefSelfDirectedLearning' && activeSubject && !subjectEntriesLoading && (filteredLogbook.length === 0 || showReflectionForm) && (
+              <View style={[styles.logbookCard, { backgroundColor: colors.card, borderColor: '#F59E0B', borderLeftWidth: 4, borderLeftColor: '#F59E0B' }]}>
+                <Text style={{ fontSize: 16, fontWeight: '900', color: colors.primary, marginBottom: 12 }}>
+                  New Reflection on Self-Directed Learning
+                </Text>
+                
+                {/* Date Input */}
+                <View style={{ marginBottom: 10 }}>
+                  <Text style={{ fontSize: 11, fontWeight: '700', color: colors.textSecondary, marginBottom: 4 }}>Date (YYYY-MM-DD)</Text>
+                  <TouchableOpacity
+                    onPress={() => setShowDatePicker(true)}
+                    activeOpacity={0.8}
+                    style={{ flexDirection: 'row', alignItems: 'center', borderWidth: 1.5, borderColor: colors.border, borderRadius: 10, paddingHorizontal: 12, height: 40, backgroundColor: isDark ? 'rgba(255,255,255,0.02)' : '#F8FAFC' }}
+                  >
+                    <Ionicons name="calendar-outline" size={16} color={colors.primary} style={{ marginRight: 8 }} />
+                    <Text style={{ flex: 1, fontSize: 13, color: colors.textPrimary }}>
+                      {formDate}
+                    </Text>
+                    <Ionicons name="chevron-down" size={14} color={colors.textSecondary} />
+                  </TouchableOpacity>
+                </View>
+
+                {/* Topic Input */}
+                <View style={{ marginBottom: 10 }}>
+                  <Text style={{ fontSize: 11, fontWeight: '700', color: colors.textSecondary, marginBottom: 4 }}>
+                    Topic <Text style={{ color: '#EF4444' }}>*</Text>
+                  </Text>
+                  <TextInput
+                    value={formTopic}
+                    onChangeText={setFormTopic}
+                    placeholder="Enter reflection topic"
+                    placeholderTextColor={colors.textMuted}
+                    style={{ borderWidth: 1.5, borderColor: colors.border, borderRadius: 10, paddingHorizontal: 10, height: 40, fontSize: 13, color: colors.textPrimary, backgroundColor: isDark ? 'rgba(255,255,255,0.02)' : '#F8FAFC' }}
+                  />
+                </View>
+
+                {/* What Happened Input */}
+                <View style={{ marginBottom: 10 }}>
+                  <Text style={{ fontSize: 11, fontWeight: '700', color: colors.textSecondary, marginBottom: 4 }}>
+                    What Happened <Text style={{ color: '#EF4444' }}>*</Text>
+                  </Text>
+                  <TextInput
+                    value={formWhatHappened}
+                    onChangeText={setFormWhatHappened}
+                    placeholder="Describe the event or learning experience"
+                    placeholderTextColor={colors.textMuted}
+                    multiline
+                    numberOfLines={3}
+                    style={{ borderWidth: 1.5, borderColor: colors.border, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 8, fontSize: 13, color: colors.textPrimary, minHeight: 60, textAlignVertical: 'top', backgroundColor: isDark ? 'rgba(255,255,255,0.02)' : '#F8FAFC' }}
+                  />
+                </View>
+
+                {/* So What Input */}
+                <View style={{ marginBottom: 10 }}>
+                  <Text style={{ fontSize: 11, fontWeight: '700', color: colors.textSecondary, marginBottom: 4 }}>
+                    So What <Text style={{ color: '#EF4444' }}>*</Text>
+                  </Text>
+                  <TextInput
+                    value={formSoWhat}
+                    onChangeText={setFormSoWhat}
+                    placeholder="What did it mean to you / what did you learn?"
+                    placeholderTextColor={colors.textMuted}
+                    multiline
+                    numberOfLines={3}
+                    style={{ borderWidth: 1.5, borderColor: colors.border, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 8, fontSize: 13, color: colors.textPrimary, minHeight: 60, textAlignVertical: 'top', backgroundColor: isDark ? 'rgba(255,255,255,0.02)' : '#F8FAFC' }}
+                  />
+                </View>
+
+                {/* What Next Input */}
+                <View style={{ marginBottom: 14 }}>
+                  <Text style={{ fontSize: 11, fontWeight: '700', color: colors.textSecondary, marginBottom: 4 }}>
+                    What Next <Text style={{ color: '#EF4444' }}>*</Text>
+                  </Text>
+                  <TextInput
+                    value={formWhatNext}
+                    onChangeText={setFormWhatNext}
+                    placeholder="How will you apply this learning?"
+                    placeholderTextColor={colors.textMuted}
+                    multiline
+                    numberOfLines={3}
+                    style={{ borderWidth: 1.5, borderColor: colors.border, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 8, fontSize: 13, color: colors.textPrimary, minHeight: 60, textAlignVertical: 'top', backgroundColor: isDark ? 'rgba(255,255,255,0.02)' : '#F8FAFC' }}
+                  />
+                </View>
+
+                {/* Save button */}
+                <TouchableOpacity
+                  onPress={handleSaveReflection}
+                  disabled={formSaving}
+                  style={{ backgroundColor: '#F59E0B', height: 42, borderRadius: 12, justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 6, opacity: formSaving ? 0.7 : 1 }}
+                >
+                  {formSaving ? (
+                    <ActivityIndicator size="small" color="#FFF" />
+                  ) : (
+                    <Ionicons name="save-outline" size={16} color="#FFF" />
+                  )}
+                  <Text style={{ color: '#FFF', fontSize: 14, fontWeight: '800' }}>
+                    {formSaving ? 'Saving...' : 'Save Reflection'}
+                  </Text>
+                </TouchableOpacity>
+
+                {/* Cancel button if there are existing entries */}
+                {filteredLogbook.length > 0 && (
+                  <TouchableOpacity
+                    onPress={() => setShowReflectionForm(false)}
+                    disabled={formSaving}
+                    style={{ borderWidth: 1.5, borderColor: colors.border, height: 42, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginTop: 8 }}
+                  >
+                    <Text style={{ color: colors.textSecondary, fontSize: 14, fontWeight: '700' }}>
+                      Cancel
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            )}
+
+            {/* Show Add New Reflection button and Summary List Header when Category is Reflection on Self-Directed Learning and entries exist */}
+            {activeCategory === 'RefSelfDirectedLearning' && filteredLogbook.length > 0 && (
+              <View style={{ marginTop: 12 }}>
+                {!showReflectionForm && (
+                  <TouchableOpacity
+                    onPress={() => {
+                      setFormTopic('');
+                      setFormWhatHappened('');
+                      setFormSoWhat('');
+                      setFormWhatNext('');
+                      setFormDate(new Date().toISOString().split('T')[0]);
+                      setShowReflectionForm(true);
+                    }}
+                    style={{
+                      backgroundColor: '#F59E0B',
+                      paddingHorizontal: 16,
+                      paddingVertical: 12,
+                      borderRadius: 12,
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 8,
+                      marginBottom: 12,
+                      borderWidth: 1.5,
+                      borderColor: '#D97706'
+                    }}
+                  >
+                    <Ionicons name="add-circle" size={18} color="#FFF" />
+                    <Text style={{ color: '#FFF', fontSize: 14, fontWeight: '800' }}>
+                      + Add New Reflection
+                    </Text>
+                  </TouchableOpacity>
+                )}
+                <Text style={{ fontSize: 16, fontWeight: '900', color: colors.textPrimary, marginBottom: 4 }}>
+                  Final Summary List
+                </Text>
+              </View>
+            )}
+
             {subjectEntriesLoading ? (
               <View style={{ alignItems: 'center', paddingVertical: 40, gap: 12 }}>
                 <ActivityIndicator size="large" color='#F59E0B' />
@@ -992,8 +1220,17 @@ const ERPLogBookScreen = ({ route, navigation }) => {
             ) : (
               filteredLogbook.map((entry, i) => {
                 // Reflection on Self-Directed Learning entries get a dedicated reflection UI
-                if (entry.category === 'RefSelfDirectedLearning') {
-                  return <ReflectionCard key={i} entry={entry} colors={colors} isDark={isDark} user={user} />;
+                if (entry.category === 'RefSelfDirectedLearning' || (entry.category === 'SelfDirectedLearning' && activeCategory === 'RefSelfDirectedLearning')) {
+                  return (
+                    <RefSummaryCard 
+                      key={i} 
+                      entry={entry} 
+                      colors={colors} 
+                      isDark={isDark} 
+                      onSignOff={handleStudentSignOff} 
+                      signingOffId={signingOffId} 
+                    />
+                  );
                 }
                 const catInfo = CATEGORY_MAP[entry.category] || CATEGORY_MAP['default'];
                 return (
@@ -1158,6 +1395,184 @@ const ERPLogBookScreen = ({ route, navigation }) => {
           </View>
         </View>
       </Modal>
+
+      {/* Status Picker Modal */}
+      <Modal
+        visible={showStatusPicker}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowStatusPicker(false)}
+      >
+        <TouchableOpacity 
+          style={styles.modalOverlay} 
+          activeOpacity={1} 
+          onPress={() => setShowStatusPicker(false)}
+        >
+          <View style={[styles.modalSheet, { backgroundColor: colors.card }]}>
+            <View style={[styles.modalHeaderLine, { borderBottomColor: colors.border }]}>
+              <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>Select Status</Text>
+              <TouchableOpacity onPress={() => setShowStatusPicker(false)}>
+                <Ionicons name="close" size={20} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView contentContainerStyle={{ paddingBottom: 20 }} showsVerticalScrollIndicator={false}>
+              {Object.entries(STATUS_MAP).map(([key, val]) => {
+                const isActive = activeFilter === key;
+                return (
+                  <TouchableOpacity
+                    key={key}
+                    style={[styles.modalOptionRow, { borderBottomColor: colors.border }]}
+                    onPress={() => {
+                      setActiveFilter(key);
+                      setShowStatusPicker(false);
+                    }}
+                  >
+                    <Text style={[styles.modalOptionText, { color: colors.textPrimary }, isActive && { color: colors.primary, fontWeight: '700' }]}>
+                      {val}
+                    </Text>
+                    {isActive && <Ionicons name="checkmark" size={18} color={colors.primary} />}
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Category Picker Modal */}
+      <Modal
+        visible={showCategoryPicker}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowCategoryPicker(false)}
+      >
+        <TouchableOpacity 
+          style={styles.modalOverlay} 
+          activeOpacity={1} 
+          onPress={() => setShowCategoryPicker(false)}
+        >
+          <View style={[styles.modalSheet, { backgroundColor: colors.card }]}>
+            <View style={[styles.modalHeaderLine, { borderBottomColor: colors.border }]}>
+              <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>Select Category</Text>
+              <TouchableOpacity onPress={() => setShowCategoryPicker(false)}>
+                <Ionicons name="close" size={20} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView contentContainerStyle={{ paddingBottom: 20 }} showsVerticalScrollIndicator={false}>
+              {CATEGORY_PILLS.map((pill) => {
+                const isActive = activeCategory === pill.key;
+                const catInfo = CATEGORY_MAP[pill.key] || CATEGORY_MAP['default'];
+                const accentColor = pill.key === 'ALL' ? colors.primary : catInfo.color;
+
+                return (
+                  <TouchableOpacity
+                    key={pill.key}
+                    style={[styles.modalOptionRow, { borderBottomColor: colors.border }]}
+                    onPress={() => {
+                      setActiveCategory(pill.key);
+                      setShowCategoryPicker(false);
+                    }}
+                  >
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
+                      <View style={[
+                        styles.catFilterIconBox,
+                        { backgroundColor: isActive ? accentColor : (isDark ? 'rgba(255,255,255,0.05)' : '#F1F5F9'), width: 24, height: 24 }
+                      ]}>
+                        {pill.key === 'ALL' ? (
+                          <MaterialIcons name="grid-view" size={12} color={isActive ? '#FFF' : colors.textSecondary} />
+                        ) : (
+                          catInfo.iconType === 'materialcommunity' ? (
+                            <MaterialCommunityIcons name={catInfo.icon} size={12} color={isActive ? '#FFF' : accentColor} />
+                          ) : (
+                            <MaterialIcons name={catInfo.icon} size={12} color={isActive ? '#FFF' : accentColor} />
+                          )
+                        )}
+                      </View>
+                      <Text style={[styles.modalOptionText, { color: colors.textPrimary }, isActive && { color: accentColor, fontWeight: '700' }]}>
+                        {pill.label}
+                      </Text>
+                    </View>
+                    {isActive && <Ionicons name="checkmark" size={18} color={accentColor} />}
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Subject Picker Modal */}
+      <Modal
+        visible={showSubjectPicker}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowSubjectPicker(false)}
+      >
+        <TouchableOpacity 
+          style={styles.modalOverlay} 
+          activeOpacity={1} 
+          onPress={() => setShowSubjectPicker(false)}
+        >
+          <View style={[styles.modalSheet, { backgroundColor: colors.card }]}>
+            <View style={[styles.modalHeaderLine, { borderBottomColor: colors.border }]}>
+              <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>Select Subject</Text>
+              <TouchableOpacity onPress={() => setShowSubjectPicker(false)}>
+                <Ionicons name="close" size={20} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView contentContainerStyle={{ paddingBottom: 20 }} showsVerticalScrollIndicator={false}>
+              {/* All Subjects option */}
+              <TouchableOpacity
+                style={[styles.modalOptionRow, { borderBottomColor: colors.border }]}
+                onPress={() => {
+                  setActiveSubject(null);
+                  setShowSubjectPicker(false);
+                }}
+              >
+                <Text style={[styles.modalOptionText, { color: colors.textPrimary }, !activeSubject && { color: colors.primary, fontWeight: '700' }]}>
+                  All Subjects
+                </Text>
+                {!activeSubject && <Ionicons name="checkmark" size={18} color={colors.primary} />}
+              </TouchableOpacity>
+
+              {/* Subject list */}
+              {subjectList.map((subj) => {
+                const isActive = activeSubject?.subject_Code === subj.subject_Code;
+                return (
+                  <TouchableOpacity
+                    key={subj.subject_Code}
+                    style={[styles.modalOptionRow, { borderBottomColor: colors.border }]}
+                    onPress={() => {
+                      setActiveSubject(subj);
+                      setShowSubjectPicker(false);
+                    }}
+                  >
+                    <Text style={[styles.modalOptionText, { color: colors.textPrimary }, isActive && { color: colors.primary, fontWeight: '700' }]} numberOfLines={1}>
+                      {subj.subject_name}
+                    </Text>
+                    {isActive && <Ionicons name="checkmark" size={18} color={colors.primary} />}
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Calendar Date Picker Modal */}
+      <CalendarModal
+        visible={showDatePicker}
+        date={new Date(formDate)}
+        colors={colors}
+        isDark={isDark}
+        onSelect={(newDate) => {
+          const yyyy = newDate.getFullYear();
+          const mm = String(newDate.getMonth() + 1).padStart(2, '0');
+          const dd = String(newDate.getDate()).padStart(2, '0');
+          setFormDate(`${yyyy}-${mm}-${dd}`);
+        }}
+        onClose={() => setShowDatePicker(false)}
+      />
     </View>
   );
 };
@@ -1262,16 +1677,77 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingBottom: 4,
   },
-  catFilterPill: {
+  catFilterGridItem: {
+    width: '48.5%',
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 14,
-    height: 34,
-    borderRadius: 17,
-    justifyContent: 'center',
-    borderWidth: 1,
+    paddingHorizontal: 8,
+    paddingVertical: 8,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    minHeight: 46,
+    marginBottom: 2,
   },
-  catFilterText: { fontSize: 11, fontWeight: '600' },
+  catFilterIconBox: {
+    width: 26,
+    height: 26,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  catFilterGridText: {
+    fontSize: 10,
+    fontWeight: '600',
+    flex: 1,
+    lineHeight: 13,
+  },
+  dropdownTrigger: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    height: 38,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    paddingHorizontal: 12,
+    marginTop: 4,
+  },
+  dropdownTriggerText: {
+    fontSize: 11,
+    fontWeight: '600',
+    flex: 1,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    justifyContent: 'flex-end',
+  },
+  modalSheet: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 24,
+    maxHeight: '60%',
+  },
+  modalHeaderLine: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingBottom: 14,
+    borderBottomWidth: 1,
+    marginBottom: 10,
+  },
+  modalOptionRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+  },
+  modalOptionText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
   emptyCard: {
     borderRadius: 24,
     padding: 40,
