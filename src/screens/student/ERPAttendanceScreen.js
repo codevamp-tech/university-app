@@ -248,6 +248,40 @@ const ERPAttendanceScreen = ({ route, navigation }) => {
   // ─── Today's Attendance Modal (eye icon) ─────────────────────────────────
   const [todayModal, setTodayModal] = React.useState({ visible: false, subjectName: '', rows: [], loading: false, error: null });
 
+  // ─── Pulse Animation for Skeleton Loader ──────────────────────────────────
+  const shimmerAnim = React.useRef(new Animated.Value(0.3)).current;
+
+  React.useEffect(() => {
+    let animation;
+    if (detailModal.loading) {
+      shimmerAnim.setValue(0.3);
+      animation = Animated.loop(
+        Animated.sequence([
+          Animated.timing(shimmerAnim, {
+            toValue: 0.8,
+            duration: 800,
+            useNativeDriver: true,
+          }),
+          Animated.timing(shimmerAnim, {
+            toValue: 0.3,
+            duration: 800,
+            useNativeDriver: true,
+          }),
+        ])
+      );
+      animation.start();
+    } else {
+      if (animation) {
+        animation.stop();
+      }
+    }
+    return () => {
+      if (animation) {
+        animation.stop();
+      }
+    };
+  }, [detailModal.loading]);
+
   const studentUid = user?.rollno || user?.id || user?.username || '';
 
   const openDetailModal = React.useCallback(async (subCatName, erpCode) => {
@@ -260,7 +294,21 @@ const ERPAttendanceScreen = ({ route, navigation }) => {
       });
       const json = await resp.json();
       const records = Array.isArray(json) ? json : (json?.d ? JSON.parse(json.d) : []);
-      setDetailModal(prev => ({ ...prev, loading: false, records }));
+
+      const parseDate = (dStr) => {
+        if (!dStr) return 0;
+        const parts = dStr.split('/');
+        if (parts.length !== 3) return 0;
+        return new Date(parts[2], parts[1] - 1, parts[0]).getTime();
+      };
+
+      const sortedRecords = [...records].sort((a, b) => {
+        const da = parseDate(a.lecturedt || a.LectureDate || a.lecture_date);
+        const db = parseDate(b.lecturedt || b.LectureDate || b.lecture_date);
+        return db - da;
+      });
+
+      setDetailModal(prev => ({ ...prev, loading: false, records: sortedRecords }));
     } catch (e) {
       setDetailModal(prev => ({ ...prev, loading: false, error: 'Failed to load attendance details.' }));
     }
@@ -878,9 +926,18 @@ const ERPAttendanceScreen = ({ route, navigation }) => {
             </View>
 
             {detailModal.loading ? (
-              <View style={{ alignItems: 'center', paddingVertical: 40 }}>
-                <ActivityIndicator size="large" color={colors.primary} />
-                <Text style={{ color: colors.textSecondary, marginTop: 12 }}>Loading records…</Text>
+              <View style={{ gap: 12, paddingVertical: 10 }}>
+                {/* Skeleton header */}
+                <Animated.View style={{ height: 35, backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : '#F3F4F6', borderRadius: 8, opacity: shimmerAnim }} />
+                {/* 5 Skeleton rows */}
+                {[1, 2, 3, 4, 5].map((idx) => (
+                  <View key={idx} style={{ flexDirection: 'row', gap: 10, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.border }}>
+                    <Animated.View style={{ width: 40, height: 16, backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : '#E5E7EB', borderRadius: 4, opacity: shimmerAnim }} />
+                    <Animated.View style={{ flex: 2, height: 16, backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : '#E5E7EB', borderRadius: 4, opacity: shimmerAnim }} />
+                    <Animated.View style={{ flex: 1, height: 16, backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : '#E5E7EB', borderRadius: 4, opacity: shimmerAnim }} />
+                    <Animated.View style={{ flex: 1.2, height: 16, backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : '#E5E7EB', borderRadius: 4, opacity: shimmerAnim }} />
+                  </View>
+                ))}
               </View>
             ) : detailModal.error ? (
               <Text style={{ color: '#F87171', textAlign: 'center', padding: 20 }}>{detailModal.error}</Text>
