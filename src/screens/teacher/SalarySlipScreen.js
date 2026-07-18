@@ -13,7 +13,7 @@ const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', '
 
 const SalarySlipScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
-  const { user } = useUser();
+  const { user, accessToken } = useUser();
 
   const now = new Date();
   // Default to previous month (salary is usually for past month)
@@ -42,11 +42,11 @@ const SalarySlipScreen = ({ navigation }) => {
   }, []);
 
   const fetchSlip = useCallback(async () => {
-    if (!user?.emp_id) return;
+    if (!accessToken) return;
     setLoading(true);
     setError(null);
     try {
-      const data = await getSalarySlip(user.emp_id, month, year);
+      const data = await getSalarySlip(accessToken, month, year);
       if (data) {
         setSlip(data);
       } else {
@@ -59,7 +59,7 @@ const SalarySlipScreen = ({ navigation }) => {
     } finally {
       setLoading(false);
     }
-  }, [user?.emp_id, month, year]);
+  }, [accessToken, month, year]);
 
   useEffect(() => { fetchSlip(); }, [fetchSlip]);
 

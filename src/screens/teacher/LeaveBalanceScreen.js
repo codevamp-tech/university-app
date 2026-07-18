@@ -279,7 +279,7 @@ const formStyles = StyleSheet.create({
 
 const LeaveBalanceScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
-  const { user } = useUser();
+  const { user, accessToken } = useUser();
 
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -462,13 +462,13 @@ const LeaveBalanceScreen = ({ navigation }) => {
   }, []);
 
   const fetchLeaveSummary = useCallback(async () => {
-    if (!user?.emp_id) return;
+    if (!accessToken) return;
     setLoading(true);
     setError(null);
     try {
       const [data, profile] = await Promise.all([
-        getLeaveSummary(user.emp_id),
-        getEmployeeERPProfile(user.emp_id)
+        getLeaveSummary(accessToken),
+        getEmployeeERPProfile(user?.emp_id)
       ]);
       if (data) {
         console.log('[LeaveBalanceScreen] fetched leave data leaves_taken:', JSON.stringify(data.leaves_taken));
@@ -485,7 +485,7 @@ const LeaveBalanceScreen = ({ navigation }) => {
     } finally {
       setLoading(false);
     }
-  }, [user?.emp_id]);
+  }, [accessToken, user?.emp_id]);
 
   useEffect(() => {
     fetchLeaveSummary();
