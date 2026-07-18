@@ -195,17 +195,28 @@ const ERPAttendanceScreen = ({ route, navigation }) => {
     }
   }, [studentUid]);
 
-  const openTodayModal = React.useCallback(async (subCatName, erpCode) => {
-    setTodayModal({ visible: true, subjectName: subCatName, rows: [], loading: true, error: null });
+  const openTodayModal = React.useCallback(async (subjectName, subCategories) => {
+    setTodayModal({ visible: true, subjectName, rows: [], loading: true, error: null });
     try {
-      const resp = await fetch('https://myportal.srms.ac.in/SRMSERP/Home/GetStudentLectureRollnoWise', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ uid: String(studentUid), lecturecd: String(erpCode) }),
-      });
-      const json = await resp.json();
-      const rows = Array.isArray(json) ? json : (json?.d ? JSON.parse(json.d) : []);
-      setTodayModal(prev => ({ ...prev, loading: false, rows }));
+      const results = await Promise.all(
+        subCategories.map(async (sc) => {
+          try {
+            const resp = await fetch('https://myportal.srms.ac.in/SRMSERP/Home/GetStudentLectureRollnoWise', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ uid: String(studentUid), lecturecd: String(sc.erpCode) }),
+            });
+            const json = await resp.json();
+            const rows = Array.isArray(json) ? json : (json?.d ? JSON.parse(json.d) : []);
+            return { name: sc.name, data: rows };
+          } catch {
+            return { name: sc.name, data: [] };
+          }
+        })
+      );
+      // Only keep subcategories that returned today's lecture schedule/punch status
+      const activeRows = results.filter(r => r.data && r.data.length > 0);
+      setTodayModal(prev => ({ ...prev, loading: false, rows: activeRows }));
     } catch (e) {
       setTodayModal(prev => ({ ...prev, loading: false, error: 'Failed to load today\'s attendance.' }));
     }
@@ -681,6 +692,17 @@ const ERPAttendanceScreen = ({ route, navigation }) => {
                                         </Text>
                                       </View>
                                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                        {/* Today's attendance eye button */}
+                                        <TouchableOpacity
+                                          onPress={(e) => { e.stopPropagation?.(); openTodayModal(subject.name, subject.subCategories); }}
+                                          style={[
+                                            styles.eyeBtn,
+                                            { backgroundColor: isDark ? 'rgba(129,140,248,0.15)' : '#EEF2FF', borderColor: isDark ? '#818CF8' : '#6366F1' }
+                                          ]}
+                                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                                        >
+                                          <MaterialCommunityIcons name="eye-outline" size={18} color={isDark ? '#818CF8' : '#6366F1'} />
+                                        </TouchableOpacity>
                                         <View style={[styles.percentageBadge, { backgroundColor: statusColor + '20' }]}>
                                           <Text style={[styles.percentageText, { color: statusColor }]}>{subject.percentage}%</Text>
                                         </View>
@@ -732,17 +754,6 @@ const ERPAttendanceScreen = ({ route, navigation }) => {
                                               </Text>
                                             </View>
                                             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                                              {/* Eye icon — Today's Attendance */}
-                                              <TouchableOpacity
-                                                onPress={(e) => { e.stopPropagation?.(); openTodayModal(subCat.name, subCat.erpCode); }}
-                                                style={[
-                                                  styles.eyeBtn,
-                                                  { backgroundColor: isDark ? 'rgba(129,140,248,0.15)' : '#EEF2FF', borderColor: isDark ? '#818CF8' : '#6366F1' }
-                                                ]}
-                                                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                                              >
-                                                <MaterialCommunityIcons name="eye-outline" size={16} color={isDark ? '#818CF8' : '#6366F1'} />
-                                              </TouchableOpacity>
                                               <View style={{ paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8, backgroundColor: subColor + '20' }}>
                                                 <Text style={{ fontSize: 12, fontWeight: '800', color: subColor }}>{subCat.percentage}%</Text>
                                               </View>
@@ -876,7 +887,8 @@ const ERPAttendanceScreen = ({ route, navigation }) => {
                   <Text style={{ color: colors.textSecondary, textAlign: 'center', padding: 20 }}>No lecture punches found for today.</Text>
                 ) : (
                   todayModal.rows.map((row, ri) => {
-                    const att = (row.attendance || row.Attendance || '').trim();
+                    const first = row.data?.[0] || {};
+                    const att = (first.attendance || first.Attendance || '').trim();
                     const attColor = att === 'P' ? '#34D399' : att === 'A' ? '#F87171' : colors.textSecondary;
                     return (
                       <View key={ri} style={[
@@ -884,9 +896,10 @@ const ERPAttendanceScreen = ({ route, navigation }) => {
                         { backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : '#F9FAFB', borderColor: colors.border }
                       ]}>
                         <View style={{ flex: 1, gap: 4 }}>
-                          <Text style={{ fontSize: 13, color: colors.textSecondary }}>Punch Time: <Text style={{ color: colors.textPrimary, fontWeight: '700' }}>{row.punchtime || '-'}</Text></Text>
-                          <Text style={{ fontSize: 13, color: colors.textSecondary }}>Faculty In: <Text style={{ color: colors.textPrimary, fontWeight: '600' }}>{row.faculty_inpunch || '-'}</Text></Text>
-                          <Text style={{ fontSize: 13, color: colors.textSecondary }}>Faculty Out: <Text style={{ color: colors.textPrimary, fontWeight: '600' }}>{row.faculty_outpunch || '-'}</Text></Text>
+                          <Text style={{ fontSize: 14, fontWeight: '700', color: colors.textPrimary, marginBottom: 2 }}>{row.name}</Text>
+                          <Text style={{ fontSize: 12, color: colors.textSecondary }}>Punch Time: <Text style={{ color: colors.textPrimary, fontWeight: '600' }}>{first.punchtime || '-'}</Text></Text>
+                          <Text style={{ fontSize: 12, color: colors.textSecondary }}>Faculty In: <Text style={{ color: colors.textPrimary, fontWeight: '600' }}>{first.faculty_inpunch || '-'}</Text></Text>
+                          <Text style={{ fontSize: 12, color: colors.textSecondary }}>Faculty Out: <Text style={{ color: colors.textPrimary, fontWeight: '600' }}>{first.faculty_outpunch || '-'}</Text></Text>
                         </View>
                         <View style={[
                           styles.todayBadge,
