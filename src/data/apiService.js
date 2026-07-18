@@ -214,8 +214,16 @@ export async function setPulse(token, mood) {
  * GET /api/v1/erp/attendance
  * Returns attendance records array.
  */
-export async function getAttendance(token, studentId) {
-  const url = studentId ? `/api/v1/erp/attendance?student_id=${studentId}` : '/api/v1/erp/attendance';
+export async function getAttendance(token, studentId, forceSync = false) {
+  let url = '/api/v1/erp/attendance';
+  const params = [];
+  if (studentId) params.push(`student_id=${studentId}`);
+  if (forceSync) params.push(`force_sync=true`);
+  
+  if (params.length > 0) {
+    url = `${url}?${params.join('&')}`;
+  }
+  
   const res = await apiCall(url, {
     headers: authHeaders(token),
   });
@@ -315,8 +323,16 @@ export async function getStudentOutpasses(token) {
  * GET /api/v1/erp/results/detailed
  * Returns grouped results with sessional vs university marks separated.
  */
-export async function getDetailedResults(token, studentId) {
-  const url = studentId ? `/api/v1/erp/results/detailed?student_id=${studentId}` : '/api/v1/erp/results/detailed';
+export async function getDetailedResults(token, studentId, forceSync = false) {
+  let url = '/api/v1/erp/results/detailed';
+  const params = [];
+  if (studentId) params.push(`student_id=${studentId}`);
+  if (forceSync) params.push(`force_sync=true`);
+  
+  if (params.length > 0) {
+    url = `${url}?${params.join('&')}`;
+  }
+  
   const res = await apiCall(url, {
     headers: authHeaders(token),
   });

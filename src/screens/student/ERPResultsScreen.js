@@ -1246,10 +1246,10 @@ const ERPResultsScreen = ({ route, navigation }) => {
     } else {
       setLoading(true);
     }
-    await performFetch(cacheKey, true);
+    await performFetch(cacheKey, true, forceFetch);
   };
 
-  const performFetch = async (cacheKey, shouldSetLoading) => {
+  const performFetch = async (cacheKey, shouldSetLoading, forceSync = false) => {
     try {
       if (!accessToken) {
         setPhases([]);
@@ -1260,7 +1260,7 @@ const ERPResultsScreen = ({ route, navigation }) => {
 
       const studentId = user?.rollno || user?.id || user?.username;
       const [rawResults, paperListData] = await Promise.allSettled([
-        getDetailedResults(accessToken, studentId),
+        getDetailedResults(accessToken, studentId, forceSync),
         getPaperList(accessToken, studentId)
       ]);
 

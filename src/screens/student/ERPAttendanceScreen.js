@@ -5,7 +5,7 @@ import { getAcademicSubjects } from '../../data/aiEngine';
 
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Dimensions, ActivityIndicator, Animated
+  Dimensions, ActivityIndicator, Animated, RefreshControl
 } from 'react-native';
 import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -174,70 +174,84 @@ const ERPAttendanceScreen = ({ route, navigation }) => {
     }
   }, [currentPhaseName]);
 
-  React.useEffect(() => {
-    async function loadAttendance() {
-      if (!accessToken) {
-        setLoading(false);
-        return;
-      }
-      try {
-        const studentId = user?.rollno || user?.id || user?.username;
-        const data = await getAttendance(accessToken, studentId);
-        if (data && data.length > 0) {
-          // Filter out exam/sessional components (where attendance_pct is null or undefined)
-          const validRecords = data.filter(
-            item => item.attendance_pct !== null && item.attendance_pct !== undefined
-          );
+  const [refreshing, setRefreshing] = React.useState(false);
 
-          const subjects = validRecords.map(item => {
-            const percentage = Math.round(item.attendance_pct || 0);
-            
-            // NMC criteria: 80% for clinical postings/practicals/labs, 75% for theory classes
-            const nameUpper = (item.subject_name || item.subject_code || '').toUpperCase();
-            const isPractical = nameUpper.includes('PRACTICAL') || 
-                                nameUpper.includes('CLINICAL') || 
-                                nameUpper.includes('DISSECTION') || 
-                                nameUpper.includes('POSTING') || 
-                                nameUpper.includes('LAB');
-            const requiredPct = isPractical ? 80 : 75;
-
-            // Safe if above threshold, warning if nearing, danger if below
-            const status = percentage >= requiredPct 
-              ? 'safe' 
-              : percentage >= (requiredPct - 5) 
-                ? 'warning' 
-                : 'danger';
-
-            return {
-              code: item.subject_code,
-              name: item.subject_name || item.subject_code,
-              percentage,
-              status,
-              isPractical,
-              requiredPct,
-              semester: item.semester
-            };
-          });
-
-          const overall = subjects.length > 0 
-            ? Math.round(subjects.reduce((sum, s) => sum + s.percentage, 0) / subjects.length)
-            : 0;
-
-          setApiAttendance({
-            overall: user?.attendance || overall,
-            totalClasses: subjects.length * 30, // estimate for display
-            attendedClasses: Math.round((user?.attendance || overall) * 0.01 * (subjects.length * 30)),
-            subjects
-          });
-        }
-      } catch (err) {
-        console.warn('[AttendanceScreen] Error fetching from API:', err);
-      } finally {
-        setLoading(false);
-      }
+  const fetchAttendance = React.useCallback(async (force = false) => {
+    if (!accessToken) {
+      setLoading(false);
+      setRefreshing(false);
+      return;
     }
-    loadAttendance();
-  }, [accessToken, user?.attendance]);
+    if (force) {
+      setRefreshing(true);
+    } else {
+      setLoading(true);
+    }
+    try {
+      const studentId = user?.rollno || user?.id || user?.username;
+      const data = await getAttendance(accessToken, studentId, force);
+      if (data && data.length > 0) {
+        // Filter out exam/sessional components (where attendance_pct is null or undefined)
+        const validRecords = data.filter(
+          item => item.attendance_pct !== null && item.attendance_pct !== undefined
+        );
+
+        const subjects = validRecords.map(item => {
+          const percentage = Math.round(item.attendance_pct || 0);
+          
+          // NMC criteria: 80% for clinical postings/practicals/labs, 75% for theory classes
+          const nameUpper = (item.subject_name || item.subject_code || '').toUpperCase();
+          const isPractical = nameUpper.includes('PRACTICAL') || 
+                              nameUpper.includes('CLINICAL') || 
+                              nameUpper.includes('DISSECTION') || 
+                              nameUpper.includes('POSTING') || 
+                              nameUpper.includes('LAB');
+          const requiredPct = isPractical ? 80 : 75;
+
+          // Safe if above threshold, warning if nearing, danger if below
+          const status = percentage >= requiredPct 
+            ? 'safe' 
+            : percentage >= (requiredPct - 5) 
+              ? 'warning' 
+              : 'danger';
+
+          return {
+            code: item.subject_code,
+            name: item.subject_name || item.subject_code,
+            percentage,
+            status,
+            isPractical,
+            requiredPct,
+            semester: item.semester
+          };
+        });
+
+        const overall = subjects.length > 0 
+          ? Math.round(subjects.reduce((sum, s) => sum + s.percentage, 0) / subjects.length)
+          : 0;
+
+        setApiAttendance({
+          overall: user?.attendance || overall,
+          totalClasses: subjects.length * 30, // estimate for display
+          attendedClasses: Math.round((user?.attendance || overall) * 0.01 * (subjects.length * 30)),
+          subjects
+        });
+      }
+    } catch (err) {
+      console.warn('[AttendanceScreen] Error fetching from API:', err);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [accessToken, user?.rollno, user?.id, user?.username, user?.attendance]);
+
+  React.useEffect(() => {
+    fetchAttendance(false);
+  }, [fetchAttendance]);
+
+  const handleRefresh = React.useCallback(() => {
+    fetchAttendance(true);
+  }, [fetchAttendance]);
 
   const attendanceData = apiAttendance || {
     overall: '-',
@@ -370,7 +384,18 @@ const ERPAttendanceScreen = ({ route, navigation }) => {
       </View>
 
       {loading ? (
-        <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        <ScrollView 
+          contentContainerStyle={styles.scroll} 
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl 
+              refreshing={refreshing} 
+              onRefresh={handleRefresh} 
+              colors={['#EA580C']} 
+              tintColor={isDark ? '#FFF' : '#EA580C'} 
+            />
+          }
+        >
           <View style={{ paddingHorizontal: 20, marginTop: 24 }}>
             <SkeletonOverallCard isDark={isDark} />
             <SkeletonPhaseRow isDark={isDark} />
@@ -379,7 +404,18 @@ const ERPAttendanceScreen = ({ route, navigation }) => {
           </View>
         </ScrollView>
       ) : (
-        <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        <ScrollView 
+          contentContainerStyle={styles.scroll} 
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl 
+              refreshing={refreshing} 
+              onRefresh={handleRefresh} 
+              colors={['#EA580C']} 
+              tintColor={isDark ? '#FFF' : '#EA580C'} 
+            />
+          }
+        >
           {/* Hero Section */}
           <View style={styles.sectionContainer}>
             <Text style={[styles.heroTitle, { color: colors.textPrimary }]}>Attendance Insights</Text>
