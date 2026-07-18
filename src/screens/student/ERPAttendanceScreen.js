@@ -245,6 +245,7 @@ const ERPAttendanceScreen = ({ route, navigation }) => {
 
   // ─── Attendance Detail Modal (subcategory tap) ────────────────────────────
   const [detailModal, setDetailModal] = React.useState({ visible: false, subCatName: '', erpCode: null, records: [], loading: false, error: null });
+  const [historyFilter, setHistoryFilter] = React.useState('ALL'); // 'ALL', 'P', 'A'
   // ─── Today's Attendance Modal (eye icon) ─────────────────────────────────
   const [todayModal, setTodayModal] = React.useState({ visible: false, subjectName: '', rows: [], loading: false, error: null });
 
@@ -285,6 +286,7 @@ const ERPAttendanceScreen = ({ route, navigation }) => {
   const studentUid = user?.rollno || user?.id || user?.username || '';
 
   const openDetailModal = React.useCallback(async (subCatName, erpCode) => {
+    setHistoryFilter('ALL');
     setDetailModal({ visible: true, subCatName, erpCode, records: [], loading: true, error: null });
     try {
       const resp = await fetch('https://myportal.srms.ac.in/SRMSERP/Home/GetAttendanceRollNoSubjectWsie', {
@@ -947,40 +949,86 @@ const ERPAttendanceScreen = ({ route, navigation }) => {
               <Text style={{ color: '#F87171', textAlign: 'center', padding: 20 }}>{detailModal.error}</Text>
             ) : detailModal.records.length === 0 ? (
               <Text style={{ color: colors.textSecondary, textAlign: 'center', padding: 20 }}>No attendance records found.</Text>
-            ) : (
-              <>
-                {/* Table header */}
-                <View style={[styles.tableRow, styles.tableHeader, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : '#F3F4F6' }]}>
-                  <Text style={[styles.tableCell, styles.tableCellNo, styles.tableHeaderText, { color: colors.textSecondary }]}>S.No</Text>
-                  <Text style={[styles.tableCell, styles.tableCellDate, styles.tableHeaderText, { color: colors.textSecondary }]}>Lecture Date</Text>
-                  <Text style={[styles.tableCell, styles.tableCellAtt, styles.tableHeaderText, { color: colors.textSecondary }]}>Attendance</Text>
-                  <Text style={[styles.tableCell, styles.tableCellPunch, styles.tableHeaderText, { color: colors.textSecondary }]}>Punch Time</Text>
-                </View>
-                <ScrollView style={{ maxHeight: 380 }} showsVerticalScrollIndicator={false}>
-                  {detailModal.records.map((rec, i) => {
-                    const att = (rec.attendance || rec.Attendance || '').trim();
-                    const attColor = att === 'P' ? '#34D399' : att === 'A' ? '#F87171' : colors.textSecondary;
-                    return (
-                      <View key={i} style={[
-                        styles.tableRow,
-                        { borderBottomColor: colors.border, borderBottomWidth: 1, backgroundColor: i % 2 === 0 ? 'transparent' : (isDark ? 'rgba(255,255,255,0.02)' : '#FAFAFA') }
-                      ]}>
-                        <Text style={[styles.tableCell, styles.tableCellNo, { color: colors.textSecondary }]}>{i + 1}</Text>
-                        <Text style={[styles.tableCell, styles.tableCellDate, { color: colors.textPrimary }]}>
-                          {rec.lecturedt || rec.LectureDate || rec.lecture_date || '-'}
-                        </Text>
-                        <Text style={[styles.tableCell, styles.tableCellAtt, { color: attColor, fontWeight: '800' }]}>
-                          {att || 'N.A.'}
-                        </Text>
-                        <Text style={[styles.tableCell, styles.tableCellPunch, { color: colors.textSecondary }]}>
-                          {rec.punchtime || rec.PunchTime || rec.punch_time || '-'}
-                        </Text>
+            ) : (() => {
+              const filteredRecords = detailModal.records.filter(rec => {
+                if (historyFilter === 'ALL') return true;
+                return (rec.attendance || rec.Attendance || '').trim().toUpperCase() === historyFilter;
+              });
+
+              return (
+                <>
+                  {/* Filter chips */}
+                  <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
+                    {['ALL', 'P', 'A'].map((f) => {
+                      const isActive = historyFilter === f;
+                      const label = f === 'ALL' ? 'All' : f === 'P' ? 'Present' : 'Absent';
+                      const activeColor = f === 'P' ? '#34D399' : f === 'A' ? '#F87171' : colors.primary;
+                      return (
+                        <TouchableOpacity
+                          key={f}
+                          onPress={() => setHistoryFilter(f)}
+                          style={{
+                            paddingHorizontal: 12,
+                            paddingVertical: 6,
+                            borderRadius: 20,
+                            backgroundColor: isActive ? activeColor + '20' : (isDark ? 'rgba(255,255,255,0.04)' : '#F3F4F6'),
+                            borderColor: isActive ? activeColor : 'transparent',
+                            borderWidth: 1,
+                          }}
+                        >
+                          <Text style={{
+                            fontSize: 12,
+                            fontWeight: '700',
+                            color: isActive ? activeColor : colors.textSecondary,
+                          }}>
+                            {label}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+
+                  {filteredRecords.length === 0 ? (
+                    <Text style={{ color: colors.textSecondary, textAlign: 'center', padding: 40 }}>
+                      {historyFilter === 'P' ? 'No present records found.' : 'No absent records found.'}
+                    </Text>
+                  ) : (
+                    <>
+                      {/* Table header */}
+                      <View style={[styles.tableRow, styles.tableHeader, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : '#F3F4F6' }]}>
+                        <Text style={[styles.tableCell, styles.tableCellNo, styles.tableHeaderText, { color: colors.textSecondary }]}>S.No</Text>
+                        <Text style={[styles.tableCell, styles.tableCellDate, styles.tableHeaderText, { color: colors.textSecondary }]}>Lecture Date</Text>
+                        <Text style={[styles.tableCell, styles.tableCellAtt, styles.tableHeaderText, { color: colors.textSecondary }]}>Attendance</Text>
+                        <Text style={[styles.tableCell, styles.tableCellPunch, styles.tableHeaderText, { color: colors.textSecondary }]}>Punch Time</Text>
                       </View>
-                    );
-                  })}
-                </ScrollView>
-              </>
-            )}
+                      <ScrollView style={{ maxHeight: 320 }} showsVerticalScrollIndicator={false}>
+                        {filteredRecords.map((rec, i) => {
+                          const att = (rec.attendance || rec.Attendance || '').trim();
+                          const attColor = att === 'P' ? '#34D399' : att === 'A' ? '#F87171' : colors.textSecondary;
+                          return (
+                            <View key={i} style={[
+                              styles.tableRow,
+                              { borderBottomColor: colors.border, borderBottomWidth: 1, backgroundColor: i % 2 === 0 ? 'transparent' : (isDark ? 'rgba(255,255,255,0.02)' : '#FAFAFA') }
+                            ]}>
+                              <Text style={[styles.tableCell, styles.tableCellNo, { color: colors.textSecondary }]}>{i + 1}</Text>
+                              <Text style={[styles.tableCell, styles.tableCellDate, { color: colors.textPrimary }]}>
+                                {rec.lecturedt || rec.LectureDate || rec.lecture_date || '-'}
+                              </Text>
+                              <Text style={[styles.tableCell, styles.tableCellAtt, { color: attColor, fontWeight: '800' }]}>
+                                {att || 'N.A.'}
+                              </Text>
+                              <Text style={[styles.tableCell, styles.tableCellPunch, { color: colors.textSecondary }]}>
+                                {rec.punchtime || rec.PunchTime || rec.punch_time || '-'}
+                              </Text>
+                            </View>
+                          );
+                        })}
+                      </ScrollView>
+                    </>
+                  )}
+                </>
+              );
+            })()}
           </View>
         </View>
       </Modal>
