@@ -18,6 +18,7 @@ const { width } = Dimensions.get('window');
 // ─── In-memory cache (persists across mounts, resets on app restart) ─────────
 const STUDENT_CACHE_TTL = 10 * 60 * 1000; // 10 minutes
 const _studentCache = { data: null, timestamp: 0 };
+let _lastSelectedPhaseFilter = null;
 const ALL_PHASES = [1, 2, 3];
 
 
@@ -125,9 +126,18 @@ const FacultyStudentsDirectoryScreen = ({ navigation }) => {
   }, [user?.phase]);
 
   // Default filter: if multiple phases, show 'ALL' initially, otherwise show the single phase
-  const [selectedPhaseFilter, setSelectedPhaseFilter] = useState(
-    facultyPhases.length > 1 ? 'ALL' : facultyPhases[0]
-  );
+  const [selectedPhaseFilterState, setSelectedPhaseFilterState] = useState(() => {
+    if (_lastSelectedPhaseFilter !== null) {
+      return _lastSelectedPhaseFilter;
+    }
+    return facultyPhases.length > 1 ? 'ALL' : facultyPhases[0];
+  });
+
+  const selectedPhaseFilter = selectedPhaseFilterState;
+  const setSelectedPhaseFilter = (val) => {
+    setSelectedPhaseFilterState(val);
+    _lastSelectedPhaseFilter = val;
+  };
 
   const batchCounts = React.useMemo(() => {
     const counts = { ALL: 0, 1: 0, 2: 0, 3: 0 };
