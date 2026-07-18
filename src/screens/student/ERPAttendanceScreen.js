@@ -231,7 +231,7 @@ const ERP_SUBJECT_MAP = {
 const getSubcategoryCategory = (name) => {
   const lower = (name || '').toLowerCase();
   if (lower.includes('aetcom')) return 'AETCOM';
-  if (lower.includes('pandemic')) return 'PANDEMIC';
+  if (lower.includes('pandemic') || lower.includes('family adoption') || lower.includes('family planning')) return 'PANDEMIC';
   if (lower.includes('clinical posting') || lower.includes('clinical postings')) return 'CLINICAL_POSTING';
   if (lower.includes('practical') || lower.includes('dissection') || lower.includes('histology') || lower.includes('lab')) return 'PRACTICAL';
   if (lower.includes('theory')) return 'THEORY';
