@@ -483,7 +483,29 @@ const ERPHubScreen = ({ navigation }) => {
             </View>
           </TouchableOpacity>
 
+          {/* Portal Chats */}
+          <TouchableOpacity
+            style={[styles.essentialCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+            onPress={() => navigation.navigate('Chat')}
+            activeOpacity={0.85}
+          >
+            <LinearGradient colors={isDark ? ['#1E3A8A', '#3B82F6'] : ['#E0F2FE', '#BAE6FD']} style={styles.essentialIconBg}>
+              <MaterialCommunityIcons name="forum-outline" size={22} color={isDark ? '#60A5FA' : '#2563EB'} />
+            </LinearGradient>
+            <View style={styles.essentialContent}>
+              <Text style={[styles.essentialCardTitle, { color: colors.textPrimary }]}>Portal Chats</Text>
+              <Text style={[styles.essentialCardDesc, { color: colors.textSecondary }]}>
+                Interact directly with your subject faculty and classmates.
+              </Text>
 
+              <View style={styles.essentialFooter}>
+                <View style={[styles.dueBadge, { backgroundColor: isDark ? 'rgba(37, 99, 235, 0.15)' : '#EFF6FF' }]}>
+                  <Text style={[styles.dueText, { color: isDark ? '#60A5FA' : '#2563EB' }]}>Active Sync</Text>
+                </View>
+                <MaterialIcons name="chevron-right" size={20} color={colors.textMuted} />
+              </View>
+            </View>
+          </TouchableOpacity>
         </View>
 
         {/* Smart Library */}

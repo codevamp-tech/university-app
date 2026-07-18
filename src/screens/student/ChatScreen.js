@@ -28,12 +28,53 @@ import { useTheme } from '../../hooks/useTheme';
 const { width } = Dimensions.get('window');
 const DRAWER_WIDTH = width * 0.78;
 
-const PORTAL_SUBJECTS = [
-  { id: 'Physiology-BinduGarg', name: 'Physiology', subcode: 'PY', department: 'PHYSIOLOGY', facultyId: '202314130', facultyName: 'BINDU GARG' },
-  { id: 'Physiology-KranthiKumar', name: 'Physiology (Lab/Clinical)', subcode: 'PY', department: 'PHYSIOLOGY', facultyId: 'D/11/093', facultyName: 'KRANTHI KUMAR GARIKAPATI' },
-  { id: 'Anatomy-AnandKumar', name: 'Anatomy', subcode: 'AN', department: 'ANATOMY', facultyId: 'D/11/094', facultyName: 'ANAND KUMAR' },
-  { id: 'Biochemistry-ShaliniGupta', name: 'Biochemistry', subcode: 'BI', department: 'BIOCHEMISTRY', facultyId: 'D/11/095', facultyName: 'SHALINI GUPTA' }
-];
+export function getPortalSubjects(user) {
+  let yearNum = 1;
+  if (user?.year) {
+    const match = user.year.toString().match(/\d+/);
+    if (match) yearNum = parseInt(match[0]);
+  } else if (user?.current_year) {
+    const match = user.current_year.toString().match(/\d+/);
+    if (match) yearNum = parseInt(match[0]);
+  } else if (user?.semester) {
+    yearNum = Math.ceil(parseInt(user.semester) / 2);
+  }
+
+  if (yearNum === 2) {
+    return [
+      { id: 'Pathology-ShanuGupta', name: 'Pathology', subcode: 'PA', department: 'PATHOLOGY', facultyId: '202011250', facultyName: 'SHANU GUPTA' },
+      { id: 'Pathology-TanuAgrawal', name: 'Pathology (Clinical)', subcode: 'PA', department: 'PATHOLOGY', facultyId: 'D/07/023', facultyName: 'TANU AGRAWAL' },
+      { id: 'Pharmacology-RajeshKumar', name: 'Pharmacology', subcode: 'PH', department: 'PHARMACOLOGY', facultyId: 'D/09/012', facultyName: 'DR. RAJESH KUMAR' },
+      { id: 'Microbiology-AmitSingh', name: 'Microbiology', subcode: 'MI', department: 'MICROBIOLOGY', facultyId: 'D/09/013', facultyName: 'DR. AMIT SINGH' },
+      { id: 'ForensicMedicine-NehaSharma', name: 'Forensic Medicine', subcode: 'FM', department: 'FORENSIC MEDICINE', facultyId: 'D/09/014', facultyName: 'DR. NEHA SHARMA' },
+    ];
+  }
+
+  if (yearNum === 3) {
+    return [
+      { id: 'ENT-SanjayBansal', name: 'ENT', subcode: 'ENT', department: 'ENT', facultyId: 'D/08/041', facultyName: 'DR. SANJAY BANSAL' },
+      { id: 'Ophthalmology-MeenakshiJain', name: 'Ophthalmology', subcode: 'OP', department: 'OPHTHALMOLOGY', facultyId: 'D/08/042', facultyName: 'DR. MEENAKSHI JAIN' },
+      { id: 'CommunityMedicine-VikasChandra', name: 'Community Medicine', subcode: 'CM', department: 'COMMUNITY MEDICINE', facultyId: 'D/08/043', facultyName: 'DR. VIKAS CHANDRA' },
+    ];
+  }
+
+  if (yearNum >= 4) {
+    return [
+      { id: 'Paediatrics-SandhyaChauhan', name: 'Paediatrics', subcode: 'PE', department: 'PAEDIATRICS', facultyId: 'D/11/048', facultyName: 'SANDHYA CHAUHAN' },
+      { id: 'Medicine-AKSingh', name: 'General Medicine', subcode: 'GM', department: 'GENERAL MEDICINE', facultyId: 'D/07/011', facultyName: 'DR. A.K. SINGH' },
+      { id: 'Surgery-PKJain', name: 'General Surgery', subcode: 'GS', department: 'GENERAL SURGERY', facultyId: 'D/07/012', facultyName: 'DR. P.K. JAIN' },
+      { id: 'OBG-RuchiGupta', name: 'Obstetrics & Gynecology', subcode: 'OBG', department: 'OBGY', facultyId: 'D/07/013', facultyName: 'DR. RUCHI GUPTA' },
+    ];
+  }
+
+  // Default to Phase 1 (Year 1)
+  return [
+    { id: 'Physiology-BinduGarg', name: 'Physiology', subcode: 'PY', department: 'PHYSIOLOGY', facultyId: '202314130', facultyName: 'BINDU GARG' },
+    { id: 'Physiology-KranthiKumar', name: 'Physiology (Lab/Clinical)', subcode: 'PY', department: 'PHYSIOLOGY', facultyId: 'D/11/093', facultyName: 'KRANTHI KUMAR GARIKAPATI' },
+    { id: 'Anatomy-AnandKumar', name: 'Anatomy', subcode: 'AN', department: 'ANATOMY', facultyId: 'D/11/094', facultyName: 'ANAND KUMAR' },
+    { id: 'Biochemistry-ShaliniGupta', name: 'Biochemistry', subcode: 'BI', department: 'BIOCHEMISTRY', facultyId: 'D/11/095', facultyName: 'SHALINI GUPTA' }
+  ];
+}
 
 // ── Default channels shown before API loads ──────────────────────────────────
 const DEFAULT_CHANNELS = [
@@ -97,7 +138,15 @@ const ChatScreen = ({ navigation }) => {
   const [loadingPortal, setLoadingPortal] = useState(false);
   const [sendingPortalMessage, setSendingPortalMessage] = useState(false);
   const [selectedAttachment, setSelectedAttachment] = useState(null);
-  const [activePortalSubject, setActivePortalSubject] = useState(PORTAL_SUBJECTS[0]);
+  const portalSubjects = React.useMemo(() => getPortalSubjects(user), [user]);
+  const [activePortalSubject, setActivePortalSubject] = useState(() => getPortalSubjects(user)[0]);
+
+  useEffect(() => {
+    if (portalSubjects.length > 0) {
+      setActivePortalSubject(portalSubjects[0]);
+    }
+  }, [portalSubjects]);
+
   const slideAnim = useRef(new Animated.Value(0)).current;
 
   const {
@@ -578,8 +627,8 @@ const ChatScreen = ({ navigation }) => {
                 const batchYearStr = String(batchYear).trim();
                 const isBCBatch = ['2024', '2025', '2026'].includes(batchYearStr);
 
-                return PORTAL_SUBJECTS.map((sub) => {
-                  const isSel = activePortalSubject.id === sub.id;
+                return portalSubjects.map((sub) => {
+                  const isSel = activePortalSubject?.id === sub.id;
                   const resolvedSubcode = sub.department === 'BIOCHEMISTRY'
                     ? (isBCBatch ? 'BC' : 'BI')
                     : sub.subcode;
