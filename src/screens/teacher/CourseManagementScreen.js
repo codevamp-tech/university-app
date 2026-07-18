@@ -8,8 +8,35 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useUser } from '../../context/UserContext';
 import { getFacultyTimetable } from '../../data/apiService';
 
-const DAYS_OF_WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-const TABS = ['Upcoming', ...DAYS_OF_WEEK];
+const formatLocalDate = (date) => {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+};
+
+const getWeekDays = (anchorDate) => {
+  const current = new Date(anchorDate);
+  const day = current.getDay();
+  // We want Monday (1) to Sunday (0).
+  const diff = current.getDate() - day + (day === 0 ? -6 : 1);
+  const monday = new Date(current.setDate(diff));
+  
+  const week = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    week.push(d);
+  }
+  return week;
+};
+
+const getMonthYearLabel = (anchorDate) => {
+  const d = new Date(anchorDate);
+  const month = d.toLocaleDateString('en-IN', { month: 'long' });
+  const year = d.getFullYear();
+  return `${month} ${year}`;
+};
 
 function formatTime(iso) {
   if (!iso) return '';
@@ -36,21 +63,16 @@ const CourseManagementScreen = ({ route, navigation }) => {
   const [timetable, setTimetable] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Get current day of the week to set as default
-  const getCurrentDay = () => {
-    const now = new Date();
-    const dayIndex = now.getDay(); // 0 is Sunday, 1 is Monday ...
-    const mapped = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-    return mapped[dayIndex];
-  };
-
-  const [selectedDay, setSelectedDay] = useState(getCurrentDay());
+  const [selectedDateStr, setSelectedDateStr] = useState(formatLocalDate(new Date()));
+  const [weekAnchor, setWeekAnchor] = useState(new Date());
 
   useEffect(() => {
-    if (route?.params?.tab) {
-      setSelectedDay(route.params.tab);
+    if (route?.params?.date) {
+      const d = new Date(route.params.date);
+      setSelectedDateStr(formatLocalDate(d));
+      setWeekAnchor(d);
     }
-  }, [route?.params?.tab]);
+  }, [route?.params?.date]);
 
   const loadData = useCallback(async () => {
     if (!accessToken) { setLoading(false); return; }
@@ -69,28 +91,21 @@ const CourseManagementScreen = ({ route, navigation }) => {
     loadData();
   }, [loadData]);
 
-  const getDayFromISO = (isoStr) => {
-    if (!isoStr) return '';
-    const parts = isoStr.split('-');
-    if (parts.length === 3) {
-      const year = parseInt(parts[0], 10);
-      const month = parseInt(parts[1], 10) - 1;
-      const day = parseInt(parts[2], 10);
-      const date = new Date(year, month, day);
-      const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-      return DAYS[date.getDay()];
-    }
-    return '';
-  };
+  const weekDays = getWeekDays(weekAnchor);
 
-  // Filter slots for the selected day of the week or upcoming
-  const daySlots = selectedDay === 'Upcoming'
-    ? timetable
-        .filter(slot => slot.start_time && new Date(slot.start_time) >= new Date())
-        .sort((a, b) => new Date(a.start_time) - new Date(b.start_time))
-    : timetable.filter(slot => {
-        return getDayFromISO(slot.raw_date) === selectedDay;
-      });
+  // Filter slots for the selected date
+  const daySlots = timetable
+    .filter(slot => {
+      if (!slot.start_time) return false;
+      return slot.start_time.split('T')[0] === selectedDateStr;
+    })
+    .sort((a, b) => new Date(a.start_time) - new Date(b.start_time));
+
+  // Next 3 upcoming lectures for any day/week fallback
+  const upcomingLectures = timetable
+    .filter(slot => slot.start_time && new Date(slot.start_time) >= new Date())
+    .sort((a, b) => new Date(a.start_time) - new Date(b.start_time))
+    .slice(0, 3);
 
   const getLectureIcon = (type) => {
     const t = String(type).toLowerCase();
@@ -125,28 +140,74 @@ const CourseManagementScreen = ({ route, navigation }) => {
         <View style={{ width: 40 }} />
       </LinearGradient>
 
-      {/* Days Tabs bar */}
+      {/* Week Navigation Header */}
+      <View style={styles.weekNavHeader}>
+        <TouchableOpacity 
+          onPress={() => {
+            const newAnchor = new Date(weekAnchor);
+            newAnchor.setDate(newAnchor.getDate() - 7);
+            setWeekAnchor(newAnchor);
+            const newWeek = getWeekDays(newAnchor);
+            setSelectedDateStr(formatLocalDate(newWeek[0]));
+          }}
+          style={styles.weekNavBtn}
+        >
+          <Ionicons name="chevron-back" size={20} color="#EA580C" />
+        </TouchableOpacity>
+        
+        <Text style={styles.weekRangeLabel}>{getMonthYearLabel(weekAnchor)}</Text>
+        
+        <TouchableOpacity 
+          onPress={() => {
+            const newAnchor = new Date(weekAnchor);
+            newAnchor.setDate(newAnchor.getDate() + 7);
+            setWeekAnchor(newAnchor);
+            const newWeek = getWeekDays(newAnchor);
+            setSelectedDateStr(formatLocalDate(newWeek[0]));
+          }}
+          style={styles.weekNavBtn}
+        >
+          <Ionicons name="chevron-forward" size={20} color="#EA580C" />
+        </TouchableOpacity>
+      </View>
+
+      {/* Days Tabs Row */}
       <View style={styles.daysTabContainer}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.daysScroll}>
-          {TABS.map((day) => {
-            const isActive = selectedDay === day;
+        <View style={styles.daysRow}>
+          {weekDays.map((date) => {
+            const dateStr = formatLocalDate(date);
+            const isSelected = selectedDateStr === dateStr;
+            const isToday = formatLocalDate(new Date()) === dateStr;
+            const dayName = date.toLocaleDateString('en-IN', { weekday: 'short' }).slice(0, 3).toUpperCase();
+            const dayNum = date.getDate();
+            
             return (
               <TouchableOpacity
-                key={day}
-                onPress={() => setSelectedDay(day)}
+                key={dateStr}
+                onPress={() => setSelectedDateStr(dateStr)}
                 style={[
-                  styles.dayTab,
-                  isActive ? { backgroundColor: '#EA580C' } : { backgroundColor: '#FFFFFF', borderColor: '#E5E7EB', borderWidth: 1 }
+                  styles.dayPill,
+                  isSelected ? styles.dayPillSelected : isToday ? styles.dayPillToday : null
                 ]}
                 activeOpacity={0.8}
               >
-                <Text style={[styles.dayLabel, { color: isActive ? '#FFFFFF' : '#4B5563' }]}>
-                  {day}
+                <Text style={[
+                  styles.dayNameText,
+                  isSelected ? styles.textWhite : isToday ? styles.textOrange : styles.textGrey
+                ]}>
+                  {dayName}
                 </Text>
+                <Text style={[
+                  styles.dayNumText,
+                  isSelected ? styles.textWhite : isToday ? styles.textOrange : styles.textDark
+                ]}>
+                  {dayNum}
+                </Text>
+                {isToday && !isSelected && <View style={styles.todayIndicatorDot} />}
               </TouchableOpacity>
             );
           })}
-        </ScrollView>
+        </View>
       </View>
 
       {loading ? (
@@ -160,14 +221,79 @@ const CourseManagementScreen = ({ route, navigation }) => {
           showsVerticalScrollIndicator={false}
         >
           {daySlots.length === 0 ? (
-            <View style={styles.emptyCard}>
-              <MaterialCommunityIcons name="calendar-blank" size={56} color="#D1D5DB" style={{ marginBottom: 12 }} />
-              <Text style={styles.emptyText}>No Classes Scheduled</Text>
-              <Text style={styles.emptySub}>
-                {selectedDay === 'Upcoming'
-                  ? 'You have no lectures or clinical postings scheduled in the future.'
-                  : `You have no lectures or clinical postings scheduled for ${selectedDay}.`}
-              </Text>
+            <View style={{ gap: 20 }}>
+              <View style={styles.emptyCard}>
+                <MaterialCommunityIcons name="calendar-blank" size={56} color="#D1D5DB" style={{ marginBottom: 12 }} />
+                <Text style={styles.emptyText}>No Classes Scheduled</Text>
+                <Text style={styles.emptySub}>
+                  You have no lectures or clinical postings scheduled for {new Date(selectedDateStr).toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'short' })}.
+                </Text>
+              </View>
+
+              {upcomingLectures.length > 0 && (
+                <View>
+                  <Text style={styles.upcomingSubheading}>📅 Next Upcoming Lectures</Text>
+                  {upcomingLectures.map((slot, index) => {
+                    const themeColor = getLectureColor(slot.lecture_type);
+                    const iconName = getLectureIcon(slot.lecture_type);
+                    return (
+                      <LinearGradient
+                        key={slot.tt_cd || index}
+                        colors={['#FFFFFF', '#F9FAFB']}
+                        style={styles.currCard}
+                      >
+                        <View style={styles.currHeader}>
+                          <LinearGradient
+                            colors={[themeColor + '12', themeColor + '08']}
+                            style={styles.currIcon}
+                          >
+                            <MaterialCommunityIcons name={iconName} size={22} color={themeColor} />
+                          </LinearGradient>
+                          <LinearGradient
+                            colors={[themeColor + '12', themeColor + '08']}
+                            style={styles.currTypeBadge}
+                          >
+                            <Text style={[styles.currTypeText, { color: themeColor }]}>
+                              {slot.lecture_type || 'Lecture'}
+                            </Text>
+                          </LinearGradient>
+                        </View>
+
+                        <Text style={styles.currName}>{slot.subject_name}</Text>
+                        
+                        {slot.topic_name ? (
+                          <Text style={styles.currDesc}>{slot.topic_name}</Text>
+                        ) : null}
+
+                        <View style={styles.metaRow}>
+                          <Ionicons name="time-outline" size={16} color="#6B7280" style={{ marginRight: 6 }} />
+                          <Text style={styles.metaText}>
+                            {formatSlotDayDate(slot.start_time)}   ·   {formatTime(slot.start_time)} – {formatTime(slot.end_time)}
+                          </Text>
+                        </View>
+
+                        <View style={styles.facultySection}>
+                          <Text style={styles.facultyLabel}>INSTRUCTOR</Text>
+                          <View style={styles.facultyInfo}>
+                            <LinearGradient
+                              colors={['#EA580C', '#9A3412']}
+                              style={styles.facultyAvatar}
+                            >
+                              <Text style={styles.facultyAvatarText}>
+                                {slot.faculty_name ? slot.faculty_name.charAt(0) : 'F'}
+                              </Text>
+                            </LinearGradient>
+                            <View>
+                              <Text style={styles.facultyName}>{slot.faculty_name || 'Faculty Member'}</Text>
+                              <Text style={styles.facultyRole}>{user?.department || 'Physiology Department'}</Text>
+                            </View>
+                          </View>
+                        </View>
+                      </LinearGradient>
+                    );
+                  })}
+                </View>
+              )}
             </View>
           ) : (
             daySlots.map((slot, index) => {
@@ -205,7 +331,6 @@ const CourseManagementScreen = ({ route, navigation }) => {
                   <View style={styles.metaRow}>
                     <Ionicons name="time-outline" size={16} color="#6B7280" style={{ marginRight: 6 }} />
                     <Text style={styles.metaText}>
-                      {selectedDay === 'Upcoming' ? `${formatSlotDayDate(slot.start_time)}   ·   ` : ''}
                       {formatTime(slot.start_time)} – {formatTime(slot.end_time)}
                     </Text>
                   </View>
@@ -270,26 +395,95 @@ const styles = StyleSheet.create({
     color: '#111827',
     letterSpacing: -0.5,
   },
+  weekNavHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 8,
+  },
+  weekNavBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#FFF7ED',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  weekRangeLabel: {
+    fontSize: 15,
+    fontWeight: '900',
+    color: '#111827',
+  },
   daysTabContainer: {
     backgroundColor: '#FFFFFF',
-    paddingVertical: 12,
+    paddingBottom: 16,
+    paddingHorizontal: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#E5E7EB',
   },
-  daysScroll: {
-    paddingHorizontal: 16,
-    gap: 8,
-  },
-  dayTab: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    justifyContent: 'center',
+  daysRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
+    gap: 4,
   },
-  dayLabel: {
+  dayPill: {
+    flex: 1,
+    height: 56,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F9FAFB',
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
+  },
+  dayPillSelected: {
+    backgroundColor: '#EA580C',
+    borderColor: '#EA580C',
+  },
+  dayPillToday: {
+    borderColor: '#FED7AA',
+    backgroundColor: '#FFF7ED',
+  },
+  dayNameText: {
+    fontSize: 9,
+    fontWeight: '800',
+    marginBottom: 2,
+  },
+  dayNumText: {
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: '900',
+  },
+  textWhite: {
+    color: '#FFFFFF',
+  },
+  textOrange: {
+    color: '#EA580C',
+  },
+  textGrey: {
+    color: '#9CA3AF',
+  },
+  textDark: {
+    color: '#1F2937',
+  },
+  todayIndicatorDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#EA580C',
+    position: 'absolute',
+    bottom: 4,
+  },
+  upcomingSubheading: {
+    fontSize: 14,
+    fontWeight: '900',
+    color: '#111827',
+    marginBottom: 14,
+    marginTop: 8,
+    letterSpacing: -0.3,
   },
   scroll: {
     paddingHorizontal: 20,
