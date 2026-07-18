@@ -181,6 +181,11 @@ const CourseManagementScreen = ({ route, navigation }) => {
             const dayName = date.toLocaleDateString('en-IN', { weekday: 'short' }).slice(0, 3).toUpperCase();
             const dayNum = date.getDate();
             
+            const slotCount = timetable.filter(slot => {
+              if (!slot.start_time) return false;
+              return slot.start_time.split('T')[0] === dateStr;
+            }).length;
+
             return (
               <TouchableOpacity
                 key={dateStr}
@@ -203,6 +208,25 @@ const CourseManagementScreen = ({ route, navigation }) => {
                 ]}>
                   {dayNum}
                 </Text>
+                <View style={[
+                  styles.countBadge,
+                  isSelected 
+                    ? { backgroundColor: '#FFFFFF' } 
+                    : slotCount > 0 
+                      ? { backgroundColor: '#EA580C' } 
+                      : { backgroundColor: '#E5E7EB' }
+                ]}>
+                  <Text style={[
+                    styles.countText,
+                    isSelected 
+                      ? { color: '#EA580C' } 
+                      : slotCount > 0 
+                        ? { color: '#FFFFFF' } 
+                        : { color: '#9CA3AF' }
+                  ]}>
+                    {slotCount}
+                  </Text>
+                </View>
                 {isToday && !isSelected && <View style={styles.todayIndicatorDot} />}
               </TouchableOpacity>
             );
@@ -432,13 +456,14 @@ const styles = StyleSheet.create({
   },
   dayPill: {
     flex: 1,
-    height: 56,
-    borderRadius: 16,
+    height: 66,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#F9FAFB',
     borderWidth: 1,
     borderColor: '#F3F4F6',
+    paddingVertical: 4,
   },
   dayPillSelected: {
     backgroundColor: '#EA580C',
@@ -476,6 +501,19 @@ const styles = StyleSheet.create({
     backgroundColor: '#EA580C',
     position: 'absolute',
     bottom: 4,
+  },
+  countBadge: {
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+    marginTop: 4,
+  },
+  countText: {
+    fontSize: 9,
+    fontWeight: '800',
   },
   upcomingSubheading: {
     fontSize: 14,
