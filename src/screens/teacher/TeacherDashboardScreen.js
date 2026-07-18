@@ -328,11 +328,11 @@ const TeacherDashboardScreen = ({ navigation }) => {
     isShowingRecent = true;
   }
 
-  // Ensure scheduleToShow is sorted by start_time ascending and limit to 5 slots
+  // Ensure scheduleToShow is sorted by start_time ascending and limit to 3 slots
   scheduleToShow = [...scheduleToShow]
     .filter(tt => tt.start_time)
     .sort((a, b) => new Date(a.start_time) - new Date(b.start_time))
-    .slice(0, 5);
+    .slice(0, 3);
 
   // Calculate activeSlot for the top "Next Class" card (actual first future starting class)
   const nextClassSlot = timetable
@@ -521,46 +521,52 @@ const TeacherDashboardScreen = ({ navigation }) => {
             <Text style={styles.loadingText}>Loading ERP data…</Text>
           </View>
         ) : scheduleToShow.length > 0 ? (
-          <View style={styles.scheduleContainer}>
-            {scheduleToShow.map((item, index) => (
-              <LinearGradient
-                key={item.tt_cd || index}
-                colors={['#FFFFFF', '#F9FAFB']}
-                style={styles.scheduleCard}
-              >
-                <View style={styles.scheduleTime}>
-                  <Text style={styles.scheduleTimeHour} numberOfLines={1}>{formatTime(item.start_time).split(' ')[0]}</Text>
-                  <Text style={styles.scheduleTimePeriod} numberOfLines={1}>{formatTime(item.start_time).split(' ')[1]}</Text>
-                  <Text style={{ fontSize: 10, fontWeight: '800', color: '#EA580C', marginTop: 3 }}>
-                    {formatDateOnly(item.start_time).toUpperCase()}
-                  </Text>
-                  <Text style={{ fontSize: 9, fontWeight: '700', color: '#6B7280' }}>
-                    {formatDayOnly(item.start_time).toUpperCase()}
-                  </Text>
-                </View>
-                <View style={styles.horizontalCardDivider} />
-                <View style={styles.scheduleInfo}>
-                  <Text style={styles.scheduleSubject} numberOfLines={1}>{item.subject_name || '—'}</Text>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginVertical: 3 }}>
-                    <View style={{ backgroundColor: String(item.lecture_type || 'Lecture').toLowerCase().includes('practical') ? '#7C3AED15' : '#EA580C15', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 }}>
-                      <Text style={{ fontSize: 10, fontWeight: '800', color: String(item.lecture_type || 'Lecture').toLowerCase().includes('practical') ? '#7C3AED' : '#EA580C' }}>
-                        {item.lecture_type || 'LECTURE'}
+          <ScrollView 
+            style={{ maxHeight: 240, marginBottom: 24 }} 
+            showsVerticalScrollIndicator={false}
+            nestedScrollEnabled={true}
+          >
+            <View style={[styles.scheduleContainer, { marginBottom: 0 }]}>
+              {scheduleToShow.map((item, index) => (
+                <LinearGradient
+                  key={item.tt_cd || index}
+                  colors={['#FFFFFF', '#F9FAFB']}
+                  style={styles.scheduleCard}
+                >
+                  <View style={styles.scheduleTime}>
+                    <Text style={styles.scheduleTimeHour} numberOfLines={1}>{formatTime(item.start_time).split(' ')[0]}</Text>
+                    <Text style={styles.scheduleTimePeriod} numberOfLines={1}>{formatTime(item.start_time).split(' ')[1]}</Text>
+                    <Text style={{ fontSize: 10, fontWeight: '800', color: '#EA580C', marginTop: 3 }}>
+                      {formatDateOnly(item.start_time).toUpperCase()}
+                    </Text>
+                    <Text style={{ fontSize: 9, fontWeight: '700', color: '#6B7280' }}>
+                      {formatDayOnly(item.start_time).toUpperCase()}
+                    </Text>
+                  </View>
+                  <View style={styles.horizontalCardDivider} />
+                  <View style={styles.scheduleInfo}>
+                    <Text style={styles.scheduleSubject} numberOfLines={1}>{item.subject_name || '—'}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginVertical: 3 }}>
+                      <View style={{ backgroundColor: String(item.lecture_type || 'Lecture').toLowerCase().includes('practical') ? '#7C3AED15' : '#EA580C15', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 }}>
+                        <Text style={{ fontSize: 10, fontWeight: '800', color: String(item.lecture_type || 'Lecture').toLowerCase().includes('practical') ? '#7C3AED' : '#EA580C' }}>
+                          {item.lecture_type || 'LECTURE'}
+                        </Text>
+                      </View>
+                      <Text style={[styles.scheduleDetails, { flex: 1 }]} numberOfLines={1}>
+                        {item.topic_name || 'Class session'}
                       </Text>
                     </View>
-                    <Text style={[styles.scheduleDetails, { flex: 1 }]} numberOfLines={1}>
-                      {item.topic_name || 'Class session'}
-                    </Text>
+                    <View style={styles.scheduleMeta}>
+                      <Ionicons name="time-outline" size={12} color="#9CA3AF" style={{ marginRight: 4 }} />
+                      <Text style={styles.scheduleLocation}>
+                        {formatTime(item.start_time)} – {formatTime(item.end_time)}
+                      </Text>
+                    </View>
                   </View>
-                  <View style={styles.scheduleMeta}>
-                    <Ionicons name="time-outline" size={12} color="#9CA3AF" style={{ marginRight: 4 }} />
-                    <Text style={styles.scheduleLocation}>
-                      {formatTime(item.start_time)} – {formatTime(item.end_time)}
-                    </Text>
-                  </View>
-                </View>
-              </LinearGradient>
-            ))}
-          </View>
+                </LinearGradient>
+              ))}
+            </View>
+          </ScrollView>
         ) : !loading ? (
           <View style={styles.emptySchedule}>
             <Text style={styles.emptyScheduleText}>No schedule data available from ERP</Text>
