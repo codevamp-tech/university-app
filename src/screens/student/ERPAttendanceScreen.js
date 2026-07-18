@@ -601,9 +601,13 @@ const ERPAttendanceScreen = ({ route, navigation }) => {
           };
         });
 
+        const overallPhasePct = groupedSubjects.length > 0
+          ? Math.round(groupedSubjects.reduce((sum, s) => sum + s.percentage, 0) / groupedSubjects.length)
+          : 0;
+
         finalGrouped[phase] = {
           label: data.label,
-          overallPct: avg,
+          overallPct: overallPhasePct,
           subjects: groupedSubjects
         };
       }
