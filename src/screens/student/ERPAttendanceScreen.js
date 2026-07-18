@@ -618,6 +618,19 @@ const ERPAttendanceScreen = ({ route, navigation }) => {
     return finalGrouped;
   }, [attendanceData.subjects, isMedical, currentPhaseName, semNum]);
 
+  const activePhaseData = displayData[currentPhaseName];
+  const activePhaseOverall = activePhaseData ? activePhaseData.overallPct : '-';
+
+  // Calculate total subject-wise subcategories in active phase
+  let activePhaseSubCategoriesCount = 0;
+  if (activePhaseData) {
+    activePhaseData.subjects.forEach(sub => {
+      activePhaseSubCategoriesCount += sub.subCategories.length;
+    });
+  }
+  const activePhaseTotalClasses = activePhaseSubCategoriesCount * 30;
+  const activePhaseAttendedClasses = activePhaseOverall !== '-' ? Math.round(activePhaseOverall * 0.01 * activePhaseTotalClasses) : 0;
+
   const getStatusColor = (status) => {
     switch (status) {
       case 'safe': return isDark ? '#34D399' : '#059669'; // Green
@@ -701,28 +714,28 @@ const ERPAttendanceScreen = ({ route, navigation }) => {
 
               <View style={styles.overallMain}>
                 <Text style={[styles.overallPercentage, { color: isDark ? '#A5B4FC' : '#312E81' }]}>
-                  {attendanceData.overall}{attendanceData.overall !== '-' ? '%' : ''}
+                  {activePhaseOverall}{activePhaseOverall !== '-' ? '%' : ''}
                 </Text>
                 <View style={styles.overallStats}>
                   <View style={styles.statItem}>
-                    <Text style={[styles.statValue, { color: isDark ? '#A5B4FC' : '#312E81' }]}>{attendanceData.attendedClasses}</Text>
+                    <Text style={[styles.statValue, { color: isDark ? '#A5B4FC' : '#312E81' }]}>{activePhaseAttendedClasses}</Text>
                     <Text style={[styles.statLabel, { color: isDark ? 'rgba(165,180,252,0.7)' : 'rgba(49,46,129,0.7)' }]}>Attended</Text>
                   </View>
 
                   <View style={styles.statDivider} />
 
                   <View style={styles.statItem}>
-                    <Text style={[styles.statValue, { color: isDark ? '#A5B4FC' : '#312E81' }]}>{attendanceData.totalClasses}</Text>
+                    <Text style={[styles.statValue, { color: isDark ? '#A5B4FC' : '#312E81' }]}>{activePhaseTotalClasses}</Text>
                     <Text style={[styles.statLabel, { color: isDark ? 'rgba(165,180,252,0.7)' : 'rgba(49,46,129,0.7)' }]}>Total</Text>
                   </View>
                 </View>
               </View>
 
               <View style={[styles.progressBarBg, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#C7D2FE' }]}>
-                <View style={[styles.progressBarFill, { width: attendanceData.overall === '-' ? '0%' : `${attendanceData.overall}%`, backgroundColor: isDark ? '#818CF8' : '#4338CA' }]} />
+                <View style={[styles.progressBarFill, { width: activePhaseOverall === '-' ? '0%' : `${activePhaseOverall}%`, backgroundColor: isDark ? '#818CF8' : '#4338CA' }]} />
               </View>
               <Text style={[styles.progressHint, { color: isDark ? 'rgba(255,255,255,0.6)' : 'rgba(67,56,202,0.7)' }]}>
-                {attendanceData.overall === '-' ? 'No attendance records available.' : (attendanceData.overall >= 75 ? 'You are above the 75% minimum criteria. Keep it up!' : 'Warning: Your attendance is below the 75% minimum criteria.')}
+                {activePhaseOverall === '-' ? 'No attendance records available.' : (activePhaseOverall >= 75 ? 'You are above the 75% minimum criteria. Keep it up!' : 'Warning: Your attendance is below the 75% minimum criteria.')}
               </Text>
             </LinearGradient>
           </View>
