@@ -231,9 +231,10 @@ const ERP_SUBJECT_MAP = {
 const getSubcategoryCategory = (name) => {
   const lower = (name || '').toLowerCase();
   if (lower.includes('aetcom')) return 'AETCOM';
-  if (lower.includes('sdl')) return 'SDL';
+  if (lower.includes('pandemic')) return 'PANDEMIC';
+  if (lower.includes('clinical posting') || lower.includes('clinical postings')) return 'CLINICAL_POSTING';
+  if (lower.includes('practical') || lower.includes('dissection') || lower.includes('histology') || lower.includes('lab')) return 'PRACTICAL';
   if (lower.includes('theory')) return 'THEORY';
-  if (lower.includes('practical') || lower.includes('posting') || lower.includes('dissection') || lower.includes('histology') || lower.includes('lab')) return 'PRACTICAL';
   return 'OTHER';
 };
 
@@ -763,9 +764,10 @@ const ERPAttendanceScreen = ({ route, navigation }) => {
               {[
                 { key: 'ALL', label: 'All' },
                 { key: 'THEORY', label: 'Theory' },
-                { key: 'PRACTICAL', label: 'Practical & Clinic' },
+                { key: 'PRACTICAL', label: 'Practical' },
+                { key: 'CLINICAL_POSTING', label: 'Clinical Posting' },
                 { key: 'AETCOM', label: 'AETCOM' },
-                { key: 'SDL', label: 'SDL' }
+                { key: 'PANDEMIC', label: 'Pandemic' }
               ].map((item) => {
                 const isActive = activeCategoryFilter === item.key;
                 const activeColor = colors.primary;
