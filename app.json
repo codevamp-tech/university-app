@@ -45,7 +45,8 @@
         "android.permission.health.READ_STEPS",
         "android.permission.health.READ_ACTIVE_CALORIES_BURNED",
         "android.permission.health.READ_SLEEP",
-        "android.permission.ACTIVITY_RECOGNITION"
+        "android.permission.ACTIVITY_RECOGNITION",
+        "android.permission.RECORD_AUDIO"
       ]
     },
     "web": {
@@ -88,7 +89,7 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "ab34e327-1caf-46d6-bc97-3bc1f48cca9d"
+        "projectId": "c85fea13-81f5-4c5c-8226-d7c955d6db37"
       }
     }
   }
