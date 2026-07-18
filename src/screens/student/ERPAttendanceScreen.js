@@ -228,6 +228,16 @@ const ERP_SUBJECT_MAP = {
   "AETCOM MODULE-OPHTHALMOLOGY": "87575"
 };
 
+const getSubcategoryCategory = (name) => {
+  const lower = (name || '').toLowerCase();
+  if (lower.includes('aetcom')) return 'AETCOM';
+  if (lower.includes('sdl')) return 'SDL';
+  if (lower.includes('theory')) return 'THEORY';
+  if (lower.includes('practical') || lower.includes('posting') || lower.includes('dissection') || lower.includes('histology') || lower.includes('lab')) return 'PRACTICAL';
+  return 'OTHER';
+};
+
+
 
 const ERPAttendanceScreen = ({ route, navigation }) => {
   const insets = useSafeAreaInsets();
@@ -246,6 +256,7 @@ const ERPAttendanceScreen = ({ route, navigation }) => {
   // ─── Attendance Detail Modal (subcategory tap) ────────────────────────────
   const [detailModal, setDetailModal] = React.useState({ visible: false, subCatName: '', erpCode: null, records: [], loading: false, error: null });
   const [historyFilter, setHistoryFilter] = React.useState('ALL'); // 'ALL', 'P', 'A'
+  const [activeCategoryFilter, setActiveCategoryFilter] = React.useState('ALL'); // 'ALL', 'THEORY', 'PRACTICAL', 'AETCOM', 'SDL'
   // ─── Today's Attendance Modal (eye icon) ─────────────────────────────────
   const [todayModal, setTodayModal] = React.useState({ visible: false, subjectName: '', rows: [], loading: false, error: null });
 
@@ -540,6 +551,12 @@ const ERPAttendanceScreen = ({ route, navigation }) => {
     };
 
     attendanceData.subjects.forEach(sub => {
+      if (activeCategoryFilter !== 'ALL') {
+        const subCat = getSubcategoryCategory(sub.name);
+        if (subCat !== activeCategoryFilter) {
+          return;
+        }
+      }
       const semRoman = roman[sub.semester - 1] || `${sub.semester}`;
       const phaseName = isMedical
         ? getMedicalPhaseForSubject(sub.name, sub.semester)
@@ -616,7 +633,7 @@ const ERPAttendanceScreen = ({ route, navigation }) => {
     });
 
     return finalGrouped;
-  }, [attendanceData.subjects, isMedical, currentPhaseName, semNum]);
+  }, [attendanceData.subjects, isMedical, currentPhaseName, semNum, activeCategoryFilter]);
 
   const activePhaseData = displayData[currentPhaseName];
   const activePhaseOverall = activePhaseData ? activePhaseData.overallPct : '-';
@@ -738,6 +755,44 @@ const ERPAttendanceScreen = ({ route, navigation }) => {
                 {activePhaseOverall === '-' ? 'No attendance records available.' : (activePhaseOverall >= 75 ? 'You are above the 75% minimum criteria. Keep it up!' : 'Warning: Your attendance is below the 75% minimum criteria.')}
               </Text>
             </LinearGradient>
+          </View>
+
+          {/* Main Category Filter Chips */}
+          <View style={[styles.sectionContainer, { marginBottom: 4 }]}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingBottom: 4 }}>
+              {[
+                { key: 'ALL', label: 'All' },
+                { key: 'THEORY', label: 'Theory' },
+                { key: 'PRACTICAL', label: 'Practical & Clinic' },
+                { key: 'AETCOM', label: 'AETCOM' },
+                { key: 'SDL', label: 'SDL' }
+              ].map((item) => {
+                const isActive = activeCategoryFilter === item.key;
+                const activeColor = colors.primary;
+                return (
+                  <TouchableOpacity
+                    key={item.key}
+                    onPress={() => setActiveCategoryFilter(item.key)}
+                    style={{
+                      paddingHorizontal: 16,
+                      paddingVertical: 8,
+                      borderRadius: 20,
+                      backgroundColor: isActive ? activeColor + '20' : (isDark ? 'rgba(255,255,255,0.04)' : '#F3F4F6'),
+                      borderColor: isActive ? activeColor : 'transparent',
+                      borderWidth: 1,
+                    }}
+                  >
+                    <Text style={{
+                      fontSize: 13,
+                      fontWeight: '700',
+                      color: isActive ? activeColor : colors.textSecondary,
+                    }}>
+                      {item.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
           </View>
 
           {/* Subject-wise Breakdown Accordions */}
