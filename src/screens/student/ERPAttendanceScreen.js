@@ -226,6 +226,7 @@ const ERP_SUBJECT_MAP = {
   "BIOCHEMISTRY-PRACTICAL": "84400",
   "COMMUNITY MEDICINE-THEORY": "84401",
   "COMMUNITY MEDICINE-PRACTICAL": "84402",
+  "PANDEMIC MODULE-MICROBOLOGY": "84403",
   "PANDEMIC MODULE-MICROBIOLOGY": "84403",
   "ECE-ANATOMY": "84404",
   "ECE-PHYSIOLOGY": "84405",
@@ -414,25 +415,36 @@ const ERPAttendanceScreen = ({ route, navigation }) => {
   }, [studentUid]);
 
   const roman = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
-  const semNum = parseInt(user?.semester) || 7;
   const isMedical = user?.course?.replace(/\./g, '').toUpperCase().includes('MBBS') || user?.category?.toLowerCase() === 'medical';
-  const getPhaseRomanLocal = (sem) => {
-    const s = parseInt(sem);
-    if (s <= 2) return 'I';
-    if (s <= 4) return 'II';
-    if (s <= 6) return 'III';
-    return 'IV';
-  };
-  const getMedicalProfNameFromSemLocal = (sem) => {
-    const s = parseInt(sem);
-    if (s <= 2) return '1st Prof';
-    if (s <= 4) return '2nd Prof';
-    if (s <= 6) return '3rd Prof Part I';
+
+  // For MBBS students: use current_year (= ERP phase 1/2/3/4) directly.
+  // The backend sets current_year = batch phase from the ERP, never from academic records.
+  // semester is intentionally null for MBBS students — do NOT use it.
+  const getMedicalProfNameFromYear = (yr) => {
+    const y = parseInt(yr) || 1;
+    if (y <= 1) return '1st Prof';
+    if (y === 2) return '2nd Prof';
+    if (y === 3) return '3rd Prof Part I';
     return '3rd Prof Part II';
   };
-  const currentSemRoman = roman[semNum - 1] || 'VII';
-  const currentPhaseName = isMedical ? getMedicalProfNameFromSemLocal(semNum) : `Semester ${currentSemRoman}`;
-  const displaySem = isMedical ? getPhaseRomanLocal(semNum) : currentSemRoman;
+  const getMedicalProfNameFromSemLocal = getMedicalProfNameFromYear; // keep alias for internal use
+
+  const getPhaseRomanLocal = (yr) => {
+    const y = parseInt(yr) || 1;
+    if (y <= 1) return 'I';
+    if (y === 2) return 'II';
+    if (y === 3) return 'III';
+    return 'IV';
+  };
+
+  // medYear: ERP phase (1=1st Prof, 2=2nd Prof, 3=3rd Prof Part I, 4=3rd Prof Part II)
+  const medYear = parseInt(user?.current_year) || parseInt(user?.year) || 1;
+  // semNum: only used for non-medical semester display
+  const semNum = isMedical ? (medYear * 2 - 1) : (parseInt(user?.semester) || 1);
+
+  const currentSemRoman = roman[semNum - 1] || 'I';
+  const currentPhaseName = isMedical ? getMedicalProfNameFromYear(medYear) : `Semester ${currentSemRoman}`;
+  const displaySem = isMedical ? getPhaseRomanLocal(medYear) : currentSemRoman;
   const termLabel = isMedical ? 'Phase' : 'Semester';
 
   React.useEffect(() => {
