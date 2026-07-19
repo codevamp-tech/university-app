@@ -533,8 +533,11 @@ const ERPAttendanceScreen = ({ route, navigation }) => {
     }
 
     const grouped = {};
+    const ALL_MEDICAL_PHASES = ['1st Prof', '2nd Prof', '3rd Prof Part I', '3rd Prof Part II'];
+    // For MBBS, only show phases up to (and including) the student's current phase
+    const currentPhaseIdx = isMedical ? ALL_MEDICAL_PHASES.indexOf(currentPhaseName) : -1;
     const order = isMedical
-      ? ['1st Prof', '2nd Prof', '3rd Prof Part I', '3rd Prof Part II']
+      ? ALL_MEDICAL_PHASES.slice(0, currentPhaseIdx + 1)
       : roman.slice(0, semNum).map(sem => `Semester ${sem}`);
 
     // Pre-initialize groupings up to current semester / year
@@ -623,6 +626,12 @@ const ERPAttendanceScreen = ({ route, navigation }) => {
         ? getMedicalPhaseForSubject(parentNameForPhase, sub.semester)
         : `Semester ${semRoman}`;
 
+      // Skip subjects that belong to a future phase (beyond student's current year)
+      if (isMedical) {
+        const subPhaseIdx = ALL_MEDICAL_PHASES.indexOf(phaseName);
+        if (subPhaseIdx > currentPhaseIdx) return;
+      }
+
       if (!grouped[phaseName]) {
         grouped[phaseName] = {
           label: phaseName === currentPhaseName ? 'Ongoing' : (order.indexOf(phaseName) < order.indexOf(currentPhaseName) ? 'Completed' : 'Upcoming'),
@@ -637,9 +646,13 @@ const ERPAttendanceScreen = ({ route, navigation }) => {
       grouped[phaseName].count += 1;
     });
 
-    // Filter out groups with no subjects, but keep the current ongoing phase if it exists
+    // Filter out groups with no subjects, but keep the current ongoing phase if it exists.
+    // Also skip any phase that is beyond the student's current phase (out-of-year ERP data).
     const finalGrouped = {};
     Object.entries(grouped).forEach(([phase, data]) => {
+      const phaseIdx = isMedical ? ALL_MEDICAL_PHASES.indexOf(phase) : order.indexOf(phase);
+      const curIdx = isMedical ? ALL_MEDICAL_PHASES.indexOf(currentPhaseName) : order.indexOf(currentPhaseName);
+      if (phaseIdx > curIdx) return; // skip future phases
       if (data.count > 0 || phase === currentPhaseName) {
         const avg = data.count > 0 ? Math.round(data.percentageSum / data.count) : 0;
 
