@@ -428,20 +428,7 @@ const ERPHubScreen = ({ navigation }) => {
               </Text>
             </TouchableOpacity>
 
-            {/* Card 6: Faculty Personal Chat */}
-            <TouchableOpacity
-              style={[styles.gridCard, { backgroundColor: colors.card, borderColor: colors.border }]}
-              onPress={() => navigation.navigate('StudentFacultyDirectory')}
-              activeOpacity={0.85}
-            >
-              <LinearGradient colors={isDark ? ['#581C87', '#7E22CE'] : ['#F3E8FF', '#E9D5FF']} style={styles.gridIconBg}>
-                <MaterialCommunityIcons name="account-tie-outline" size={24} color={isDark ? '#C084FC' : '#7E22CE'} />
-              </LinearGradient>
-              <Text style={[styles.gridCardTitle, { color: colors.textPrimary }]} numberOfLines={1}>Faculty Chat</Text>
-              <Text style={[styles.gridCardDesc, { color: colors.textSecondary }]} numberOfLines={1}>
-                Chat 1-on-1
-              </Text>
-            </TouchableOpacity>
+
 
             {/* Card 6: Documents */}
             <TouchableOpacity
