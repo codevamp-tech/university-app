@@ -104,6 +104,7 @@ import FacultyOfficialChatScreen from '../screens/teacher/FacultyOfficialChatScr
 import FacultyStudentsDirectoryScreen from '../screens/teacher/FacultyStudentsDirectoryScreen';
 import UGLogbookScreen from '../screens/teacher/UGLogbookScreen';
 import PGLogbookScreen from '../screens/teacher/PGLogbookScreen';
+import StudentFacultyDirectoryScreen from '../screens/student/FacultyDirectoryScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -168,6 +169,7 @@ const AppNavigator = () => {
       {/* Global Modals / Shared Screens */}
       <Stack.Screen name="OtherStudentProfile" component={AdminStudentProfileScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="DMConversation" component={DMConversationScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="StudentFacultyDirectory" component={StudentFacultyDirectoryScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="RaiseIssue" component={RaiseIssueScreen} options={{ animation: 'slide_from_bottom' }} />
       <Stack.Screen name="SkillGapTest" component={SkillGapTestScreen} options={{ animation: 'slide_from_bottom' }} />
       <Stack.Screen name="DeepDiveAnalysis" component={DeepDiveAnalysisScreen} options={{ animation: 'slide_from_right' }} />

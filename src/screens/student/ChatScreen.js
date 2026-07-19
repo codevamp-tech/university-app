@@ -79,9 +79,9 @@ export function getPortalSubjects(user) {
 // ── Default channels shown before API loads ──────────────────────────────────
 const DEFAULT_CHANNELS = [
   { id: 'official-batch-chat', name: 'Official Batch Chat', slug: 'official-batch-chat', icon: 'chat-outline', desc: 'Sync of ERP Official Batch Chat 🏛️' },
-  { id: null, name: 'Campus Pulse',    slug: 'campus-pulse',    icon: 'lightning-bolt', desc: 'Daily campus life & vibes 🎓' },
-  { id: null, name: 'Career Launchpad',slug: 'career-launchpad', icon: 'rocket-launch',  desc: 'Placements, internships & prep 🚀' },
-  { id: null, name: "Maker's Den",     slug: 'makers-den',      icon: 'hammer-wrench',  desc: 'Hackathons & side projects 🛠️' },
+  { id: null, name: 'Campus Pulse', slug: 'campus-pulse', icon: 'lightning-bolt', desc: 'Daily campus life & vibes 🎓' },
+  { id: null, name: 'Career Launchpad', slug: 'career-launchpad', icon: 'rocket-launch', desc: 'Placements, internships & prep 🚀' },
+  { id: null, name: "Maker's Den", slug: 'makers-den', icon: 'hammer-wrench', desc: 'Hackathons & side projects 🛠️' },
 ];
 
 const ChatSkeletonLoader = ({ isDark }) => {
@@ -203,7 +203,7 @@ const ChatScreen = ({ navigation, route }) => {
     joinChannel(activeChannel.id);
     getChannelHistoryAPI(accessToken, activeChannel.id).then((history) => {
       if (history?.length) loadChannelHistory(activeChannel.id, history);
-    }).catch(() => {});
+    }).catch(() => { });
   }, [activeChannel?.id]);
 
   // ── Load legacy portal messages ───────────────────────────────────────────
@@ -248,7 +248,7 @@ const ChatScreen = ({ navigation, route }) => {
           const batchYear = isSuperAdmin ? selectedBatch : (user?.batch_year || user?.batch || '2025');
           const batchYearStr = String(batchYear).trim();
           const isBCBatch = ['2024', '2025', '2026'].includes(batchYearStr);
-          
+
           const currentSubcode = (activePortalSubject.department === 'BIOCHEMISTRY')
             ? (isBCBatch ? 'BC' : 'BI')
             : activePortalSubject.subcode;
@@ -450,7 +450,7 @@ const ChatScreen = ({ navigation, route }) => {
               calculatedCbme = String(bNum - 1);
             }
           }
-        } catch {}
+        } catch { }
 
         const payload = {
           chatid: 0,
@@ -533,10 +533,10 @@ const ChatScreen = ({ navigation, route }) => {
       timeText = item.timestamp || '';
       avatarSource = { uri: getAvatarUrl(item.ChatFacId || item.StudentName || 'u') };
     } else {
-      isMe = item.user?._id === user?.user_id || 
-             item.user?._id === user?.id || 
-             item.user?.user_id === user?.user_id || 
-             item.user?.user_id === user?.id;
+      isMe = item.user?._id === user?.user_id ||
+        item.user?._id === user?.id ||
+        item.user?.user_id === user?.user_id ||
+        item.user?.user_id === user?.id;
       senderName = item.user?.name || 'Student';
       messageText = item.text || '';
       timeText = item.createdAt ? new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
@@ -569,8 +569,8 @@ const ChatScreen = ({ navigation, route }) => {
           )}
           <Text style={[styles.bubbleText, { color: isMe ? '#FFFFFF' : colors.textPrimary }]}>{messageText}</Text>
           {item.attachment ? (
-            <TouchableOpacity 
-              style={styles.attachmentButton} 
+            <TouchableOpacity
+              style={styles.attachmentButton}
               activeOpacity={0.8}
               onPress={() => handleAttachmentPress(item.attachment, item.department)}
             >
@@ -715,10 +715,10 @@ const ChatScreen = ({ navigation, route }) => {
       {/* Selected Attachment preview bar */}
       {selectedAttachment && (
         <View style={[styles.attachmentPreviewBar, { backgroundColor: isDark ? 'rgba(234,88,12,0.1)' : '#FFF7ED', borderTopColor: colors.border }]}>
-          <Ionicons 
-            name={selectedAttachment.type === 'image' ? 'image-outline' : 'document-text-outline'} 
-            size={18} 
-            color={colors.primary} 
+          <Ionicons
+            name={selectedAttachment.type === 'image' ? 'image-outline' : 'document-text-outline'}
+            size={18}
+            color={colors.primary}
           />
           <Text style={[styles.attachmentPreviewText, { color: colors.primary }]} numberOfLines={1}>
             {selectedAttachment.name}
@@ -743,7 +743,7 @@ const ChatScreen = ({ navigation, route }) => {
           ]}
           value={inputText}
           onChangeText={setInputText}
-          placeholder={activeChannel?.id === 'official-batch-chat' ? `Message Dr. ${activePortalSubject.facultyName.toLowerCase().split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}...` : `Message #${activeChannel?.slug || 'campus-pulse'}`}
+          placeholder={activeChannel?.id === 'official-batch-chat' ? `Message ${activePortalSubject.facultyName.toLowerCase().split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}...` : `Message #${activeChannel?.slug || 'campus-pulse'}`}
           placeholderTextColor={colors.textSecondary}
           multiline
           maxLength={1000}
@@ -914,7 +914,7 @@ const ChatScreen = ({ navigation, route }) => {
             <Text style={[styles.footerText, { color: colors.textSecondary }]}>Notifications</Text>
           </TouchableOpacity>
         </View>
-    </Animated.View>
+      </Animated.View>
     </KeyboardAvoidingView>
   );
 };

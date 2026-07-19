@@ -431,7 +431,7 @@ const ERPHubScreen = ({ navigation }) => {
             {/* Card 6: Faculty Personal Chat */}
             <TouchableOpacity
               style={[styles.gridCard, { backgroundColor: colors.card, borderColor: colors.border }]}
-              onPress={() => navigation.navigate('Chat', { openDrawer: true })}
+              onPress={() => navigation.navigate('StudentFacultyDirectory')}
               activeOpacity={0.85}
             >
               <LinearGradient colors={isDark ? ['#581C87', '#7E22CE'] : ['#F3E8FF', '#E9D5FF']} style={styles.gridIconBg}>

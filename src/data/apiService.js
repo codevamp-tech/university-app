@@ -1518,6 +1518,18 @@ export async function getDMContactsAPI(token) {
   }
 }
 
+export async function getFacultyContactsAPI(token) {
+  try {
+    const res = await apiCall('/api/v1/chat/faculty', {
+      headers: authHeaders(token),
+    });
+    return unwrap(res, []);
+  } catch(e) {
+    console.warn('[Chat] getFacultyContactsAPI failed:', e?.message);
+    return [];
+  }
+}
+
 export async function getDMHistoryAPI(token, userId, limit = 50, source = 'social') {
   try {
     const res = await apiCall(`/api/v1/chat/dms/${userId}/history?limit=${limit}&source=${source}`, {
