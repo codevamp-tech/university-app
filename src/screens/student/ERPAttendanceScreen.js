@@ -308,6 +308,7 @@ const ERPAttendanceScreen = ({ route, navigation }) => {
   const isFaculty = contextUser && contextUser.role === 'teacher';
 
   const [apiAttendance, setApiAttendance] = React.useState(null);
+  const [dynamicSubjectCodes, setDynamicSubjectCodes] = React.useState({});
   const [loading, setLoading] = React.useState(true);
 
   const [expandedPhase, setExpandedPhase] = React.useState(null);
@@ -468,6 +469,47 @@ const ERPAttendanceScreen = ({ route, navigation }) => {
     }
     try {
       const studentId = user?.rollno || user?.username || user?.id;
+
+      // Fetch dynamic subject codes based on student's batch
+      try {
+        let ddl_batch = "66"; // default to Phase 1 (2025 batch)
+        if (isMedical) {
+          if (medYear === 1) ddl_batch = "66";
+          else if (medYear === 2) ddl_batch = "63";
+          else if (medYear === 3) ddl_batch = "60";
+          else if (medYear === 4) ddl_batch = "57";
+        } else if (user?.batch_year) {
+          ddl_batch = String(2026 - parseInt(user.batch_year) + 65);
+        }
+
+        const getSubResp = await fetch('https://myportal.srms.ac.in/SRMSERP/Registration/getsub', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            colgcd: "11",
+            coursecd: "1",
+            ddl_batch: ddl_batch,
+            ddl_branch: "1",
+            ddl_sec: "1",
+            ddl_sem: isMedical ? "1" : String(semNum),
+            lactdt: "2022-05-01",
+            dtt: new Date().toISOString().split('T')[0]
+          }),
+        });
+        const subList = await getSubResp.json();
+        const subListData = Array.isArray(subList) ? subList : (subList?.d ? JSON.parse(subList.d) : []);
+        
+        const dynamicMap = {};
+        subListData.forEach(s => {
+          if (s.sub_name && s.sub_cd) {
+            dynamicMap[s.sub_name.toUpperCase().trim()] = s.sub_cd;
+          }
+        });
+        setDynamicSubjectCodes(dynamicMap);
+      } catch (subErr) {
+        console.warn('[AttendanceScreen] Failed to fetch dynamic subject codes:', subErr);
+      }
+
       const data = await getAttendance(accessToken, studentId, force);
       if (data && data.length > 0) {
         // Filter out exam/sessional components (where attendance_pct is null or undefined)
@@ -522,7 +564,7 @@ const ERPAttendanceScreen = ({ route, navigation }) => {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [accessToken, user?.rollno, user?.id, user?.username, user?.attendance]);
+  }, [accessToken, user?.rollno, user?.id, user?.username, user?.attendance, isMedical, medYear, semNum, user?.batch_year]);
 
   React.useEffect(() => {
     fetchAttendance(false);
@@ -681,7 +723,8 @@ const ERPAttendanceScreen = ({ route, navigation }) => {
               subCategories: []
             };
           }
-          const realCode = ERP_SUBJECT_MAP[(sub.name || '').toUpperCase().trim()] || sub.code;
+          const subNameUpper = (sub.name || '').toUpperCase().trim();
+          const realCode = dynamicSubjectCodes[subNameUpper] || ERP_SUBJECT_MAP[subNameUpper] || sub.code;
           parentMap[parentName].subCategories.push({ ...sub, erpCode: realCode });
           parentMap[parentName].percentageSum += sub.percentage;
           parentMap[parentName].count += 1;
@@ -719,7 +762,7 @@ const ERPAttendanceScreen = ({ route, navigation }) => {
     });
 
     return finalGrouped;
-  }, [attendanceData.subjects, isMedical, currentPhaseName, semNum, activeCategoryFilter]);
+  }, [attendanceData.subjects, isMedical, currentPhaseName, semNum, activeCategoryFilter, dynamicSubjectCodes]);
 
   const activePhaseData = displayData[currentPhaseName];
   const activePhaseOverall = activePhaseData ? activePhaseData.overallPct : '-';
