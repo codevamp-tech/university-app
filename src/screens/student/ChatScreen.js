@@ -3,7 +3,7 @@ import {
   View, Text, StyleSheet, TouchableOpacity, Image,
   Animated, Pressable, Dimensions, Platform, Alert,
   FlatList, TextInput, KeyboardAvoidingView, ActivityIndicator, ScrollView,
-  Linking,
+  Linking, Modal,
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -30,49 +30,63 @@ const DRAWER_WIDTH = width * 0.78;
 
 export function getPortalSubjects(user) {
   let yearNum = 1;
-  if (user?.year) {
-    const match = user.year.toString().match(/\d+/);
-    if (match) yearNum = parseInt(match[0]);
-  } else if (user?.current_year) {
-    const match = user.current_year.toString().match(/\d+/);
-    if (match) yearNum = parseInt(match[0]);
+  
+  const getCleanYear = (val) => {
+    if (!val) return null;
+    const match = val.toString().match(/\d+/);
+    if (match) {
+      const num = parseInt(match[0], 10);
+      if (num < 10) return num; // Ignore 4-digit calendar years like 2024, 2025
+    }
+    return null;
+  };
+
+  const resolvedYear = getCleanYear(user?.current_year) || getCleanYear(user?.year);
+  if (resolvedYear) {
+    yearNum = resolvedYear;
   } else if (user?.semester) {
-    yearNum = Math.ceil(parseInt(user.semester) / 2);
+    yearNum = Math.ceil(parseInt(user.semester, 10) / 2);
   }
 
   if (yearNum === 2) {
     return [
       { id: 'Pathology-ShanuGupta', name: 'Pathology', subcode: 'PA', department: 'PATHOLOGY', facultyId: '202011250', facultyName: 'SHANU GUPTA' },
-      { id: 'Pathology-TanuAgrawal', name: 'Pathology (Clinical)', subcode: 'PA', department: 'PATHOLOGY', facultyId: 'D/07/023', facultyName: 'TANU AGRAWAL' },
       { id: 'Pharmacology-RajeshKumar', name: 'Pharmacology', subcode: 'PH', department: 'PHARMACOLOGY', facultyId: 'D/09/012', facultyName: 'DR. RAJESH KUMAR' },
-      { id: 'Microbiology-AmitSingh', name: 'Microbiology', subcode: 'MI', department: 'MICROBIOLOGY', facultyId: 'D/09/013', facultyName: 'DR. AMIT SINGH' },
-      { id: 'ForensicMedicine-NehaSharma', name: 'Forensic Medicine', subcode: 'FM', department: 'FORENSIC MEDICINE', facultyId: 'D/09/014', facultyName: 'DR. NEHA SHARMA' },
+      { id: 'Microbiology-AmitSingh', name: 'Microbiology', subcode: 'MI', department: 'MICROBIOLOGY', facultyId: 'D/09/013', facultyName: 'DR. AMIT SINGH' }
     ];
   }
 
   if (yearNum === 3) {
     return [
-      { id: 'ENT-SanjayBansal', name: 'ENT', subcode: 'ENT', department: 'ENT', facultyId: 'D/08/041', facultyName: 'DR. SANJAY BANSAL' },
-      { id: 'Ophthalmology-MeenakshiJain', name: 'Ophthalmology', subcode: 'OP', department: 'OPHTHALMOLOGY', facultyId: 'D/08/042', facultyName: 'DR. MEENAKSHI JAIN' },
-      { id: 'CommunityMedicine-VikasChandra', name: 'Community Medicine', subcode: 'CM', department: 'COMMUNITY MEDICINE', facultyId: 'D/08/043', facultyName: 'DR. VIKAS CHANDRA' },
+      { id: 'ForensicMedicine-NehaSharma', name: 'FORENSIC MEDICINE', subcode: 'FM', department: 'FORENSIC MEDICINE', facultyId: 'D/09/014', facultyName: 'DR. NEHA SHARMA' },
+      { id: 'CommunityMedicine-VikasChandra', name: 'Community Medicine', subcode: 'CM', department: 'COMMUNITY MEDICINE', facultyId: 'D/08/043', facultyName: 'DR. VIKAS CHANDRA' }
     ];
   }
 
   if (yearNum >= 4) {
     return [
-      { id: 'Paediatrics-SandhyaChauhan', name: 'Paediatrics', subcode: 'PE', department: 'PAEDIATRICS', facultyId: 'D/11/048', facultyName: 'SANDHYA CHAUHAN' },
-      { id: 'Medicine-AKSingh', name: 'General Medicine', subcode: 'GM', department: 'GENERAL MEDICINE', facultyId: 'D/07/011', facultyName: 'DR. A.K. SINGH' },
-      { id: 'Surgery-PKJain', name: 'General Surgery', subcode: 'GS', department: 'GENERAL SURGERY', facultyId: 'D/07/012', facultyName: 'DR. P.K. JAIN' },
-      { id: 'OBG-RuchiGupta', name: 'Obstetrics & Gynecology', subcode: 'OBG', department: 'OBGY', facultyId: 'D/07/013', facultyName: 'DR. RUCHI GUPTA' },
+      { id: 'Medicine-AKSingh', name: 'General Medicine', subcode: 'IM', department: 'GENERAL MEDICINE', facultyId: 'D/07/011', facultyName: 'DR. A.K. SINGH' },
+      { id: 'Surgery-PKJain', name: 'GENERAL SURGERY', subcode: 'SU', department: 'GENERAL SURGERY', facultyId: 'D/07/012', facultyName: 'DR. P.K. JAIN' },
+      { id: 'Paediatrics-SandhyaChauhan', name: 'PAEDIATRICS', subcode: 'PE', department: 'PAEDIATRICS', facultyId: 'D/11/048', facultyName: 'SANDHYA CHAUHAN' },
+      { id: 'OBG-RuchiGupta', name: 'Obstetrics & Gynaecology', subcode: 'OG', department: 'OBGY', facultyId: 'D/07/013', facultyName: 'DR. RUCHI GUPTA' },
+      { id: 'Ortho-DrOrtho', name: 'Orthopedics', subcode: 'OR', department: 'ORTHOPAEDICS', facultyId: 'D/08/050', facultyName: 'DR. ORTHO FACULTY' },
+      { id: 'ENT-SanjayBansal', name: 'Otorhinolaryngology', subcode: 'EN', department: 'ENT', facultyId: 'D/08/041', facultyName: 'DR. SANJAY BANSAL' },
+      { id: 'Ophthalmology-MeenakshiJain', name: 'Ophthalmology', subcode: 'OP', department: 'OPHTHALMOLOGY', facultyId: 'D/08/042', facultyName: 'DR. MEENAKSHI JAIN' },
+      { id: 'Derma-DrDerma', name: 'Dermatology, Venereology & Leprosy', subcode: 'DR', department: 'DERMATOLOGY', facultyId: 'D/08/051', facultyName: 'DR. DERMA FACULTY' },
+      { id: 'Psychiatry-DrPsychiatry', name: 'Psychiatry', subcode: 'PS', department: 'PSYCHIATRY', facultyId: 'D/08/052', facultyName: 'DR. PSYCHIATRY FACULTY' },
+      { id: 'Radio-DrRadio', name: 'Radiodiagnosis', subcode: 'RD', department: 'RADIODIAGNOSIS', facultyId: 'D/08/053', facultyName: 'DR. RADIOLOGY FACULTY' },
+      { id: 'Anesthesia-DrAnesthesia', name: 'Anesthesiology', subcode: 'AS', department: 'ANESTHESIOLOGY', facultyId: 'D/08/054', facultyName: 'DR. ANESTHESIA FACULTY' },
+      { id: 'Respi-DrRespi', name: 'Respiratory Medicine', subcode: 'CT', department: 'RESPIRATORY MEDICINE', facultyId: 'D/08/055', facultyName: 'DR. RESPI FACULTY' },
+      { id: 'Dentistry-DrDentistry', name: 'Dentistry', subcode: 'DE', department: 'DENTISTRY', facultyId: 'D/08/056', facultyName: 'DR. DENTISTRY FACULTY' },
+      { id: 'PMR-DrPmr', name: 'Physical Medicine & Rehabilitation', subcode: 'PM', department: 'PMR', facultyId: 'D/08/057', facultyName: 'DR. PMR FACULTY' }
     ];
   }
 
   // Default to Phase 1 (Year 1)
   return [
-    { id: 'Physiology-BinduGarg', name: 'Physiology', subcode: 'PY', department: 'PHYSIOLOGY', facultyId: '202314130', facultyName: 'BINDU GARG' },
-    { id: 'Physiology-KranthiKumar', name: 'Physiology (Lab/Clinical)', subcode: 'PY', department: 'PHYSIOLOGY', facultyId: 'D/11/093', facultyName: 'KRANTHI KUMAR GARIKAPATI' },
     { id: 'Anatomy-AnandKumar', name: 'Anatomy', subcode: 'AN', department: 'ANATOMY', facultyId: 'D/11/094', facultyName: 'ANAND KUMAR' },
-    { id: 'Biochemistry-ShaliniGupta', name: 'Biochemistry', subcode: 'BI', department: 'BIOCHEMISTRY', facultyId: 'D/11/095', facultyName: 'SHALINI GUPTA' }
+    { id: 'Physiology-BinduGarg', name: 'Physiology', subcode: 'PY', department: 'PHYSIOLOGY', facultyId: '202314130', facultyName: 'BINDU GARG' },
+    { id: 'Biochemistry-ShaliniGupta', name: 'Biochemistry_(CBME 2024)', subcode: 'BC', department: 'BIOCHEMISTRY', facultyId: 'D/11/095', facultyName: 'SHALINI GUPTA' }
   ];
 }
 
@@ -140,10 +154,14 @@ const ChatScreen = ({ navigation, route }) => {
   const [selectedAttachment, setSelectedAttachment] = useState(null);
   const portalSubjects = React.useMemo(() => getPortalSubjects(user), [user]);
   const [activePortalSubject, setActivePortalSubject] = useState(() => getPortalSubjects(user)[0]);
+  const [showSubjectDropdown, setShowSubjectDropdown] = useState(false);
 
   useEffect(() => {
     if (portalSubjects.length > 0) {
-      setActivePortalSubject(portalSubjects[0]);
+      const exists = portalSubjects.some(sub => sub.id === activePortalSubject?.id);
+      if (!exists) {
+        setActivePortalSubject(portalSubjects[0]);
+      }
     }
   }, [portalSubjects]);
 
@@ -627,36 +645,32 @@ const ChatScreen = ({ navigation, route }) => {
         </View>
 
         {activeChannel?.id === 'official-batch-chat' && (
-          <View style={[styles.subjectSelector, { borderBottomColor: colors.border, backgroundColor: isDark ? colors.card : '#F3F4F6' }]}>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.subjectScrollContent}>
+          <View style={[styles.dropdownContainer, { borderBottomColor: colors.border, backgroundColor: isDark ? colors.card : '#F8FAFC' }]}>
+            <Text style={[styles.dropdownLabel, { color: colors.textSecondary }]}>Subject Chat Filter:</Text>
+            <TouchableOpacity
+              onPress={() => setShowSubjectDropdown(true)}
+              style={[styles.dropdownButton, { backgroundColor: isDark ? '#1F2937' : '#FFFFFF', borderColor: colors.border }]}
+              activeOpacity={0.7}
+            >
               {(() => {
                 const batchYear = isSuperAdmin ? selectedBatch : (user?.batch_year || user?.batch || '2025');
                 const batchYearStr = String(batchYear).trim();
                 const isBCBatch = ['2024', '2025', '2026'].includes(batchYearStr);
-
-                return portalSubjects.map((sub) => {
-                  const isSel = activePortalSubject?.id === sub.id;
-                  const resolvedSubcode = sub.department === 'BIOCHEMISTRY'
-                    ? (isBCBatch ? 'BC' : 'BI')
-                    : sub.subcode;
-
-                  return (
-                    <TouchableOpacity
-                      key={sub.id}
-                      style={[
-                        styles.subjectPill,
-                        { backgroundColor: isSel ? colors.primary : (isDark ? '#1F2937' : '#FFFFFF'), borderColor: isSel ? colors.primary : colors.border }
-                      ]}
-                      onPress={() => setActivePortalSubject({ ...sub, subcode: resolvedSubcode })}
-                    >
-                      <Text style={[styles.subjectPillText, { color: isSel ? '#FFFFFF' : colors.textPrimary }]}>
-                        {sub.name} ({resolvedSubcode})
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                });
+                const displayName = activePortalSubject?.department === 'BIOCHEMISTRY'
+                  ? (isBCBatch ? 'Biochemistry_(CBME 2024)' : 'Biochemistry_(CBME 2019)')
+                  : activePortalSubject?.name;
+                const displaySubcode = activePortalSubject?.department === 'BIOCHEMISTRY'
+                  ? (isBCBatch ? 'BC' : 'BI')
+                  : activePortalSubject?.subcode;
+                
+                return (
+                  <Text style={[styles.dropdownButtonText, { color: colors.textPrimary }]}>
+                    {displayName || 'Select Subject'} ({displaySubcode})
+                  </Text>
+                );
               })()}
-            </ScrollView>
+              <Ionicons name="chevron-down" size={16} color={colors.textSecondary} />
+            </TouchableOpacity>
           </View>
         )}
 
@@ -915,6 +929,62 @@ const ChatScreen = ({ navigation, route }) => {
           </TouchableOpacity>
         </View>
       </Animated.View>
+
+      {/* Subject Selector Dropdown Modal */}
+      <Modal
+        visible={showSubjectDropdown}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowSubjectDropdown(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowSubjectDropdown(false)}
+        >
+          <View style={[styles.dropdownMenu, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <Text style={[styles.dropdownMenuTitle, { color: colors.textPrimary }]}>Choose Subject</Text>
+            <ScrollView style={{ maxHeight: 300 }}>
+              {portalSubjects.map((sub) => {
+                const batchYear = isSuperAdmin ? selectedBatch : (user?.batch_year || user?.batch || '2025');
+                const batchYearStr = String(batchYear).trim();
+                const isBCBatch = ['2024', '2025', '2026'].includes(batchYearStr);
+                
+                const resolvedName = sub.department === 'BIOCHEMISTRY'
+                  ? (isBCBatch ? 'Biochemistry_(CBME 2024)' : 'Biochemistry_(CBME 2019)')
+                  : sub.name;
+                const resolvedSubcode = sub.department === 'BIOCHEMISTRY'
+                  ? (isBCBatch ? 'BC' : 'BI')
+                  : sub.subcode;
+                
+                const isSel = activePortalSubject?.id === sub.id;
+
+                return (
+                  <TouchableOpacity
+                    key={sub.id}
+                    style={[
+                      styles.dropdownItem,
+                      isSel && { backgroundColor: isDark ? 'rgba(234, 88, 12, 0.15)' : '#FFF7ED' }
+                    ]}
+                    onPress={() => {
+                      setActivePortalSubject({ ...sub, name: resolvedName, subcode: resolvedSubcode });
+                      setShowSubjectDropdown(false);
+                    }}
+                  >
+                    <Text style={[
+                      styles.dropdownItemText,
+                      { color: isSel ? colors.primary : colors.textPrimary, fontWeight: isSel ? '700' : '400' }
+                    ]}>
+                      {resolvedName} ({resolvedSubcode})
+                    </Text>
+                    {isSel && <Ionicons name="checkmark" size={18} color={colors.primary} />}
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </KeyboardAvoidingView>
   );
 };
@@ -1103,6 +1173,68 @@ const styles = StyleSheet.create({
     borderRadius: 21,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  dropdownContainer: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  dropdownLabel: {
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  dropdownButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    minWidth: 180,
+  },
+  dropdownButtonText: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  dropdownMenu: {
+    width: '80%',
+    borderRadius: 16,
+    borderWidth: 1,
+    paddingVertical: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 5,
+  },
+  dropdownMenuTitle: {
+    fontSize: 14,
+    fontWeight: '900',
+    paddingHorizontal: 16,
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.06)',
+    marginBottom: 8,
+  },
+  dropdownItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  dropdownItemText: {
+    fontSize: 14,
   },
 });
 

@@ -110,51 +110,109 @@ const SkeletonPhaseRow = ({ isDark }) => (
   </View>
 );
 
-const getParentSubjectName = (name) => {
-  const n = name.trim();
+const getParentSubjectName = (name, code) => {
+  const c = (code || '').trim().toUpperCase();
+  if (c === 'AN') return 'Anatomy';
+  if (c === 'PY') return 'Physiology';
+  if (c === 'BC') return 'Biochemistry_(CBME 2024)';
+  if (c === 'BI') return 'Biochemistry_(CBME 2019)';
+  if (c === 'PA') return 'Pathology';
+  if (c === 'PH') return 'Pharmacology';
+  if (c === 'MI') return 'Microbiology';
+  if (c === 'FM') return 'FORENSIC MEDICINE';
+  if (c === 'CM') return 'Community Medicine';
+  if (c === 'IM') return 'General Medicine';
+  if (c === 'SU') return 'GENERAL SURGERY';
+  if (c === 'PE') return 'PAEDIATRICS';
+  if (c === 'OG') return 'Obstetrics & Gynaecology';
+  if (c === 'OP') return 'Ophthalmology';
+  if (c === 'OR') return 'Orthopedics';
+  if (c === 'EN') return 'Otorhinolaryngology';
+  if (c === 'RD') return 'Radiodiagnosis';
+  if (c === 'DE') return 'Dentistry';
+  if (c === 'AS') return 'Anesthesiology';
+  if (c === 'DR') return 'Dermatology, Venereology & Leprosy';
+  if (c === 'CT') return 'Respiratory Medicine';
+  if (c === 'PS') return 'Psychiatry';
+  if (c === 'PM') return 'Physical Medicine & Rehabilitation';
+
+  const n = (name || '').trim();
   const lower = n.toLowerCase();
 
   if (lower.includes('anatomy')) return 'Anatomy';
   if (lower.includes('physiology')) return 'Physiology';
-  if (lower.includes('biochemistry')) return 'Biochemistry';
+  if (lower.includes('biochemistry')) {
+    if (lower.includes('2024')) return 'Biochemistry_(CBME 2024)';
+    if (lower.includes('2019')) return 'Biochemistry_(CBME 2019)';
+    return 'Biochemistry_(CBME 2024)';
+  }
   if (lower.includes('pathology')) return 'Pathology';
   if (lower.includes('pharmacology')) return 'Pharmacology';
-  if (lower.includes('microbiology')) return 'Microbiology';
-  if (lower.includes('forensic') || lower.includes('fmt')) return 'Forensic Medicine';
-  if (lower.includes('community medicine') || lower.includes('psm') || lower.includes('preventive')) return 'Community Medicine';
-  if (lower.includes('medicine')) return 'Medicine';
-  if (lower.includes('surgery')) return 'Surgery';
-  if (lower.includes('pediatrics') || lower.includes('paediatrics')) return 'Pediatrics';
-  if (lower.includes('obstetrics') || lower.includes('gynecology') || lower.includes('obg')) return 'Obstetrics & Gynecology';
-  if (lower.includes('ophthalmology') || lower.includes('eye')) return 'Ophthalmology';
-  if (lower.includes('ent') || lower.includes('ear')) return 'ENT';
+  if (lower.includes('microb')) return 'Microbiology';
+  if (lower.includes('forensic') || lower.includes('fmt')) return 'FORENSIC MEDICINE';
+  if (lower.includes('community') || lower.includes('preventive') || lower.includes('psm') || lower.includes('family') || lower.includes('fap')) return 'Community Medicine';
+  
+  if (lower.includes('medicine') && !lower.includes('forensic') && !lower.includes('community') && !lower.includes('preventive') && !lower.includes('respiratory') && !lower.includes('physical')) {
+    return 'General Medicine';
+  }
+  if (lower.includes('surgery')) return 'GENERAL SURGERY';
+  if (lower.includes('pediatrics') || lower.includes('paediatrics')) return 'PAEDIATRICS';
+  if (lower.includes('obstetrics') || lower.includes('gynecology') || lower.includes('gynaecology') || lower.includes('obg')) {
+    return 'Obstetrics & Gynaecology';
+  }
+  if (lower.includes('ortho')) return 'Orthopedics';
+  if (lower.includes('ent') || lower.includes('otorhinolaryngology')) return 'Otorhinolaryngology';
+  if (lower.includes('ophthalmology') || lower.includes('optha') || lower.includes('eye')) return 'Ophthalmology';
+  if (lower.includes('dermatology') || lower.includes('derma')) return 'Dermatology, Venereology & Leprosy';
+  if (lower.includes('psychiatry')) return 'Psychiatry';
+  if (lower.includes('radio') || lower.includes('x-ray')) return 'Radiodiagnosis';
+  if (lower.includes('anesthesia') || lower.includes('anaesthesia') || lower.includes('anesthesiology')) return 'Anesthesiology';
+  if (lower.includes('respiratory') || lower.includes('chest') || lower.includes('tb')) return 'Respiratory Medicine';
+  if (lower.includes('dentistry') || lower.includes('dental')) return 'Dentistry';
+  if (lower.includes('physical medicine') || lower.includes('pmr') || lower.includes('rehabilitation')) {
+    return 'Physical Medicine & Rehabilitation';
+  }
 
   return n.split(' ')[0];
 };
 
-// Standard MBBS abbreviation codes
+// Standard MBBS abbreviation codes matching GetXtraFeeAmt and user specification
 const SUBJECT_CODE_MAP = {
-  'Anatomy':              'AN',
-  'Physiology':           'PY',
-  'Biochemistry':         'BC',
-  'Community Medicine':   'CM',
-  'Pathology':            'PA',
-  'Pharmacology':         'PH',
-  'Microbiology':         'MI',
-  'Forensic Medicine':    'FM',
-  'Medicine':             'ME',
-  'Surgery':              'SU',
-  'Pediatrics':           'PE',
-  'Obstetrics & Gynecology': 'OG',
-  'Ophthalmology':        'OP',
-  'ENT':                  'EN',
-  'Orthopedics':          'OR',
-  'Dermatology':          'DE',
-  'Psychiatry':           'PS',
-  'Radiodiagnosis':       'RD',
-  'Anesthesia':           'AE',
-  'Respiratory Medicine': 'RM',
-  'Dentistry':            'DN',
+  'Anatomy':                            'AN',
+  'Physiology':                         'PY',
+  'Biochemistry_(CBME 2024)':           'BC',
+  'Biochemistry_(CBME 2019)':           'BI',
+  'Biochemistry':                       'BC',
+  'Community Medicine':                 'CM',
+  'Pathology':                          'PA',
+  'Pharmacology':                       'PH',
+  'Microbiology':                       'MI',
+  'FORENSIC MEDICINE':                  'FM',
+  'Forensic Medicine':                  'FM',
+  'General Medicine':                   'IM',
+  'Medicine':                           'IM',
+  'GENERAL SURGERY':                    'SU',
+  'Surgery':                            'SU',
+  'PAEDIATRICS':                        'PE',
+  'Pediatrics':                         'PE',
+  'Obstetrics & Gynaecology':           'OG',
+  'Obs and gynae':                      'OG',
+  'Ophthalmology':                      'OP',
+  'Optha':                              'OP',
+  'Orthopedics':                        'OR',
+  'Ortho':                              'OR',
+  'Otorhinolaryngology':                'EN',
+  'Ent':                                'EN',
+  'Radiodiagnosis':                     'RD',
+  'Dentistry':                          'DE',
+  'Anesthesiology':                     'AS',
+  'Anesthesia':                         'AS',
+  'Dermatology, Venereology & Leprosy': 'DR',
+  'Derma':                              'DR',
+  'Respiratory Medicine':               'CT',
+  'Respi':                              'CT',
+  'Psychiatry':                         'PS',
+  'Physical Medicine & Rehabilitation': 'PM',
 };
 const getSubjectCode = (parentName) => SUBJECT_CODE_MAP[parentName] || parentName.substring(0, 2).toUpperCase();
 
@@ -295,7 +353,7 @@ const ERPAttendanceScreen = ({ route, navigation }) => {
     };
   }, [detailModal.loading]);
 
-  const studentUid = user?.rollno || user?.id || user?.username || '';
+  const studentUid = user?.rollno || user?.username || user?.id || '';
 
   const openDetailModal = React.useCallback(async (subCatName, erpCode) => {
     setHistoryFilter('ALL');
@@ -397,7 +455,7 @@ const ERPAttendanceScreen = ({ route, navigation }) => {
       setLoading(true);
     }
     try {
-      const studentId = user?.rollno || user?.id || user?.username;
+      const studentId = user?.rollno || user?.username || user?.id;
       const data = await getAttendance(accessToken, studentId, force);
       if (data && data.length > 0) {
         // Filter out exam/sessional components (where attendance_pct is null or undefined)
@@ -490,8 +548,6 @@ const ERPAttendanceScreen = ({ route, navigation }) => {
     });
 
     // MBBS subject → canonical phase mapping (by subject name)
-    // Community Medicine appears in both 1st Prof (year 1) and 3rd Prof Part I (year 3),
-    // so it uses a semester-based tiebreaker.
     const MBBS_SUBJECT_PHASE = {
       // ── 1st Prof (1st Year) ───────────────────────────────────
       'anatomy': '1st Prof',
@@ -504,6 +560,8 @@ const ERPAttendanceScreen = ({ route, navigation }) => {
       // ── 3rd Prof Part I (3rd Year) ────────────────────────────
       'forensic': '3rd Prof Part I',
       'fmt': '3rd Prof Part I',
+      'community': '3rd Prof Part I',
+      'psm': '3rd Prof Part I',
       // ── 3rd Prof Part II (4th Year) ───────────────────────────
       'medicine': '3rd Prof Part II',
       'surgery': '3rd Prof Part II',
@@ -526,23 +584,24 @@ const ERPAttendanceScreen = ({ route, navigation }) => {
       'radiology': '3rd Prof Part II',
       'anesthesia': '3rd Prof Part II',
       'anaesthesia': '3rd Prof Part II',
+      'anesthesiology': '3rd Prof Part II',
       'respiratory': '3rd Prof Part II',
       'respi': '3rd Prof Part II',
       'dentistry': '3rd Prof Part II',
       'dental': '3rd Prof Part II',
-      'aetcom': '3rd Prof Part II', // AETCOM module standalone entries
+      'pmr': '3rd Prof Part II',
+      'physical medicine': '3rd Prof Part II',
+      'aetcom': '3rd Prof Part II', 
     };
 
     const getMedicalPhaseForSubject = (subName, semNumber) => {
       if (!isMedical) return null;
       const lower = (subName || '').toLowerCase();
 
-      // Community Medicine: semester 1-2 → 1st Prof, semester 5+ → 3rd Prof Part I
-      if (lower.includes('community medicine') || lower.includes('preventive') || lower.includes('psm')) {
-        return semNumber <= 2 ? '1st Prof' : '3rd Prof Part I';
-      }
+      // Check specific keywords first
+      if (lower.includes('forensic') || lower.includes('fmt')) return '3rd Prof Part I';
+      if (lower.includes('community') || lower.includes('psm') || lower.includes('preventive')) return '3rd Prof Part I';
 
-      // Check all other keywords
       for (const [keyword, phase] of Object.entries(MBBS_SUBJECT_PHASE)) {
         if (lower.includes(keyword)) return phase;
       }
@@ -559,8 +618,9 @@ const ERPAttendanceScreen = ({ route, navigation }) => {
         }
       }
       const semRoman = roman[sub.semester - 1] || `${sub.semester}`;
+      const parentNameForPhase = getParentSubjectName(sub.name, sub.code);
       const phaseName = isMedical
-        ? getMedicalPhaseForSubject(sub.name, sub.semester)
+        ? getMedicalPhaseForSubject(parentNameForPhase, sub.semester)
         : `Semester ${semRoman}`;
 
       if (!grouped[phaseName]) {
@@ -586,7 +646,7 @@ const ERPAttendanceScreen = ({ route, navigation }) => {
         // Group subjects by parent subject name
         const parentMap = {};
         data.subjects.forEach(sub => {
-          const parentName = getParentSubjectName(sub.name);
+          const parentName = getParentSubjectName(sub.name, sub.code);
           if (!parentMap[parentName]) {
             parentMap[parentName] = {
               name: parentName,

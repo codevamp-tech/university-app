@@ -46,6 +46,7 @@ import AddGigScreen from '../screens/student/AddGigScreen';
 import AddRequestScreen from '../screens/student/AddRequestScreen';
 import TheHustleScreen from '../screens/student/TheHustleScreen';
 import ERPTabs from './ERPTabs';
+import ERPFeesScreen from '../screens/student/ERPFeesScreen';
 import ChatScreen from '../screens/student/ChatScreen';
 import StudentSearchScreen from '../screens/student/StudentSearchScreen';
 import NotificationsScreen from '../screens/student/NotificationsScreen';
@@ -105,6 +106,9 @@ import FacultyStudentsDirectoryScreen from '../screens/teacher/FacultyStudentsDi
 import UGLogbookScreen from '../screens/teacher/UGLogbookScreen';
 import PGLogbookScreen from '../screens/teacher/PGLogbookScreen';
 import StudentFacultyDirectoryScreen from '../screens/student/FacultyDirectoryScreen';
+import FoundationLogbookScreen from '../screens/student/FoundationLogbookScreen';
+import FacultyFoundationScreen from '../screens/teacher/FacultyFoundationScreen';
+import FacultyStudentFoundationDetailScreen from '../screens/teacher/FacultyStudentFoundationDetailScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -158,6 +162,7 @@ const AppNavigator = () => {
       <Stack.Screen name="ProductDetail" component={ProductDetailScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="TheHustle" component={TheHustleScreen} options={{ animation: 'fade' }} />
       <Stack.Screen name="ERPHub" component={ERPTabs} options={{ animation: 'fade' }} />
+      <Stack.Screen name="ERPFees" component={ERPFeesScreen} options={{ animation: 'slide_from_right' }} />
 
       {/* Campus Food Ordering */}
       <Stack.Screen name="CampusBitesMenu" component={CampusBitesMenuScreen} options={{ animation: 'slide_from_bottom' }} />
@@ -230,6 +235,9 @@ const AppNavigator = () => {
       <Stack.Screen name="FacultyStudentsDirectory" component={FacultyStudentsDirectoryScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="UGLogbook" component={UGLogbookScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="PGLogbook" component={PGLogbookScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="FoundationLogbook" component={FoundationLogbookScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="FacultyFoundation" component={FacultyFoundationScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="FacultyStudentFoundationDetail" component={FacultyStudentFoundationDetailScreen} options={{ animation: 'slide_from_right' }} />
     </Stack.Navigator>
   );
 };

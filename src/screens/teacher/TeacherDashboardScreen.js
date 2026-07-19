@@ -609,7 +609,7 @@ const TeacherDashboardScreen = ({ navigation }) => {
           </TouchableOpacity>
         </View>
 
-        <View style={[styles.quickActionsContainer, { marginTop: -12, marginBottom: 24 }]}>
+        <View style={[styles.quickActionsContainer, { marginTop: -12 }]}>
           <TouchableOpacity
             style={styles.quickActionCard}
             onPress={() => navigation.navigate('FacultyStudentsDirectory')}
@@ -623,6 +623,30 @@ const TeacherDashboardScreen = ({ navigation }) => {
 
           <TouchableOpacity
             style={styles.quickActionCard}
+            onPress={() => navigation.navigate('FacultyFoundation')}
+            activeOpacity={0.8}
+          >
+            <View style={[styles.quickActionIconBg, { backgroundColor: '#F3E8FF' }]}>
+              <Ionicons name="library-outline" size={20} color="#7C3AED" />
+            </View>
+            <Text style={styles.quickActionLabel}>Foundation Log</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.quickActionCard}
+            onPress={() => navigation.navigate('FacultyOfficialChat')}
+            activeOpacity={0.8}
+          >
+            <View style={[styles.quickActionIconBg, { backgroundColor: '#E0F2FE' }]}>
+              <Ionicons name="chatbubbles-outline" size={20} color="#0369A1" />
+            </View>
+            <Text style={styles.quickActionLabel}>Portal Chats</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={[styles.quickActionsContainer, { marginTop: -12, marginBottom: 24 }]}>
+          <TouchableOpacity
+            style={styles.quickActionCard}
             onPress={() => navigation.navigate('RaiseIssue')}
             activeOpacity={0.8}
           >
@@ -634,14 +658,20 @@ const TeacherDashboardScreen = ({ navigation }) => {
 
           <TouchableOpacity
             style={styles.quickActionCard}
-            onPress={() => navigation.navigate('FacultyOfficialChat')}
+            onPress={() => navigation.navigate('SalarySlip')}
             activeOpacity={0.8}
           >
-            <View style={[styles.quickActionIconBg, { backgroundColor: '#F5F3FF' }]}>
-              <Ionicons name="chatbubbles-outline" size={20} color="#7C3AED" />
+            <View style={[styles.quickActionIconBg, { backgroundColor: '#FFF7ED' }]}>
+              <Ionicons name="receipt-outline" size={20} color="#EA580C" />
             </View>
-            <Text style={styles.quickActionLabel}>Portal Chats</Text>
+            <Text style={styles.quickActionLabel}>Salary Slip</Text>
           </TouchableOpacity>
+
+          {/* Spacer to align grid correctly */}
+          <View style={[styles.quickActionCard, { opacity: 0 }]} pointerEvents="none">
+            <View style={styles.quickActionIconBg} />
+            <Text style={styles.quickActionLabel}>Spacer</Text>
+          </View>
         </View>
 
         {/* Campus Fitness (same as student app) */}

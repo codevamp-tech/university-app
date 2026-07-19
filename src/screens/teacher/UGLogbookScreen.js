@@ -16,7 +16,10 @@ import {
   submitLogbookVerification,
   getStudentSubjectLogbook,
   submitReflectionVerification,
+  getFoundationData,
+  saveFoundationData,
 } from '../../data/apiService';
+
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -42,6 +45,7 @@ const EVENT_OPTIONS = [
   { value: 'Seminar', label: 'Seminar' },
   { value: 'ClinicalVisitDepartment', label: 'Visit to Clinical Department' },
 ];
+
 
 const GROUP_OPTIONS = [
   { value: 'A', label: 'A' },
@@ -472,12 +476,15 @@ const UGLogbookScreen = ({ navigation }) => {
     setActivitiesLoading(true);
     setSelectedActivity(null);
     try {
-      if (selectedEvent.value === 'RefSelfDirectedLearning') {
+      if (selectedEvent.value === 'RefSelfDirectedLearning' || selectedEvent.value === 'Foundation') {
+        const label = selectedEvent.value === 'Foundation'
+          ? 'Foundation Logbook'
+          : 'Reflection on Self Directed Learning';
         const list = [{
-          comp_code: "",
-          ActivityName: "Reflection on Self Directed Learning",
-          raw_activity_name: "Reflection on Self Directed Learning",
-          Activity: "Reflection on Self Directed Learning",
+          comp_code: '',
+          ActivityName: label,
+          raw_activity_name: label,
+          Activity: label,
         }];
         setActivities(list);
         setSelectedActivity(list[0]);
@@ -669,7 +676,77 @@ const UGLogbookScreen = ({ navigation }) => {
         setStudentList(pendingList);
         setVerifiedStudentList(verifiedList);
         setStudentsLoaded(true);
+      } else if (selectedEvent.value === 'Foundation') {
+        // ── Foundation Logbook: fetch student list then check their foundation entries ──
+        const batchcd = selectedPhase.value === '1' ? '66' : selectedPhase.value === '2' ? '63' : '60';
+        let querySubCode = subCode;
+        let queryPhase = selectedPhase.value;
+        if (batchcd === '60' || batchcd === '63') { querySubCode = 'PA'; queryPhase = '2'; }
+        else if (batchcd === '66') { querySubCode = 'PY'; queryPhase = '1'; }
+
+        const pendingData = await getLogbookStudents(accessToken, {
+          subCode: querySubCode,
+          compcode: '',
+          verifiedDt: dateStr,
+          gcd: selectedGroup.value,
+          phase: queryPhase,
+        });
+        const allStudents = Array.isArray(pendingData) ? pendingData : [];
+
+        // Fetch foundation entries for each student and find those submitted on the selected date
+        const studentsWithFoundation = await Promise.all(
+          allStudents.map(async (student) => {
+            try {
+              const studentName = student.Student_Name || '';
+              const foundationEntries = await getFoundationData(studentName, student.Roll_No);
+              const onDate = (Array.isArray(foundationEntries) ? foundationEntries : []).filter(e => {
+                const eDate = (e.date || e.fd_date || '').split('T')[0];
+                return eDate === dateStr;
+              });
+              if (onDate.length > 0) {
+                return { ...student, foundationLogs: onDate };
+              }
+            } catch (err) {
+              console.warn(`[UGLogbook] Foundation fetch error for ${student.Roll_No}:`, err);
+            }
+            return null;
+          })
+        );
+
+        const pendingList = [];
+        const verifiedList = [];
+
+        studentsWithFoundation.filter(Boolean).forEach(student => {
+          const anyVerified = student.foundationLogs.some(
+            e => e.fd_status === '1' || e.fd_status === 1 || !!e.fd_verfiedby
+          );
+          if (anyVerified) {
+            const verEntry = student.foundationLogs.find(
+              e => e.fd_status === '1' || e.fd_status === 1 || !!e.fd_verfiedby
+            );
+            verifiedList.push({
+              Roll_No: student.Roll_No,
+              Student_Name: student.Student_Name,
+              department: student.department || 'Foundation',
+              isAlreadyVerified: true,
+              foundationLogs: student.foundationLogs,
+              verifiedBy: verEntry?.fd_verfiedby || '',
+              remarks: verEntry?.fd_remarks || '',
+            });
+          } else {
+            pendingList.push({
+              ...student,
+              foundationLogs: student.foundationLogs,
+            });
+          }
+        });
+
+        _studentsCache[cacheKey] = { pending: pendingList, verified: verifiedList, timestamp: Date.now() };
+        setStudentList(pendingList);
+        setVerifiedStudentList(verifiedList);
+        setStudentsLoaded(true);
       } else {
+
         const [pendingData, verifiedData] = await Promise.all([
           getLogbookStudents(accessToken, {
             subCode,
@@ -810,10 +887,51 @@ const UGLogbookScreen = ({ navigation }) => {
       actmstid = student.submittedLog.actmstid || 0;
     }
 
+    // ── Foundation: mandatory remarks ──────────────────────────────────────
+    if (selectedEvent.value === 'Foundation') {
+      if (!form.remarks || form.remarks.trim() === '') {
+        Alert.alert('Remarks Required', 'Please add remarks before verifying a Foundation logbook entry.');
+        return;
+      }
+    }
+
     setSubmitting(rollNo);
 
     try {
-      if (selectedEvent.value === 'RefSelfDirectedLearning') {
+      if (selectedEvent.value === 'Foundation') {
+        // Verify all pending foundation logs for this student on the selected date
+        const logs = student.foundationLogs || [];
+        const BATCH_YEAR_TO_CD = {
+          2025: '66', 2024: '63', 2023: '60', 2022: '61', 2021: '62', 2020: '64', 2019: '65',
+        };
+        for (const log of logs) {
+          if (log.fd_status === '1' || log.fd_status === 1 || log.fd_verfiedby) continue; // skip already verified
+          // Re-use savefoundationdata with fd_status:"1" to mark as verified
+          const verPayload = {
+            username: student.Student_Name || '',
+            rollno: String(rollNo),
+            depart: 'Foundation',
+            date: log.date || log.fd_date || formatDateISO(selectedDate),
+            time: log.time || log.fd_time || '',
+            clg_cd: '11',
+            course_cd: '1',
+            course_type: 'UG',
+            fd_verfiedby: String(user?.name || 'Faculty'),
+            fd_status: '1',
+            session: '16',
+            facul: log.facul || log.fd_faculty || '',
+            fd_topic: log.fd_topic || log.topic || '',
+            reflection: log.reflection || log.a1 || '',
+            reflection1: log.reflection1 || log.a2 || '',
+            reflection2: log.reflection2 || log.a3 || '',
+            batch: log.batch || '63',
+            other: '',
+            fd_remarks: form.remarks.trim(),
+            id: log.id || log.fd_id || '',
+          };
+          await saveFoundationData(verPayload);
+        }
+      } else if (selectedEvent.value === 'RefSelfDirectedLearning') {
         const batchyear = selectedPhase.value === '3' ? '2023' : '2024';
         const batchcd = selectedPhase.value === '1' ? '66' : selectedPhase.value === '2' ? '63' : '60';
         let subjectPhase = selectedPhase.value;
@@ -873,6 +991,7 @@ const UGLogbookScreen = ({ navigation }) => {
       setSubmitting(null);
     }
   };
+
 
   // ── Derived ───────────────────────────────────────────────────────────────
 
@@ -1137,7 +1256,7 @@ const UGLogbookScreen = ({ navigation }) => {
         </View>
 
         {/* Activity Row: Full Width selected Activity name */}
-        {selectedEvent.value !== 'RefSelfDirectedLearning' && (
+        {selectedEvent.value !== 'RefSelfDirectedLearning' && selectedEvent.value !== 'Foundation' && (
           <View style={styles.filterBarActivityRow}>
             <View style={styles.activityBadge}>
               <Ionicons name="document-text-outline" size={14} color="#EA580C" style={{ marginRight: 6 }} />
@@ -1170,7 +1289,7 @@ const UGLogbookScreen = ({ navigation }) => {
                 <FilterRow label="BATCH / PHASE" value={selectedPhase.label} onPress={() => openModal('phase')} />
                 <FilterRow label="EVENT TYPE" value={selectedEvent.label} onPress={() => openModal('event')} />
                 <FilterRow label="GROUP" value={selectedGroup.label} onPress={() => openModal('group')} />
-                {selectedEvent.value !== 'RefSelfDirectedLearning' && (
+                {selectedEvent.value !== 'RefSelfDirectedLearning' && selectedEvent.value !== 'Foundation' && (
                   <FilterRow label="ACTIVITY" value={activityLabel} onPress={() => openModal('activity')} loading={activitiesLoading} />
                 )}
                 <DatePicker date={selectedDate} onChange={setSelectedDate} />
@@ -1411,7 +1530,32 @@ const UGLogbookScreen = ({ navigation }) => {
                     <View style={styles.accordion}>
                       <View style={styles.accordionDivider} />
 
-                      {student.submittedLog && (
+                      {/* Foundation: show all submitted logs for this student */}
+                      {selectedEvent.value === 'Foundation' && student.foundationLogs && student.foundationLogs.map((log, li) => (
+                        <View key={li} style={[styles.reflectionDetailCard, { marginBottom: 8, borderLeftWidth: 3, borderLeftColor: '#7C3AED' }]}>
+                          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                            <Text style={[styles.reflectionTopicTitle, { color: '#7C3AED' }]}>Entry {li + 1}</Text>
+                            <Text style={{ fontSize: 10, color: '#6B7280' }}>{log.date || log.fd_date || ''} · {log.time || log.fd_time || ''}</Text>
+                          </View>
+                          <Text style={styles.reflectionTopicTitle}>Topic: {log.fd_topic || log.topic || '—'}</Text>
+                          <View style={styles.reflectionField}>
+                            <Text style={styles.reflectionFieldLabel}>WHAT HAPPENED?</Text>
+                            <Text style={styles.reflectionFieldValue}>{log.reflection || log.a1 || '—'}</Text>
+                          </View>
+                          <View style={styles.reflectionField}>
+                            <Text style={styles.reflectionFieldLabel}>SO WHAT?</Text>
+                            <Text style={styles.reflectionFieldValue}>{log.reflection1 || log.a2 || '—'}</Text>
+                          </View>
+                          <View style={styles.reflectionField}>
+                            <Text style={styles.reflectionFieldLabel}>WHAT NEXT?</Text>
+                            <Text style={styles.reflectionFieldValue}>{log.reflection2 || log.a3 || '—'}</Text>
+                          </View>
+                          <Text style={{ fontSize: 10, color: '#6B7280', marginTop: 4 }}>Faculty: {log.facul_name || log.facul || '—'}</Text>
+                        </View>
+                      ))}
+
+                      {/* Reflection: existing single log display */}
+                      {student.submittedLog && selectedEvent.value === 'RefSelfDirectedLearning' && (
                         <View style={styles.reflectionDetailCard}>
                           <Text style={styles.reflectionTopicTitle}>Topic: {student.submittedLog.ActivityName || 'Reflection Topic'}</Text>
                           
@@ -1432,7 +1576,7 @@ const UGLogbookScreen = ({ navigation }) => {
                         </View>
                       )}
 
-                      {selectedEvent.value !== 'RefSelfDirectedLearning' && (
+                      {selectedEvent.value !== 'RefSelfDirectedLearning' && selectedEvent.value !== 'Foundation' && (
                         <>
                           <Text style={styles.accordionSectionLabel}>ATTEMPT TYPE</Text>
                           {isVerified ? (
@@ -1480,10 +1624,20 @@ const UGLogbookScreen = ({ navigation }) => {
                         ) : null
                       ) : (
                         <>
-                          <Text style={[styles.accordionSectionLabel, { marginTop: 12 }]}>REMARKS (optional)</Text>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 12, gap: 4 }}>
+                            <Text style={styles.accordionSectionLabel}>
+                              REMARKS{selectedEvent.value === 'Foundation' ? '' : ' (optional)'}
+                            </Text>
+                            {selectedEvent.value === 'Foundation' && (
+                              <Text style={{ fontSize: 10, fontWeight: '800', color: '#EF4444' }}>*required</Text>
+                            )}
+                          </View>
                           <TextInput
-                            style={styles.remarksInput}
-                            placeholder="Add remarks..."
+                            style={[
+                              styles.remarksInput,
+                              selectedEvent.value === 'Foundation' && !form.remarks && { borderColor: '#FCA5A5' }
+                            ]}
+                            placeholder={selectedEvent.value === 'Foundation' ? 'Add faculty remarks (required)...' : 'Add remarks...'}
                             placeholderTextColor="#9CA3AF"
                             value={form.remarks}
                             onChangeText={v => updateForm(rollNo, 'remarks', v)}

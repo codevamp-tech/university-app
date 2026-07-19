@@ -254,6 +254,24 @@ export async function getFees(token) {
 }
 
 /**
+ * Fetch due fee amount from ERP.
+ */
+export async function getExtraFeeAmount(uid, colgcd = '11') {
+  try {
+    const response = await fetch('https://myportal.srms.ac.in/SRMSERP/Home/GetXtraFeeAmt', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'User-Agent': 'Mozilla/5.0' },
+      body: JSON.stringify({ uid: String(uid), colgcd: String(colgcd) }),
+    });
+    const data = await response.json();
+    return Array.isArray(data) ? data : [];
+  } catch (err) {
+    console.warn('[apiService] getExtraFeeAmount failed:', err);
+    return [];
+  }
+}
+
+/**
  * POST /api/v1/erp/fees/:feeId/pay
  * Pay a specific fee.
  */
@@ -2439,4 +2457,100 @@ export async function getPGSchedulerAPI(token, depart = 'MCA') {
   return unwrap(result, { events: [], department: depart });
 }
 
+
+// ─── Foundation Logbook APIs ──────────────────────────────────────────────────
+
+/**
+ * Fetch faculty list available for Foundation logbook from ERP.
+ * @param {string} studentRollno - Student's roll number (used as EmpId)
+ */
+export async function getFoundationFacultyList(studentRollno) {
+  try {
+    const response = await fetch('https://myportal.srms.ac.in/SRMSERP/PGMBBS/getfaclist2', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'User-Agent': 'Mozilla/5.0' },
+      body: JSON.stringify({ facid: 'Foundation', EmpId: String(studentRollno) }),
+    });
+    const data = await response.json();
+    return Array.isArray(data) ? data : [];
+  } catch (err) {
+    console.warn('[apiService] getFoundationFacultyList failed:', err);
+    return [];
+  }
+}
+
+/**
+ * Fetch existing Foundation logbook entries for a student.
+ * @param {string} username  - Student full name
+ * @param {string} rollno    - Student roll number
+ */
+export async function getFoundationData(username, rollno) {
+  try {
+    const response = await fetch('https://myportal.srms.ac.in/SRMSERP/Faculty/Getfoundationdata', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'User-Agent': 'Mozilla/5.0' },
+      body: JSON.stringify({ username: String(username), rollno: String(rollno), depart: 'Foundation' }),
+    });
+    const data = await response.json();
+    return Array.isArray(data) ? data : [];
+  } catch (err) {
+    console.warn('[apiService] getFoundationData failed:', err);
+    return [];
+  }
+}
+
+/**
+ * Save a new Foundation logbook entry (or update for verification).
+ * @param {object} payload - Full payload as per ERP spec
+ */
+export async function saveFoundationData(payload) {
+  try {
+    const response = await fetch('https://myportal.srms.ac.in/SRMSERP/Faculty/savefoundationdata', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'User-Agent': 'Mozilla/5.0' },
+      body: JSON.stringify(payload),
+    });
+    const data = await response.json();
+    return data;
+  } catch (err) {
+    console.warn('[apiService] saveFoundationData failed:', err);
+    throw err;
+  }
+}
+
+/**
+ * Fetch list of students for foundation verification.
+ */
+export async function getFoundationStudentList(accessToken, payload) {
+  try {
+    const response = await fetch('https://myportal.srms.ac.in/SRMSERP/Faculty/LMS_get_Ug_list_for_logbook', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'User-Agent': 'Mozilla/5.0' },
+      body: JSON.stringify(payload),
+    });
+    const data = await response.json();
+    return Array.isArray(data) ? data : [];
+  } catch (err) {
+    console.warn('[apiService] getFoundationStudentList failed:', err);
+    return [];
+  }
+}
+
+/**
+ * Verify a Foundation logbook entry.
+ */
+export async function updateFoundationLogbook(payload) {
+  try {
+    const response = await fetch('https://myportal.srms.ac.in/SRMSERP/Faculty/updateugfoundationlogbook', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'User-Agent': 'Mozilla/5.0' },
+      body: JSON.stringify(payload),
+    });
+    const text = await response.text();
+    return text.trim();
+  } catch (err) {
+    console.warn('[apiService] updateFoundationLogbook failed:', err);
+    throw err;
+  }
+}
 
