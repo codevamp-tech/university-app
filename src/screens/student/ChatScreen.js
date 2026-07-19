@@ -123,7 +123,7 @@ const ChatSkeletonLoader = ({ isDark }) => {
   );
 };
 
-const ChatScreen = ({ navigation }) => {
+const ChatScreen = ({ navigation, route }) => {
   const insets = useSafeAreaInsets();
   const { accessToken, user } = useUser();
   const { colors, isDark } = useTheme();
@@ -290,6 +290,13 @@ const ChatScreen = ({ navigation }) => {
 
   const drawerTranslateX = slideAnim.interpolate({ inputRange: [0, 1], outputRange: [-DRAWER_WIDTH, 0] });
   const overlayOpacity = slideAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 1] });
+
+  useEffect(() => {
+    if (route?.params?.openDrawer && !isDrawerOpen) {
+      setIsDrawerOpen(true);
+      Animated.timing(slideAnim, { toValue: 1, duration: 250, useNativeDriver: true }).start();
+    }
+  }, [route?.params]);
 
   const flatListRef = useRef(null);
 
