@@ -240,36 +240,38 @@ const ERPHubScreen = ({ navigation }) => {
 
 
         {/* Smart Bus Pass */}
-        <View style={styles.sectionContainer}>
-          <Text style={[styles.sectionHeading, { color: colors.textPrimary }]}>Transit & Access</Text>
-          <LinearGradient
-            colors={isDark ? ['#1E1B4B', '#111827'] : ['#EEF2FF', '#E0E7FF']}
-            style={[styles.busPassCard, { borderColor: colors.border, borderWidth: isDark ? 1 : 0 }]}
-          >
-
-            <View style={styles.busPassTop}>
-              <View style={[styles.busPassBadge, { backgroundColor: isDark ? 'rgba(129, 140, 248, 0.2)' : 'rgba(67,56,202,0.1)' }]}>
-                <View style={styles.liveDot} />
-                <Text style={[styles.busPassBadgeText, { color: isDark ? '#818CF8' : '#4338CA' }]}>LIVE TRANSIT</Text>
-              </View>
-
-              <MaterialCommunityIcons name="bus-side" size={28} color={isDark ? 'rgba(129, 140, 248, 0.2)' : 'rgba(67,56,202,0.3)'} />
-            </View>
-            <Text style={[styles.busPassTitle, { color: isDark ? '#818CF8' : '#4338CA' }]}>Smart Bus Pass</Text>
-            <Text style={[styles.busPassDesc, { color: colors.textSecondary }]}>
-              Route 14: City Center → SRMS Campus
-            </Text>
-
-
-            <TouchableOpacity
-              style={[styles.showPassBtn, { backgroundColor: isDark ? colors.card : '#FFFFFF', opacity: 0.85 }]}
-              onPress={() => Alert.alert('🔒 Demo Lock', 'Bus Pass module is locked in this demo. Contact admin to unlock.')}
+        {!isMedical && (
+          <View style={styles.sectionContainer}>
+            <Text style={[styles.sectionHeading, { color: colors.textPrimary }]}>Transit & Access</Text>
+            <LinearGradient
+              colors={isDark ? ['#1E1B4B', '#111827'] : ['#EEF2FF', '#E0E7FF']}
+              style={[styles.busPassCard, { borderColor: colors.border, borderWidth: isDark ? 1 : 0 }]}
             >
-              <MaterialIcons name="lock" size={18} color={isDark ? '#818CF8' : '#4338CA'} style={{ marginRight: 6 }} />
-              <Text style={[styles.showPassText, { color: isDark ? '#818CF8' : '#4338CA' }]}>Show Pass</Text>
-            </TouchableOpacity>
-          </LinearGradient>
-        </View>
+
+              <View style={styles.busPassTop}>
+                <View style={[styles.busPassBadge, { backgroundColor: isDark ? 'rgba(129, 140, 248, 0.2)' : 'rgba(67,56,202,0.1)' }]}>
+                  <View style={styles.liveDot} />
+                  <Text style={[styles.busPassBadgeText, { color: isDark ? '#818CF8' : '#4338CA' }]}>LIVE TRANSIT</Text>
+                </View>
+
+                <MaterialCommunityIcons name="bus-side" size={28} color={isDark ? 'rgba(129, 140, 248, 0.2)' : 'rgba(67,56,202,0.3)'} />
+              </View>
+              <Text style={[styles.busPassTitle, { color: isDark ? '#818CF8' : '#4338CA' }]}>Smart Bus Pass</Text>
+              <Text style={[styles.busPassDesc, { color: colors.textSecondary }]}>
+                Route 14: City Center → SRMS Campus
+              </Text>
+
+
+              <TouchableOpacity
+                style={[styles.showPassBtn, { backgroundColor: isDark ? colors.card : '#FFFFFF', opacity: 0.85 }]}
+                onPress={() => Alert.alert('🔒 Demo Lock', 'Bus Pass module is locked in this demo. Contact admin to unlock.')}
+              >
+                <MaterialIcons name="lock" size={18} color={isDark ? '#818CF8' : '#4338CA'} style={{ marginRight: 6 }} />
+                <Text style={[styles.showPassText, { color: isDark ? '#818CF8' : '#4338CA' }]}>Show Pass</Text>
+              </TouchableOpacity>
+            </LinearGradient>
+          </View>
+        )}
 
 
 
@@ -344,168 +346,103 @@ const ERPHubScreen = ({ navigation }) => {
         )}
 
 
-        {/* Academic Essentials */}
+        {/* Academic Essentials Grid */}
         <View style={styles.sectionContainer}>
           <View style={styles.sectionHeaderRow}>
             <Text style={[styles.sectionHeading, { color: colors.textPrimary }]}>Academic Essentials</Text>
-            <TouchableOpacity>
-              <Text style={[styles.viewAllText, { color: colors.primary }]}>VIEW ALL</Text>
-            </TouchableOpacity>
           </View>
 
-
-          {/* Attendance */}
-          <TouchableOpacity
-            style={[styles.essentialCard, { backgroundColor: colors.card, borderColor: colors.border }]}
-            onPress={() => navigation.navigate('ERPAttendanceTab')}
-            activeOpacity={0.85}
-          >
-            <LinearGradient colors={isDark ? ['#064E3B', '#047857'] : ['#ECFDF5', '#DCFCE7']} style={styles.essentialIconBg}>
-              <MaterialCommunityIcons name="shield-check" size={22} color={isDark ? '#34D399' : '#059669'} />
-            </LinearGradient>
-            <View style={styles.essentialContent}>
-              <Text style={[styles.essentialCardTitle, { color: colors.textPrimary }]}>Attendance</Text>
-              <Text style={[styles.essentialCardDesc, { color: colors.textSecondary }]}>View your subject-wise attendance insights.</Text>
-
-              <View style={styles.essentialFooter}>
-                <View style={[styles.dueBadge, { backgroundColor: isDark ? 'rgba(52, 211, 153, 0.2)' : '#ECFDF5' }]}>
-                  <Text style={[styles.dueText, { color: isDark ? '#34D399' : '#059669' }]}>{user ? user.attendance : 85}% Overall</Text>
-                </View>
-                <MaterialIcons name="chevron-right" size={20} color={colors.textMuted} />
-              </View>
-            </View>
-          </TouchableOpacity>
-
-          {/* Fees — LOCKED */}
-          <TouchableOpacity
-            style={[styles.essentialCard, { backgroundColor: colors.card, borderColor: colors.border, opacity: 0.6 }]}
-            onPress={() => Alert.alert('🔒 Premium Feature', 'Fees & Payments module is locked in this demo. Contact admin to unlock.')}
-            activeOpacity={0.85}
-          >
-
-            <LinearGradient colors={isDark ? ['#7C2D12', '#9A3412'] : ['#FFF7ED', '#FFEDD5']} style={styles.essentialIconBg}>
-              <MaterialIcons name="lock" size={22} color={isDark ? '#FB923C' : '#EA580C'} />
-            </LinearGradient>
-            <View style={styles.essentialContent}>
-              <Text style={[styles.essentialCardTitle, { color: colors.textPrimary }]}>Fees & Payments</Text>
-              <Text style={[styles.essentialCardDesc, { color: colors.textSecondary }]}>
-                This module is locked in the current demo.
+          <View style={styles.essentialsGrid}>
+            {/* Card 1: Attendance */}
+            <TouchableOpacity
+              style={[styles.gridCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+              onPress={() => navigation.navigate('ERPAttendanceTab')}
+              activeOpacity={0.85}
+            >
+              <LinearGradient colors={isDark ? ['#064E3B', '#047857'] : ['#ECFDF5', '#D1FAE5']} style={styles.gridIconBg}>
+                <MaterialCommunityIcons name="shield-check" size={24} color={isDark ? '#34D399' : '#059669'} />
+              </LinearGradient>
+              <Text style={[styles.gridCardTitle, { color: colors.textPrimary }]}>Attendance</Text>
+              <Text style={[styles.gridCardDesc, { color: colors.textSecondary }]}>
+                {user ? user.attendance : 85}% Overall
               </Text>
+            </TouchableOpacity>
 
-              <View style={styles.essentialFooter}>
-                <View style={[styles.dueBadge, { backgroundColor: isDark ? 'rgba(239, 68, 68, 0.2)' : '#FEE2E2' }]}>
-                  <Text style={[styles.dueText, { color: '#EF4444' }]}>LOCKED</Text>
-                </View>
-                <MaterialIcons name="lock-outline" size={18} color={colors.textMuted} />
-              </View>
-
-            </View>
-          </TouchableOpacity>
-
-          {/* Results */}
-          <TouchableOpacity
-            style={[styles.essentialCard, { backgroundColor: colors.card, borderColor: colors.border }]}
-            onPress={() => navigation.navigate('ERPResultsTab')}
-            activeOpacity={0.85}
-          >
-            <LinearGradient colors={isDark ? ['#1E1B4B', '#312E81'] : ['#EEF2FF', '#E0E7FF']} style={styles.essentialIconBg}>
-              <MaterialIcons name="grade" size={22} color={isDark ? '#818CF8' : '#4338CA'} />
-            </LinearGradient>
-            <View style={styles.essentialContent}>
-              <Text style={[styles.essentialCardTitle, { color: colors.textPrimary }]}>Results</Text>
-              {(() => {
-                const roman = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
-                const displayPrevSem = user?.semester && user.semester > 1 ? (roman[user.semester - 2] || (user.semester - 1)) : 'VI';
-                // For MBBS: show previous Prof year (e.g. if current is 3rd Prof, previous is 2nd Prof)
-                const medYear = user?.year || user?.current_year || (user?.semester ? Math.ceil(parseInt(user.semester) / 2) : 1);
-                const prevMedYear = Math.max(1, parseInt(medYear) - 1);
-                return (
-                  <Text style={[styles.essentialCardDesc, { color: colors.textSecondary }]}>
-                    {isMedical ? getMBBSProfLabel(prevMedYear) : `Semester ${displayPrevSem}`} Marksheet is now available for download.
-                  </Text>
-                );
-              })()}
-
-              <View style={styles.essentialFooter}>
-                <View style={[styles.dueBadge, { backgroundColor: isDark ? 'rgba(129, 140, 248, 0.2)' : '#EEF2FF' }]}>
-                  <Text style={[styles.dueText, { color: isDark ? '#818CF8' : '#4338CA' }]}>CGPA: {formatCgpa(user?.cgpa)}</Text>
-                </View>
-                <MaterialIcons name="chevron-right" size={20} color={colors.textMuted} />
-              </View>
-
-            </View>
-          </TouchableOpacity>
-
-          {/* Documents — LOCKED */}
-          <TouchableOpacity
-            style={[styles.essentialCard, { backgroundColor: colors.card, borderColor: colors.border, opacity: 0.6 }]}
-            onPress={() => Alert.alert('🔒 Premium Feature', 'Document Vault is locked in this demo. Contact admin to unlock.')}
-            activeOpacity={0.85}
-          >
-            <LinearGradient colors={isDark ? ['#064E3B', '#047857'] : ['#ECFDF5', '#DCFCE7']} style={styles.essentialIconBg}>
-              <MaterialIcons name="lock" size={22} color={isDark ? '#34D399' : '#059669'} />
-            </LinearGradient>
-            <View style={styles.essentialContent}>
-              <Text style={[styles.essentialCardTitle, { color: colors.textPrimary }]}>Documents</Text>
-              <Text style={[styles.essentialCardDesc, { color: colors.textSecondary }]}>This module is locked in the current demo.</Text>
-
-              <View style={styles.essentialFooter}>
-                <View style={[styles.dueBadge, { backgroundColor: isDark ? 'rgba(239, 68, 68, 0.2)' : '#FEE2E2' }]}>
-                  <Text style={[styles.dueText, { color: '#EF4444' }]}>LOCKED</Text>
-                </View>
-                <MaterialIcons name="lock-outline" size={18} color={colors.textMuted} />
-              </View>
-
-            </View>
-          </TouchableOpacity>
-
-          {/* Log Book */}
-          <TouchableOpacity
-            style={[styles.essentialCard, { backgroundColor: colors.card, borderColor: colors.border }]}
-            onPress={() => navigation.navigate('ERPLogBookTab')}
-            activeOpacity={0.85}
-          >
-            <LinearGradient colors={isDark ? ['#0F766E', '#115E59'] : ['#E6FDF9', '#CCFBF1']} style={styles.essentialIconBg}>
-              <MaterialIcons name="local-hospital" size={22} color={isDark ? '#2DD4BF' : '#0D9488'} />
-            </LinearGradient>
-            <View style={styles.essentialContent}>
-              <Text style={[styles.essentialCardTitle, { color: colors.textPrimary }]}>Log Book</Text>
-              <Text style={[styles.essentialCardDesc, { color: colors.textSecondary }]}>
-                Track your clinical postings, rotations, and case records.
+            {/* Card 2: Results */}
+            <TouchableOpacity
+              style={[styles.gridCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+              onPress={() => navigation.navigate('ERPResultsTab')}
+              activeOpacity={0.85}
+            >
+              <LinearGradient colors={isDark ? ['#1E1B4B', '#312E81'] : ['#EEF2FF', '#E0E7FF']} style={styles.gridIconBg}>
+                <MaterialIcons name="grade" size={24} color={isDark ? '#818CF8' : '#4338CA'} />
+              </LinearGradient>
+              <Text style={[styles.gridCardTitle, { color: colors.textPrimary }]}>Results</Text>
+              <Text style={[styles.gridCardDesc, { color: colors.textSecondary }]}>
+                CGPA: {formatCgpa(user?.cgpa)}
               </Text>
+            </TouchableOpacity>
 
-              <View style={styles.essentialFooter}>
-                <View style={[styles.dueBadge, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.2)' : '#E6FDF9' }]}>
-                  <Text style={[styles.dueText, { color: isDark ? '#2DD4BF' : '#0D9488' }]}>Clinical</Text>
-                </View>
-                <MaterialIcons name="chevron-right" size={20} color={colors.textMuted} />
-              </View>
-            </View>
-          </TouchableOpacity>
-
-          {/* Portal Chats */}
-          <TouchableOpacity
-            style={[styles.essentialCard, { backgroundColor: colors.card, borderColor: colors.border }]}
-            onPress={() => navigation.navigate('Chat')}
-            activeOpacity={0.85}
-          >
-            <LinearGradient colors={isDark ? ['#1E3A8A', '#3B82F6'] : ['#E0F2FE', '#BAE6FD']} style={styles.essentialIconBg}>
-              <MaterialCommunityIcons name="forum-outline" size={22} color={isDark ? '#60A5FA' : '#2563EB'} />
-            </LinearGradient>
-            <View style={styles.essentialContent}>
-              <Text style={[styles.essentialCardTitle, { color: colors.textPrimary }]}>Portal Chats</Text>
-              <Text style={[styles.essentialCardDesc, { color: colors.textSecondary }]}>
-                Interact directly with your subject faculty and classmates.
+            {/* Card 3: Fee */}
+            <TouchableOpacity
+              style={[styles.gridCard, { backgroundColor: colors.card, borderColor: colors.border, opacity: 0.85 }]}
+              onPress={() => Alert.alert('🔒 Premium Feature', 'Fees & Payments module is locked in this demo. Contact admin to unlock.')}
+              activeOpacity={0.85}
+            >
+              <LinearGradient colors={isDark ? ['#7C2D12', '#9A3412'] : ['#FFF7ED', '#FFEDD5']} style={styles.gridIconBg}>
+                <MaterialIcons name="payment" size={24} color={isDark ? '#FB923C' : '#EA580C'} />
+              </LinearGradient>
+              <Text style={[styles.gridCardTitle, { color: colors.textPrimary }]}>Fee</Text>
+              <Text style={[styles.gridCardDesc, { color: '#EF4444', fontWeight: '700' }]}>
+                LOCKED
               </Text>
+            </TouchableOpacity>
 
-              <View style={styles.essentialFooter}>
-                <View style={[styles.dueBadge, { backgroundColor: isDark ? 'rgba(37, 99, 235, 0.15)' : '#EFF6FF' }]}>
-                  <Text style={[styles.dueText, { color: isDark ? '#60A5FA' : '#2563EB' }]}>Active Sync</Text>
-                </View>
-                <MaterialIcons name="chevron-right" size={20} color={colors.textMuted} />
-              </View>
-            </View>
-          </TouchableOpacity>
+            {/* Card 4: Logbook */}
+            <TouchableOpacity
+              style={[styles.gridCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+              onPress={() => navigation.navigate('ERPLogBookTab')}
+              activeOpacity={0.85}
+            >
+              <LinearGradient colors={isDark ? ['#0F766E', '#115E59'] : ['#E6FDF9', '#CCFBF1']} style={styles.gridIconBg}>
+                <MaterialIcons name="local-hospital" size={24} color={isDark ? '#2DD4BF' : '#0D9488'} />
+              </LinearGradient>
+              <Text style={[styles.gridCardTitle, { color: colors.textPrimary }]}>Logbook</Text>
+              <Text style={[styles.gridCardDesc, { color: colors.textSecondary }]}>
+                Clinical Record
+              </Text>
+            </TouchableOpacity>
+
+            {/* Card 5: Group Chats */}
+            <TouchableOpacity
+              style={[styles.gridCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+              onPress={() => navigation.navigate('Chat')}
+              activeOpacity={0.85}
+            >
+              <LinearGradient colors={isDark ? ['#1E3A8A', '#3B82F6'] : ['#E0F2FE', '#BAE6FD']} style={styles.gridIconBg}>
+                <MaterialCommunityIcons name="forum-outline" size={24} color={isDark ? '#60A5FA' : '#2563EB'} />
+              </LinearGradient>
+              <Text style={[styles.gridCardTitle, { color: colors.textPrimary }]}>Group Chats</Text>
+              <Text style={[styles.gridCardDesc, { color: colors.textSecondary }]}>
+                Faculty & Peers
+              </Text>
+            </TouchableOpacity>
+
+            {/* Card 6: Documents */}
+            <TouchableOpacity
+              style={[styles.gridCard, { backgroundColor: colors.card, borderColor: colors.border, opacity: 0.85 }]}
+              onPress={() => Alert.alert('🔒 Premium Feature', 'Document Vault is locked in this demo. Contact admin to unlock.')}
+              activeOpacity={0.85}
+            >
+              <LinearGradient colors={isDark ? ['#312E81', '#4338CA'] : ['#F5F3FF', '#EDE9FE']} style={styles.gridIconBg}>
+                <MaterialIcons name="folder-shared" size={24} color={isDark ? '#A78BFA' : '#7C3AED'} />
+              </LinearGradient>
+              <Text style={[styles.gridCardTitle, { color: colors.textPrimary }]}>Documents</Text>
+              <Text style={[styles.gridCardDesc, { color: '#EF4444', fontWeight: '700' }]}>
+                LOCKED
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Smart Library */}
@@ -1108,6 +1045,37 @@ const ERPHubScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  essentialsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    gap: 12,
+    marginTop: 8,
+  },
+  gridCard: {
+    width: '48%',
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    alignItems: 'flex-start',
+    marginBottom: 4,
+  },
+  gridIconBg: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  gridCardTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    marginBottom: 4,
+  },
+  gridCardDesc: {
+    fontSize: 12,
   },
 
 
