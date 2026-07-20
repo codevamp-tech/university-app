@@ -332,6 +332,41 @@ const RefSummaryCard = ({ entry, colors, isDark, onSignOff, signingOffId }) => {
   );
 };
 
+const PHASE_CURRICULUM = {
+  '1': ['AN', 'PY', 'BC', 'BI', 'F'],
+  '2': ['PA', 'PH', 'MI'],
+  '3': ['FM', 'CM'],
+  '4': ['IM', 'SU', 'PE', 'OG', 'OR', 'EN', 'OP', 'DR', 'PS', 'RD', 'AS', 'CT', 'DE', 'PM'],
+};
+
+const isSubjectInPhase = (subj, phaseStr) => {
+  const code = (subj.subject_Code || subj.code || '').toUpperCase().trim();
+  const name = (subj.subject_name || subj.name || '').toLowerCase().trim();
+  const phase = String(phaseStr);
+
+  const validCodes = PHASE_CURRICULUM[phase];
+  if (validCodes && validCodes.includes(code)) {
+    return true;
+  }
+
+  if (phase === '1') {
+    return name.includes('anatomy') || name.includes('physiology') || name.includes('biochemistry') || name.includes('foundation');
+  } else if (phase === '2') {
+    return name.includes('pathology') || name.includes('pharmacology') || name.includes('pharmocology') || name.includes('microbiol');
+  } else if (phase === '3') {
+    return (name.includes('forensic') || name.includes('fmt')) || (name.includes('community') || name.includes('preventive') || name.includes('psm'));
+  } else if (phase === '4') {
+    return name.includes('medicine') || name.includes('surgery') || name.includes('pediatrics') || name.includes('paediatrics') ||
+           name.includes('obstetrics') || name.includes('gynecology') || name.includes('gynaecology') || name.includes('obg') ||
+           name.includes('ortho') || name.includes('ent') || name.includes('otorhinolaryngology') || name.includes('ophthalmology') ||
+           name.includes('optha') || name.includes('dermatology') || name.includes('derma') || name.includes('psychiatry') ||
+           name.includes('radiodiagnosis') || name.includes('radiology') || name.includes('anesthes') || name.includes('anaesthes') ||
+           name.includes('respirat') || name.includes('respi') || name.includes('dentis') || name.includes('dental') || name.includes('pmr');
+  }
+
+  return false;
+};
+
 const ERPLogBookScreen = ({ route, navigation }) => {
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
@@ -347,10 +382,11 @@ const ERPLogBookScreen = ({ route, navigation }) => {
   const [activeFilter, setActiveFilter] = useState('ALL');
   const [activeCategory, setActiveCategory] = useState('ALL');
   const getInitialPhase = () => {
+    if (user?.current_year) return String(user.current_year);
     const yr = parseInt(user?.batch_year || user?.year || '2024', 10);
     if (yr >= 2025) return '1';
     if (yr === 2024) return '2';
-    if (yr === 2023) return '2';
+    if (yr === 2023) return '3';
     return '2';
   };
 
@@ -578,14 +614,15 @@ const ERPLogBookScreen = ({ route, navigation }) => {
     const fetchSubjects = async () => {
       setSubjectsLoading(true);
       const list = await getSubjectList(activePhase);
-      // Deduplicate by subject_Code (ERP sometimes returns duplicates)
+      // Deduplicate by subject_Code and filter by current phase curriculum
       const seen = new Set();
-      const unique = list.filter(s => {
+      const filtered = list.filter(s => {
+        if (!isSubjectInPhase(s, activePhase)) return false;
         if (seen.has(s.subject_Code)) return false;
         seen.add(s.subject_Code);
         return true;
       });
-      if (!cancelled) setSubjectList(unique);
+      if (!cancelled) setSubjectList(filtered);
       setSubjectsLoading(false);
     };
     fetchSubjects();

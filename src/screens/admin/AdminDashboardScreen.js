@@ -14,7 +14,7 @@ import {
 import { Feather, MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
 import { useTheme } from '../../hooks/useTheme';
 import { useUser } from '../../context/UserContext';
-import { getAdminOverviewStats, getSuperAdminAnalytics, getSuperAdminDrilldown, getAdminMentalHealthAnalytics, logMoodAPI, getMoodEntriesAPI, getAllStudents } from '../../data/apiService';
+import { getAdminOverviewStats, getSuperAdminAnalytics, getSuperAdminDrilldown, getAdminMentalHealthAnalytics, logMoodAPI, getMoodEntriesAPI, getAllStudents, getWardenPendingOutpasses } from '../../data/apiService';
 import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SkeletonBlock } from '../../components/SkeletonLoader';
@@ -110,11 +110,24 @@ const AdminDashboardScreen = ({ navigation }) => {
           .catch(e => console.warn("[AdminDashboard] Failed to fetch mood:", e));
 
         // Fetch Overview stats in background
-        getAdminOverviewStats(accessToken)
-          .then(overview => {
-            if (overview) setStats(overview);
-          })
-          .catch(e => console.warn("[AdminDashboard] Failed to fetch overview stats:", e));
+        if (user?.role === 'warden') {
+          getWardenPendingOutpasses(accessToken)
+            .then(pendingList => {
+              if (pendingList && Array.isArray(pendingList)) {
+                setStats(prev => ({
+                  ...prev,
+                  pending_outpasses: pendingList.length
+                }));
+              }
+            })
+            .catch(e => console.warn("[AdminDashboard] Failed to fetch warden pending outpasses:", e));
+        } else {
+          getAdminOverviewStats(accessToken)
+            .then(overview => {
+              if (overview) setStats(overview);
+            })
+            .catch(e => console.warn("[AdminDashboard] Failed to fetch overview stats:", e));
+        }
 
         // Fetch Mental Health stats in background
         getAdminMentalHealthAnalytics(accessToken)
@@ -430,10 +443,10 @@ const AdminDashboardScreen = ({ navigation }) => {
 
       <TouchableOpacity
         style={[styles.actionBtn, { backgroundColor: colors.danger, marginBottom: 12 }]}
-        onPress={() => navigation.navigate('RaiseIssue')}
+        onPress={() => navigation.navigate('GrievanceManager')}
       >
         <MaterialCommunityIcons name="alert-octagon-outline" size={18} color="#FFF" style={{ marginRight: 8 }} />
-        <Text style={styles.actionBtnText}>Raise an Issue</Text>
+        <Text style={styles.actionBtnText}>Open Grievance Inbox</Text>
       </TouchableOpacity>
 
       <View style={[styles.restrictedBox, { backgroundColor: colors.card, borderColor: colors.border }]}>

@@ -10,6 +10,7 @@ import {
   Modal,
   SafeAreaView,
   Image,
+  TextInput,
 } from 'react-native';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../../hooks/useTheme';
@@ -31,6 +32,7 @@ const AdminGrievanceInboxScreen = ({ navigation }) => {
   const [statusModalVisible, setStatusModalVisible] = useState(false);
   const [selectedGrievance, setSelectedGrievance] = useState(null);
   const [actionInProgress, setActionInProgress] = useState(false);
+  const [adminRemark, setAdminRemark] = useState('');
 
   const fetchGrievances = async () => {
     setLoading(true);
@@ -57,6 +59,7 @@ const AdminGrievanceInboxScreen = ({ navigation }) => {
 
   const openStatusModal = (item) => {
     setSelectedGrievance(item);
+    setAdminRemark(item?.admin_remarks || '');
     setStatusModalVisible(true);
   };
 
@@ -64,7 +67,7 @@ const AdminGrievanceInboxScreen = ({ navigation }) => {
     if (!selectedGrievance) return;
     setActionInProgress(true);
     try {
-      const res = await updateGrievanceStatusAPI(accessToken, selectedGrievance.id, newStatus);
+      const res = await updateGrievanceStatusAPI(accessToken, selectedGrievance.id, newStatus, adminRemark);
       if (res) {
         setStatusModalVisible(false);
         Alert.alert('Status Updated', `Grievance has been marked as ${newStatus.replace('_', ' ')}.`);
@@ -253,6 +256,27 @@ const AdminGrievanceInboxScreen = ({ navigation }) => {
                 )}
               </View>
             )}
+
+            <Text style={[styles.modalSectionTitle, { color: colors.textPrimary, marginTop: 12 }]}>Admin Remark:</Text>
+            <TextInput
+              style={{
+                borderWidth: 1,
+                borderColor: colors.border,
+                borderRadius: 10,
+                padding: 10,
+                fontSize: 13,
+                color: colors.textPrimary,
+                backgroundColor: colors.card,
+                minHeight: 60,
+                textAlignVertical: 'top',
+                marginBottom: 16,
+              }}
+              multiline
+              placeholder="Add resolution remark or notes..."
+              placeholderTextColor={colors.textMuted}
+              value={adminRemark}
+              onChangeText={setAdminRemark}
+            />
 
             <Text style={[styles.modalSectionTitle, { color: colors.textPrimary }]}>Update Resolution Status:</Text>
 

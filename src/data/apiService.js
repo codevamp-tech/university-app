@@ -1665,11 +1665,11 @@ export async function getBroadcastStatsAPI(token) {
   return unwrap(res, { total_sent: 0, recent: [] });
 }
 
-export async function updateGrievanceStatusAPI(token, grievanceId, status) {
+export async function updateGrievanceStatusAPI(token, grievanceId, status, remarks = '') {
   const res = await apiCall(`/api/v1/grievance/${grievanceId}`, {
     method: 'PATCH',
     headers: authHeaders(token),
-    body: JSON.stringify({ status }),
+    body: JSON.stringify({ status, admin_remarks: remarks }),
   });
   return unwrap(res);
 }

@@ -32,6 +32,17 @@ const ERPFeesScreen = ({ navigation, route }) => {
   const semNum = parseInt(student?.semester) || 7;
   const displaySem = roman[semNum - 1] || 'VII';
 
+  // For MBBS students: use current_year (ERP phase) — same logic as ERPAttendanceScreen.
+  // current_year: 1=1st Prof, 2=2nd Prof, 3=3rd Prof Part I, 4=3rd Prof Part II
+  const medYear = parseInt(student?.current_year) || parseInt(student?.year) || 1;
+  const getPhaseRoman = (yr) => {
+    const y = parseInt(yr) || 1;
+    if (y <= 1) return 'I';
+    if (y === 2) return 'II';
+    if (y === 3) return 'III';
+    return 'IV';
+  };
+
   const yearNum = parseInt(student?.year) || 4;
   const startYear = 2026 - yearNum;
   const currentAcademicYearStart = startYear + yearNum - 1;
@@ -42,12 +53,6 @@ const ERPFeesScreen = ({ navigation, route }) => {
   const idNum = parseInt(idStr.replace(/[^0-9]/g, '')) || 1;
 
   const isMedical = student?.course?.replace(/\./g, '').toUpperCase().includes('MBBS') || student?.category?.toLowerCase() === 'medical';
-  const getPhaseRoman = (sem) => {
-    if (sem <= 2) return 'I';
-    if (sem <= 4) return 'II';
-    if (sem <= 6) return 'III';
-    return 'IV';
-  };
 
   const isLocked = false;
 
@@ -210,7 +215,7 @@ const ERPFeesScreen = ({ navigation, route }) => {
 
             <Text style={[styles.heroLabel, { color: 'rgba(255,255,255,0.7)' }]}>OUTSTANDING DUES</Text>
             <Text style={styles.heroAmount}>{formatCurrency(outstandingDuesVal)}</Text>
-            <Text style={[styles.heroSub, { color: 'rgba(255,255,255,0.85)' }]}>{academicYearStr} | {isMedical ? `Phase ${getPhaseRoman(semNum)}` : `${displaySem} Semester`}</Text>
+            <Text style={[styles.heroSub, { color: 'rgba(255,255,255,0.85)' }]}>{academicYearStr} | {isMedical ? `Phase ${getPhaseRoman(medYear)}` : `${displaySem} Semester`}</Text>
             {/* <View style={styles.heroBtns}>
               <TouchableOpacity 
                 style={[styles.payNowBtn, { backgroundColor: isLocked ? '#EF4444' : (isDark ? 'rgba(255,255,255,0.1)' : '#FFFFFF') }]}
@@ -237,7 +242,7 @@ const ERPFeesScreen = ({ navigation, route }) => {
           <View style={[styles.feeCard, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
             <View style={styles.feeCardHeader}>
               <View>
-                <Text style={[styles.feeCardTitle, { color: colors.textPrimary }]}>{isMedical ? `Phase ${getPhaseRoman(semNum)}` : `${displaySem} Semester`} Fees</Text>
+                <Text style={[styles.feeCardTitle, { color: colors.textPrimary }]}>{isMedical ? `Phase ${getPhaseRoman(medYear)}` : `${displaySem} Semester`} Fees</Text>
                 <Text style={[styles.feeCardSub, { color: colors.textSecondary }]}>{courseTitle}</Text>
               </View>
               <View style={[
