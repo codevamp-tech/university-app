@@ -402,7 +402,7 @@ const ERPAttendanceScreen = ({ route, navigation }) => {
             const lectures = todayLectureJson.success && Array.isArray(todayLectureJson.data) ? todayLectureJson.data : [];
             
             if (lectures.length === 0) {
-              return { name: sc.name, data: [] };
+              return null; // Not scheduled for today
             }
             
             // Get today's lecture code ID (lecturecd)
@@ -417,12 +417,13 @@ const ERPAttendanceScreen = ({ route, navigation }) => {
             const rows = Array.isArray(json) ? json : (json?.d ? JSON.parse(json.d) : []);
             return { name: sc.name, data: rows };
           } catch {
-            return { name: sc.name, data: [] };
+            return null;
           }
         })
       );
-      // Only keep subcategories that returned today's lecture schedule/punch status
-      const activeRows = results.filter(r => r.data && r.data.length > 0);
+      // Filter out nulls (meaning the subject is not scheduled for today)
+      // Keep entries that have empty data array (meaning scheduled but not punched yet)
+      const activeRows = results.filter(r => r !== null);
       setTodayModal(prev => ({ ...prev, loading: false, rows: activeRows }));
     } catch (e) {
       setTodayModal(prev => ({ ...prev, loading: false, error: 'Failed to load today\'s attendance.' }));
