@@ -394,10 +394,24 @@ const ERPAttendanceScreen = ({ route, navigation }) => {
       const results = await Promise.all(
         subCategories.map(async (sc) => {
           try {
+            // First get today's lecture code ID dynamically
+            const todayLectureResp = await fetch(`https://myportal.srms.ac.in/SRMSERP/Faculty/GetTodayLecture?stud_roll_no=${studentUid}&sub_cd=${sc.erpCode}`, {
+              method: 'GET',
+            });
+            const todayLectureJson = await todayLectureResp.json();
+            const lectures = todayLectureJson.success && Array.isArray(todayLectureJson.data) ? todayLectureJson.data : [];
+            
+            if (lectures.length === 0) {
+              return { name: sc.name, data: [] };
+            }
+            
+            // Get today's lecture code ID (lecturecd)
+            const lecturecd = lectures[0].ID || lectures[0].id;
+
             const resp = await fetch('https://myportal.srms.ac.in/SRMSERP/Home/GetStudentLectureRollnoWise', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ uid: String(studentUid), lecturecd: String(sc.erpCode) }),
+              body: JSON.stringify({ uid: String(studentUid), lecturecd: String(lecturecd) }),
             });
             const json = await resp.json();
             const rows = Array.isArray(json) ? json : (json?.d ? JSON.parse(json.d) : []);
@@ -470,34 +484,13 @@ const ERPAttendanceScreen = ({ route, navigation }) => {
     try {
       const studentId = user?.rollno || user?.username || user?.id;
 
-      // Fetch dynamic subject codes based on student's batch
+      // Fetch dynamic subject codes based on student's roll number
       try {
-        let ddl_batch = "66"; // default to Phase 1 (2025 batch)
-        if (isMedical) {
-          if (medYear === 1) ddl_batch = "66";
-          else if (medYear === 2) ddl_batch = "63";
-          else if (medYear === 3) ddl_batch = "60";
-          else if (medYear === 4) ddl_batch = "57";
-        } else if (user?.batch_year) {
-          ddl_batch = String(2026 - parseInt(user.batch_year) + 65);
-        }
-
-        const getSubResp = await fetch('https://myportal.srms.ac.in/SRMSERP/Registration/getsub', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            colgcd: "11",
-            coursecd: "1",
-            ddl_batch: ddl_batch,
-            ddl_branch: "1",
-            ddl_sec: "1",
-            ddl_sem: isMedical ? "1" : String(semNum),
-            lactdt: "2022-05-01",
-            dtt: new Date().toISOString().split('T')[0]
-          }),
+        const getSubResp = await fetch(`https://myportal.srms.ac.in/SRMSERP/Faculty/GetUGSubjectCode?stud_roll_no=${studentId}`, {
+          method: 'GET',
         });
-        const subList = await getSubResp.json();
-        const subListData = Array.isArray(subList) ? subList : (subList?.d ? JSON.parse(subList.d) : []);
+        const resJson = await getSubResp.json();
+        const subListData = resJson.success && Array.isArray(resJson.data) ? resJson.data : [];
         
         const dynamicMap = {};
         subListData.forEach(s => {
