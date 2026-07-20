@@ -694,66 +694,45 @@ const ERPAttendanceScreen = ({ route, navigation }) => {
       };
     });
 
-    // MBBS subject → canonical phase mapping (by subject name)
-    const MBBS_SUBJECT_PHASE = {
-      // ── 1st Prof (1st Year) ───────────────────────────────────
-      'anatomy': '1st Prof',
-      'physiology': '1st Prof',
-      'biochemistry': '1st Prof',
-      // ── 2nd Prof (2nd Year) ───────────────────────────────────
-      'pathology': '2nd Prof',
-      'pharmacology': '2nd Prof',
-      'microbiology': '2nd Prof',
-      // ── 3rd Prof Part I (3rd Year) ────────────────────────────
-      'forensic': '3rd Prof Part I',
-      'fmt': '3rd Prof Part I',
-      'community': '3rd Prof Part I',
-      'psm': '3rd Prof Part I',
-      // ── 3rd Prof Part II (4th Year) ───────────────────────────
-      'medicine': '3rd Prof Part II',
-      'surgery': '3rd Prof Part II',
-      'clinical posting': '3rd Prof Part II',
-      'pediatrics': '3rd Prof Part II',
-      'paediatrics': '3rd Prof Part II',
-      'obstetrics': '3rd Prof Part II',
-      'gynecology': '3rd Prof Part II',
-      'gynaecology': '3rd Prof Part II',
-      'obg': '3rd Prof Part II',
-      'ortho': '3rd Prof Part II',
-      'ophthalmology': '3rd Prof Part II',
-      'optha': '3rd Prof Part II',
-      'ent': '3rd Prof Part II',
-      'otorhinolaryngology': '3rd Prof Part II',
-      'dermatology': '3rd Prof Part II',
-      'derma': '3rd Prof Part II',
-      'psychiatry': '3rd Prof Part II',
-      'radiodiagnosis': '3rd Prof Part II',
-      'radiology': '3rd Prof Part II',
-      'anesthesia': '3rd Prof Part II',
-      'anaesthesia': '3rd Prof Part II',
-      'anesthesiology': '3rd Prof Part II',
-      'respiratory': '3rd Prof Part II',
-      'respi': '3rd Prof Part II',
-      'dentistry': '3rd Prof Part II',
-      'dental': '3rd Prof Part II',
-      'pmr': '3rd Prof Part II',
-      'physical medicine': '3rd Prof Part II',
-      'aetcom': '3rd Prof Part II',
+    // ── Direct parent-name → MBBS phase mapping ──────────────────────────────
+    // Uses the canonical parent name returned by getParentSubjectName().
+    // This is authoritative — do NOT derive phase from subject code or semester.
+    const PARENT_NAME_TO_PHASE = {
+      // 1st Prof (1st Year) ─ AN, PY, BC
+      'Anatomy':                       '1st Prof',
+      'Physiology':                    '1st Prof',
+      'Biochemistry_(CBME 2024)':      '1st Prof',
+      'Biochemistry_(CBME 2019)':      '1st Prof',
+      // 2nd Prof (2nd Year) ─ PA, PH, MI
+      'Pathology':                     '2nd Prof',
+      'Pharmacology':                  '2nd Prof',
+      'Microbiology':                  '2nd Prof',
+      // 3rd Prof Part I (3rd Year) ─ FM, CM
+      'FORENSIC MEDICINE':             '3rd Prof Part I',
+      'Community Medicine':            '3rd Prof Part I',
+      // 3rd Prof Part II (4th Year) ─ all 4th year specialties
+      'General Medicine':              '3rd Prof Part II',
+      'GENERAL SURGERY':               '3rd Prof Part II',
+      'PAEDIATRICS':                   '3rd Prof Part II',
+      'Obstetrics & Gynaecology':      '3rd Prof Part II',
+      'Orthopedics':                   '3rd Prof Part II',
+      'Otorhinolaryngology':           '3rd Prof Part II',
+      'Ophthalmology':                 '3rd Prof Part II',
+      'Dermatology, Venereology & Leprosy': '3rd Prof Part II',
+      'Psychiatry':                    '3rd Prof Part II',
+      'Radiodiagnosis':                '3rd Prof Part II',
+      'Anesthesiology':                '3rd Prof Part II',
+      'Respiratory Medicine':          '3rd Prof Part II',
+      'Dentistry':                     '3rd Prof Part II',
+      'Physical Medicine & Rehabilitation': '3rd Prof Part II',
     };
 
-    const getMedicalPhaseForSubject = (subName, semNumber) => {
+    const getMedicalPhaseForSubject = (parentName, semNumber) => {
       if (!isMedical) return null;
-      const lower = (subName || '').toLowerCase();
-
-      // Check specific keywords first
-      if (lower.includes('forensic') || lower.includes('fmt')) return '3rd Prof Part I';
-      if (lower.includes('community') || lower.includes('psm') || lower.includes('preventive')) return '3rd Prof Part I';
-
-      for (const [keyword, phase] of Object.entries(MBBS_SUBJECT_PHASE)) {
-        if (lower.includes(keyword)) return phase;
-      }
-
-      // Fallback: use semester-based mapping
+      // Direct lookup on the canonical parent name — always correct
+      const direct = PARENT_NAME_TO_PHASE[parentName];
+      if (direct) return direct;
+      // Fallback: semester-based (only for unknown/future subjects)
       return getMedicalProfNameFromSemLocal(semNumber);
     };
 
