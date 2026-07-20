@@ -151,7 +151,7 @@ const getParentSubjectName = (name, code) => {
   if (lower.includes('microb')) return 'Microbiology';
   if (lower.includes('forensic') || lower.includes('fmt')) return 'FORENSIC MEDICINE';
   if (lower.includes('community') || lower.includes('preventive') || lower.includes('psm') || lower.includes('family') || lower.includes('fap')) return 'Community Medicine';
-  
+
   if (lower.includes('medicine') && !lower.includes('forensic') && !lower.includes('community') && !lower.includes('preventive') && !lower.includes('respiratory') && !lower.includes('physical')) {
     return 'General Medicine';
   }
@@ -161,7 +161,7 @@ const getParentSubjectName = (name, code) => {
     return 'Obstetrics & Gynaecology';
   }
   if (lower.includes('ortho')) return 'Orthopedics';
-  if (lower.includes('ent') || lower.includes('otorhinolaryngology')) return 'Otorhinolaryngology';
+  if (lower.includes('ent') || lower.includes('otorhinolaryngology') || lower.includes('otorhinolarygology') || lower.includes('e.n.t.')) return 'Otorhinolaryngology';
   if (lower.includes('ophthalmology') || lower.includes('optha') || lower.includes('eye')) return 'Ophthalmology';
   if (lower.includes('dermatology') || lower.includes('derma')) return 'Dermatology, Venereology & Leprosy';
   if (lower.includes('psychiatry')) return 'Psychiatry';
@@ -178,40 +178,40 @@ const getParentSubjectName = (name, code) => {
 
 // Standard MBBS abbreviation codes matching GetXtraFeeAmt and user specification
 const SUBJECT_CODE_MAP = {
-  'Anatomy':                            'AN',
-  'Physiology':                         'PY',
-  'Biochemistry_(CBME 2024)':           'BC',
-  'Biochemistry_(CBME 2019)':           'BI',
-  'Biochemistry':                       'BC',
-  'Community Medicine':                 'CM',
-  'Pathology':                          'PA',
-  'Pharmacology':                       'PH',
-  'Microbiology':                       'MI',
-  'FORENSIC MEDICINE':                  'FM',
-  'Forensic Medicine':                  'FM',
-  'General Medicine':                   'IM',
-  'Medicine':                           'IM',
-  'GENERAL SURGERY':                    'SU',
-  'Surgery':                            'SU',
-  'PAEDIATRICS':                        'PE',
-  'Pediatrics':                         'PE',
-  'Obstetrics & Gynaecology':           'OG',
-  'Obs and gynae':                      'OG',
-  'Ophthalmology':                      'OP',
-  'Optha':                              'OP',
-  'Orthopedics':                        'OR',
-  'Ortho':                              'OR',
-  'Otorhinolaryngology':                'EN',
-  'Ent':                                'EN',
-  'Radiodiagnosis':                     'RD',
-  'Dentistry':                          'DE',
-  'Anesthesiology':                     'AS',
-  'Anesthesia':                         'AS',
+  'Anatomy': 'AN',
+  'Physiology': 'PY',
+  'Biochemistry_(CBME 2024)': 'BC',
+  'Biochemistry_(CBME 2019)': 'BI',
+  'Biochemistry': 'BC',
+  'Community Medicine': 'CM',
+  'Pathology': 'PA',
+  'Pharmacology': 'PH',
+  'Microbiology': 'MI',
+  'FORENSIC MEDICINE': 'FM',
+  'Forensic Medicine': 'FM',
+  'General Medicine': 'IM',
+  'Medicine': 'IM',
+  'GENERAL SURGERY': 'SU',
+  'Surgery': 'SU',
+  'PAEDIATRICS': 'PE',
+  'Pediatrics': 'PE',
+  'Obstetrics & Gynaecology': 'OG',
+  'Obs and gynae': 'OG',
+  'Ophthalmology': 'OP',
+  'Optha': 'OP',
+  'Orthopedics': 'OR',
+  'Ortho': 'OR',
+  'Otorhinolaryngology': 'EN',
+  'Ent': 'EN',
+  'Radiodiagnosis': 'RD',
+  'Dentistry': 'DE',
+  'Anesthesiology': 'AS',
+  'Anesthesia': 'AS',
   'Dermatology, Venereology & Leprosy': 'DR',
-  'Derma':                              'DR',
-  'Respiratory Medicine':               'CT',
-  'Respi':                              'CT',
-  'Psychiatry':                         'PS',
+  'Derma': 'DR',
+  'Respiratory Medicine': 'CT',
+  'Respi': 'CT',
+  'Psychiatry': 'PS',
   'Physical Medicine & Rehabilitation': 'PM',
 };
 const getSubjectCode = (parentName) => SUBJECT_CODE_MAP[parentName] || parentName.substring(0, 2).toUpperCase();
@@ -391,23 +391,55 @@ const ERPAttendanceScreen = ({ route, navigation }) => {
   const openTodayModal = React.useCallback(async (subjectName, subCategories) => {
     setTodayModal({ visible: true, subjectName, rows: [], loading: true, error: null });
     try {
-      const results = await Promise.all(
-        subCategories.map(async (sc) => {
-          try {
-            // First get today's lecture code ID dynamically
-            const todayLectureResp = await fetch(`https://myportal.srms.ac.in/SRMSERP/Faculty/GetTodayLecture?stud_roll_no=${studentUid}&sub_cd=${sc.erpCode}`, {
-              method: 'GET',
-            });
-            const todayLectureJson = await todayLectureResp.json();
-            const lectures = todayLectureJson.success && Array.isArray(todayLectureJson.data) ? todayLectureJson.data : [];
-            
-            if (lectures.length === 0) {
-              return null; // Not scheduled for today
-            }
-            
-            // Get today's lecture code ID (lecturecd)
-            const lecturecd = lectures[0].ID || lectures[0].id;
+      // Step 1: Get the authoritative subject list from ERP for this student
+      let erpSubjects = [];
+      try {
+        const subResp = await fetch(
+          `https://myportal.srms.ac.in/SRMSERP/Faculty/GetUGSubjectCode?stud_roll_no=${studentUid}`,
+          { method: 'GET' }
+        );
+        const subJson = await subResp.json();
+        erpSubjects = subJson.success && Array.isArray(subJson.data)
+          ? subJson.data
+          : Array.isArray(subJson) ? subJson : [];
+      } catch (e) {
+        console.warn('[TodayModal] Failed to fetch GetUGSubjectCode:', e);
+      }
 
+      // Step 2: Match ERP subjects to subCategories by name
+      // For each subCategory, find its ERP code (sub_cd) from GetUGSubjectCode
+      const subCatCodes = subCategories.map(sc => {
+        const nameUpper = (sc.name || '').toUpperCase().trim();
+        // Find matching ERP subject (by name similarity)
+        const erpMatch = erpSubjects.find(s => {
+          const erpUpper = (s.sub_name || '').toUpperCase().trim();
+          return erpUpper === nameUpper || erpUpper.includes(nameUpper) || nameUpper.includes(erpUpper);
+        });
+        return {
+          name: sc.name,
+          erpCode: erpMatch?.sub_cd || sc.erpCode || sc.code,
+        };
+      });
+
+      // Step 3: For each sub_cd, check GetTodayLecture then GetStudentLectureRollnoWise
+      const results = await Promise.all(
+        subCatCodes.map(async (sc) => {
+          if (!sc.erpCode) return null;
+          try {
+            const todayLectureResp = await fetch(
+              `https://myportal.srms.ac.in/SRMSERP/Faculty/GetTodayLecture?stud_roll_no=${studentUid}&sub_cd=${sc.erpCode}`,
+              { method: 'GET' }
+            );
+            const todayLectureJson = await todayLectureResp.json();
+            const lectures = todayLectureJson.success && Array.isArray(todayLectureJson.data)
+              ? todayLectureJson.data
+              : Array.isArray(todayLectureJson) ? todayLectureJson : [];
+
+            if (lectures.length === 0) {
+              return null; // Not scheduled today
+            }
+
+            const lecturecd = lectures[0].ID || lectures[0].id;
             const resp = await fetch('https://myportal.srms.ac.in/SRMSERP/Home/GetStudentLectureRollnoWise', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -415,18 +447,18 @@ const ERPAttendanceScreen = ({ route, navigation }) => {
             });
             const json = await resp.json();
             const rows = Array.isArray(json) ? json : (json?.d ? JSON.parse(json.d) : []);
-            return { name: sc.name, data: rows };
+            return { name: sc.name, data: rows, scheduled: true };
           } catch {
             return null;
           }
         })
       );
-      // Filter out nulls (meaning the subject is not scheduled for today)
-      // Keep entries that have empty data array (meaning scheduled but not punched yet)
+
+      // Only show subjects that have lectures scheduled today
       const activeRows = results.filter(r => r !== null);
       setTodayModal(prev => ({ ...prev, loading: false, rows: activeRows }));
     } catch (e) {
-      setTodayModal(prev => ({ ...prev, loading: false, error: 'Failed to load today\'s attendance.' }));
+      setTodayModal(prev => ({ ...prev, loading: false, error: "Failed to load today's attendance." }));
     }
   }, [studentUid]);
 
@@ -485,36 +517,97 @@ const ERPAttendanceScreen = ({ route, navigation }) => {
     try {
       const studentId = user?.rollno || user?.username || user?.id;
 
-      // Fetch dynamic subject codes based on student's roll number
+      // ── Step 1: fetch ERP subject list (authoritative list of subjects + ERP codes) ──
+      let erpSubjectList = []; // [{sub_name, sub_cd, department}]
       try {
         const getSubResp = await fetch(`https://myportal.srms.ac.in/SRMSERP/Faculty/GetUGSubjectCode?stud_roll_no=${studentId}`, {
           method: 'GET',
         });
         const resJson = await getSubResp.json();
-        const subListData = resJson.success && Array.isArray(resJson.data) ? resJson.data : [];
-        
+        erpSubjectList = resJson.success && Array.isArray(resJson.data) ? resJson.data : [];
+
         const dynamicMap = {};
-        subListData.forEach(s => {
+        erpSubjectList.forEach(s => {
           if (s.sub_name && s.sub_cd) {
             dynamicMap[s.sub_name.toUpperCase().trim()] = s.sub_cd;
           }
         });
         setDynamicSubjectCodes(dynamicMap);
       } catch (subErr) {
-        console.warn('[AttendanceScreen] Failed to fetch dynamic subject codes:', subErr);
+        console.warn('[AttendanceScreen] Failed to fetch ERP subject codes:', subErr);
       }
 
+      // ── Step 2: fetch backend attendance (has percentages) ──
       const data = await getAttendance(accessToken, studentId, force);
+
+      // Build a lookup map: SUBJECT_NAME_UPPER → attendance record
+      const backendMap = {};
       if (data && data.length > 0) {
-        // Filter out exam/sessional components (where attendance_pct is null or undefined)
+        data.forEach(item => {
+          if (item.subject_name) {
+            backendMap[item.subject_name.toUpperCase().trim()] = item;
+          }
+        });
+      }
+
+      // ── Step 3: build subject list ──
+      // Primary: use ERP subject list (correct names + codes), merge percentages from backend.
+      // Fallback: if ERP subject list is empty, use backend records directly.
+      let subjects = [];
+
+      if (erpSubjectList.length > 0) {
+        // Use ERP list as the source of truth for subject names and codes.
+        subjects = erpSubjectList
+          .filter(s => s.sub_name && s.sub_cd)
+          .map(s => {
+            const nameUpper = s.sub_name.toUpperCase().trim();
+            const backendRecord = backendMap[nameUpper];
+            const percentage = backendRecord
+              ? Math.round(backendRecord.attendance_pct || 0)
+              : null; // null = no attendance data yet
+
+            const isPractical = nameUpper.includes('PRACTICAL') ||
+              nameUpper.includes('CLINICAL') ||
+              nameUpper.includes('DISSECTION') ||
+              nameUpper.includes('POSTING') ||
+              nameUpper.includes('LAB');
+            const requiredPct = isPractical ? 80 : 75;
+
+            const status = percentage === null
+              ? 'safe' // unknown → treat as safe (no class yet)
+              : percentage >= requiredPct
+                ? 'safe'
+                : percentage >= (requiredPct - 5)
+                  ? 'warning'
+                  : 'danger';
+
+            // For MBBS: use subject-name-based phase mapping (NOT backend semester which is wrong).
+            // We pass medYear as the fallback semester so grouping works correctly.
+            return {
+              code: s.sub_cd,
+              name: s.sub_name,
+              percentage: percentage !== null ? percentage : 0,
+              hasData: percentage !== null,
+              status,
+              isPractical,
+              requiredPct,
+              // semester intentionally set to medYear for MBBS so phase mapping falls back correctly
+              semester: isMedical ? medYear : (backendRecord?.semester || semNum),
+            };
+          })
+          // Filter out subjects with no attendance data AND 0% (i.e. not started yet)
+          // Keep subjects that have data from backend; keep all if backend has nothing at all
+          .filter(s => {
+            if (Object.keys(backendMap).length === 0) return true; // no backend data → show all
+            return s.hasData; // only show subjects with actual attendance records
+          });
+      } else if (data && data.length > 0) {
+        // Fallback: use backend records directly
         const validRecords = data.filter(
           item => item.attendance_pct !== null && item.attendance_pct !== undefined
         );
-
-        const subjects = validRecords.map(item => {
+        subjects = validRecords.map(item => {
           const percentage = Math.round(item.attendance_pct || 0);
-
-          // NMC criteria: 80% for clinical postings/practicals/labs, 75% for theory classes
           const nameUpper = (item.subject_name || item.subject_code || '').toUpperCase();
           const isPractical = nameUpper.includes('PRACTICAL') ||
             nameUpper.includes('CLINICAL') ||
@@ -522,32 +615,34 @@ const ERPAttendanceScreen = ({ route, navigation }) => {
             nameUpper.includes('POSTING') ||
             nameUpper.includes('LAB');
           const requiredPct = isPractical ? 80 : 75;
-
-          // Safe if above threshold, warning if nearing, danger if below
           const status = percentage >= requiredPct
             ? 'safe'
             : percentage >= (requiredPct - 5)
               ? 'warning'
               : 'danger';
-
           return {
             code: item.subject_code,
             name: item.subject_name || item.subject_code,
             percentage,
+            hasData: true,
             status,
             isPractical,
             requiredPct,
-            semester: item.semester
+            // CRITICAL FIX: backend semester is always 1 for MBBS students (sync bug).
+            // Override with medYear so phase mapping works correctly.
+            semester: isMedical ? medYear : (item.semester || semNum),
           };
         });
+      }
 
-        const overall = subjects.length > 0
-          ? Math.round(subjects.reduce((sum, s) => sum + s.percentage, 0) / subjects.length)
-          : 0;
+      if (subjects.length > 0) {
+        const overall = Math.round(
+          subjects.reduce((sum, s) => sum + s.percentage, 0) / subjects.length
+        );
 
         setApiAttendance({
           overall: user?.attendance || overall,
-          totalClasses: subjects.length * 30, // estimate for display
+          totalClasses: subjects.length * 30,
           attendedClasses: Math.round((user?.attendance || overall) * 0.01 * (subjects.length * 30)),
           subjects
         });
@@ -559,6 +654,7 @@ const ERPAttendanceScreen = ({ route, navigation }) => {
       setRefreshing(false);
     }
   }, [accessToken, user?.rollno, user?.id, user?.username, user?.attendance, isMedical, medYear, semNum, user?.batch_year]);
+
 
   React.useEffect(() => {
     fetchAttendance(false);
@@ -642,7 +738,7 @@ const ERPAttendanceScreen = ({ route, navigation }) => {
       'dental': '3rd Prof Part II',
       'pmr': '3rd Prof Part II',
       'physical medicine': '3rd Prof Part II',
-      'aetcom': '3rd Prof Part II', 
+      'aetcom': '3rd Prof Part II',
     };
 
     const getMedicalPhaseForSubject = (subName, semNumber) => {
@@ -1257,12 +1353,22 @@ const ERPAttendanceScreen = ({ route, navigation }) => {
             ) : (
               <ScrollView style={{ maxHeight: 420 }} showsVerticalScrollIndicator={false}>
                 {todayModal.rows.length === 0 ? (
-                  <Text style={{ color: colors.textSecondary, textAlign: 'center', padding: 20 }}>No lecture punches found for today.</Text>
+                  <View style={{ alignItems: 'center', paddingVertical: 32 }}>
+                    <MaterialCommunityIcons name="calendar-remove-outline" size={40} color={colors.textMuted} />
+                    <Text style={{ color: colors.textSecondary, textAlign: 'center', marginTop: 12, fontSize: 14 }}>
+                      Attendance not updated in the ERP for today.
+                    </Text>
+                  </View>
                 ) : (
                   todayModal.rows.map((row, ri) => {
-                    const first = row.data?.[0] || {};
-                    const att = (first.attendance || first.Attendance || '').trim();
-                    const attColor = att === 'P' ? '#34D399' : att === 'A' ? '#F87171' : colors.textSecondary;
+                    const first = row.data?.[0] || null;
+                    const att = first ? (first.attendance || first.Attendance || '').trim() : null;
+                    const notYetMarked = !first; // Scheduled but no punch record yet
+                    const attColor = notYetMarked
+                      ? colors.textMuted
+                      : att === 'P' ? '#34D399'
+                        : att === 'A' ? '#F87171'
+                          : colors.textSecondary;
                     return (
                       <View key={ri} style={[
                         styles.todayRow,
@@ -1270,16 +1376,24 @@ const ERPAttendanceScreen = ({ route, navigation }) => {
                       ]}>
                         <View style={{ flex: 1, gap: 4 }}>
                           <Text style={{ fontSize: 14, fontWeight: '700', color: colors.textPrimary, marginBottom: 2 }}>{row.name}</Text>
-                          <Text style={{ fontSize: 12, color: colors.textSecondary }}>Punch Time: <Text style={{ color: colors.textPrimary, fontWeight: '600' }}>{first.punchtime || '-'}</Text></Text>
-                          <Text style={{ fontSize: 12, color: colors.textSecondary }}>Faculty In: <Text style={{ color: colors.textPrimary, fontWeight: '600' }}>{first.faculty_inpunch || '-'}</Text></Text>
-                          <Text style={{ fontSize: 12, color: colors.textSecondary }}>Faculty Out: <Text style={{ color: colors.textPrimary, fontWeight: '600' }}>{first.faculty_outpunch || '-'}</Text></Text>
+                          {notYetMarked ? (
+                            <Text style={{ fontSize: 12, color: colors.textMuted, fontStyle: 'italic' }}>
+                              Lecture scheduled — attendance not yet marked
+                            </Text>
+                          ) : (
+                            <>
+                              <Text style={{ fontSize: 12, color: colors.textSecondary }}>Punch Time: <Text style={{ color: colors.textPrimary, fontWeight: '600' }}>{first?.punchtime || '-'}</Text></Text>
+                              <Text style={{ fontSize: 12, color: colors.textSecondary }}>Faculty In: <Text style={{ color: colors.textPrimary, fontWeight: '600' }}>{first?.faculty_inpunch || '-'}</Text></Text>
+                              <Text style={{ fontSize: 12, color: colors.textSecondary }}>Faculty Out: <Text style={{ color: colors.textPrimary, fontWeight: '600' }}>{first?.faculty_outpunch || '-'}</Text></Text>
+                            </>
+                          )}
                         </View>
                         <View style={[
                           styles.todayBadge,
                           { backgroundColor: attColor + '20' }
                         ]}>
-                          <Text style={{ fontSize: 18, fontWeight: '900', color: attColor }}>
-                            {att || 'N.A.'}
+                          <Text style={{ fontSize: notYetMarked ? 11 : 18, fontWeight: '900', color: attColor }}>
+                            {notYetMarked ? 'Pending' : (att || 'N.A.')}
                           </Text>
                         </View>
                       </View>
