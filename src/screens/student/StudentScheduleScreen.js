@@ -88,6 +88,32 @@ const ClassCard = ({ item, index, isDark, colors }) => {
   );
 };
 
+const SkeletonClassCard = ({ isDark, colors, shimmerAnim }) => {
+  return (
+    <View style={[styles.classCard, { backgroundColor: colors.card, borderColor: colors.border, opacity: 0.8 }]}>
+      <View style={[styles.classTypeStrip, { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#F3F4F6', gap: 6 }]}>
+        <Animated.View style={{ width: 14, height: 14, borderRadius: 7, backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : '#E5E7EB', opacity: shimmerAnim }} />
+        <Animated.View style={{ width: 60, height: 12, borderRadius: 4, backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : '#E5E7EB', opacity: shimmerAnim }} />
+      </View>
+      <View style={styles.classBody}>
+        <View style={[styles.classTimeRow, { gap: 6, marginBottom: 8 }]}>
+          <Animated.View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : '#E5E7EB', opacity: shimmerAnim }} />
+          <Animated.View style={{ width: 100, height: 12, borderRadius: 4, backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : '#E5E7EB', opacity: shimmerAnim }} />
+        </View>
+        <Animated.View style={{ width: '75%', height: 18, borderRadius: 4, backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : '#E5E7EB', marginBottom: 10, opacity: shimmerAnim }} />
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+          <Animated.View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : '#E5E7EB', opacity: shimmerAnim }} />
+          <Animated.View style={{ flex: 1, height: 12, borderRadius: 4, backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : '#E5E7EB', opacity: shimmerAnim }} />
+        </View>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          <Animated.View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : '#E5E7EB', opacity: shimmerAnim }} />
+          <Animated.View style={{ width: 120, height: 12, borderRadius: 4, backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : '#E5E7EB', opacity: shimmerAnim }} />
+        </View>
+      </View>
+    </View>
+  );
+};
+
 const StudentScheduleScreen = ({ route, navigation }) => {
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
@@ -103,6 +129,39 @@ const StudentScheduleScreen = ({ route, navigation }) => {
   const [schedule, setSchedule] = useState({});
   const [loading, setLoading] = useState(false);
 
+  const shimmerAnim = useRef(new Animated.Value(0.3)).current;
+
+  useEffect(() => {
+    let animation;
+    if (loading) {
+      shimmerAnim.setValue(0.3);
+      animation = Animated.loop(
+        Animated.sequence([
+          Animated.timing(shimmerAnim, {
+            toValue: 0.8,
+            duration: 800,
+            useNativeDriver: true,
+          }),
+          Animated.timing(shimmerAnim, {
+            toValue: 0.3,
+            duration: 800,
+            useNativeDriver: true,
+          }),
+        ])
+      );
+      animation.start();
+    } else {
+      if (animation) {
+        animation.stop();
+      }
+    }
+    return () => {
+      if (animation) {
+        animation.stop();
+      }
+    };
+  }, [loading]);
+
   const dayClasses = schedule[selectedDay] || [];
   const lectureCount = dayClasses.filter(c => c.type === 'Lecture').length;
   const practicalCount = dayClasses.filter(c => c.type === 'Practical').length;
@@ -116,7 +175,70 @@ const StudentScheduleScreen = ({ route, navigation }) => {
     setLoading(true);
     try {
       const studentId = user?.rollno || user?.id || user?.username;
-      const data = await getStudentSchedule(accessToken, studentId);
+      let data = await getStudentSchedule(accessToken, studentId);
+
+      // Robust fallback: If backend returns no schedule, query SRMS ERP directly
+      if (!data || !Array.isArray(data) || data.length === 0) {
+        try {
+          const yr = parseInt(user?.current_year || user?.year || (user?.batch_year === 2025 ? 1 : user?.batch_year === 2024 ? 2 : user?.batch_year === 2023 ? 3 : 1), 10);
+          let phase = "1";
+          let subphase = "1";
+          if (yr <= 1) { phase = "1"; subphase = "1"; }
+          else if (yr === 2) { phase = "2"; subphase = "2"; }
+          else if (yr === 3) { phase = "3"; subphase = "1"; }
+          else { phase = "3"; subphase = "2"; }
+
+          const erpResp = await fetch('https://myportal.srms.ac.in/SRMSERP/Faculty/GetStudentCurrentTimeTable', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ phase, subphase }),
+          });
+          const erpJson = await erpResp.json();
+
+          let rawData = erpJson.success && Array.isArray(erpJson.data) ? erpJson.data : [];
+
+          const flattened = [];
+          if (rawData.length > 0) {
+            rawData.forEach(dept => {
+              const deptName = dept.department || '';
+              (dept.categories || []).forEach(cat => {
+                const catName = cat.category || 'Lecture';
+                (cat.lectures || []).forEach(lec => {
+                  let dayNo = 1;
+                  const rawDate = lec.lectureDate || '';
+                  if (rawDate.includes('/Date(')) {
+                    try {
+                      const tsStr = rawDate.replace('/Date(', '').replace(')/', '').split('+')[0].split('-')[0];
+                      const ts = parseInt(tsStr, 10);
+                      const dtObj = new Date(ts);
+                      const day = dtObj.getDay(); // 0=Sun, 1=Mon, ...
+                      dayNo = day === 0 ? 7 : day;
+                    } catch (e) {
+                      dayNo = 1;
+                    }
+                  }
+
+                  flattened.push({
+                    day_no: dayNo,
+                    from_time: lec.lectureStart || '08:00 AM',
+                    to_time: lec.lectureEnd || '09:00 AM',
+                    subject: lec.subject || deptName || 'Class',
+                    faculty: lec.faculty || '',
+                    topic: lec.description || '',
+                    type: catName,
+                    department: deptName,
+                    room: ''
+                  });
+                });
+              });
+            });
+          }
+          data = flattened;
+        } catch (erpErr) {
+          console.warn('[StudentScheduleScreen] Direct ERP schedule fetch failed:', erpErr);
+        }
+      }
+
       if (data && Array.isArray(data) && data.length > 0) {
         // Transform ERP timetable format into our display format
         const mapped = {};
@@ -129,7 +251,7 @@ const StudentScheduleScreen = ({ route, navigation }) => {
               subject: item.subject || item.SubjectName || item.subject_name || 'Class',
               topic: item.topic || item.LectureTopic || item.competency_code || '',
               faculty: item.faculty_name || item.FacultyName || item.emp_name || '',
-              type: item.lecture_type || item.LectureType || 'Lecture',
+              type: item.lecture_type || item.LectureType || item.type || 'Lecture',
               room: item.room || item.RoomNo || '',
             });
           }
@@ -226,16 +348,18 @@ const StudentScheduleScreen = ({ route, navigation }) => {
 
       {/* Class List */}
       {loading ? (
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <ActivityIndicator size="large" color={colors.primary} />
-        </View>
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16, gap: 10, paddingBottom: 120 }}>
+          {[1, 2, 3].map((key) => (
+            <SkeletonClassCard key={key} isDark={isDark} colors={colors} shimmerAnim={shimmerAnim} />
+          ))}
+        </ScrollView>
       ) : (
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16, gap: 10, paddingBottom: 120 }}>
           {dayClasses.length === 0 ? (
             <View style={[styles.emptyState, { backgroundColor: colors.card, borderColor: colors.border }]}>
               <MaterialCommunityIcons name="calendar-remove" size={48} color={colors.textMuted} />
               <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>No classes today</Text>
-              <Text style={[styles.emptySub, { color: colors.textSecondary }]}>Enjoy your free day or catch up on SDL!</Text>
+              <Text style={[styles.emptySub, { color: colors.textSecondary }]}>Enjoy your free day!</Text>
             </View>
           ) : (
             dayClasses.map((item, i) => (
