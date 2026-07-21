@@ -34,7 +34,18 @@ const ERPFeesScreen = ({ navigation, route }) => {
 
   // For MBBS students: use current_year (ERP phase) — same logic as ERPAttendanceScreen.
   // current_year: 1=1st Prof, 2=2nd Prof, 3=3rd Prof Part I, 4=3rd Prof Part II
-  const medYear = parseInt(student?.current_year) || parseInt(student?.year) || 1;
+  const medYear = (() => {
+    const cy = parseInt(student?.current_year) || parseInt(student?.year);
+    if (cy && cy >= 1 && cy <= 4) return cy;
+    
+    // Fallback: derive phase from batch_year (authoritative for MBBS)
+    const by = parseInt(student?.batch_year || student?.batchYear || 0);
+    if (by >= 2025) return 1;
+    if (by === 2024) return 2;
+    if (by === 2023) return 3;
+    if (by > 0 && by <= 2022) return 4;
+    return 1;
+  })();
   const getPhaseRoman = (yr) => {
     const y = parseInt(yr) || 1;
     if (y <= 1) return 'I';
