@@ -1399,15 +1399,16 @@ const ERPResultsScreen = ({ route, navigation }) => {
       // Filter out future phases beyond current year
       // Filter out future phases beyond current year using robust batch-year fallback
       const studentYear = (() => {
-        const cy = parseInt(user?.current_year || user?.year, 10);
-        if (cy && cy >= 1 && cy <= 4) return cy;
-        
-        // Fallback: derive phase from batch_year (authoritative for MBBS)
+        // For MBBS, batch_year is the authoritative source of truth for the phase.
+        // Prioritize it over current_year/year to bypass stale cached profiles.
         const by = parseInt(user?.batch_year || user?.batchYear || 0, 10);
         if (by >= 2025) return 1;
         if (by === 2024) return 2;
         if (by === 2023) return 3;
         if (by > 0 && by <= 2022) return 4;
+
+        const cy = parseInt(user?.current_year || user?.year, 10);
+        if (cy && cy >= 1 && cy <= 4) return cy;
         return 3;
       })();
       const sorted = Object.values(byPhase)
