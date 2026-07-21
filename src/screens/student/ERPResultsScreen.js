@@ -1333,9 +1333,13 @@ const ERPResultsScreen = ({ route, navigation }) => {
           const paperPhase = getPhaseForPaper(p.paperName, dbYrFk, defaultPhase);
 
           if (!byPhase[paperPhase]) {
+            const canonicalYr = paperPhase.includes('1st') ? 1 
+                              : paperPhase.includes('2nd') ? 2 
+                              : paperPhase.includes('Part I') ? 3 
+                              : 4;
             byPhase[paperPhase] = {
               phase: paperPhase,
-              yr_fk: dbYrFk || (paperPhase.includes('1st') ? 1 : paperPhase.includes('2nd') ? 2 : paperPhase.includes('Part I') ? 3 : 4),
+              yr_fk: canonicalYr,
               subjectsMap: {},
               subjects: []
             };
@@ -1413,7 +1417,7 @@ const ERPResultsScreen = ({ route, navigation }) => {
       })();
       const sorted = Object.values(byPhase)
         .sort((a, b) => getPhaseSortOrder(a.phase) - getPhaseSortOrder(b.phase))
-        .filter(p => p.combinedPct !== null || p.yr_fk <= studentYear);
+        .filter(p => isMedical ? (p.yr_fk <= studentYear) : (p.combinedPct !== null || p.yr_fk <= studentYear));
 
       setPhases(sorted);
       if (sorted.length > 0) setExpandedPhase(sorted[sorted.length - 1].phase);
