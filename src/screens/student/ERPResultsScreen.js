@@ -107,17 +107,25 @@ const getPhaseSortOrder = (label) => {
 };
 
 const getPhaseForSubject = (subjectName) => {
-  const name = subjectName.toLowerCase();
+  const name = (subjectName || '').toLowerCase().trim();
+  
+  // 1st Prof: Anatomy, Physiology, Biochemistry
   if (name.includes('anatomy') || name.includes('physiology') || name.includes('biochem') || name.includes('bio chem') || name.includes('biio chem')) {
     return '1st Prof';
   }
-  if (name.includes('pathology') || name.includes('pharmacology') || name.includes('pharmocology') || name.includes('microbiology') || name.includes('forensic')) {
+  
+  // 2nd Prof: Pathology, Pharmacology, Microbiology
+  if (name.includes('pathology') || name.includes('pharmacology') || name.includes('pharmocology') || name.includes('microbiology') || name.includes('microb')) {
     return '2nd Prof';
   }
-  if (name.includes('ent') || name.includes('ophthalmology') || name.includes('community medicine') || name.includes('psm')) {
+  
+  // 3rd Prof Part I: Forensic Medicine, Community Medicine
+  if (name.includes('forensic') || name.includes('fmt') || name.includes('community medicine') || name.includes('preventive') || name.includes('psm')) {
     return '3rd Prof Part I';
   }
-  return 'Final Prof';
+  
+  // 3rd Prof Part II (Final Prof): General Medicine, General Surgery, Paediatrics, Obstetrics & Gynaecology, etc.
+  return '3rd Prof Part II';
 };
 
 
@@ -1276,12 +1284,17 @@ const ERPResultsScreen = ({ route, navigation }) => {
       }
 
       const getPhaseForPaper = (paperName, dbYrFk, defaultPhase) => {
+        if (isMedical) {
+          // For medical, the phase of the subject is always canonical.
+          // Don't let dbYrFk override it.
+          return defaultPhase;
+        }
         if (dbYrFk) {
           const yr = String(dbYrFk);
           if (yr === '1') return '1st Prof';
           if (yr === '2') return '2nd Prof';
           if (yr === '3') return '3rd Prof Part I';
-          if (yr === '4') return 'Final Prof';
+          if (yr === '4') return '3rd Prof Part II';
         }
 
         const name = String(paperName || '').toLowerCase();
@@ -1291,7 +1304,7 @@ const ERPResultsScreen = ({ route, navigation }) => {
           if (name.includes('part-i') || name.includes('part i') || name.includes('part-1')) {
             return '3rd Prof Part I';
           }
-          return 'Final Prof';
+          return '3rd Prof Part II';
         }
         return defaultPhase;
       };
@@ -1384,7 +1397,19 @@ const ERPResultsScreen = ({ route, navigation }) => {
       });
 
       // Filter out future phases beyond current year
-      const studentYear = parseInt(user?.year || user?.current_year, 10) || 3;
+      // Filter out future phases beyond current year using robust batch-year fallback
+      const studentYear = (() => {
+        const cy = parseInt(user?.current_year || user?.year, 10);
+        if (cy && cy >= 1 && cy <= 4) return cy;
+        
+        // Fallback: derive phase from batch_year (authoritative for MBBS)
+        const by = parseInt(user?.batch_year || user?.batchYear || 0, 10);
+        if (by >= 2025) return 1;
+        if (by === 2024) return 2;
+        if (by === 2023) return 3;
+        if (by > 0 && by <= 2022) return 4;
+        return 3;
+      })();
       const sorted = Object.values(byPhase)
         .sort((a, b) => getPhaseSortOrder(a.phase) - getPhaseSortOrder(b.phase))
         .filter(p => p.combinedPct !== null || p.yr_fk <= studentYear);
