@@ -1284,11 +1284,6 @@ const ERPResultsScreen = ({ route, navigation }) => {
       }
 
       const getPhaseForPaper = (paperName, dbYrFk, defaultPhase) => {
-        if (isMedical) {
-          // For medical, the phase of the subject is always canonical.
-          // Don't let dbYrFk override it.
-          return defaultPhase;
-        }
         if (dbYrFk) {
           const yr = String(dbYrFk);
           if (yr === '1') return '1st Prof';
