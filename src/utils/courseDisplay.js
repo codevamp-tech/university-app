@@ -66,30 +66,27 @@ export function getDisplayCourse(user) {
   const course = user.course || '';
   const branch = user.branch || '';
   
-  // Extract number from year string or current_year property
+  // Extract number from current_year, year, or semester
   let yearNum = null;
-  if (user.year) {
-    const match = user.year.toString().match(/\d+/);
-    if (match) yearNum = parseInt(match[0]);
-  }
-  if (!yearNum && user.current_year) {
+  if (user.current_year) {
     const match = user.current_year.toString().match(/\d+/);
     if (match) yearNum = parseInt(match[0]);
   }
-  
+  if (!yearNum && user.year) {
+    const match = user.year.toString().match(/\d+/);
+    if (match) yearNum = parseInt(match[0]);
+  }
+
   const semNum = parseInt(user.semester) || null;
   if (!yearNum && semNum) {
     yearNum = Math.ceil(semNum / 2);
   }
 
   if (isMedicalStudent(user)) {
-    // Use proper Indian MBBS professional year terminology (e.g. "3rd Prof MBBS")
-    // instead of generic "3rd Year MBBS"
     if (yearNum) {
       return `${getMBBSProfLabel(yearNum)} MBBS`;
     }
-    const phase = getPhaseRoman(semNum, yearNum);
-    return phase ? `Phase ${phase} MBBS` : 'MBBS';
+    return 'MBBS';
   }
 
   // For non-medical: check if branch is redundant (same as course or '-')

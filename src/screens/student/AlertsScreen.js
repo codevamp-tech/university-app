@@ -9,6 +9,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { APP_CONFIG } from '../../config/appConfig';
 import { useTheme } from '../../hooks/useTheme';
 import { useUser } from '../../context/UserContext';
+import { useNotifications } from '../../context/NotificationContext';
 import { getAlerts, markAllAlertsRead, markAlertRead, getAdminGeneralNotifications } from '../../data/apiService';
 
 const { width } = Dimensions.get('window');
@@ -19,6 +20,7 @@ const AlertsScreen = ({ navigation }) => {
   const [activeTab, setActiveTab] = useState('All Updates');
   const { colors, isDark } = useTheme();
   const { accessToken, user } = useUser();
+  const { markAlertsAsRead, refreshUnreadCounts } = useNotifications();
 
   const [apiAlerts, setApiAlerts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -64,13 +66,14 @@ const AlertsScreen = ({ navigation }) => {
       });
 
       setApiAlerts(combined);
+      refreshUnreadCounts();
     } catch (e) {
       console.log('Error loading alerts:', e);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [accessToken, user]);
+  }, [accessToken, user, refreshUnreadCounts]);
 
   const onRefresh = React.useCallback(() => {
     loadAlerts(true);
@@ -89,6 +92,10 @@ const AlertsScreen = ({ navigation }) => {
       await AsyncStorage.setItem('read_erp_announcements', JSON.stringify(newReadIds));
     } catch {}
     setApiAlerts(prev => prev.map(a => ({ ...a, is_read: true })));
+    markAlertsAsRead(0); // clear all unread alert counts
+    setTimeout(() => {
+      refreshUnreadCounts();
+    }, 300);
   };
 
   const handleAlertTap = async (notif) => {
@@ -106,6 +113,10 @@ const AlertsScreen = ({ navigation }) => {
         markAlertRead(accessToken, notif.id).catch(() => {});
       }
       setApiAlerts(prev => prev.map(a => a.id === notif.id ? { ...a, is_read: true } : a));
+      markAlertsAsRead(1); // decrement by 1
+      setTimeout(() => {
+        refreshUnreadCounts();
+      }, 300);
     }
     
     if (String(notif.id).startsWith('erp-announcement-')) {

@@ -8,6 +8,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useUser } from '../../context/UserContext';
+import { useNotifications, NotificationBadge } from '../../context/NotificationContext';
 import { getFacultyTimetable, getFacultyTopics, uploadAvatarAPI, listGrievancesAPI, deleteGrievanceAPI, getFacultyAttendance } from '../../data/apiService';
 import ActivityRing from '../../components/ActivityRing';
 import { getAvatarUrl } from '../../utils/avatar';
@@ -75,6 +76,7 @@ function formatDayOnly(iso) {
 const TeacherDashboardScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const { user, accessToken, logout, updateAvatarUrl } = useUser();
+  const { totalUnreadCount } = useNotifications();
 
   const [timetable, setTimetable] = useState([]);
   const [topics, setTopics] = useState([]);
@@ -434,11 +436,12 @@ const TeacherDashboardScreen = ({ navigation }) => {
 
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
             <TouchableOpacity
-              style={styles.settingsIconBtn}
+              style={[styles.settingsIconBtn, { position: 'relative' }]}
               onPress={() => navigation.navigate('TeacherAlerts')}
               activeOpacity={0.7}
             >
               <Ionicons name="notifications-outline" size={24} color="rgba(255,255,255,0.9)" />
+              <NotificationBadge count={totalUnreadCount} />
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -782,9 +785,14 @@ const TeacherDashboardScreen = ({ navigation }) => {
             <View>
               <Text style={styles.sectionTitle}>🎫 My Support Tickets</Text>
             </View>
-            <TouchableOpacity onPress={() => navigation.navigate('RaiseIssue')}>
-              <Text style={styles.viewAllText}>+ Raise New</Text>
-            </TouchableOpacity>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+              <TouchableOpacity onPress={() => navigation.navigate('GrievancesList')}>
+                <Text style={styles.viewAllText}>View All ({raisedIssues.length})</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => navigation.navigate('RaiseIssue')}>
+                <Text style={[styles.viewAllText, { fontWeight: '800' }]}>+ Raise New</Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
           {isLoadingIssues ? (
@@ -799,7 +807,7 @@ const TeacherDashboardScreen = ({ navigation }) => {
             </View>
           ) : (
             <View style={styles.issuesList}>
-              {raisedIssues.map((issue) => {
+              {raisedIssues.slice(0, 3).map((issue) => {
                 const statusLower = (issue.status || '').toLowerCase().replace('-', '_');
                 let statusColor = '#9CA3AF'; // gray
                 if (statusLower === 'pending') statusColor = '#3B82F6'; // blue
@@ -874,7 +882,16 @@ const TeacherDashboardScreen = ({ navigation }) => {
                       <Text style={styles.issueTimeText}>
                         {new Date(issue.created_at).toLocaleDateString()} {new Date(issue.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </Text>
-                      {statusLower === 'pending' && (
+                      <View style={{ flexDirection: 'row', gap: 16 }}>
+                        {statusLower === 'pending' && (
+                          <TouchableOpacity 
+                            onPress={() => navigation.navigate('RaiseIssue', { editMode: true, issue })}
+                            style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
+                          >
+                            <MaterialIcons name="edit" size={16} color="#EA580C" />
+                            <Text style={{ color: '#EA580C', fontSize: 13, fontWeight: '600' }}>Edit</Text>
+                          </TouchableOpacity>
+                        )}
                         <TouchableOpacity 
                           style={styles.deleteIssueBtn}
                           onPress={() => handleDeleteIssue(issue.id)}
@@ -883,7 +900,7 @@ const TeacherDashboardScreen = ({ navigation }) => {
                           <MaterialIcons name="delete-outline" size={16} color="#EF4444" />
                           <Text style={{ color: '#EF4444', fontSize: 13, fontWeight: '600' }}>Delete</Text>
                         </TouchableOpacity>
-                      )}
+                      </View>
                     </View>
                   </View>
                 );

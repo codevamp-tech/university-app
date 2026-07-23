@@ -8,6 +8,7 @@ import { Svg, Circle } from 'react-native-svg';
 import { ATTENDANCE_SUBJECTS, RECENT_RECORDS } from '../../constants/data';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../hooks/useTheme';
+import { useNotifications, NotificationBadge } from '../../context/NotificationContext';
 
 
 const RADIUS = 60;
@@ -54,6 +55,7 @@ const DonutChart = ({ percent }) => {
 const AcademicsScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
+  const { totalUnreadCount } = useNotifications();
 
 
   return (
@@ -65,9 +67,9 @@ const AcademicsScreen = ({ navigation }) => {
           <Ionicons name="arrow-back" size={22} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Academics</Text>
-        <TouchableOpacity onPress={() => navigation.navigate('Alerts')} style={[styles.bellButton, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]} activeOpacity={0.7}>
+        <TouchableOpacity onPress={() => navigation.navigate('Alerts')} style={[styles.bellButton, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1, position: 'relative' }]} activeOpacity={0.7}>
           <Ionicons name="notifications-outline" size={20} color={colors.textPrimary} />
-          <View style={[styles.notificationBadge, { borderColor: colors.card }]} />
+          <NotificationBadge count={totalUnreadCount} />
         </TouchableOpacity>
       </View>
 

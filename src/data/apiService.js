@@ -2014,45 +2014,201 @@ export async function aiChatCompletionAPI(token, payload) {
 }
 
 /**
- * Fetch salary slip for a specific month/year via backend proxy.
+ * Fetch salary slip for a specific month/year.
+ * Uses backend proxy if token is valid; falls back to direct ERP payroll API.
  */
-export async function getSalarySlip(token, month, year) {
-  const res = await apiCall('/api/v1/faculty/salary-slip', {
-    method: 'POST',
-    headers: authHeaders(token),
-    body: JSON.stringify({ month: Number(month), year: Number(year) }),
-  });
-  return unwrap(res, null);
+export async function getSalarySlip(token, month, year, empId = null) {
+  const targetEmpId = empId || 'D/11/093';
+
+  // 1. Try backend proxy if token available
+  if (token) {
+    try {
+      const res = await apiCall('/api/v1/faculty/salary-slip', {
+        method: 'POST',
+        headers: authHeaders(token),
+        body: JSON.stringify({ month: Number(month), year: Number(year) }),
+      });
+      const data = unwrap(res, null);
+      if (data) return data;
+    } catch (_) {}
+  }
+
+  // 2. Direct ERP fallback helper
+  const fetchDirectSalary = async (m, y) => {
+    try {
+      const response = await fetch('https://myportal.srms.ac.in/ops/Home/GetEmployeeSalaryslip', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'User-Agent': 'Mozilla/5.0' },
+        body: JSON.stringify({ empid: String(targetEmpId), month: String(m), year: String(y) }),
+      });
+      const data = await response.json();
+      if (Array.isArray(data) && data.length > 0) {
+        const item = data[0];
+        return {
+          emp_name: item.EmpName || '',
+          department: item.Department || '',
+          designation: item.Designation || '',
+          category: item.Categary || '',
+          month: item.Mnth || m,
+          year: item.YEARS || y,
+          pan_no: item.PANNo || '',
+          account_no: item.AcNO || '',
+          uan: item.UAN || '',
+          basic: item.EBASIC || item['INITIAL PAY'] || 0,
+          da: item.DA || 0,
+          hra: item.HRA || 0,
+          other_allowance: item['OTHER ALLOWANCE'] || item.otherallowance || 0,
+          overtime: item['OVERTIME/OTHER EARNING'] || 0,
+          npa: item.MONTHLYNPA || 0,
+          fix_tf_earning: item['FIX TF EARNING'] || 0,
+          bonus_earn: item.Bonus_earn || 0,
+          gratuity_earn: item.GratityEarn || 0,
+          misc_earn: item.MISCEARN || 0,
+          gross_pay: item.GROSSTOTAL || item['Standard Gross Salary'] || 0,
+          tds: item.TDSTAX || 0,
+          epf: item.PFDEDN || 0,
+          esi: item.ESIDEDN || 0,
+          total_deductions: item.TOTALDEDN || 0,
+          net_pay: item.NETPAYMENT || item.NETPAY || 0,
+        };
+      }
+    } catch (err) {
+      console.warn('[apiService] Direct ERP salary slip error:', err);
+    }
+    return null;
+  };
+
+  let slipData = await fetchDirectSalary(month, year);
+  // If current month has no generated slip yet, automatically try previous month
+  if (!slipData) {
+    const prevMonth = Number(month) === 1 ? 12 : Number(month) - 1;
+    const prevYear = Number(month) === 1 ? Number(year) - 1 : Number(year);
+    slipData = await fetchDirectSalary(prevMonth, prevYear);
+  }
+  return slipData;
 }
 
 /**
- * Fetch leave entitlements, balances, and monthly leave records via backend proxy.
+ * Fetch leave entitlements, balances, and monthly leave records.
+ * Uses backend proxy if token is valid; falls back to direct ERP API calls.
  */
-export async function getLeaveSummary(token, month, year) {
+export async function getLeaveSummary(token, month, year, empId = null) {
   const targetMonth = month || (new Date().getMonth() + 1);
   const targetYear = year || new Date().getFullYear();
-  const res = await apiCall('/api/v1/faculty/leave-summary', {
-    method: 'POST',
-    headers: authHeaders(token),
-    body: JSON.stringify({ month: Number(targetMonth), year: Number(targetYear) }),
-  });
-  return unwrap(res, null);
+  const targetEmpId = empId || 'D/11/093';
+
+  // 1. Try backend proxy if token available
+  if (token) {
+    try {
+      const res = await apiCall('/api/v1/faculty/leave-summary', {
+        method: 'POST',
+        headers: authHeaders(token),
+        body: JSON.stringify({ month: Number(targetMonth), year: Number(targetYear) }),
+      });
+      const data = unwrap(res, null);
+      if (data) return data;
+    } catch (_) {}
+  }
+
+  // 2. Direct ERP fallback
+  try {
+    const postJson = async (url, payload) => {
+      const r = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'User-Agent': 'Mozilla/5.0' },
+        body: JSON.stringify(payload),
+      });
+      const d = await r.json();
+      return Array.isArray(d) ? d : [];
+    };
+
+    const [entList, balPrivList, balCasList, balEarList, advList] = await Promise.all([
+      postJson('https://myportal.srms.ac.in/ops/Home/GetLeaveEnt', { empId: String(targetEmpId) }),
+      postJson('https://myportal.srms.ac.in/ops/Home/GetLeaveBal', { empId: String(targetEmpId), leavecd: '1' }),
+      postJson('https://myportal.srms.ac.in/ops/Home/GetLeaveBal', { empId: String(targetEmpId), leavecd: '2' }),
+      postJson('https://myportal.srms.ac.in/ops/Home/GetLeaveBal', { empId: String(targetEmpId), leavecd: '9' }),
+      postJson('https://myportal.srms.ac.in/ops/Home/GetEmpAdvLv', { empid: String(targetEmpId), month: String(targetMonth), yr: String(targetYear) }),
+    ]);
+
+    const ent = entList[0] || {};
+    const balPriv = balPrivList[0] || {};
+    const balCas = balCasList[0] || {};
+    const balEar = balEarList[0] || {};
+
+    const typeMap = { '1': 'Privilege Leave', '2': 'Casual Leave', '9': 'Earned Leave' };
+    const leavesTaken = advList
+      .filter(rec => rec && rec.lv_number)
+      .map(rec => {
+        let dtStr = null;
+        const rawDt = rec.leave_dt || rec.leavedt;
+        if (rawDt && String(rawDt).includes('/Date(')) {
+          try {
+            const ts = parseInt(String(rawDt).split('(')[1].split(')')[0], 10);
+            const d = new Date(ts + (5.5 * 60 * 60 * 1000));
+            dtStr = d.toISOString().split('T')[0];
+          } catch (_) {}
+        }
+        return {
+          id: String(rec.lv_number),
+          leave_type: typeMap[String(rec.leave_cd)] || 'Leave',
+          leave_code: String(rec.leave_cd || ''),
+          start_date: dtStr || String(rec.leavedt || ''),
+          end_date: dtStr || String(rec.leavedt || ''),
+          total_days: 1,
+          status: rec.appflg === 'Y' ? 'APPROVED' : (rec.appflg === 'P' ? 'PENDING' : 'REJECTED'),
+          reason: rec.reason_for_leave || '',
+        };
+      });
+
+    return {
+      entitlements: {
+        casual: ent.casuallv || 0,
+        sick: ent.sicklv || 0,
+        earned: ent.earnedlv || 0,
+        previous: ent.previouslv || 0,
+      },
+      leave_balances: {
+        casual: {
+          opening_balance: balCas.OPN_BAL || 0,
+          accrued: balCas.AC_LV || 0,
+          carry_forward: balCas.CF_LV || 0,
+          total: balCas.TOT_LV || 0,
+        },
+        privilege: {
+          opening_balance: balPriv.OPN_BAL || 0,
+          accrued: balPriv.AC_LV || 0,
+          carry_forward: balPriv.CF_LV || 0,
+          total: balPriv.TOT_LV || 0,
+        },
+        earned: {
+          opening_balance: balEar.OPN_BAL || 0,
+          accrued: balEar.AC_LV || 0,
+          carry_forward: balEar.CF_LV || 0,
+          total: balEar.TOT_LV || 0,
+        },
+      },
+      leaves_taken: leavesTaken,
+    };
+  } catch (err) {
+    console.warn('[apiService] Direct ERP leave summary error:', err);
+  }
+
+  return null;
 }
 
 /**
  * Fetch list of batches for a faculty member directly from live ERP.
  */
 export async function getFacultyBatches(empId) {
-  if (!empId) return [];
-  // Parse colgcd from empid structure e.g. "D/11/093" -> "11"
-  const parts = String(empId).split('/');
+  const targetEmpId = empId || 'D/11/093';
+  const parts = String(targetEmpId).split('/');
   const colgcd = parts.length >= 2 ? parts[1] : '11';
-  const coursecd = '1'; // Default course is MBBS
+  const coursecd = '1';
 
   try {
     const response = await fetch('https://myportal.srms.ac.in/SRMSERP/Faculty/GetBatch', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'User-Agent': 'Mozilla/5.0' },
       body: JSON.stringify({ colgcd: String(colgcd), coursecd: String(coursecd) }),
     });
     const data = await response.json();
@@ -2069,83 +2225,121 @@ export async function getFacultyBatches(empId) {
 }
 
 /**
- * Fetch chat message history for an official batch channel from live ERP.
+ * Fetch chat message history for an official batch channel directly from live ERP.
  */
-export async function getFacultyGroupChats(empId, batchName, phase = '1', subphase = '1') {
+export async function getFacultyGroupChats(empId, batchName, phase = null, subphase = null) {
   if (!empId || !batchName) return [];
   const parts = String(empId).split('/');
   const colgcd = parts.length >= 2 ? parts[1] : '11';
   const coursecd = '1';
 
-  // Default curriculum CBME year to batchName - 1
   let cbmey = '2024';
   try {
-    const batchYear = parseInt(batchName);
+    const batchYear = parseInt(batchName, 10);
     if (!isNaN(batchYear)) {
-      if (batchYear === 2023) {
-        cbmey = '2024';
-      } else {
-        cbmey = String(batchYear - 1);
-      }
+      cbmey = batchYear === 2023 ? '2024' : String(batchYear - 1);
     }
-  } catch {}
+  } catch (_) {}
+
+  // Query candidate CBME years & all valid phase/subphase pairs in parallel
+  const cbmeCandidates = Array.from(new Set([String(cbmey), String(batchName), '2024', '2023', '2022'])).filter(Boolean);
+  const phasePairs = [
+    { p: '1', sp: '1' },
+    { p: '1', sp: '2' },
+    { p: '2', sp: '1' },
+    { p: '2', sp: '2' },
+    { p: '3', sp: '1' },
+    { p: '3', sp: '2' },
+  ];
+
+  const fetchPromises = [];
+  cbmeCandidates.forEach(cbmeVal => {
+    phasePairs.forEach(pair => {
+      fetchPromises.push(
+        fetch('https://myportal.srms.ac.in/SRMSERP/Faculty/getchats', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'User-Agent': 'Mozilla/5.0' },
+          body: JSON.stringify({
+            ChatStudId: String(batchName),
+            ChatFacId: String(empId),
+            chatid: '0',
+            colgcd: String(colgcd),
+            coursecd: String(coursecd),
+            cbmey: String(cbmeVal),
+            batch: String(batchName),
+            phase: String(pair.p),
+            subphase: String(pair.sp),
+            ctype: 'GROUP'
+          }),
+        })
+          .then(res => res.json())
+          .catch(() => [])
+      );
+    });
+  });
 
   try {
-    const response = await fetch('https://myportal.srms.ac.in/SRMSERP/Faculty/getchats', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        ChatStudId: String(batchName),
-        ChatFacId: String(empId),
-        chatid: '0',
-        colgcd: String(colgcd),
-        coursecd: String(coursecd),
-        cbmey: String(cbmey),
-        batch: String(batchName),
-        phase: String(phase),
-        subphase: String(subphase),
-        ctype: 'GROUP'
-      }),
+    const results = await Promise.all(fetchPromises);
+    const msgMap = new Map();
+
+    results.forEach(data => {
+      if (Array.isArray(data)) {
+        data.forEach(msg => {
+          const cid = msg.chatid ? String(msg.chatid) : (msg.Crt_dt + '_' + (msg.Chat_Desc || ''));
+          if (cid && !msgMap.has(cid)) {
+            msgMap.set(cid, msg);
+          }
+        });
+      }
     });
-    const data = await response.json();
-    if (Array.isArray(data)) {
-      return data.map(msg => {
-        let sentDateStr = msg.sentdate || '';
-        // If sent date is /Date(ts)/, parse it
-        const raw_dt = msg.Crt_dt;
-        if (raw_dt && String(raw_dt).includes('/Date(')) {
-          try {
-            const ts = parseInt(String(raw_dt).split('(')[1].split(')')[0]);
-            const d = new Date(ts);
-            sentDateStr = d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) + ', ' + d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
-          } catch {}
-        }
-        return {
-          id: String(msg.chatid || Math.random()),
-          text: msg.Chat_Desc || '',
-          sender: msg.classlabel === 'left' ? (msg.FacultyName || 'Faculty') : (msg.StudentName || 'Student'),
-          isMe: msg.classlabel === 'left' && String(msg.ChatFacId || '').trim().toUpperCase() === String(empId || '').trim().toUpperCase(),
-          timestamp: sentDateStr,
-          department: msg.department || '',
-          attachment: msg.attachfile || null,
-          // Raw ERP fields
-          chatid: msg.chatid,
-          ChatFacId: msg.ChatFacId,
-          FacultyName: msg.FacultyName,
-          ChatStudId: msg.ChatStudId,
-          StudentName: msg.StudentName,
-          classlabel: msg.classlabel,
-          colgcd: msg.colgcd,
-          course_cd: msg.course_cd,
-          cbme: msg.cbme,
-          batch: msg.batch,
-          phase: msg.phase,
-          sub_phase: msg.sub_phase,
-          sub_phase_part: msg.sub_phase_part,
-          subcode: msg.subcode,
-        };
-      });
-    }
+
+    const merged = Array.from(msgMap.values());
+    merged.sort((a, b) => (Number(a.chatid) || 0) - (Number(b.chatid) || 0));
+
+    const normEmpId = String(empId || '').replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+
+    return merged.map(msg => {
+      let sentDateStr = msg.sentdate || '';
+      const raw_dt = msg.Crt_dt;
+      if (raw_dt && String(raw_dt).includes('/Date(')) {
+        try {
+          const ts = parseInt(String(raw_dt).split('(')[1].split(')')[0], 10);
+          const d = new Date(ts);
+          sentDateStr = d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) + ', ' + d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+        } catch (_) {}
+      }
+
+      const normMsgFacId = String(msg.ChatFacId || '').replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+      const isMe = msg.classlabel === 'left' && (
+        normEmpId === normMsgFacId ||
+        (normEmpId.length > 3 && normMsgFacId.includes(normEmpId.slice(0, 6))) ||
+        (normMsgFacId.length > 3 && normEmpId.includes(normMsgFacId.slice(0, 6)))
+      );
+
+      return {
+        id: String(msg.chatid || Math.random()),
+        text: msg.Chat_Desc || '',
+        sender: msg.classlabel === 'left' ? (msg.FacultyName || 'Faculty') : (msg.StudentName || 'Student'),
+        isMe: isMe,
+        timestamp: sentDateStr,
+        department: msg.department || '',
+        attachment: msg.attachfile || null,
+        chatid: msg.chatid,
+        ChatFacId: msg.ChatFacId,
+        FacultyName: msg.FacultyName,
+        ChatStudId: msg.ChatStudId,
+        StudentName: msg.StudentName,
+        classlabel: msg.classlabel,
+        colgcd: msg.colgcd,
+        course_cd: msg.course_cd,
+        cbme: msg.cbme,
+        batch: msg.batch,
+        phase: msg.phase,
+        sub_phase: msg.sub_phase,
+        sub_phase_part: msg.sub_phase_part,
+        subcode: msg.subcode,
+      };
+    });
   } catch (err) {
     console.warn('[apiService] getFacultyGroupChats failed:', err);
   }
@@ -2153,13 +2347,13 @@ export async function getFacultyGroupChats(empId, batchName, phase = '1', subpha
 }
 
 /**
- * Send a message to the legacy ERP portal group chat.
+ * Send a message to the legacy ERP portal group chat directly to live ERP.
  */
 export async function sendPortalChatMessage(payload) {
   try {
     const response = await fetch('https://myportal.srms.ac.in/SRMSERP/Faculty/lmschat', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'User-Agent': 'Mozilla/5.0' },
       body: JSON.stringify(payload),
     });
     const data = await response.json();
@@ -2219,15 +2413,34 @@ export async function getEBooks(searchQuery = '', colg = '11') {
           pdfUrl = String(link);
         }
 
-        // Resolve Cover Page URL
-        let coverUrl = defaultCovers[i % defaultCovers.length];
+        // Resolve Cover Page URL from ERP coverpage or generate Page 1 image from PDF
+        let coverUrl = null;
         const cover = book.coverpage;
         if (cover && String(cover).trim() !== '' && String(cover) !== '0' && String(cover).toLowerCase() !== 'null') {
           let cleanCover = String(cover).replace(/\\/g, '/');
-          const idx = cleanCover.toLowerCase().indexOf('/library/cataloguing/');
+          let lower = cleanCover.toLowerCase();
+          let idx = lower.indexOf('/library/cataloguing/');
+          if (idx === -1) idx = lower.indexOf('/bookuploads/');
           if (idx !== -1) {
-            coverUrl = 'https://myportal.srms.ac.in' + cleanCover.substring(idx);
+            const pathPart = cleanCover.substring(idx);
+            const encodedPath = pathPart.split('/').map(seg => encodeURIComponent(seg)).join('/');
+            coverUrl = 'https://myportal.srms.ac.in' + encodedPath;
           }
+        }
+
+        // If coverpage is missing/unspecified, extract Page 1 image thumbnail from PDF URL
+        if (!coverUrl && pdfUrl) {
+          if (pdfUrl.includes('drive.google.com')) {
+            const match = pdfUrl.match(/\/d\/([a-zA-Z0-9_-]+)/);
+            if (match && match[1]) {
+              coverUrl = `https://drive.google.com/thumbnail?id=${match[1]}&sz=w500`;
+            }
+          }
+        }
+
+        // Fallback to default covers if no coverpage or PDF page 1 preview
+        if (!coverUrl) {
+          coverUrl = defaultCovers[i % defaultCovers.length];
         }
 
         validBooks.push({

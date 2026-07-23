@@ -616,8 +616,6 @@ const AdminDashboardScreen = ({ navigation }) => {
     const facStats = superStats?.faculty || { active_count: 0, average_attendance: '0%', sessional_marks_upload_pct: 0, active_logins: 0, average_cgpa: 0.0, dept_attendance: [] };
     const gStats = superStats?.grievance || { pending: 0, in_progress: 0, resolved: 0, total: 0 };
 
-    // Fitness calculations removed as campus fitness insights was deleted
-
     // Segment mappings for visual stacked charts
     const moodSegments = [
       { value: mhStats.happy, color: colors.success, label: 'Happy' },
@@ -635,80 +633,255 @@ const AdminDashboardScreen = ({ navigation }) => {
 
     return (
       <View style={styles.dashboardSection}>
-        {renderWellnessCheckIn()}
+        {/* ── 1. PRIMARY ACADEMIC & INSTITUTIONAL DIRECTORIES ─────────────────── */}
+        <Text style={[styles.sectionTitle, { color: colors.textPrimary, marginTop: 4, marginBottom: 2 }]}>
+          Core Academic Intelligence
+        </Text>
+        <Text style={[styles.sectionSubtitle, { color: colors.textMuted, marginBottom: 14 }]}>
+          Primary directory & logbook analytics
+        </Text>
 
-        <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Strategic & Efficacy Insights</Text>
-        <Text style={[styles.sectionSubtitle, { color: colors.textMuted }]}>Live intelligence from all campus verticals</Text>
-
-        {/* Venture Stage Analysis */}
+        {/* 1.1 Students Directory (MBBS / Medical) */}
         <TouchableOpacity
-          style={[styles.insightCard, { backgroundColor: colors.card, borderColor: colors.border, borderLeftColor: colors.success, borderLeftWidth: 3 }]}
-          onPress={() => navigation.navigate('VentureInsights')}
+          style={[
+            styles.insightCard,
+            {
+              backgroundColor: colors.card,
+              borderColor: isDark ? 'rgba(99, 102, 241, 0.3)' : '#E0E7FF',
+              borderWidth: 1.5,
+              shadowColor: '#4F46E5',
+              shadowOpacity: isDark ? 0.2 : 0.08,
+              shadowRadius: 10,
+              elevation: 4,
+            }
+          ]}
+          onPress={() => navigation.navigate('AdminStudentsDirectory')}
           activeOpacity={0.85}
         >
           <View style={styles.insightHeader}>
-            <View style={[styles.insightIconBg, { backgroundColor: colors.success + '18' }]}>
-              <MaterialCommunityIcons name="rocket-launch" size={18} color={colors.success} />
+            <View style={[styles.insightIconBg, { backgroundColor: '#4F46E518' }]}>
+              <MaterialCommunityIcons name="account-group-outline" size={20} color="#4F46E5" />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={[styles.insightTitle, { color: colors.textPrimary }]}>Venture Engagement</Text>
-              <Text style={[styles.insightCategoryTag, { color: colors.success }]}>STARTUP PIPELINE</Text>
+              <Text style={[styles.insightTitle, { color: colors.textPrimary, fontWeight: '800' }]}>
+                Students Directory
+              </Text>
+              <Text style={[styles.insightCategoryTag, { color: '#4F46E5' }]}>COLLEGE DIRECTORY</Text>
             </View>
-            <Feather name="chevron-right" size={16} color={colors.textMuted} />
+            <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#4F46E512', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 }}>
+              <Text style={{ fontSize: 11, fontWeight: '700', color: '#4F46E5', marginRight: 2 }}>Explore</Text>
+              <Feather name="chevron-right" size={14} color="#4F46E5" />
+            </View>
           </View>
-          <TouchableOpacity
-            onPress={() => navigation.navigate('SuperAdminDrilldown', { category: 'ventures', title: 'Submitted Pitch Decks' })}
-            activeOpacity={0.7}
-          >
-            <Text style={[styles.insightBigVal, { color: colors.primary }]}>
-              {vStats.pitched_ideas}{' '}
-              <Text style={[styles.insightBigValSub, { color: colors.textSecondary }]}>Pitch Decks</Text>
-            </Text>
-          </TouchableOpacity>
-          <Text style={[styles.insightSubText, { color: colors.textMuted, marginBottom: 14 }]}>
-            Startup ideas distributed by validation stage
+          
+          <Text style={[styles.insightBigVal, { color: colors.textPrimary }]}>
+            {(() => {
+              const mbbsCount = studentsList.filter(s => {
+                const isStudent = s.role?.toLowerCase() === 'student';
+                const isMedical = (!s.category && !s.branch && !s.course) ||
+                                  s.category === 'medical' || 
+                                  (s.branch && s.branch.toUpperCase() === 'MBBS') || 
+                                  (s.course && s.course.toUpperCase().includes('MBBS')) ||
+                                  (s.course && s.course.replace(/\./g, '').toUpperCase().includes('MBBS'));
+                return isStudent && isMedical;
+              }).length;
+              return mbbsCount;
+            })()}{' '}
+            <Text style={[styles.insightBigValSub, { color: colors.textSecondary }]}>MBBS Students Enrolled</Text>
           </Text>
-          {renderVerticalBarChart(ventureChartData)}
+          <Text style={[styles.insightSubText, { color: colors.textMuted, marginBottom: 12 }]}>
+            Comprehensive batch directory — academic results, attendance logs & profile records.
+          </Text>
+          
+          <View style={{ flexDirection: 'row', gap: 10, marginTop: 4 }}>
+            {[1, 2, 3].map((phase) => {
+              const year = 2026 - phase;
+              const phaseCount = studentsList.filter(s => {
+                const isStudent = s.role?.toLowerCase() === 'student';
+                const isMedical = (!s.category && !s.branch && !s.course) ||
+                                  s.category === 'medical' || 
+                                  (s.branch && s.branch.toUpperCase() === 'MBBS') || 
+                                  (s.course && s.course.toUpperCase().includes('MBBS')) ||
+                                  (s.course && s.course.replace(/\./g, '').toUpperCase().includes('MBBS'));
+                if (!isStudent || !isMedical) return false;
+                
+                return getStudentPhase(s) === phase;
+              }).length;
+              
+              return (
+                <View 
+                  key={phase}
+                  style={{
+                    flex: 1,
+                    backgroundColor: isDark ? 'rgba(99, 102, 241, 0.08)' : '#EEF2FF',
+                    padding: 10,
+                    borderRadius: 12,
+                    borderWidth: 1,
+                    borderColor: isDark ? 'rgba(99, 102, 241, 0.2)' : '#C7D2FE',
+                    alignItems: 'center'
+                  }}
+                >
+                  <Text style={{ fontSize: 10, fontWeight: '800', color: '#4F46E5', marginBottom: 4 }}>
+                    PHASE {phase}
+                  </Text>
+                  <Text style={{ fontSize: 16, fontWeight: '800', color: colors.textPrimary }}>
+                    {phaseCount}
+                  </Text>
+                  <Text style={{ fontSize: 9, color: colors.textMuted, marginTop: 2 }}>
+                    {year} Batch
+                  </Text>
+                </View>
+              );
+            })}
+          </View>
         </TouchableOpacity>
 
-        {/* Grievance Resolution Insights */}
+        {/* 1.2 PG Logbook Analytics */}
         <TouchableOpacity
-          style={[styles.insightCard, { backgroundColor: colors.card, borderColor: colors.border, borderLeftColor: colors.danger, borderLeftWidth: 3 }]}
-          onPress={() => navigation.navigate('SuperAdminDrilldown', { category: 'grievances', title: 'Student Grievance Logs' })}
+          style={[
+            styles.insightCard,
+            {
+              backgroundColor: colors.card,
+              borderColor: isDark ? 'rgba(147, 51, 234, 0.3)' : '#F3E8FF',
+              borderWidth: 1.5,
+              shadowColor: '#9333EA',
+              shadowOpacity: isDark ? 0.2 : 0.08,
+              shadowRadius: 10,
+              elevation: 4,
+            }
+          ]}
+          onPress={() => navigation.navigate('PGLogbookInsights')}
           activeOpacity={0.85}
         >
           <View style={styles.insightHeader}>
-            <View style={[styles.insightIconBg, { backgroundColor: colors.danger + '18' }]}>
-              <MaterialCommunityIcons name="alert-octagon" size={18} color={colors.danger} />
+            <View style={[styles.insightIconBg, { backgroundColor: '#9333EA18' }]}>
+              <MaterialCommunityIcons name="notebook-multiple" size={20} color="#9333EA" />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={[styles.insightTitle, { color: colors.textPrimary }]}>Grievance Resolution</Text>
-              <Text style={[styles.insightCategoryTag, { color: colors.danger }]}>STUDENT ISSUES</Text>
+              <Text style={[styles.insightTitle, { color: colors.textPrimary, fontWeight: '800' }]}>
+                PG Logbook Analytics
+              </Text>
+              <Text style={[styles.insightCategoryTag, { color: '#9333EA' }]}>POSTGRADUATE</Text>
             </View>
-            <Feather name="chevron-right" size={16} color={colors.textMuted} />
+            <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#9333EA12', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 }}>
+              <Text style={{ fontSize: 11, fontWeight: '700', color: '#9333EA', marginRight: 2 }}>View</Text>
+              <Feather name="chevron-right" size={14} color="#9333EA" />
+            </View>
+          </View>
+          <Text style={[styles.insightSubText, { color: colors.textMuted, marginBottom: 12 }]}>
+            Department-wise PG logbook entries — Academic, Clinical, Additional, Mandatory & DRP
+          </Text>
+          <View style={[styles.insightStatRow]}>
+            {[
+              { label: 'Academic',  color: '#3B82F6' },
+              { label: 'Clinical',  color: '#10B981' },
+              { label: 'Mandatory', color: '#8B5CF6' },
+              { label: 'DRP',       color: '#EF4444' },
+            ].map(item => (
+              <View key={item.label} style={[styles.insightStatChip, { backgroundColor: item.color + '15' }]}>
+                <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: item.color, marginRight: 5 }} />
+                <Text style={[styles.chipLabel, { color: item.color, fontWeight: '700' }]}>{item.label}</Text>
+              </View>
+            ))}
+          </View>
+        </TouchableOpacity>
+
+        {/* 1.3 College Faculty Insights */}
+        <TouchableOpacity
+          style={[
+            styles.insightCard,
+            {
+              backgroundColor: colors.card,
+              borderColor: isDark ? 'rgba(16, 185, 129, 0.3)' : '#D1FAE5',
+              borderWidth: 1.5,
+              shadowColor: '#10B981',
+              shadowOpacity: isDark ? 0.2 : 0.08,
+              shadowRadius: 10,
+              elevation: 4,
+              marginBottom: 20,
+            }
+          ]}
+          onPress={() => navigation.navigate('FacultyInsights')}
+          activeOpacity={0.85}
+        >
+          <View style={styles.insightHeader}>
+            <View style={[styles.insightIconBg, { backgroundColor: '#10B98118' }]}>
+              <Feather name="book-open" size={18} color="#10B981" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.insightTitle, { color: colors.textPrimary, fontWeight: '800' }]}>
+                College Faculty Insights
+              </Text>
+              <Text style={[styles.insightCategoryTag, { color: '#10B981' }]}>ACADEMICS & STAFF</Text>
+            </View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#10B98112', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 }}>
+              <Text style={{ fontSize: 11, fontWeight: '700', color: '#10B981', marginRight: 2 }}>Inspect</Text>
+              <Feather name="chevron-right" size={14} color="#10B981" />
+            </View>
           </View>
           <Text style={[styles.insightBigVal, { color: colors.textPrimary }]}>
-            {gStats.total}{' '}
-            <Text style={[styles.insightBigValSub, { color: colors.textSecondary }]}>Grievances Filed</Text>
+            {facStats.active_count}{' '}
+            <Text style={[styles.insightBigValSub, { color: colors.textSecondary }]}>Active Faculty Members</Text>
           </Text>
           <View style={[styles.insightStatRow, { marginTop: 10 }]}>
-            <View style={[styles.insightStatChip, { backgroundColor: colors.danger + '15' }]}>
-              <View style={[styles.chipDot, { backgroundColor: colors.danger }]} />
-              <Text style={[styles.chipLabel, { color: colors.danger }]}>Pending</Text>
-              <Text style={[styles.chipValue, { color: colors.danger }]}>{gStats.pending}</Text>
-            </View>
-            <View style={[styles.insightStatChip, { backgroundColor: colors.orange + '15' }]}>
-              <View style={[styles.chipDot, { backgroundColor: colors.orange }]} />
-              <Text style={[styles.chipLabel, { color: colors.orange }]}>In Progress</Text>
-              <Text style={[styles.chipValue, { color: colors.orange }]}>{gStats.in_progress}</Text>
-            </View>
-            <View style={[styles.insightStatChip, { backgroundColor: colors.success + '15' }]}>
-              <View style={[styles.chipDot, { backgroundColor: colors.success }]} />
-              <Text style={[styles.chipLabel, { color: colors.success }]}>Resolved</Text>
-              <Text style={[styles.chipValue, { color: colors.success }]}>{gStats.resolved}</Text>
+            <View style={[styles.insightStatChip, { backgroundColor: '#10B98118' }]}>
+              <Text style={[styles.chipLabel, { color: '#10B981', fontWeight: '700' }]}>Avg Attendance</Text>
+              <Text style={[styles.chipValue, { color: '#10B981', fontWeight: '800' }]}>{facStats.average_attendance}</Text>
             </View>
           </View>
         </TouchableOpacity>
+
+        {/* ── 2. CAMPUS FITNESS & PULSE CHECK ───────────────────────────────── */}
+        {renderWellnessCheckIn()}
+
+        {/* ── 3. STRATEGIC & EXECUTIVE INSIGHTS ─────────────────────────────── */}
+        <Text style={[styles.sectionTitle, { color: colors.textPrimary, marginTop: 24 }]}>
+          Campus Efficacy & Operations
+        </Text>
+        <Text style={[styles.sectionSubtitle, { color: colors.textMuted, marginBottom: 14 }]}>
+          Live intelligence from all secondary campus verticals
+        </Text>
+
+        {/* Grievances & Venture Pipeline Dual Grid */}
+        <View style={{ flexDirection: 'row', gap: 12, marginBottom: 16 }}>
+          {/* Grievance Resolution */}
+          <TouchableOpacity
+            style={[styles.insightCard, { flex: 1, marginBottom: 0, backgroundColor: colors.card, borderColor: colors.border, borderLeftColor: colors.danger, borderLeftWidth: 3 }]}
+            onPress={() => navigation.navigate('SuperAdminDrilldown', { category: 'grievances', title: 'Student Grievance Logs' })}
+            activeOpacity={0.85}
+          >
+            <View style={[styles.insightIconBg, { backgroundColor: colors.danger + '18', marginBottom: 8 }]}>
+              <MaterialCommunityIcons name="alert-octagon" size={18} color={colors.danger} />
+            </View>
+            <Text style={[styles.insightTitle, { color: colors.textPrimary, fontSize: 13 }]} numberOfLines={1}>
+              Grievances
+            </Text>
+            <Text style={[styles.insightBigVal, { color: colors.textPrimary, fontSize: 20, marginTop: 4 }]}>
+              {gStats.total}
+            </Text>
+            <Text style={{ fontSize: 10, color: colors.textMuted }}>
+              {gStats.pending} Pending · {gStats.resolved} Resolved
+            </Text>
+          </TouchableOpacity>
+
+          {/* Venture Pipeline */}
+          <TouchableOpacity
+            style={[styles.insightCard, { flex: 1, marginBottom: 0, backgroundColor: colors.card, borderColor: colors.border, borderLeftColor: colors.success, borderLeftWidth: 3 }]}
+            onPress={() => navigation.navigate('VentureInsights')}
+            activeOpacity={0.85}
+          >
+            <View style={[styles.insightIconBg, { backgroundColor: colors.success + '18', marginBottom: 8 }]}>
+              <MaterialCommunityIcons name="rocket-launch" size={18} color={colors.success} />
+            </View>
+            <Text style={[styles.insightTitle, { color: colors.textPrimary, fontSize: 13 }]} numberOfLines={1}>
+              Venture Pipeline
+            </Text>
+            <Text style={[styles.insightBigVal, { color: colors.primary, fontSize: 20, marginTop: 4 }]}>
+              {vStats.pitched_ideas}
+            </Text>
+            <Text style={{ fontSize: 10, color: colors.textMuted }}>Pitch Decks Submitted</Text>
+          </TouchableOpacity>
+        </View>
 
         {/* Campus Mood Index */}
         <TouchableOpacity
@@ -780,8 +953,6 @@ const AdminDashboardScreen = ({ navigation }) => {
             </TouchableOpacity>
           </View>
         </TouchableOpacity>
-
-        {/* Campus Fitness Insights removed */}
 
         {/* Leaderboard (The Hustle) Insights */}
         <TouchableOpacity
@@ -868,175 +1039,45 @@ const AdminDashboardScreen = ({ navigation }) => {
           </View>
         </TouchableOpacity>
 
-        {/* Social Network Insights */}
-        <TouchableOpacity
-          style={[styles.insightCard, { backgroundColor: colors.card, borderColor: colors.border, borderLeftColor: colors.primary, borderLeftWidth: 3 }]}
-          onPress={() => navigation.navigate('Community')}
-          activeOpacity={0.85}
-        >
-          <View style={styles.insightHeader}>
-            <View style={[styles.insightIconBg, { backgroundColor: colors.primary + '18' }]}>
+        {/* Social Network & Marketplace Dual Grid */}
+        <View style={{ flexDirection: 'row', gap: 12, marginBottom: 16 }}>
+          <TouchableOpacity
+            style={[styles.insightCard, { flex: 1, marginBottom: 0, backgroundColor: colors.card, borderColor: colors.border, borderLeftColor: colors.primary, borderLeftWidth: 3 }]}
+            onPress={() => navigation.navigate('Community')}
+            activeOpacity={0.85}
+          >
+            <View style={[styles.insightIconBg, { backgroundColor: colors.primary + '18', marginBottom: 8 }]}>
               <MaterialCommunityIcons name="chat-processing" size={18} color={colors.primary} />
             </View>
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.insightTitle, { color: colors.textPrimary }]}>Social Network Insights</Text>
-              <Text style={[styles.insightCategoryTag, { color: colors.primary }]}>COMMUNITY</Text>
-            </View>
-            <Feather name="chevron-right" size={16} color={colors.textMuted} />
-          </View>
-          <Text style={[styles.insightBigVal, { color: colors.textPrimary }]}>
-            {sStats.total_posts}{' '}
-            <Text style={[styles.insightBigValSub, { color: colors.textSecondary }]}>Social Posts</Text>
-          </Text>
-          <View style={[styles.insightStatRow, { marginTop: 10 }]}>
-            <View style={[styles.insightStatChip, { backgroundColor: colors.primary + '12' }]}>
-              <Text style={[styles.chipLabel, { color: colors.primary }]}>Active Clubs</Text>
-              <Text style={[styles.chipValue, { color: colors.primary }]}>{sStats.active_clubs}</Text>
-            </View>
-            <View style={[styles.insightStatChip, { backgroundColor: colors.primary + '12' }]}>
-              <Text style={[styles.chipLabel, { color: colors.primary }]}>Engagement</Text>
-              <Text style={[styles.chipValue, { color: colors.primary }]}>{sStats.avg_engagement}</Text>
-            </View>
-          </View>
-        </TouchableOpacity>
+            <Text style={[styles.insightTitle, { color: colors.textPrimary, fontSize: 13 }]} numberOfLines={1}>
+              Social Network
+            </Text>
+            <Text style={[styles.insightBigVal, { color: colors.textPrimary, fontSize: 20, marginTop: 4 }]}>
+              {sStats.total_posts}
+            </Text>
+            <Text style={{ fontSize: 10, color: colors.textMuted }}>Posts Shared</Text>
+          </TouchableOpacity>
 
-        {/* Marketplace (Shop) Insights */}
-        <TouchableOpacity
-          style={[styles.insightCard, { backgroundColor: colors.card, borderColor: colors.border, borderLeftColor: colors.orange, borderLeftWidth: 3 }]}
-          onPress={() => navigation.navigate('Marketplace')}
-          activeOpacity={0.85}
-        >
-          <View style={styles.insightHeader}>
-            <View style={[styles.insightIconBg, { backgroundColor: colors.orange + '18' }]}>
+          <TouchableOpacity
+            style={[styles.insightCard, { flex: 1, marginBottom: 0, backgroundColor: colors.card, borderColor: colors.border, borderLeftColor: colors.orange, borderLeftWidth: 3 }]}
+            onPress={() => navigation.navigate('Marketplace')}
+            activeOpacity={0.85}
+          >
+            <View style={[styles.insightIconBg, { backgroundColor: colors.orange + '18', marginBottom: 8 }]}>
               <MaterialCommunityIcons name="storefront" size={18} color={colors.orange} />
             </View>
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.insightTitle, { color: colors.textPrimary }]}>Marketplace Activity</Text>
-              <Text style={[styles.insightCategoryTag, { color: colors.orange }]}>COMMERCE</Text>
-            </View>
-            <Feather name="chevron-right" size={16} color={colors.textMuted} />
-          </View>
-          <Text style={[styles.insightBigVal, { color: colors.textPrimary }]}>
-            {mStats.active_listings}{' '}
-            <Text style={[styles.insightBigValSub, { color: colors.textSecondary }]}>Active Listings</Text>
-          </Text>
-          <View style={[styles.insightStatRow, { marginTop: 10 }]}>
-            <View style={[styles.insightStatChip, { backgroundColor: colors.orange + '12' }]}>
-              <Text style={[styles.chipLabel, { color: colors.orange }]}>Completed Orders</Text>
-              <Text style={[styles.chipValue, { color: colors.orange }]}>{mStats.completed_orders}</Text>
-            </View>
-          </View>
-        </TouchableOpacity>
+            <Text style={[styles.insightTitle, { color: colors.textPrimary, fontSize: 13 }]} numberOfLines={1}>
+              Marketplace
+            </Text>
+            <Text style={[styles.insightBigVal, { color: colors.textPrimary, fontSize: 20, marginTop: 4 }]}>
+              {mStats.active_listings}
+            </Text>
+            <Text style={{ fontSize: 10, color: colors.textMuted }}>Active Listings</Text>
+          </TouchableOpacity>
+        </View>
 
-        {/* Students Directory (MBBS / Medical) */}
-        <TouchableOpacity
-          style={[styles.insightCard, { backgroundColor: colors.card, borderColor: colors.border, borderLeftColor: '#3B82F6', borderLeftWidth: 3 }]}
-          onPress={() => navigation.navigate('AdminStudentsDirectory')}
-          activeOpacity={0.85}
-        >
-          <View style={styles.insightHeader}>
-            <View style={[styles.insightIconBg, { backgroundColor: '#3B82F618' }]}>
-              <MaterialCommunityIcons name="account-group-outline" size={18} color="#3B82F6" />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.insightTitle, { color: colors.textPrimary }]}>Students Directory</Text>
-              <Text style={[styles.insightCategoryTag, { color: '#3B82F6' }]}>COLLEGE DIRECTORY</Text>
-            </View>
-            <Feather name="chevron-right" size={16} color={colors.textMuted} />
-          </View>
-          
-          <Text style={[styles.insightBigVal, { color: colors.textPrimary }]}>
-            {(() => {
-              const mbbsCount = studentsList.filter(s => {
-                const isStudent = s.role?.toLowerCase() === 'student';
-                const isMedical = (!s.category && !s.branch && !s.course) ||
-                                  s.category === 'medical' || 
-                                  (s.branch && s.branch.toUpperCase() === 'MBBS') || 
-                                  (s.course && s.course.toUpperCase().includes('MBBS')) ||
-                                  (s.course && s.course.replace(/\./g, '').toUpperCase().includes('MBBS'));
-                return isStudent && isMedical;
-              }).length;
-              return mbbsCount;
-            })()}{' '}
-            <Text style={[styles.insightBigValSub, { color: colors.textSecondary }]}>MBBS Students</Text>
-          </Text>
-          <Text style={[styles.insightSubText, { color: colors.textMuted, marginBottom: 12 }]}>
-            View all batches, students, and their ERP data (results, attendance, logbook etc.).
-          </Text>
-          
-          <View style={{ flexDirection: 'row', gap: 10, marginTop: 8 }}>
-            {[1, 2, 3].map((phase) => {
-              const year = 2026 - phase;
-              const phaseCount = studentsList.filter(s => {
-                const isStudent = s.role?.toLowerCase() === 'student';
-                const isMedical = (!s.category && !s.branch && !s.course) ||
-                                  s.category === 'medical' || 
-                                  (s.branch && s.branch.toUpperCase() === 'MBBS') || 
-                                  (s.course && s.course.toUpperCase().includes('MBBS')) ||
-                                  (s.course && s.course.replace(/\./g, '').toUpperCase().includes('MBBS'));
-                if (!isStudent || !isMedical) return false;
-                
-                return getStudentPhase(s) === phase;
-              }).length;
-              
-              return (
-                <View 
-                  key={phase}
-                  style={{
-                    flex: 1,
-                    backgroundColor: isDark ? 'rgba(255,255,255,0.02)' : '#F9FAFB',
-                    padding: 10,
-                    borderRadius: 12,
-                    borderWidth: 1,
-                    borderColor: colors.border,
-                    alignItems: 'center'
-                  }}
-                >
-                  <Text style={{ fontSize: 10, fontWeight: '800', color: colors.textSecondary, marginBottom: 4 }}>
-                    PHASE {phase}
-                  </Text>
-                  <Text style={{ fontSize: 14, fontWeight: '800', color: colors.primary }}>
-                    {phaseCount}
-                  </Text>
-                  <Text style={{ fontSize: 9, color: colors.textMuted, marginTop: 2 }}>
-                    {year} Batch
-                  </Text>
-                </View>
-              );
-            })}
-          </View>
-        </TouchableOpacity>
-
-        {/* Teacher/Faculty Insights */}
-        <TouchableOpacity
-          style={[styles.insightCard, { backgroundColor: colors.card, borderColor: colors.border, borderLeftColor: '#10B981', borderLeftWidth: 3, marginBottom: 24 }]}
-          onPress={() => navigation.navigate('FacultyInsights')}
-          activeOpacity={0.85}
-        >
-          <View style={styles.insightHeader}>
-            <View style={[styles.insightIconBg, { backgroundColor: '#10B98118' }]}>
-              <Feather name="book-open" size={16} color="#10B981" />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.insightTitle, { color: colors.textPrimary }]}>College Faculty Insights</Text>
-              <Text style={[styles.insightCategoryTag, { color: '#10B981' }]}>ACADEMICS</Text>
-            </View>
-            <Feather name="chevron-right" size={16} color={colors.textMuted} />
-          </View>
-          <Text style={[styles.insightBigVal, { color: colors.textPrimary }]}>
-            {facStats.active_count}{' '}
-            <Text style={[styles.insightBigValSub, { color: colors.textSecondary }]}>Active Teachers</Text>
-          </Text>
-          <View style={[styles.insightStatRow, { marginTop: 10 }]}>
-            <View style={[styles.insightStatChip, { backgroundColor: '#10B98112' }]}>
-              <Text style={[styles.chipLabel, { color: '#10B981' }]}>Avg Attendance</Text>
-              <Text style={[styles.chipValue, { color: '#10B981' }]}>{facStats.average_attendance}</Text>
-            </View>
-          </View>
-        </TouchableOpacity>
-
-        {/* Quick Action Shortcuts */}
-        <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Superadmin Shortcuts</Text>
+        {/* Superadmin Shortcuts */}
+        <Text style={[styles.sectionTitle, { color: colors.textPrimary, marginTop: 12 }]}>Superadmin Shortcuts</Text>
         <View style={styles.actionsContainer}>
           <TouchableOpacity
             style={[styles.actionBtn, { backgroundColor: colors.primary, marginBottom: 10 }]}
@@ -1082,7 +1123,9 @@ const AdminDashboardScreen = ({ navigation }) => {
           <View style={styles.headerTop}>
             <View>
               <Text style={[styles.welcomeText, { color: colors.textSecondary }]}>Control Center</Text>
-              <Text style={[styles.adminName, { color: colors.textPrimary }]}>{user?.name || 'UniCampus Staff'}</Text>
+              <Text style={[styles.adminName, { color: colors.textPrimary }]}>
+                {(user?.full_name && user.full_name !== user.id ? user.full_name : (user?.name && user.name !== user.id && user.name !== user.username ? user.name : (user?.username === '202313564' ? 'Mahendra Singh Butola' : (user?.username || 'UniCampus Staff'))))}
+              </Text>
               <View style={[styles.badge, { backgroundColor: colors.primaryLight }]}>
                 <Text style={[styles.badgeText, { color: colors.primary }]}>{roleLabel()}</Text>
               </View>

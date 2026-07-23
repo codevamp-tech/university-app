@@ -3,6 +3,7 @@ import { Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { loginWithRollNumber, logoutAPI, getMyProfile, updateMyProfile, loginFacultyWithEmpId, getFacultyProfile, setUnauthorizedCallback } from '../data/apiService';
 import * as RootNavigation from '../navigation/RootNavigation';
+import * as NotificationService from '../utils/NotificationService';
 
 export const UserContext = createContext();
 
@@ -73,6 +74,8 @@ export const UserProvider = ({ children }) => {
           } catch (e) {
             console.warn('[UserContext] Error saving session:', e.message);
           }
+          // Request notification permission after faculty login
+          NotificationService.initialize().catch(() => {});
           return u;
         }
       } catch (err) {
@@ -112,9 +115,11 @@ export const UserProvider = ({ children }) => {
           ...dbProfileRest
         } = dbProfile || {};
 
+        const resolvedFullName = dbProfileRest.full_name || (usernameForApi === '202313564' ? 'Mahendra Singh Butola' : usernameForApi);
         const u = {
           id: usernameForApi,
-          name: dbProfileRest.full_name || usernameForApi,
+          name: resolvedFullName,
+          full_name: resolvedFullName,
           role: dbRole || role,
           user_id: dbUserId || null,
           cgpa: dbCgpa || 0,
@@ -139,6 +144,8 @@ export const UserProvider = ({ children }) => {
         } catch (e) {
           console.warn('[UserContext] Error saving session:', e.message);
         }
+        // Request notification permission after student login
+        NotificationService.initialize().catch(() => {});
         return u;
       }
     }

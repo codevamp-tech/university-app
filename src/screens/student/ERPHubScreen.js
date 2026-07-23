@@ -372,6 +372,21 @@ const ERPHubScreen = ({ navigation, route }) => {
               </Text>
             </TouchableOpacity>
 
+            {/* Card 1b: Schedule */}
+            <TouchableOpacity
+              style={[styles.gridCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+              onPress={() => navigation.navigate('ERPScheduleTab', { student })}
+              activeOpacity={0.85}
+            >
+              <LinearGradient colors={isDark ? ['#312E81', '#4338CA'] : ['#EEF2FF', '#C7D2FE']} style={styles.gridIconBg}>
+                <MaterialCommunityIcons name="calendar-clock" size={24} color={isDark ? '#818CF8' : '#4F46E5'} />
+              </LinearGradient>
+              <Text style={[styles.gridCardTitle, { color: colors.textPrimary }]}>Schedule</Text>
+              <Text style={[styles.gridCardDesc, { color: colors.textSecondary }]}>
+                Timetable & Classes
+              </Text>
+            </TouchableOpacity>
+
             {/* Card 2: Results */}
             <TouchableOpacity
               style={[styles.gridCard, { backgroundColor: colors.card, borderColor: colors.border }]}

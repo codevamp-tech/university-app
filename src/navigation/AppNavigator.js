@@ -26,6 +26,7 @@ import AdminVentureReviewScreen from '../screens/admin/AdminVentureReviewScreen'
 import AdminMarketplaceReviewScreen from '../screens/admin/AdminMarketplaceReviewScreen';
 import WardenOutpassesScreen from '../screens/admin/WardenOutpassesScreen';
 import AdminStudentsDirectoryScreen from '../screens/admin/AdminStudentsDirectoryScreen';
+import PGLogbookInsightsScreen from '../screens/admin/PGLogbookInsightsScreen';
 
 // Campus Food Ordering
 import CampusBitesMenuScreen from '../screens/student/CampusBitesMenuScreen';
@@ -53,6 +54,7 @@ import NotificationsScreen from '../screens/student/NotificationsScreen';
 import AdminStudentProfileScreen from '../screens/student/AdminStudentProfileScreen';
 import DMConversationScreen from '../screens/student/DMConversationScreen';
 import RaiseIssueScreen from '../screens/student/RaiseIssueScreen';
+import GrievancesListScreen from '../screens/student/GrievancesListScreen';
 import SkillGapTestScreen from '../screens/student/SkillGapTestScreen';
 import DeepDiveAnalysisScreen from '../screens/student/DeepDiveAnalysisScreen';
 import FitnessDetailScreen from '../screens/student/FitnessDetailScreen';
@@ -137,6 +139,7 @@ const AppNavigator = () => {
       <Stack.Screen name="OutpassManager" component={WardenOutpassesScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="AdminFacultyDetail" component={AdminFacultyDetailScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="AdminStudentsDirectory" component={AdminStudentsDirectoryScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="PGLogbookInsights" component={PGLogbookInsightsScreen} options={{ animation: 'slide_from_right' }} />
 
       {/* Guest Flow */}
       <Stack.Screen name="GuestOnboarding" component={GuestOnboardingScreen} options={{ animation: 'slide_from_right' }} />
@@ -176,6 +179,7 @@ const AppNavigator = () => {
       <Stack.Screen name="DMConversation" component={DMConversationScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="StudentFacultyDirectory" component={StudentFacultyDirectoryScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="RaiseIssue" component={RaiseIssueScreen} options={{ animation: 'slide_from_bottom' }} />
+      <Stack.Screen name="GrievancesList" component={GrievancesListScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="SkillGapTest" component={SkillGapTestScreen} options={{ animation: 'slide_from_bottom' }} />
       <Stack.Screen name="DeepDiveAnalysis" component={DeepDiveAnalysisScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="FitnessDetail" component={FitnessDetailScreen} options={{ animation: 'slide_from_right' }} />

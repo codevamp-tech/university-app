@@ -359,7 +359,7 @@ const VentureScreen = ({ navigation }) => {
           >
             <MaterialIcons name={isMed ? "biotech" : "lightbulb"} size={20} color="#FFFFFF" />
           </LinearGradient>
-          <Text style={[styles.headerLogo, { color: colors.textPrimary }]}>{isMed ? 'Clinical Innovation & Research' : `${APP_CONFIG.UNIVERSITY_SHORT_NAME} Ventures`}</Text>
+          <Text style={[styles.headerLogo, { color: colors.textPrimary }]}>{isMed ? 'Innovation & Research' : `${APP_CONFIG.UNIVERSITY_SHORT_NAME} Ventures`}</Text>
         </View>
 
         <View style={styles.headerRight}>

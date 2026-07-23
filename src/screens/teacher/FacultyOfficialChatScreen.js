@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
-  View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Dimensions, TextInput, Alert, KeyboardAvoidingView, Platform, Linking
+  View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Dimensions, TextInput, Alert, KeyboardAvoidingView, Platform, Linking, Modal
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -8,7 +8,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import { useUser } from '../../context/UserContext';
-import { getFacultyBatches, getFacultyGroupChats, sendPortalChatMessage, uploadLectureMaterial } from '../../data/apiService';
+import { getFacultyBatches, getFacultyGroupChats, sendPortalChatMessage, uploadLectureMaterial, createBroadcastAPI } from '../../data/apiService';
 
 
 const { width } = Dimensions.get('window');
@@ -143,14 +143,16 @@ const FacultyOfficialChatScreen = ({ navigation }) => {
         if (!facultyDept || facultyDept === 'medical faculty') return true;
         
         // Match by department name
-        if (msgDept && msgDept.includes(facultyDept)) return true;
-        if (facultyDept.includes(msgDept) && msgDept) return true;
+        if (msgDept) {
+          if (msgDept.includes(facultyDept) || facultyDept.includes(msgDept)) return true;
+          if (msgDept.slice(0, 4) === facultyDept.slice(0, 4)) return true;
+        }
         
         // Match by subcode
-        if (targetSubcode && msgSubcode === targetSubcode) return true;
+        if (targetSubcode && msgSubcode && msgSubcode !== '0' && msgSubcode === targetSubcode) return true;
         
-        // Fallback for messages with no department/subcode data to make sure we don't drop them
-        if (!msgDept && !msgSubcode) return true;
+        // Fallback for messages with no department/subcode data or subcode 0
+        if (!msgDept || !msgSubcode || msgSubcode === '0' || msgDept === '0') return true;
         
         return false;
       });
@@ -357,6 +359,20 @@ const FacultyOfficialChatScreen = ({ navigation }) => {
         }
       }
 
+      let targetPhase = '1';
+      let targetSubphase = '1';
+      const bStr = String(batchName || '').trim();
+      if (bStr.includes('2023')) {
+        targetPhase = '3';
+        targetSubphase = '1';
+      } else if (bStr.includes('2024')) {
+        targetPhase = '2';
+        targetSubphase = '2';
+      } else if (bStr.includes('2022')) {
+        targetPhase = '3';
+        targetSubphase = '2';
+      }
+
       const payload = {
         chatid: 0,
         ChatFacId: String(user.emp_id),
@@ -372,10 +388,10 @@ const FacultyOfficialChatScreen = ({ navigation }) => {
         cbme: String(calculatedCbme),
         cbmey: String(calculatedCbme),
         batch: String(batchName),
-        phase: '1',
-        sub_phase: '1',
-        subphase: '1',
-        sub_phase_part: '1',
+        phase: targetPhase,
+        sub_phase: targetSubphase,
+        subphase: targetSubphase,
+        sub_phase_part: targetSubphase,
         department: String(user.department || 'PHYSIOLOGY'),
         attachfile: attachmentUrl,
         subcode: targetSubcode,
@@ -383,8 +399,44 @@ const FacultyOfficialChatScreen = ({ navigation }) => {
         ctype: 'GROUP'
       };
 
+      // Optimistic message insertion so it displays instantly in list
+      const optimisticMsg = {
+        id: String(Date.now()),
+        text: textVal || `Shared an attachment: ${selectedAttachment?.name || 'File'}`,
+        sender: String(user.name || 'Faculty'),
+        isMe: true,
+        timestamp: 'Just now',
+        department: String(user.department || 'PHYSIOLOGY'),
+        attachment: attachmentUrl || null,
+        classlabel: 'left',
+        subcode: targetSubcode,
+      };
+
+      setMessages(prev => [optimisticMsg, ...prev]);
+      setInputText('');
+      setSelectedAttachment(null);
+
       const res = await sendPortalChatMessage(payload);
       if (res && res.Mess === 'Success') {
+        // Send alert broadcast notification to target batch students
+        try {
+          const batchYearNum = parseInt(batchName);
+          const broadcastPayload = {
+            title: `💬 New Message from ${user.name || 'Faculty'} (${user.department || 'Faculty'})`,
+            message: textVal || `Shared an attachment: ${selectedAttachment?.name || 'File'}`,
+            priority: 'high',
+            target_type: !isNaN(batchYearNum) ? 'batch' : 'student',
+            target_batch_years: !isNaN(batchYearNum) ? [batchYearNum] : [],
+            send_push: true,
+            channels: ['in_app', 'push']
+          };
+          if (accessToken) {
+            await createBroadcastAPI(accessToken, broadcastPayload);
+          }
+        } catch (bErr) {
+          console.warn('[FacultyOfficialChatScreen] Broadcast alert error:', bErr);
+        }
+
         setInputText('');
         setSelectedAttachment(null);
         fetchChats(true);
@@ -483,9 +535,21 @@ const FacultyOfficialChatScreen = ({ navigation }) => {
             <Text style={styles.noBatchesText}>No batches assigned to your account.</Text>
           )}
         </LinearGradient>
+      </View>
 
-        {/* Dropdown Options List (Rendered outside the gradient bounds to bypass native container clipping) */}
-        {showBatchDropdown && batches.length > 0 && (
+      {/* Batch Dropdown — rendered as Modal so it shows above FlatList on old Android (API 26-28) */}
+      <Modal
+        transparent
+        visible={showBatchDropdown && batches.length > 0}
+        animationType="fade"
+        onRequestClose={() => setShowBatchDropdown(false)}
+        statusBarTranslucent
+      >
+        <TouchableOpacity
+          style={{ flex: 1 }}
+          activeOpacity={1}
+          onPress={() => setShowBatchDropdown(false)}
+        >
           <View style={styles.dropdownList}>
             {batches.map((batch) => (
               <TouchableOpacity
@@ -500,8 +564,8 @@ const FacultyOfficialChatScreen = ({ navigation }) => {
               </TouchableOpacity>
             ))}
           </View>
-        )}
-      </View>
+        </TouchableOpacity>
+      </Modal>
 
       {/* Message Area */}
       {loadingChats ? (
@@ -632,7 +696,7 @@ const styles = StyleSheet.create({
   dropdownText: { flex: 1, fontSize: 14, fontWeight: '700', color: '#1F2937' },
   dropdownList: {
     position: 'absolute',
-    top: 108,
+    top: 120,
     left: 16,
     right: 16,
     backgroundColor: '#FFFFFF',
@@ -641,7 +705,7 @@ const styles = StyleSheet.create({
     borderColor: '#E5E7EB',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.12,
     shadowRadius: 12,
     elevation: 10,
     overflow: 'hidden',

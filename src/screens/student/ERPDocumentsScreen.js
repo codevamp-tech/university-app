@@ -1,5 +1,6 @@
 import React from 'react';
 import { useTheme } from '../../hooks/useTheme';
+import { useNotifications, NotificationBadge } from '../../context/NotificationContext';
 import { useUser } from '../../context/UserContext';
 import { getDocuments } from '../../data/apiService';
 
@@ -112,8 +113,13 @@ const ERPDocumentsScreen = ({ navigation }) => {
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Document Vault</Text>
         </View>
-        <TouchableOpacity style={styles.notifBtn}>
+        <TouchableOpacity
+          style={[styles.notifBtn, { position: 'relative' }]}
+          onPress={() => navigation.navigate('Alerts')}
+          activeOpacity={0.7}
+        >
           <MaterialIcons name="notifications-none" size={24} color={colors.primary} />
+          <NotificationBadge count={totalUnreadCount} />
         </TouchableOpacity>
       </View>
 

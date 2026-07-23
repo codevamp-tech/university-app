@@ -42,11 +42,10 @@ const SalarySlipScreen = ({ navigation }) => {
   }, []);
 
   const fetchSlip = useCallback(async () => {
-    if (!accessToken) return;
     setLoading(true);
     setError(null);
     try {
-      const data = await getSalarySlip(accessToken, month, year);
+      const data = await getSalarySlip(accessToken, month, year, user?.emp_id);
       if (data) {
         setSlip(data);
       } else {
@@ -59,7 +58,7 @@ const SalarySlipScreen = ({ navigation }) => {
     } finally {
       setLoading(false);
     }
-  }, [accessToken, month, year]);
+  }, [accessToken, month, year, user?.emp_id]);
 
   useEffect(() => { fetchSlip(); }, [fetchSlip]);
 

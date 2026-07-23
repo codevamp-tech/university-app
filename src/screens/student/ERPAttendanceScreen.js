@@ -287,10 +287,65 @@ const ERP_SUBJECT_MAP = {
   "AETCOM MODULE-OPHTHALMOLOGY": "87575"
 };
 
+// ── Canonical subcategory types per subject code (as defined by client) ───────
+// This defines exactly which type labels should appear under each subject.
+const SUBJECT_SUBCATEGORY_TYPES = {
+  // 1st Year
+  'AN': ['Theory', 'Practical', 'AETCOM'],
+  'PY': ['Theory', 'Practical', 'AETCOM'],
+  'BC': ['Theory', 'Practical', 'AETCOM'],
+  'BI': ['Theory', 'Practical', 'AETCOM'],
+  // 2nd Year
+  'PA': ['Theory', 'Practical', 'AETCOM'],
+  'PH': ['Theory', 'Practical', 'AETCOM'],
+  'MI': ['Theory', 'Practical', 'AETCOM', 'Pandemic'],
+  // 3rd Year
+  'FM': ['Theory', 'Practical', 'AETCOM'],
+  'CM': ['Theory', 'Practical', 'Pandemic', 'AETCOM', 'Clinical Posting'],
+  // 4th Year
+  'IM': ['Theory', 'Practical', 'AETCOM', 'Clinical Posting'],
+  'MD': ['Theory', 'Practical', 'AETCOM', 'Clinical Posting'],
+  'SU': ['Theory', 'Practical', 'Clinical Posting', 'AETCOM'],
+  'PD': ['Theory', 'Practical', 'Clinical Posting', 'AETCOM'],
+  'PE': ['Theory', 'Practical', 'Clinical Posting', 'AETCOM'],
+  'OG': ['Theory', 'Practical', 'Clinical Posting', 'AETCOM'],
+  'OR': ['Theory', 'Practical', 'Clinical Posting'],
+  'EN': ['Theory', 'Practical', 'Clinical Posting'],
+  'OP': ['Theory', 'Practical', 'Clinical Posting'],
+  'DR': ['Theory', 'Clinical Posting'],
+  'PS': ['Theory', 'Practical', 'Clinical Posting'],
+  'RD': ['Theory', 'Practical', 'Clinical Posting'],
+  'AS': ['Theory', 'Practical'],
+  'CT': ['Theory', 'Practical'],
+  'DE': ['Clinical Posting'],
+  'DN': ['Clinical Posting'],
+};
+
+/**
+ * Given a raw ERP subcategory name (e.g. "ANATOMY-THEORY", "AETCOM-ANATOMY",
+ * "CLINICAL POSTING-GENERAL MEDICINE"), return a clean canonical label
+ * (Theory, Practical, AETCOM, Pandemic, Clinical Posting, Family Adoption).
+ */
+const getCanonicalSubcategoryLabel = (rawName) => {
+  const lower = (rawName || '').toLowerCase();
+  if (lower.includes('aetcom')) return 'AETCOM';
+  if (lower.includes('family adoption') || lower.includes('fap')) return 'Family Adoption';
+  if (lower.includes('pandemic')) return 'Pandemic';
+  if (lower.includes('clinical posting') || lower.includes('clinical postings')) return 'Clinical Posting';
+  if (lower.includes('practical') || lower.includes('dissection') || lower.includes('histology') || lower.includes('lab')) return 'Practical';
+  if (lower.includes('theory')) return 'Theory';
+  if (lower.includes('sdl')) return 'SDL';
+  if (lower.includes('ece')) return 'ECE';
+  if (lower.includes('aito')) return 'AITO';
+  if (lower.includes('sea') || lower.includes('extracurricular')) return 'SEA';
+  return rawName; // fallback: show as-is
+};
+
 const getSubcategoryCategory = (name) => {
   const lower = (name || '').toLowerCase();
   if (lower.includes('aetcom')) return 'AETCOM';
-  if (lower.includes('pandemic') || lower.includes('family adoption') || lower.includes('family planning')) return 'PANDEMIC';
+  if (lower.includes('family adoption') || lower.includes('family planning') || lower.includes('fap')) return 'PRACTICAL';
+  if (lower.includes('pandemic')) return 'PANDEMIC';
   if (lower.includes('clinical posting') || lower.includes('clinical postings')) return 'CLINICAL_POSTING';
   if (lower.includes('practical') || lower.includes('dissection') || lower.includes('histology') || lower.includes('lab')) return 'PRACTICAL';
   if (lower.includes('theory')) return 'THEORY';
@@ -549,10 +604,12 @@ const ERPAttendanceScreen = ({ route, navigation }) => {
         console.warn('[AttendanceScreen] Failed to fetch ERP subject codes:', subErr);
       }
 
-      // ── Step 2: fetch backend attendance (has percentages) ──
+      // ── Step 2: fetch backend attendance AND live ERP attendance ──
+      // Backend may not have synced all subjects yet, so we ALSO call the ERP
+      // attendance endpoint directly to get live percentages for every subject.
       const data = await getAttendance(accessToken, studentId, force);
 
-      // Build a lookup map: SUBJECT_NAME_UPPER → attendance record
+      // Build a lookup map: SUBJECT_NAME_UPPER → attendance record (backend)
       const backendMap = {};
       if (data && data.length > 0) {
         data.forEach(item => {
@@ -562,21 +619,69 @@ const ERPAttendanceScreen = ({ route, navigation }) => {
         });
       }
 
+      // ── Step 2.5: fetch live ERP attendance directly (fills gaps backend hasn't synced) ──
+      // The ERP endpoint is the same one the backend syncs from. By calling it directly
+      // we ensure ALL registered subjects get their real percentage, not 0%.
+      try {
+        const batchCandidates = ['63', '60', '66', '61', '62', '64', '65', '67', '68', '69', '70'];
+        for (const bcd of batchCandidates) {
+          try {
+            const erpAttResp = await fetch(
+              `https://myportal.srms.ac.in/SRMSERP/Faculty/getattendancementees?roll_no=${studentId}&batch_cd=${bcd}`,
+              { method: 'GET' }
+            );
+            if (erpAttResp.ok) {
+              const erpAttData = await erpAttResp.json();
+              if (Array.isArray(erpAttData) && erpAttData.length > 0) {
+                // Supplement backendMap with ERP live data for any missing subjects
+                erpAttData.forEach(item => {
+                  const nameUpper = (item.sub_name || '').toUpperCase().trim();
+                  if (nameUpper && !backendMap[nameUpper]) {
+                    // Not in backend yet — add directly from ERP with real percentage
+                    backendMap[nameUpper] = {
+                      subject_name: item.sub_name,
+                      subject_code: String(item.dpid || ''),
+                      attendance_pct: parseFloat(item.perc || 0),
+                      semester: null, // will be resolved by phase mapping
+                    };
+                  } else if (nameUpper && backendMap[nameUpper]) {
+                    // Backend has it — prefer ERP live data for freshness
+                    backendMap[nameUpper].attendance_pct = parseFloat(item.perc || 0);
+                  }
+                });
+                break; // found valid batch, stop trying
+              }
+            }
+          } catch (_) { /* try next batch */ }
+        }
+      } catch (erpAttErr) {
+        console.warn('[AttendanceScreen] Direct ERP attendance fetch failed:', erpAttErr);
+      }
+
       // ── Step 3: build subject list ──
-      // Primary: use ERP subject list (correct names + codes), merge percentages from backend.
+      // Primary: use ERP subject list (correct names + codes), merge percentages from
+      // backendMap (which now includes both backend-synced AND ERP-live data).
       // Fallback: if ERP subject list is empty, use backend records directly.
       let subjects = [];
 
       if (erpSubjectList.length > 0) {
         // Use ERP list as the source of truth for subject names and codes.
         subjects = erpSubjectList
-          .filter(s => s.sub_name && s.sub_cd)
+          .filter(s => {
+            if (!s.sub_name || !s.sub_cd) return false;
+            const nameUpper = s.sub_name.toUpperCase().trim();
+            const code = String(s.sub_cd).trim();
+            if (code === '84817' || nameUpper.includes('SPORTS') || nameUpper.includes('EXTRACURRICULAR')) {
+              return false;
+            }
+            return true;
+          })
           .map(s => {
             const nameUpper = s.sub_name.toUpperCase().trim();
             const backendRecord = backendMap[nameUpper];
             const percentage = backendRecord
               ? Math.round(backendRecord.attendance_pct || 0)
-              : null; // null = no attendance data yet
+              : null; // null = ERP returned this subject but with no recorded lectures yet
 
             const isPractical = nameUpper.includes('PRACTICAL') ||
               nameUpper.includes('CLINICAL') ||
@@ -607,17 +712,20 @@ const ERPAttendanceScreen = ({ route, navigation }) => {
               semester: isMedical ? medYear : (backendRecord?.semester || semNum),
             };
           })
-          // Filter out subjects with no attendance data AND 0% (i.e. not started yet)
-          // Keep subjects that have data from backend; keep all if backend has nothing at all
-          .filter(s => {
-            if (Object.keys(backendMap).length === 0) return true; // no backend data → show all
-            return s.hasData; // only show subjects with actual attendance records
-          });
+          // Always show ALL ERP-registered subjects.
+          // Subjects not yet in backend show 0% — they are registered but classes haven't
+          // been recorded yet. The hasData flag can be used for dimming if needed.
       } else if (data && data.length > 0) {
         // Fallback: use backend records directly
-        const validRecords = data.filter(
-          item => item.attendance_pct !== null && item.attendance_pct !== undefined
-        );
+        const validRecords = data.filter(item => {
+          if (item.attendance_pct === null || item.attendance_pct === undefined) return false;
+          const nameUpper = (item.subject_name || item.subject_code || '').toUpperCase().trim();
+          const code = String(item.subject_code || '').trim();
+          if (code === '84817' || nameUpper.includes('SPORTS') || nameUpper.includes('EXTRACURRICULAR')) {
+            return false;
+          }
+          return true;
+        });
         subjects = validRecords.map(item => {
           const percentage = Math.round(item.attendance_pct || 0);
           const nameUpper = (item.subject_name || item.subject_code || '').toUpperCase();
@@ -709,12 +817,14 @@ const ERPAttendanceScreen = ({ route, navigation }) => {
     // ── Direct parent-name → MBBS phase mapping ──────────────────────────────
     // Uses the canonical parent name returned by getParentSubjectName().
     // This is authoritative — do NOT derive phase from subject code or semester.
+    // ── Direct parent-name → MBBS phase mapping ──────────────────────────────
     const PARENT_NAME_TO_PHASE = {
       // 1st Prof (1st Year) ─ AN, PY, BC
       'Anatomy':                       '1st Prof',
       'Physiology':                    '1st Prof',
       'Biochemistry_(CBME 2024)':      '1st Prof',
       'Biochemistry_(CBME 2019)':      '1st Prof',
+      'Biochemistry':                  '1st Prof',
       // 2nd Prof (2nd Year) ─ PA, PH, MI
       'Pathology':                     '2nd Prof',
       'Pharmacology':                  '2nd Prof',
@@ -739,13 +849,87 @@ const ERPAttendanceScreen = ({ route, navigation }) => {
       'Physical Medicine & Rehabilitation': '3rd Prof Part II',
     };
 
-    const getMedicalPhaseForSubject = (parentName, semNumber) => {
+    // ── Phase-Specific MBBS Subcategory / Code Evaluator ─────────────────────
+    // Maps ERP codes and subcategories to the appropriate Prof Phase based on student year
+    const getMedicalPhaseForSubcategory = (sub, semNumber) => {
       if (!isMedical) return null;
-      // Direct lookup on the canonical parent name — always correct
-      const direct = PARENT_NAME_TO_PHASE[parentName];
-      if (direct) return direct;
-      // Fallback: semester-based (only for unknown/future subjects)
-      return getMedicalProfNameFromSemLocal(semNumber);
+      const code = String(sub.erpCode || sub.code || '').trim();
+      const subNameUpper = String(sub.name || '').toUpperCase().trim();
+      const parentName = getParentSubjectName(sub.name, sub.code);
+
+      // ── Rule 1: Community Medicine -> Always 3rd Prof Part I ──────────────
+      if (parentName === 'Community Medicine' || subNameUpper.includes('COMMUNITY MEDICINE') || subNameUpper.includes('FAMILY ADOPTION')) {
+        return '3rd Prof Part I';
+      }
+
+      // ── Rule 2: Forensic Medicine -> 3rd Prof Part I (or 2nd Prof if current phase is 2nd Prof)
+      if (parentName === 'FORENSIC MEDICINE' || subNameUpper.includes('FORENSIC MEDICINE')) {
+        return currentPhaseName === '2nd Prof' ? '2nd Prof' : '3rd Prof Part I';
+      }
+
+      // ── Phase 1 (1st Prof) Subjects ──────────────────────────────────────
+      // Anatomy, Physiology, Biochemistry, Sports & Extracurricular (84817), SDL & AITO (84818-84822)
+      if (['84395', '84396', '84397', '84398', '84399', '84400', '84817', '84818', '84819', '84820', '84821', '84822', '87224', '87225', '87226', '87227', '87228', '87229', '87230', '87231', '87232'].includes(code) ||
+          subNameUpper.includes('SPORTS') || subNameUpper.includes('EXTRACURRICULAR')) {
+        return '1st Prof';
+      }
+      if (['Anatomy', 'Physiology', 'Biochemistry_(CBME 2024)', 'Biochemistry_(CBME 2019)', 'Biochemistry'].includes(parentName)) return '1st Prof';
+
+      // ── Phase 3 Part I Subjects (Core 2 + Additional 7 = 9 Parent Subjects) ──────
+      // 1. Ophthalmology: 87247, 87249, 87255, 42
+      // 2. Otorhinolaryngology (ENT): 87248, 87250, 87256, 87574, 21
+      // 3. Paediatrics Th/Pr: 87253, 87254
+      // 4. Orthopedics Th/Pr: 87251, 87252
+      // 5. Gen Med Practical: 85797
+      // 6. Gen Surg Practical: 85799
+      // 7. OBG Practical: 85801
+      if ([
+        '87247', '87248', '87249', '87250', '87251', '87252', '87253', '87254', '87255', '87256', '87574',
+        '85797', '85799', '85801', '42', '21', '25', '13', '17', '18'
+      ].includes(code) ||
+      subNameUpper.includes('OPHTHALMOLOGY') ||
+      subNameUpper.includes('OTORHINOLARYNGOLOGY') ||
+      subNameUpper.includes('OTORHINOLARYGOLOGY') ||
+      subNameUpper.includes('E.N.T.') ||
+      subNameUpper.includes('PAEDIATRICS-THEORY') ||
+      subNameUpper.includes('PAEDIATRICS-PRACTICAL') ||
+      subNameUpper.includes('ORTHOPAEDICS-THEORY') ||
+      subNameUpper.includes('ORTHOPAEDICS-PRACTICAL') ||
+      subNameUpper.includes('GENERAL MEDICINE-PRACTICAL') ||
+      subNameUpper.includes('GENERAL SURGERY-PRACTICAL') ||
+      subNameUpper.includes('OBSTETRICS & GYNAECOLOGY-PRACTICAL')) {
+        if (currentPhaseName === '2nd Prof') return '2nd Prof'; // CBME 2024 ENT/Ophtha studied in Phase 2
+        return '3rd Prof Part I';
+      }
+
+      // ── Phase 2 (2nd Prof) Subjects ─ All Phase 2 parent subjects ─────────
+      // Pathology (85790, 85791), Microbiology (85792, 85793), Pharmacology (85794, 85795)
+      // Phase 2 Clinical Postings & Theory (Gen Med 85796/85804, Gen Surg 85798/85805, OBG 85800/85806, Paed 85807, Ortho 85810)
+      if ([
+        '85790', '85791', // Pathology
+        '85792', '85793', // Microbiology
+        '85794', '85795', // Pharmacology
+        '85809',          // Clinical Posting Dermatology
+        '85796', '85804', // General Medicine (Theory, Clinical Posting)
+        '85798', '85805', // General Surgery (Theory, Clinical Posting)
+        '85800', '85806', // OBG (Theory, Clinical Posting)
+        '85807',          // Paediatrics (Clinical Posting)
+        '85810'           // Orthopedics (Clinical Posting)
+      ].includes(code) ||
+      subNameUpper.includes('1ST SESSIONAL') ||
+      subNameUpper.includes('2ND SESSIONAL')) {
+        return '2nd Prof';
+      }
+
+      if (['Pathology', 'Pharmacology', 'Microbiology', 'Dermatology, Venereology & Leprosy', 'Dentistry'].includes(parentName)) return '2nd Prof';
+
+      // Fallback: Default mapping based on parent name
+      const defaultPhase = PARENT_NAME_TO_PHASE[parentName];
+      if (defaultPhase) {
+        return defaultPhase;
+      }
+
+      return currentPhaseName || '1st Prof';
     };
 
     attendanceData.subjects.forEach(sub => {
@@ -756,9 +940,8 @@ const ERPAttendanceScreen = ({ route, navigation }) => {
         }
       }
       const semRoman = roman[sub.semester - 1] || `${sub.semester}`;
-      const parentNameForPhase = getParentSubjectName(sub.name, sub.code);
       const phaseName = isMedical
-        ? getMedicalPhaseForSubject(parentNameForPhase, sub.semester)
+        ? getMedicalPhaseForSubcategory(sub, sub.semester)
         : `Semester ${semRoman}`;
 
       // Skip subjects that belong to a future phase (beyond student's current year)
@@ -846,7 +1029,12 @@ const ERPAttendanceScreen = ({ route, navigation }) => {
   }, [attendanceData.subjects, isMedical, currentPhaseName, semNum, activeCategoryFilter, dynamicSubjectCodes]);
 
   const activePhaseData = displayData[currentPhaseName];
-  const activePhaseOverall = activePhaseData ? activePhaseData.overallPct : '-';
+  const erpUserAttendance = (user?.attendance !== undefined && user?.attendance !== null && !isNaN(Number(user.attendance)))
+    ? Math.floor(Number(user.attendance))
+    : null;
+  const activePhaseOverall = erpUserAttendance !== null
+    ? erpUserAttendance
+    : (activePhaseData ? activePhaseData.overallPct : '-');
 
   // Calculate total subject-wise subcategories in active phase
   let activePhaseSubCategoriesCount = 0;

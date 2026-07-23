@@ -29,64 +29,36 @@ const { width } = Dimensions.get('window');
 const DRAWER_WIDTH = width * 0.78;
 
 export function getPortalSubjects(user) {
-  let yearNum = 1;
-  
-  const getCleanYear = (val) => {
-    if (!val) return null;
-    const match = val.toString().match(/\d+/);
-    if (match) {
-      const num = parseInt(match[0], 10);
-      if (num < 10) return num; // Ignore 4-digit calendar years like 2024, 2025
-    }
-    return null;
-  };
-
-  const resolvedYear = getCleanYear(user?.current_year) || getCleanYear(user?.year);
-  if (resolvedYear) {
-    yearNum = resolvedYear;
-  } else if (user?.semester) {
-    yearNum = Math.ceil(parseInt(user.semester, 10) / 2);
-  }
-
-  if (yearNum === 2) {
-    return [
-      { id: 'Pathology-ShanuGupta', name: 'Pathology', subcode: 'PA', department: 'PATHOLOGY', facultyId: '202011250', facultyName: 'SHANU GUPTA' },
-      { id: 'Pharmacology-RajeshKumar', name: 'Pharmacology', subcode: 'PH', department: 'PHARMACOLOGY', facultyId: 'D/09/012', facultyName: 'DR. RAJESH KUMAR' },
-      { id: 'Microbiology-AmitSingh', name: 'Microbiology', subcode: 'MI', department: 'MICROBIOLOGY', facultyId: 'D/09/013', facultyName: 'DR. AMIT SINGH' }
-    ];
-  }
-
-  if (yearNum === 3) {
-    return [
-      { id: 'ForensicMedicine-NehaSharma', name: 'FORENSIC MEDICINE', subcode: 'FM', department: 'FORENSIC MEDICINE', facultyId: 'D/09/014', facultyName: 'DR. NEHA SHARMA' },
-      { id: 'CommunityMedicine-VikasChandra', name: 'Community Medicine', subcode: 'CM', department: 'COMMUNITY MEDICINE', facultyId: 'D/08/043', facultyName: 'DR. VIKAS CHANDRA' }
-    ];
-  }
-
-  if (yearNum >= 4) {
-    return [
-      { id: 'Medicine-AKSingh', name: 'General Medicine', subcode: 'IM', department: 'GENERAL MEDICINE', facultyId: 'D/07/011', facultyName: 'DR. A.K. SINGH' },
-      { id: 'Surgery-PKJain', name: 'GENERAL SURGERY', subcode: 'SU', department: 'GENERAL SURGERY', facultyId: 'D/07/012', facultyName: 'DR. P.K. JAIN' },
-      { id: 'Paediatrics-SandhyaChauhan', name: 'PAEDIATRICS', subcode: 'PE', department: 'PAEDIATRICS', facultyId: 'D/11/048', facultyName: 'SANDHYA CHAUHAN' },
-      { id: 'OBG-RuchiGupta', name: 'Obstetrics & Gynaecology', subcode: 'OG', department: 'OBGY', facultyId: 'D/07/013', facultyName: 'DR. RUCHI GUPTA' },
-      { id: 'Ortho-DrOrtho', name: 'Orthopedics', subcode: 'OR', department: 'ORTHOPAEDICS', facultyId: 'D/08/050', facultyName: 'DR. ORTHO FACULTY' },
-      { id: 'ENT-SanjayBansal', name: 'Otorhinolaryngology', subcode: 'EN', department: 'ENT', facultyId: 'D/08/041', facultyName: 'DR. SANJAY BANSAL' },
-      { id: 'Ophthalmology-MeenakshiJain', name: 'Ophthalmology', subcode: 'OP', department: 'OPHTHALMOLOGY', facultyId: 'D/08/042', facultyName: 'DR. MEENAKSHI JAIN' },
-      { id: 'Derma-DrDerma', name: 'Dermatology, Venereology & Leprosy', subcode: 'DR', department: 'DERMATOLOGY', facultyId: 'D/08/051', facultyName: 'DR. DERMA FACULTY' },
-      { id: 'Psychiatry-DrPsychiatry', name: 'Psychiatry', subcode: 'PS', department: 'PSYCHIATRY', facultyId: 'D/08/052', facultyName: 'DR. PSYCHIATRY FACULTY' },
-      { id: 'Radio-DrRadio', name: 'Radiodiagnosis', subcode: 'RD', department: 'RADIODIAGNOSIS', facultyId: 'D/08/053', facultyName: 'DR. RADIOLOGY FACULTY' },
-      { id: 'Anesthesia-DrAnesthesia', name: 'Anesthesiology', subcode: 'AS', department: 'ANESTHESIOLOGY', facultyId: 'D/08/054', facultyName: 'DR. ANESTHESIA FACULTY' },
-      { id: 'Respi-DrRespi', name: 'Respiratory Medicine', subcode: 'CT', department: 'RESPIRATORY MEDICINE', facultyId: 'D/08/055', facultyName: 'DR. RESPI FACULTY' },
-      { id: 'Dentistry-DrDentistry', name: 'Dentistry', subcode: 'DE', department: 'DENTISTRY', facultyId: 'D/08/056', facultyName: 'DR. DENTISTRY FACULTY' },
-      { id: 'PMR-DrPmr', name: 'Physical Medicine & Rehabilitation', subcode: 'PM', department: 'PMR', facultyId: 'D/08/057', facultyName: 'DR. PMR FACULTY' }
-    ];
-  }
-
-  // Default to Phase 1 (Year 1)
+  // Returns all medical subjects across all MBBS phases so students can view group chats for any subject
   return [
+    // Phase 1 (Pre-Clinical)
     { id: 'Anatomy-AnandKumar', name: 'Anatomy', subcode: 'AN', department: 'ANATOMY', facultyId: 'D/11/094', facultyName: 'ANAND KUMAR' },
-    { id: 'Physiology-BinduGarg', name: 'Physiology', subcode: 'PY', department: 'PHYSIOLOGY', facultyId: '202314130', facultyName: 'BINDU GARG' },
-    { id: 'Biochemistry-ShaliniGupta', name: 'Biochemistry_(CBME 2024)', subcode: 'BC', department: 'BIOCHEMISTRY', facultyId: 'D/11/095', facultyName: 'SHALINI GUPTA' }
+    { id: 'Physiology-BinduGarg', name: 'Physiology', subcode: 'PY', department: 'PHYSIOLOGY', facultyId: 'D/11/093', facultyName: 'KRANTHI KUMAR GARIKAPATI' },
+    { id: 'Biochemistry-ShaliniGupta', name: 'Biochemistry', subcode: 'BC', department: 'BIOCHEMISTRY', facultyId: 'D/11/095', facultyName: 'SHALINI GUPTA' },
+    
+    // Phase 2 (Para-Clinical)
+    { id: 'Pathology-ShanuGupta', name: 'Pathology', subcode: 'PA', department: 'PATHOLOGY', facultyId: '202011250', facultyName: 'SHANU GUPTA' },
+    { id: 'Pharmacology-RajeshKumar', name: 'Pharmacology', subcode: 'PH', department: 'PHARMACOLOGY', facultyId: 'D/09/012', facultyName: 'DR. RAJESH KUMAR' },
+    { id: 'Microbiology-AmitSingh', name: 'Microbiology', subcode: 'MI', department: 'MICROBIOLOGY', facultyId: 'D/09/013', facultyName: 'DR. AMIT SINGH' },
+    { id: 'ForensicMedicine-NehaSharma', name: 'Forensic Medicine', subcode: 'FM', department: 'FORENSIC MEDICINE', facultyId: 'D/09/014', facultyName: 'DR. NEHA SHARMA' },
+
+    // Phase 3 Part 1
+    { id: 'CommunityMedicine-VikasChandra', name: 'Community Medicine', subcode: 'CM', department: 'COMMUNITY MEDICINE', facultyId: 'D/08/043', facultyName: 'DR. VIKAS CHANDRA' },
+    { id: 'ENT-SanjayBansal', name: 'ENT (Otorhinolaryngology)', subcode: 'EN', department: 'ENT', facultyId: 'D/08/041', facultyName: 'DR. SANJAY BANSAL' },
+    { id: 'Ophthalmology-MeenakshiJain', name: 'Ophthalmology', subcode: 'OP', department: 'OPHTHALMOLOGY', facultyId: 'D/08/042', facultyName: 'DR. MEENAKSHI JAIN' },
+
+    // Phase 3 Part 2 (Clinical)
+    { id: 'Medicine-AKSingh', name: 'General Medicine', subcode: 'IM', department: 'GENERAL MEDICINE', facultyId: 'D/07/011', facultyName: 'DR. A.K. SINGH' },
+    { id: 'Surgery-PKJain', name: 'General Surgery', subcode: 'SU', department: 'GENERAL SURGERY', facultyId: 'D/07/012', facultyName: 'DR. P.K. JAIN' },
+    { id: 'Paediatrics-SandhyaChauhan', name: 'Paediatrics', subcode: 'PE', department: 'PAEDIATRICS', facultyId: 'D/11/048', facultyName: 'SANDHYA CHAUHAN' },
+    { id: 'OBG-RuchiGupta', name: 'Obstetrics & Gynaecology', subcode: 'OG', department: 'OBGY', facultyId: 'D/07/013', facultyName: 'DR. RUCHI GUPTA' },
+    { id: 'Ortho-DrOrtho', name: 'Orthopedics', subcode: 'OR', department: 'ORTHOPAEDICS', facultyId: 'D/08/050', facultyName: 'DR. ORTHO FACULTY' },
+    { id: 'Derma-DrDerma', name: 'Dermatology & Leprosy', subcode: 'DR', department: 'DERMATOLOGY', facultyId: 'D/08/051', facultyName: 'DR. DERMA FACULTY' },
+    { id: 'Psychiatry-DrPsychiatry', name: 'Psychiatry', subcode: 'PS', department: 'PSYCHIATRY', facultyId: 'D/08/052', facultyName: 'DR. PSYCHIATRY FACULTY' },
+    { id: 'Radio-DrRadio', name: 'Radiodiagnosis', subcode: 'RD', department: 'RADIODIAGNOSIS', facultyId: 'D/08/053', facultyName: 'DR. RADIOLOGY FACULTY' },
+    { id: 'Anesthesia-DrAnesthesia', name: 'Anesthesiology', subcode: 'AS', department: 'ANESTHESIOLOGY', facultyId: 'D/08/054', facultyName: 'DR. ANESTHESIA FACULTY' },
+    { id: 'Respi-DrRespi', name: 'Respiratory Medicine', subcode: 'CT', department: 'RESPIRATORY MEDICINE', facultyId: 'D/08/055', facultyName: 'DR. RESPI FACULTY' },
+    { id: 'Dentistry-DrDentistry', name: 'Dentistry', subcode: 'DE', department: 'DENTISTRY', facultyId: 'D/08/056', facultyName: 'DR. DENTISTRY FACULTY' },
   ];
 }
 
@@ -236,12 +208,26 @@ const ChatScreen = ({ navigation, route }) => {
     setLoadingPortal(true);
     try {
       const batchYear = isSuperAdmin ? selectedBatch : (user?.batch_year || user?.batch || '2025');
-      console.log('[ChatScreen] Fetching chats for batch:', batchYear, 'subject:', activePortalSubject.name, 'facultyId:', activePortalSubject.facultyId);
+      const bStr = String(batchYear || '').trim();
+      let targetPhase = '1';
+      let targetSubphase = '1';
+      if (bStr.includes('2023')) {
+        targetPhase = '3';
+        targetSubphase = '1';
+      } else if (bStr.includes('2024')) {
+        targetPhase = '2';
+        targetSubphase = '2';
+      } else if (bStr.includes('2022')) {
+        targetPhase = '3';
+        targetSubphase = '2';
+      }
+
+      console.log('[ChatScreen] Fetching chats for batch:', batchYear, 'phase:', targetPhase, 'subject:', activePortalSubject.name, 'facultyId:', activePortalSubject.facultyId);
       let history = await getFacultyGroupChats(
         activePortalSubject.facultyId,
         String(batchYear),
-        '1', // phase
-        '1'  // subphase
+        targetPhase,
+        targetSubphase
       );
       console.log('[ChatScreen] Received portal history length:', history?.length);
       // Real production behavior: load only messages of the logged-in student's batch
@@ -263,15 +249,24 @@ const ChatScreen = ({ navigation, route }) => {
           };
         })
         .filter(msg => {
-          const batchYear = isSuperAdmin ? selectedBatch : (user?.batch_year || user?.batch || '2025');
-          const batchYearStr = String(batchYear).trim();
-          const isBCBatch = ['2024', '2025', '2026'].includes(batchYearStr);
+          const isBCBatch = ['2024', '2025', '2026'].includes(bStr);
 
           const currentSubcode = (activePortalSubject.department === 'BIOCHEMISTRY')
             ? (isBCBatch ? 'BC' : 'BI')
             : activePortalSubject.subcode;
 
-          return String(msg.subcode || 'PY').trim().toUpperCase() === String(currentSubcode).trim().toUpperCase();
+          const msgSubcode = String(msg.subcode || '').trim().toUpperCase();
+          const targetSubcodeNorm = String(currentSubcode || '').trim().toUpperCase();
+          const msgDept = String(msg.department || '').trim().toUpperCase();
+          const targetDeptNorm = String(activePortalSubject.department || '').trim().toUpperCase();
+
+          if (msgSubcode && msgSubcode !== '0' && targetSubcodeNorm && msgSubcode === targetSubcodeNorm) return true;
+          if (msgDept && targetDeptNorm) {
+            if (msgDept.includes(targetDeptNorm) || targetDeptNorm.includes(msgDept)) return true;
+            if (msgDept.slice(0, 4) === targetDeptNorm.slice(0, 4)) return true;
+          }
+          if (!msgSubcode || msgSubcode === '0' || !msgDept || msgDept === '0') return true;
+          return false;
         });
       console.log('[ChatScreen] Mapped and filtered history length:', mappedHistory.length);
       setPortalMessages([...mappedHistory].reverse());
@@ -468,7 +463,21 @@ const ChatScreen = ({ navigation, route }) => {
               calculatedCbme = String(bNum - 1);
             }
           }
-        } catch { }
+        } catch {}
+
+        let targetPhase = '1';
+        let targetSubphase = '1';
+        const bStr = String(batchYear || '').trim();
+        if (bStr.includes('2023')) {
+          targetPhase = '3';
+          targetSubphase = '1';
+        } else if (bStr.includes('2024')) {
+          targetPhase = '2';
+          targetSubphase = '2';
+        } else if (bStr.includes('2022')) {
+          targetPhase = '3';
+          targetSubphase = '2';
+        }
 
         const payload = {
           chatid: 0,
@@ -485,10 +494,10 @@ const ChatScreen = ({ navigation, route }) => {
           cbme: String(calculatedCbme),
           cbmey: String(calculatedCbme),
           batch: String(batchYear),
-          phase: '1',
-          sub_phase: '1',
-          subphase: '1',
-          sub_phase_part: '1',
+          phase: targetPhase,
+          sub_phase: targetSubphase,
+          subphase: targetSubphase,
+          sub_phase_part: targetSubphase,
           department: activePortalSubject.department,
           attachfile: attachmentUrl,
           subcode: activePortalSubject.subcode,

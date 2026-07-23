@@ -48,44 +48,44 @@ const AdminStudentProfileScreen = ({ navigation, route }) => {
 
       const loadData = async () => {
         if (!accessToken) return;
-      try {
-        if (isOwnProfile) {
-          try {
-            const moodRes = await getMoodEntriesAPI(accessToken);
-            if (isMounted && moodRes && moodRes.length > 0) {
-              const latestMood = moodRes[0];
-              const moodDate = new Date(latestMood.created_at);
-              const today = new Date();
-              if (moodDate.getDate() === today.getDate() && moodDate.getMonth() === today.getMonth() && moodDate.getFullYear() === today.getFullYear()) {
-                const apiValToId = { 'excited': 0, 'happy': 1, 'neutral': 2, 'stressed': 3, 'focused': 0 };
-                if (apiValToId[latestMood.mood] !== undefined) {
-                   setActiveMood(apiValToId[latestMood.mood]);
+        try {
+          if (isOwnProfile) {
+            try {
+              const moodRes = await getMoodEntriesAPI(accessToken);
+              if (isMounted && moodRes && moodRes.length > 0) {
+                const latestMood = moodRes[0];
+                const moodDate = new Date(latestMood.created_at);
+                const today = new Date();
+                if (moodDate.getDate() === today.getDate() && moodDate.getMonth() === today.getMonth() && moodDate.getFullYear() === today.getFullYear()) {
+                  const apiValToId = { 'excited': 0, 'happy': 1, 'neutral': 2, 'stressed': 3, 'focused': 0 };
+                  if (apiValToId[latestMood.mood] !== undefined) {
+                    setActiveMood(apiValToId[latestMood.mood]);
+                  }
                 }
               }
+            } catch (e) {
+              console.warn("Failed to fetch today's mood:", e);
             }
-          } catch(e) {
-            console.warn("Failed to fetch today's mood:", e);
           }
-        }
 
-        if (passedStudent?.id) {
-          const profData = await getPublicProfile(accessToken, passedStudent.id);
-          if (isMounted && profData) {
-            setPublicProfile(profData);
-            setUserBio(profData.bio || defaultBio);
+          if (passedStudent?.id) {
+            const profData = await getPublicProfile(accessToken, passedStudent.id);
+            if (isMounted && profData) {
+              setPublicProfile(profData);
+              setUserBio(profData.bio || defaultBio);
+            }
           }
+
+          const targetId = passedStudent?.id;
+          const res = await connectionStatsAPI(accessToken, targetId);
+          if (isMounted && res) setStats(res);
+
+        } catch (err) {
+          console.warn('[AdminStudentProfileScreen] data error:', err);
+        } finally {
+          if (isMounted) setLoadingData(false);
         }
-
-        const targetId = passedStudent?.id;
-        const res = await connectionStatsAPI(accessToken, targetId);
-        if (isMounted && res) setStats(res);
-
-      } catch (err) {
-        console.warn('[AdminStudentProfileScreen] data error:', err);
-      } finally {
-        if (isMounted) setLoadingData(false);
-      }
-    };
+      };
 
       loadData();
 
@@ -359,63 +359,48 @@ const AdminStudentProfileScreen = ({ navigation, route }) => {
           </Text>
         </View>
 
-        {/* AI Pulse Card */}
-        <View style={[styles.sectionCard, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
-          <View style={styles.sectionHeader}>
-            <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>Academic Performance</Text>
-            <MaterialIcons name="trending-up" size={20} color={colors.primary} />
-          </View>          <View style={styles.acadGrid}>
-            <TouchableOpacity 
-              style={styles.acadItem}
-              onPress={() => navigation.navigate('ERPHub', {
-                screen: 'ERPResultsTab',
-                params: { student: user }
-              })}
-              activeOpacity={0.7}
-            >
-              <Text style={[styles.acadValue, { color: colors.primary }]}>{user?.cgpa || '0.0'} <Text style={[styles.acadMax, { color: colors.textMuted }]}>/ 10.0</Text></Text>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                <Text style={[styles.acadLabel, { color: colors.textMuted }]}>CUMULATIVE GPA</Text>
-                <Ionicons name="chevron-forward" size={10} color={colors.textMuted} />
-              </View>
-              <View style={[styles.pBar, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : colors.border }]}><View style={[styles.pFill, { width: `${(user?.cgpa || 0) * 10}%`, backgroundColor: colors.primary }]} /></View>
-            </TouchableOpacity>
-
-            <TouchableOpacity 
-              style={styles.acadItem}
-              onPress={() => navigation.navigate('ERPHub', {
-                screen: 'ERPAttendanceTab',
-                params: { student: user }
-              })}
-              activeOpacity={0.7}
-            >
-              <Text style={[styles.acadValue, { color: '#f59e0b' }]}>{user?.attendance || 0}%</Text>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                <Text style={[styles.acadLabel, { color: colors.textMuted }]}>ATTENDANCE</Text>
-                <Ionicons name="chevron-forward" size={10} color={colors.textMuted} />
-              </View>
-              <View style={[styles.pBar, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : colors.border }]}><View style={[styles.pFill, { width: `${user?.attendance || 0}%`, backgroundColor: '#f59e0b' }]} /></View>
-            </TouchableOpacity>
-
-            {isMed && (
-              <TouchableOpacity 
+        {/* Academic Performance Card - Only visible on own profile */}
+        {isOwnProfile && (
+          <View style={[styles.sectionCard, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
+            <View style={styles.sectionHeader}>
+              <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>Academic Performance</Text>
+              <MaterialIcons name="trending-up" size={20} color={colors.primary} />
+            </View>
+            <View style={styles.acadGrid}>
+              <TouchableOpacity
                 style={styles.acadItem}
                 onPress={() => navigation.navigate('ERPHub', {
-                  screen: 'ERPLogBookTab',
+                  screen: 'ERPResultsTab',
                   params: { student: user }
                 })}
                 activeOpacity={0.7}
               >
-                <Text style={[styles.acadValue, { color: '#10b981' }]}>Logbook</Text>
+                <Text style={[styles.acadValue, { color: colors.primary }]}>{user?.cgpa || '0.0'} <Text style={[styles.acadMax, { color: colors.textMuted }]}>/ 10.0</Text></Text>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                  <Text style={[styles.acadLabel, { color: colors.textMuted }]}>LOGBOOK DATA</Text>
+                  <Text style={[styles.acadLabel, { color: colors.textMuted }]}>CUMULATIVE GPA</Text>
                   <Ionicons name="chevron-forward" size={10} color={colors.textMuted} />
                 </View>
-                <View style={[styles.pBar, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : colors.border }]}><View style={[styles.pFill, { width: '100%', backgroundColor: '#10b981' }]} /></View>
+                <View style={[styles.pBar, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : colors.border }]}><View style={[styles.pFill, { width: `${(user?.cgpa || 0) * 10}%`, backgroundColor: colors.primary }]} /></View>
               </TouchableOpacity>
-            )}
+
+              <TouchableOpacity
+                style={styles.acadItem}
+                onPress={() => navigation.navigate('ERPHub', {
+                  screen: 'ERPAttendanceTab',
+                  params: { student: user }
+                })}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.acadValue, { color: '#f59e0b' }]}>{user?.attendance || 0}%</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                  <Text style={[styles.acadLabel, { color: colors.textMuted }]}>ATTENDANCE</Text>
+                  <Ionicons name="chevron-forward" size={10} color={colors.textMuted} />
+                </View>
+                <View style={[styles.pBar, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : colors.border }]}><View style={[styles.pFill, { width: `${user?.attendance || 0}%`, backgroundColor: '#f59e0b' }]} /></View>
+              </TouchableOpacity>
+            </View>
           </View>
-        </View>
+        )}
 
 
         {/* Pulse Check (Mood) */}
@@ -510,16 +495,6 @@ const AdminStudentProfileScreen = ({ navigation, route }) => {
                   ? 'Submit your clinical research proposal outline on the Research tab to showcase it on your profile.'
                   : 'Pitch your startup idea on the Venture tab to showcase it on your profile.')}
             </Text>
-            {isOwnProfile && ({/* <View style={styles.ventureActions}>
-              <TouchableOpacity style={[styles.vActionBtn, isMed && { backgroundColor: isDark ? '#6B21A8' : '#7C3AED' }]} onPress={() => navigation.navigate('Venture')}>
-                <Ionicons name={isMed ? "journal-outline" : "link-outline"} size={14} color="#FFFFFF" />
-                <Text style={styles.vActionText}>{isMed ? 'Case Studies' : 'Project Proofs'}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[styles.vActionBtn, isMed && { backgroundColor: isDark ? '#6B21A8' : '#7C3AED' }]} onPress={() => navigation.navigate('Venture')}>
-                <MaterialCommunityIcons name={isMed ? "clipboard-check-outline" : "rocket-launch"} size={14} color="#FFFFFF" />
-                <Text style={styles.vActionText}>{isMed ? 'Logbook ID' : 'Startup ID'}</Text>
-              </TouchableOpacity>
-            </View> */})}
           </LinearGradient>
         </View>
 

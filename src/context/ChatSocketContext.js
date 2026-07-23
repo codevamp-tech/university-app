@@ -19,6 +19,8 @@ import React, {
 } from 'react';
 import { AppState } from 'react-native';
 import { useUser } from './UserContext';
+import * as NotificationService from '../utils/NotificationService';
+import { getFacultyGroupChats } from '../data/apiService';
 
 const WS_BASE =
   process.env.EXPO_PUBLIC_API_BASE_URL?.replace(/^http/, 'ws') ||
@@ -29,12 +31,15 @@ const MAX_BACKOFF = 30_000;
 const ChatSocketContext = createContext(null);
 
 export function ChatSocketProvider({ children }) {
-  const { accessToken } = useUser();
+  const { accessToken, user } = useUser();
   const ws = useRef(null);
   const heartbeatTimer = useRef(null);
   const reconnectTimer = useRef(null);
   const reconnectAttempts = useRef(0);
   const isMounted = useRef(true);
+  // Keep a ref to current user so handleIncoming can compare sender IDs
+  const userRef = useRef(user);
+  useEffect(() => { userRef.current = user; }, [user]);
 
   // ── Pending queue: messages buffered while socket is CONNECTING ────────────
   // Each item: { payload: string (JSON), optimisticFn?: () => void }
@@ -198,6 +203,16 @@ export function ChatSocketProvider({ children }) {
       case 'message': {
         const gMsg = toGiftedMsg(data);
         if (data.channel_id) prependToChannel(data.channel_id, gMsg);
+        // Fire push notification if the message is from someone else
+        if (data.sender_id && data.sender_id !== userRef.current?.user_id) {
+          const senderName = data.sender?.name || data.sender?.username || 'Someone';
+          const channelName = data.channel_name || 'Group Chat';
+          NotificationService.showLocalNotification(
+            `${senderName} in ${channelName}`,
+            data.content || 'New message',
+            { type: 'group_message', channel_id: data.channel_id }
+          );
+        }
         break;
       }
 
@@ -229,6 +244,13 @@ export function ChatSocketProvider({ children }) {
           },
           ...prev,
         ]);
+        // Fire push notification for incoming DM
+        const dmSender = data.sender?.name || data.sender?.username || 'Someone';
+        NotificationService.showLocalNotification(
+          `Message from ${dmSender}`,
+          data.content || 'New direct message',
+          { type: 'dm', sender_id: data.sender_id }
+        );
         break;
       }
 
@@ -373,6 +395,66 @@ export function ChatSocketProvider({ children }) {
 
   // ── Lifecycle ──────────────────────────────────────────────────────────────
 
+  // ── Global Portal Batch Chat Notification Poller ───────────────────────────
+  const lastMaxPortalChatId = useRef(0);
+  const portalPollTimer = useRef(null);
+
+  const pollPortalBatchChats = useCallback(async () => {
+    if (!user) return;
+    const batchName = user.batch_year || user.batch || '2025';
+    const empId = user.emp_id || 'D/11/093';
+
+    try {
+      const history = await getFacultyGroupChats(empId, String(batchName));
+      if (!Array.isArray(history) || history.length === 0) return;
+
+      let highestId = lastMaxPortalChatId.current;
+      const newMessagesToNotify = [];
+
+      history.forEach((msg) => {
+        const numericId = Number(msg.chatid) || 0;
+        if (numericId > 0) {
+          if (lastMaxPortalChatId.current > 0 && numericId > lastMaxPortalChatId.current) {
+            if (!msg.isMe) {
+              newMessagesToNotify.push(msg);
+            }
+          }
+          if (numericId > highestId) {
+            highestId = numericId;
+          }
+        }
+      });
+
+      // Update highest seen chatid
+      lastMaxPortalChatId.current = highestId;
+
+      // Fire notifications for newly detected incoming messages from faculty/others
+      newMessagesToNotify.forEach((msg) => {
+        const sender = msg.sender || 'Faculty Member';
+        const text = msg.text || 'New portal message';
+        const dept = msg.department ? ` (${msg.department})` : '';
+        NotificationService.showLocalNotification(
+          `Official Batch Chat - ${sender}${dept}`,
+          text,
+          { type: 'official_batch_chat', chatid: msg.chatid }
+        );
+      });
+    } catch (e) {
+      console.warn('[ChatSocketContext] Portal chat poll error:', e);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+    // Initial poll
+    pollPortalBatchChats();
+    // Poll every 12 seconds globally
+    portalPollTimer.current = setInterval(pollPortalBatchChats, 12000);
+    return () => {
+      if (portalPollTimer.current) clearInterval(portalPollTimer.current);
+    };
+  }, [user, pollPortalBatchChats]);
+
   useEffect(() => {
     isMounted.current = true;
     if (accessToken) connect();
@@ -382,6 +464,7 @@ export function ChatSocketProvider({ children }) {
         if (!ws.current || ws.current.readyState !== WebSocket.OPEN) {
           connect();
         }
+        pollPortalBatchChats();
       }
     });
 
@@ -389,10 +472,11 @@ export function ChatSocketProvider({ children }) {
       isMounted.current = false;
       clearInterval(heartbeatTimer.current);
       clearTimeout(reconnectTimer.current);
+      if (portalPollTimer.current) clearInterval(portalPollTimer.current);
       ws.current?.close();
       sub.remove();
     };
-  }, [accessToken, connect]);
+  }, [accessToken, connect, pollPortalBatchChats]);
 
   const value = {
     connected,

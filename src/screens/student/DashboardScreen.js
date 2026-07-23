@@ -16,6 +16,7 @@ import { APP_CONFIG } from '../../config/appConfig';
 import { TimelineSkeleton } from '../../components/SkeletonLoader';
 import ActivityRing from '../../components/ActivityRing';
 import { useUser } from '../../context/UserContext';
+import { useNotifications, NotificationBadge } from '../../context/NotificationContext';
 import { useHealthMetrics } from '../../hooks/useHealthMetrics';
 import { generateAIInsight, generateRoadmap, computeSkillGap, generateDynamicRoadmap, fetchDynamicLLMInsight, enrichRoadmapWithMarks } from '../../data/aiEngine';
 
@@ -45,6 +46,7 @@ const DashboardScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const { colors, isDark, toggleTheme } = useTheme();
   const { user, logout, accessToken, updateAvatarUrl } = useUser();
+  const { totalUnreadCount, unreadRequestsCount } = useNotifications();
 
   // ─── First-time Profile Image Setup Modal State ──────────────────────────────
   const [showAvatarSetup, setShowAvatarSetup] = React.useState(false);
@@ -575,6 +577,14 @@ const DashboardScreen = ({ navigation }) => {
         </View>
         <View style={styles.headerRight}>
           <TouchableOpacity
+            style={[styles.headerIconBtn, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1, position: 'relative' }]}
+            onPress={() => navigation.navigate('Alerts')}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="notifications-outline" size={20} color={colors.textPrimary} />
+            <NotificationBadge count={totalUnreadCount} />
+          </TouchableOpacity>
+          <TouchableOpacity
             style={[styles.headerIconBtn, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}
             onPress={() => navigation.navigate('CampusJournal')}
           >
@@ -583,12 +593,15 @@ const DashboardScreen = ({ navigation }) => {
               style={styles.journalIcon}
             />
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => setShowProfileMenu(true)}>
+          <TouchableOpacity onPress={() => setShowProfileMenu(true)} style={{ position: 'relative' }}>
             <SafeStudentAvatar
               uri={avatarUrl}
               name={user?.name || 'S'}
               style={[styles.avatarSmall, { borderColor: colors.primary }]}
             />
+            {unreadRequestsCount > 0 && (
+              <View style={{ position: 'absolute', top: -2, right: -2, width: 10, height: 10, borderRadius: 5, backgroundColor: '#EF4444', borderWidth: 1.5, borderColor: '#FFF' }} />
+            )}
           </TouchableOpacity>
         </View>
       </View>
@@ -1745,9 +1758,14 @@ const DashboardScreen = ({ navigation }) => {
               <Text style={[styles.moduleTitle, { color: colors.textSecondary }]}>My Support Tickets</Text>
               <Text style={[styles.sectionSub, { color: colors.textSecondary }]}>Issues you have raised</Text>
             </View>
-            <TouchableOpacity onPress={() => navigation.navigate('RaiseIssue')}>
-              <Text style={[styles.viewAllText, { color: '#EA580C' }]}>+ Raise New</Text>
-            </TouchableOpacity>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+              <TouchableOpacity onPress={() => navigation.navigate('GrievancesList')}>
+                <Text style={[styles.viewAllText, { color: '#EA580C' }]}>View All ({raisedIssues.length})</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => navigation.navigate('RaiseIssue')}>
+                <Text style={[styles.viewAllText, { color: '#EA580C', fontWeight: '800' }]}>+ Raise New</Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
           {isLoadingIssues ? (
@@ -1761,7 +1779,7 @@ const DashboardScreen = ({ navigation }) => {
             </View>
           ) : (
             <View style={styles.issuesList}>
-              {raisedIssues.map((issue) => {
+              {raisedIssues.slice(0, 3).map((issue) => {
                 const statusLower = (issue.status || '').toLowerCase().replace('-', '_');
                 let statusColor = '#9CA3AF'; // gray
                 if (statusLower === 'pending') statusColor = '#3B82F6'; // blue
@@ -1838,8 +1856,8 @@ const DashboardScreen = ({ navigation }) => {
                       <Text style={[styles.issueTimeText, { color: colors.textMuted }]}>
                         {new Date(issue.created_at).toLocaleDateString()} {new Date(issue.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </Text>
-                      {statusLower === 'pending' && (
-                        <View style={{ flexDirection: 'row', gap: 16 }}>
+                      <View style={{ flexDirection: 'row', gap: 16 }}>
+                        {statusLower === 'pending' && (
                           <TouchableOpacity 
                             onPress={() => navigation.navigate('RaiseIssue', { editMode: true, issue })}
                             style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
@@ -1847,15 +1865,15 @@ const DashboardScreen = ({ navigation }) => {
                             <MaterialIcons name="edit" size={16} color={colors.primary} />
                             <Text style={{ color: colors.primary, fontSize: 13, fontWeight: '600' }}>Edit</Text>
                           </TouchableOpacity>
-                          <TouchableOpacity 
-                            onPress={() => handleDeleteIssue(issue.id)}
-                            style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
-                          >
-                            <MaterialIcons name="delete-outline" size={16} color="#EF4444" />
-                            <Text style={{ color: '#EF4444', fontSize: 13, fontWeight: '600' }}>Delete</Text>
-                          </TouchableOpacity>
-                        </View>
-                      )}
+                        )}
+                        <TouchableOpacity 
+                          onPress={() => handleDeleteIssue(issue.id)}
+                          style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
+                        >
+                          <MaterialIcons name="delete-outline" size={16} color="#EF4444" />
+                          <Text style={{ color: '#EF4444', fontSize: 13, fontWeight: '600' }}>Delete</Text>
+                        </TouchableOpacity>
+                      </View>
                     </View>
                   </View>
                 );

@@ -4,8 +4,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../constants/colors';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { useNotifications, NotificationBadge } from '../context/NotificationContext';
+
 const Header = ({ user, onBellPress, showBell = true, title, subtitle, showAvatar = true }) => {
   const insets = useSafeAreaInsets();
+  const { totalUnreadCount } = useNotifications();
+
   return (
     <View style={[styles.container, { paddingTop: insets.top + 12 }]}>
       <View style={styles.left}>
@@ -20,8 +24,9 @@ const Header = ({ user, onBellPress, showBell = true, title, subtitle, showAvata
         </View>
       </View>
       {showBell && (
-        <TouchableOpacity onPress={onBellPress} style={styles.bell}>
+        <TouchableOpacity onPress={onBellPress} style={[styles.bell, { position: 'relative' }]}>
           <Ionicons name="notifications-outline" size={24} color={Colors.primary} />
+          <NotificationBadge count={totalUnreadCount} />
         </TouchableOpacity>
       )}
     </View>

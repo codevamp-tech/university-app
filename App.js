@@ -11,6 +11,8 @@ import { UserProvider, useUser } from './src/context/UserContext';
 import { ChatSocketProvider } from './src/context/ChatSocketContext';
 import { registerPushTokenAPI } from './src/data/apiService';
 
+import { NotificationProvider } from './src/context/NotificationContext';
+
 // Set notification handler globally
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -64,10 +66,12 @@ export default function App() {
     <SafeAreaProvider>
       <ThemeProvider>
         <UserProvider>
-          <ChatSocketProvider>
-            <PushSetup />
-            <AppContent />
-          </ChatSocketProvider>
+          <NotificationProvider>
+            <ChatSocketProvider>
+              <PushSetup />
+              <AppContent />
+            </ChatSocketProvider>
+          </NotificationProvider>
         </UserProvider>
       </ThemeProvider>
     </SafeAreaProvider>

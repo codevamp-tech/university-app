@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, FlatList, TouchableOpacity, Image, Alert } from
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useUser } from '../../context/UserContext';
+import { useNotifications } from '../../context/NotificationContext';
 import { getPendingRequestsAPI, acceptRequestAPI, getAllStudents } from '../../data/apiService';
 import { getAvatarUrl } from '../../utils/avatar';
 import { useTheme } from '../../hooks/useTheme';
@@ -10,6 +11,7 @@ import { useTheme } from '../../hooks/useTheme';
 const NotificationsScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const { accessToken } = useUser();
+  const { markRequestsAsRead, refreshUnreadCounts } = useNotifications();
   const { colors, isDark } = useTheme();
   const [requests, setRequests] = useState([]);
   const [studentMap, setStudentMap] = useState({});
@@ -20,6 +22,7 @@ const NotificationsScreen = ({ navigation }) => {
       setLoading(true);
       const data = await getPendingRequestsAPI(accessToken);
       setRequests(data);
+      refreshUnreadCounts();
 
       try {
         const students = await getAllStudents(accessToken);
@@ -49,6 +52,7 @@ const NotificationsScreen = ({ navigation }) => {
   const handleAccept = async (connectionId) => {
     try {
       await acceptRequestAPI(accessToken, connectionId);
+      markRequestsAsRead(1);
       Alert.alert("Success", "Follow request accepted!");
       fetchRequests();
     } catch (e) {

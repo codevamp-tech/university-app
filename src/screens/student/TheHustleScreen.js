@@ -7,21 +7,38 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { useTheme } from '../../hooks/useTheme';
 import { useUser } from '../../context/UserContext';
+import { useNotifications, NotificationBadge } from '../../context/NotificationContext';
 import { getAllStudents } from '../../data/apiService';
 import { LeaderboardPageSkeleton } from '../../components/SkeletonLoader';
 import { getAvatarUrl } from '../../utils/avatar';
-import { getDisplayCourse, isMedicalStudent } from '../../utils/courseDisplay';
+import { getDisplayCourse, isMedicalStudent, getMBBSProfLabel } from '../../utils/courseDisplay';
 
 const { width } = Dimensions.get('window');
+
+const getStudentYearNum = (s) => {
+  if (!s) return 1;
+  let yr = s.year || s.current_year;
+  if (yr) {
+    const match = yr.toString().match(/\d+/);
+    if (match) return parseInt(match[0]);
+  }
+  if (s.semester) return Math.ceil(parseInt(s.semester) / 2);
+  return 1;
+};
 
 const TheHustleScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
   const { user, accessToken } = useUser();
+  const { totalUnreadCount } = useNotifications();
+
+  const isStudentUser = !user?.role || user?.role === 'student';
+  const userYearNum = getStudentYearNum(user);
+  const userIsMed = isMedicalStudent(user);
 
   const [allStudents, setAllStudents] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [filterType, setFilterType] = useState('Medical'); // 'Medical' or 'All'
+  const [filterType, setFilterType] = useState(isStudentUser ? 'MyPhase' : 'Medical'); // 'MyPhase', 'Medical', 'All'
   const [viewFullRankings, setViewFullRankings] = useState(false);
 
   useFocusEffect(
@@ -37,12 +54,17 @@ const TheHustleScreen = ({ navigation }) => {
                 name: s.full_name || s.username || 'Student',
                 course: s.course,
                 branch: s.branch,
+                category: s.category,
+                year: s.year || s.current_year,
+                current_year: s.current_year || s.year,
+                semester: s.semester,
+                batch: s.batch_year || s.batch,
                 cgpa: s.cgpa || 0,
                 attendance: s.attendance || 0,
                 certsDone: s.certificates_done || [],
                 certsInProgress: s.certificates_in_progress || [],
-                leadership: [],
-                extracurricular: [],
+                leadership: s.leadership || [],
+                extracurricular: s.extracurricular || [],
                 gender: 'M',
                 avatar_url: s.avatar_url,
               }));
@@ -64,6 +86,16 @@ const TheHustleScreen = ({ navigation }) => {
 
   // Filter students based on selection
   const filteredStudents = allStudents.filter(s => {
+    if (filterType === 'MyPhase') {
+      const studentYr = getStudentYearNum(s);
+      if (userIsMed) {
+        return isMedicalStudent(s) && studentYr === userYearNum;
+      } else {
+        const myCourse = (user?.course || '').toLowerCase().trim();
+        const studentCourse = (s.course || '').toLowerCase().trim();
+        return studentYr === userYearNum && (myCourse ? studentCourse.includes(myCourse) || myCourse.includes(studentCourse) : true);
+      }
+    }
     if (filterType === 'Medical') {
       return isMedicalStudent(s);
     }
@@ -125,6 +157,10 @@ const TheHustleScreen = ({ navigation }) => {
       avatar,
       course: s.course,
       branch: s.branch,
+      category: s.category,
+      year: s.year,
+      current_year: s.current_year,
+      semester: s.semester,
     };
   });
 
@@ -202,9 +238,13 @@ const TheHustleScreen = ({ navigation }) => {
           <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>The Hustle</Text>
         </View>
         <View style={styles.headerRight}>
-          <TouchableOpacity style={styles.headerIconBtn}>
+          <TouchableOpacity
+            style={[styles.headerIconBtn, { position: 'relative' }]}
+            onPress={() => navigation.navigate(isStudentUser ? 'Alerts' : 'TeacherAlerts')}
+            activeOpacity={0.7}
+          >
             <MaterialIcons name="notifications-none" size={26} color={colors.textSecondary} />
-            <View style={styles.notifDot} />
+            <NotificationBadge count={totalUnreadCount} />
           </TouchableOpacity>
           <Image
             source={{ uri: myRecord.avatar }}
@@ -274,20 +314,54 @@ const TheHustleScreen = ({ navigation }) => {
 
         {/* Monthly Leaderboard */}
         <View style={styles.sectionContainer}>
-          <View style={styles.leaderboardHeader}>
-            <Text style={[styles.sectionTitle, { color: colors.textPrimary, marginBottom: 0 }]}>Monthly Leaderboard</Text>
-            <TouchableOpacity 
-              style={[styles.filterBtn, { backgroundColor: colors.border }]}
-              onPress={() => {
-                setFilterType(prev => prev === 'Medical' ? 'All' : 'Medical');
-              }}
+          <Text style={[styles.sectionTitle, { color: colors.textPrimary, marginBottom: 12 }]}>Monthly Leaderboard</Text>
+
+          {/* Filter Pills Bar */}
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingBottom: 12 }}>
+            {isStudentUser && (
+              <TouchableOpacity
+                style={[
+                  styles.filterPill,
+                  filterType === 'MyPhase'
+                    ? { backgroundColor: colors.primary }
+                    : { backgroundColor: colors.border }
+                ]}
+                onPress={() => setFilterType('MyPhase')}
+              >
+                <Text style={[styles.filterPillText, filterType === 'MyPhase' ? { color: '#FFFFFF' } : { color: colors.textSecondary }]}>
+                  {userIsMed ? `My Phase (${getMBBSProfLabel(userYearNum)})` : `My Year (${userYearNum}${userYearNum === 1 ? 'st' : userYearNum === 2 ? 'nd' : userYearNum === 3 ? 'rd' : 'th'} Yr)`}
+                </Text>
+              </TouchableOpacity>
+            )}
+
+            <TouchableOpacity
+              style={[
+                styles.filterPill,
+                filterType === 'Medical'
+                  ? { backgroundColor: colors.primary }
+                  : { backgroundColor: colors.border }
+              ]}
+              onPress={() => setFilterType('Medical')}
             >
-              <Text style={[styles.filterText, { color: colors.textSecondary }]}>
-                {filterType === 'Medical' ? 'Medical Students' : 'All Students'}
+              <Text style={[styles.filterPillText, filterType === 'Medical' ? { color: '#FFFFFF' } : { color: colors.textSecondary }]}>
+                Medical Students
               </Text>
-              <MaterialIcons name="swap-vert" size={16} color={colors.textSecondary} />
             </TouchableOpacity>
-          </View>
+
+            <TouchableOpacity
+              style={[
+                styles.filterPill,
+                filterType === 'All'
+                  ? { backgroundColor: colors.primary }
+                  : { backgroundColor: colors.border }
+              ]}
+              onPress={() => setFilterType('All')}
+            >
+              <Text style={[styles.filterPillText, filterType === 'All' ? { color: '#FFFFFF' } : { color: colors.textSecondary }]}>
+                All Students
+              </Text>
+            </TouchableOpacity>
+          </ScrollView>
 
           <View style={[styles.leaderboardCard, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
             {displayLeaderboard.map((item, index) => (
@@ -305,7 +379,7 @@ const TheHustleScreen = ({ navigation }) => {
                       {item.name} {item.isMe && '(You)'}
                     </Text>
                     <Text style={{ fontSize: 10, color: colors.textSecondary || '#6B7280' }} numberOfLines={1}>
-                      {getDisplayCourse({ course: item.course, branch: item.branch }) || ''}
+                      {getDisplayCourse(item) || ''}
                     </Text>
                   </View>
                 </View>
@@ -533,6 +607,17 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     color: '#EA580C',
     marginTop: 16,
+  },
+  filterPill: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  filterPillText: {
+    fontSize: 12,
+    fontWeight: '800',
   },
   leaderboardHeader: {
     flexDirection: 'row',

@@ -120,7 +120,18 @@ const SuperAdminDrilldownScreen = ({ route, navigation }) => {
         } else {
           const result = await getSuperAdminDrilldown(accessToken, category);
           if (result) {
-            setData(result);
+            if (['tensed_students', 'happy_students', 'neutral_students', 'at_risk_students', 'hustle_students', 'cv_students'].includes(category)) {
+              const seenKeys = new Set();
+              const deduplicated = (result || []).filter(item => {
+                const key = item.rollno || item.user_id || item.student_name || item.id;
+                if (!key || seenKeys.has(key)) return false;
+                seenKeys.add(key);
+                return true;
+              });
+              setData(deduplicated);
+            } else {
+              setData(result);
+            }
           }
         }
       }

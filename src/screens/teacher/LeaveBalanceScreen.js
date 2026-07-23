@@ -51,9 +51,8 @@ const CalendarModal = ({ visible, date, onSelect, onClose }) => {
     return d && t.getDate() === d && t.getMonth() === viewMonth && t.getFullYear() === viewYear;
   };
 
-  if (!visible) return null;
-
   return (
+    <Modal transparent visible={visible} animationType="fade" onRequestClose={onClose} statusBarTranslucent>
     <TouchableOpacity style={calStyles.overlay} activeOpacity={1} onPress={onClose}>
       <View style={calStyles.sheet}>
         {/* Month nav */}
@@ -110,8 +109,9 @@ const CalendarModal = ({ visible, date, onSelect, onClose }) => {
         >
           <Text style={calStyles.todayBtnText}>Today</Text>
         </TouchableOpacity>
-      </View>
-    </TouchableOpacity>
+        </View>
+      </TouchableOpacity>
+    </Modal>
   );
 };
 
@@ -161,8 +161,8 @@ const calStyles = StyleSheet.create({
 
 // ─── DropdownModal ────────────────────────────────────────────────────────────
 const DropdownModal = ({ visible, title, options, selectedValue, onSelect, onClose }) => {
-  if (!visible) return null;
   return (
+    <Modal transparent visible={visible} animationType="slide" onRequestClose={onClose} statusBarTranslucent>
     <TouchableOpacity style={ddStyles.overlay} activeOpacity={1} onPress={onClose}>
       <View style={ddStyles.sheet}>
         <View style={ddStyles.header}>
@@ -191,6 +191,7 @@ const DropdownModal = ({ visible, title, options, selectedValue, onSelect, onClo
         />
       </View>
     </TouchableOpacity>
+    </Modal>
   );
 };
 
@@ -462,16 +463,14 @@ const LeaveBalanceScreen = ({ navigation }) => {
   }, []);
 
   const fetchLeaveSummary = useCallback(async () => {
-    if (!accessToken) return;
     setLoading(true);
     setError(null);
     try {
       const [data, profile] = await Promise.all([
-        getLeaveSummary(accessToken),
+        getLeaveSummary(accessToken, null, null, user?.emp_id),
         getEmployeeERPProfile(user?.emp_id)
       ]);
       if (data) {
-        console.log('[LeaveBalanceScreen] fetched leave data leaves_taken:', JSON.stringify(data.leaves_taken));
         setSummary(data);
       } else {
         setError('No leave records found.');
@@ -704,7 +703,7 @@ const LeaveBalanceScreen = ({ navigation }) => {
       </ScrollView>
 
       {/* Leave Application Slide-Up Sheet */}
-      {applyModalVisible ? (
+      <Modal transparent visible={applyModalVisible} animationType="slide" onRequestClose={() => setApplyModalVisible(false)} statusBarTranslucent>
         <View style={formStyles.overlay}>
           <TouchableOpacity style={formStyles.overlayBackdrop} activeOpacity={1} onPress={() => setApplyModalVisible(false)} />
           <View style={formStyles.sheet}>
@@ -839,7 +838,7 @@ const LeaveBalanceScreen = ({ navigation }) => {
             onClose={() => setWorkInChargeDropdownOpen(false)}
           />
         </View>
-      ) : null}
+      </Modal>
     </View>
   );
 };
