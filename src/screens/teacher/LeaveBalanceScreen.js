@@ -608,7 +608,10 @@ const LeaveBalanceScreen = ({ navigation }) => {
                 <View style={[styles.sectionIconBg, { backgroundColor: '#EEF2FF' }]}>
                   <Ionicons name="list" size={18} color="#4F46E5" />
                 </View>
-                <Text style={styles.sectionTitleText}>Alloted Entitlements</Text>
+                <View>
+                  <Text style={styles.sectionTitleText}>Alloted Policy Entitlements</Text>
+                  <Text style={{ fontSize: 11, color: '#6B7280', fontWeight: '500' }}>Monthly accrual rate per institutional policy</Text>
+                </View>
               </View>
               {[
                 { label: 'Casual Leave (CL)', value: summary.entitlements?.casual_leave || 0 },
@@ -619,7 +622,7 @@ const LeaveBalanceScreen = ({ navigation }) => {
               ].map((item, i) => (
                 <View key={i} style={[styles.lineItem, i === 4 && { borderBottomWidth: 0 }]}>
                   <Text style={styles.lineLabel}>{item.label}</Text>
-                  <Text style={styles.lineValue}>{item.value} Days</Text>
+                  <Text style={styles.lineValue}>{item.value} {item.value === 1 ? 'Day' : 'Days'} / mo</Text>
                 </View>
               ))}
             </View>

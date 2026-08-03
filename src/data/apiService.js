@@ -2165,9 +2165,23 @@ export async function getLeaveSummary(token, month, year, empId = null) {
       postJson('https://myportal.srms.ac.in/ops/Home/GetLeaveEnt', { empId: String(targetEmpId) }),
       postJson('https://myportal.srms.ac.in/ops/Home/GetLeaveBal', { empId: String(targetEmpId), leavecd: '1' }),
       postJson('https://myportal.srms.ac.in/ops/Home/GetLeaveBal', { empId: String(targetEmpId), leavecd: '2' }),
-      postJson('https://myportal.srms.ac.in/ops/Home/GetLeaveBal', { empId: String(targetEmpId), leavecd: '9' }),
-      postJson('https://myportal.srms.ac.in/ops/Home/GetEmpAdvLv', { empid: String(targetEmpId), month: String(targetMonth), yr: String(targetYear) }),
-    ]);
+    // Fetch recent months if month not explicitly passed
+    let advList = [];
+    if (month) {
+      advList = await postJson('https://myportal.srms.ac.in/ops/Home/GetEmpAdvLv', { empid: String(targetEmpId), month: String(targetMonth), yr: String(targetYear) });
+    } else {
+      const currM = new Date().getMonth() + 1;
+      const currY = new Date().getFullYear();
+      const requests = [];
+      for (let offset = 0; offset < 6; offset++) {
+        let m = currM - offset;
+        let y = currY;
+        if (m <= 0) { m += 12; y -= 1; }
+        requests.push(postJson('https://myportal.srms.ac.in/ops/Home/GetEmpAdvLv', { empid: String(targetEmpId), month: String(m), yr: String(y) }));
+      }
+      const results = await Promise.all(requests);
+      advList = results.flat();
+    }
 
     const ent = entList[0] || {};
     const balPriv = balPrivList[0] || {};
