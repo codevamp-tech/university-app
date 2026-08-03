@@ -47,7 +47,7 @@ const JournalSkeleton = () => {
 
 const CampusJournalFeedScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
-  const { user } = useUser();
+  const { user, accessToken } = useUser();
   const { colors, isDark } = useTheme();
   const [entries, setEntries] = React.useState([]);
   const [loading, setLoading] = useState(true);
@@ -58,7 +58,19 @@ const CampusJournalFeedScreen = ({ navigation }) => {
     useCallback(() => {
       const loadEntries = async () => {
         try {
-          const res = await listJournalAPI(user?.accessToken || await AsyncStorage.getItem('accessToken'));
+          // Use accessToken from UserContext directly.
+          // NOTE: for students, accessToken lives on the context object, NOT on user.accessToken.
+          // user.accessToken is only set for faculty. Using the wrong key or wrong source
+          // causes a null token → 401 → false "session expired" logout.
+          const token = accessToken || await AsyncStorage.getItem('@access_token');
+          if (!token) {
+            // No token at all — load from local storage only, don't call API
+            const stored = await AsyncStorage.getItem('@unicampus_campus_journal');
+            setEntries(stored ? JSON.parse(stored) : []);
+            setLoading(false);
+            return;
+          }
+          const res = await listJournalAPI(token);
           if (res) {
             // Map backend fields to frontend fields
             const mapped = res.map(e => ({
@@ -85,7 +97,7 @@ const CampusJournalFeedScreen = ({ navigation }) => {
         }
       };
       loadEntries();
-    }, [])
+    }, [accessToken])
   );
 
   const renderImages = (images) => {

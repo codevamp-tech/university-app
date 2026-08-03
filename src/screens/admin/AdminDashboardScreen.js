@@ -42,7 +42,7 @@ const getStudentPhase = (s) => {
 const SafeGlimpseAvatar = ({ uri, name, rollno, colors }) => {
   const [error, setError] = React.useState(false);
   const initials = name ? name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() : 'ST';
-  
+
   const avatarUri = uri || (rollno ? getStudentAvatar(rollno) : null);
 
   if (!avatarUri || error || avatarUri.includes('pravatar.cc')) {
@@ -53,9 +53,9 @@ const SafeGlimpseAvatar = ({ uri, name, rollno, colors }) => {
     );
   }
   return (
-    <Image 
-      source={{ uri: avatarUri }} 
-      style={styles.glimpseAvatar} 
+    <Image
+      source={{ uri: avatarUri }}
+      style={styles.glimpseAvatar}
       onError={() => setError(true)}
     />
   );
@@ -102,7 +102,7 @@ const AdminDashboardScreen = ({ navigation }) => {
               if (moodDate.getDate() === today.getDate() && moodDate.getMonth() === today.getMonth() && moodDate.getFullYear() === today.getFullYear()) {
                 const apiValToId = { 'excited': 0, 'happy': 1, 'neutral': 2, 'stressed': 3, 'focused': 0 };
                 if (apiValToId[latestMood.mood] !== undefined) {
-                   setActiveMood(apiValToId[latestMood.mood]);
+                  setActiveMood(apiValToId[latestMood.mood]);
                 }
               }
             }
@@ -637,9 +637,9 @@ const AdminDashboardScreen = ({ navigation }) => {
         <Text style={[styles.sectionTitle, { color: colors.textPrimary, marginTop: 4, marginBottom: 2 }]}>
           Core Academic Intelligence
         </Text>
-        <Text style={[styles.sectionSubtitle, { color: colors.textMuted, marginBottom: 14 }]}>
+        {/* <Text style={[styles.sectionSubtitle, { color: colors.textMuted, marginBottom: 14 }]}>
           Primary directory & logbook analytics
-        </Text>
+        </Text> */}
 
         {/* 1.1 Students Directory (MBBS / Medical) */}
         <TouchableOpacity
@@ -673,16 +673,16 @@ const AdminDashboardScreen = ({ navigation }) => {
               <Feather name="chevron-right" size={14} color="#4F46E5" />
             </View>
           </View>
-          
+
           <Text style={[styles.insightBigVal, { color: colors.textPrimary }]}>
             {(() => {
               const mbbsCount = studentsList.filter(s => {
                 const isStudent = s.role?.toLowerCase() === 'student';
                 const isMedical = (!s.category && !s.branch && !s.course) ||
-                                  s.category === 'medical' || 
-                                  (s.branch && s.branch.toUpperCase() === 'MBBS') || 
-                                  (s.course && s.course.toUpperCase().includes('MBBS')) ||
-                                  (s.course && s.course.replace(/\./g, '').toUpperCase().includes('MBBS'));
+                  s.category === 'medical' ||
+                  (s.branch && s.branch.toUpperCase() === 'MBBS') ||
+                  (s.course && s.course.toUpperCase().includes('MBBS')) ||
+                  (s.course && s.course.replace(/\./g, '').toUpperCase().includes('MBBS'));
                 return isStudent && isMedical;
               }).length;
               return mbbsCount;
@@ -692,24 +692,24 @@ const AdminDashboardScreen = ({ navigation }) => {
           <Text style={[styles.insightSubText, { color: colors.textMuted, marginBottom: 12 }]}>
             Comprehensive batch directory — academic results, attendance logs & profile records.
           </Text>
-          
+
           <View style={{ flexDirection: 'row', gap: 10, marginTop: 4 }}>
             {[1, 2, 3].map((phase) => {
               const year = 2026 - phase;
               const phaseCount = studentsList.filter(s => {
                 const isStudent = s.role?.toLowerCase() === 'student';
                 const isMedical = (!s.category && !s.branch && !s.course) ||
-                                  s.category === 'medical' || 
-                                  (s.branch && s.branch.toUpperCase() === 'MBBS') || 
-                                  (s.course && s.course.toUpperCase().includes('MBBS')) ||
-                                  (s.course && s.course.replace(/\./g, '').toUpperCase().includes('MBBS'));
+                  s.category === 'medical' ||
+                  (s.branch && s.branch.toUpperCase() === 'MBBS') ||
+                  (s.course && s.course.toUpperCase().includes('MBBS')) ||
+                  (s.course && s.course.replace(/\./g, '').toUpperCase().includes('MBBS'));
                 if (!isStudent || !isMedical) return false;
-                
+
                 return getStudentPhase(s) === phase;
               }).length;
-              
+
               return (
-                <View 
+                <View
                   key={phase}
                   style={{
                     flex: 1,
@@ -773,10 +773,10 @@ const AdminDashboardScreen = ({ navigation }) => {
           </Text>
           <View style={[styles.insightStatRow]}>
             {[
-              { label: 'Academic',  color: '#3B82F6' },
-              { label: 'Clinical',  color: '#10B981' },
+              { label: 'Academic', color: '#3B82F6' },
+              { label: 'Clinical', color: '#10B981' },
               { label: 'Mandatory', color: '#8B5CF6' },
-              { label: 'DRP',       color: '#EF4444' },
+              { label: 'DRP', color: '#EF4444' },
             ].map(item => (
               <View key={item.label} style={[styles.insightStatChip, { backgroundColor: item.color + '15' }]}>
                 <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: item.color, marginRight: 5 }} />
@@ -973,10 +973,11 @@ const AdminDashboardScreen = ({ navigation }) => {
           <TouchableOpacity
             onPress={() => navigation.navigate('SuperAdminDrilldown', { category: 'hustle_students', title: 'The Hustle Standings' })}
             activeOpacity={0.7}
+            style={{ marginVertical: 4 }}
           >
-            <Text style={[styles.insightBigVal, { color: colors.primary }]}>
-              View Full Standings{' '}
-              <Text style={{ color: colors.textMuted, fontSize: 13 }}>→</Text>
+            <Text style={{ fontSize: 13, fontWeight: '700', color: colors.primary }}>
+              View Full Standings {' '}
+              <Text style={{ color: colors.primary, fontSize: 13 }}>→</Text>
             </Text>
           </TouchableOpacity>
           <Text style={[styles.insightSubText, { color: colors.textMuted, marginBottom: 12 }]}>

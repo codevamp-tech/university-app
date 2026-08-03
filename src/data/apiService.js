@@ -48,8 +48,13 @@ async function apiCall(path, options = {}) {
       ...options,
       headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
     });
-    const json = await response.json();
-    console.log(`[API Response] ✅ ${response.status} <- ${path}`, JSON.stringify(json).slice(0, 500));
+    let json = null;
+    try {
+      json = await response.json();
+    } catch (_) {
+      // Non-JSON response (e.g. 500 HTML/text error page)
+    }
+    console.log(`[API Response] ✅ ${response.status} <- ${path}`, json ? JSON.stringify(json).slice(0, 500) : '(non-JSON response)');
 
     if (response.status === 401 && !path.includes('/login') && !path.includes('/register')) {
       if (onUnauthorizedCallback) {
@@ -2034,11 +2039,16 @@ export async function getSalarySlip(token, month, year, empId = null) {
   }
 
   // 2. Direct ERP fallback helper
+  // NOTE: field names here MUST match what SalarySlipScreen.js renders.
+  // The backend proxy (/api/v1/faculty/salary-slip) returns the same field names.
   const fetchDirectSalary = async (m, y) => {
     try {
       const response = await fetch('https://myportal.srms.ac.in/ops/Home/GetEmployeeSalaryslip', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'User-Agent': 'Mozilla/5.0' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
         body: JSON.stringify({ empid: String(targetEmpId), month: String(m), year: String(y) }),
       });
       const data = await response.json();
@@ -2049,11 +2059,12 @@ export async function getSalarySlip(token, month, year, empId = null) {
           department: item.Department || '',
           designation: item.Designation || '',
           category: item.Categary || '',
-          month: item.Mnth || m,
-          year: item.YEARS || y,
+          month: m,
+          year: y,
           pan_no: item.PANNo || '',
           account_no: item.AcNO || '',
           uan: item.UAN || '',
+          // Earnings — field names match SalarySlipScreen expectations
           basic: item.EBASIC || item['INITIAL PAY'] || 0,
           da: item.DA || 0,
           hra: item.HRA || 0,
@@ -2064,12 +2075,39 @@ export async function getSalarySlip(token, month, year, empId = null) {
           bonus_earn: item.Bonus_earn || 0,
           gratuity_earn: item.GratityEarn || 0,
           misc_earn: item.MISCEARN || 0,
-          gross_pay: item.GROSSTOTAL || item['Standard Gross Salary'] || 0,
-          tds: item.TDSTAX || 0,
-          epf: item.PFDEDN || 0,
+          dean_student_welfare: item.DEAN_STUDENT_WELFARE || 0,
+          vice_principal: item.VICE_PRINCIPAL || 0,
+          dean_pg: item.DEAN_PG || 0,
+          dean_ug: item.DEAN_UG || 0,
+          warden: item.WARDEN || 0,
+          chief_proctor: item.CHIEF_PROCTOR || 0,
+          exam_controller: item.EXAM_CONTROLLER || 0,
+          // Deductions
+          tds: item.TDSTAX || item.TDS || 0,
+          epf: item.PFDEDN || item.EPFDEDN || 0,
           esi: item.ESIDEDN || 0,
-          total_deductions: item.TOTALDEDN || 0,
-          net_pay: item.NETPAYMENT || item.NETPAY || 0,
+          swf: item.SWF || 0,
+          lic: item.LIC || 0,
+          mobile_bill: item.MOBILEBILL || 0,
+          transport: item.TRANSPORT || 0,
+          electricity: item.ELECTRICITY || 0,
+          fix_tf_dedn: item['FIX TF DEDN'] || 0,
+          misc_dedn: item.MISCDEC || item.MISCEARN || 0,
+          // Totals — CRITICAL: use same keys as SalarySlipScreen renders
+          gross_salary: item.GROSS || item.GROSSTOTAL || item['Standard Gross Salary'] || 0,
+          gross_deductions: item.GROSSDED || item.TOTALDEDN || 0,
+          net_salary: item.NET || item.NETPAYMENT || item.NETPAY || 0,
+          standard_gross: item['Standard Gross Salary'] || 0,
+          due_salary: item['DUE SALARY'] || 0,
+          // Attendance
+          working_days: item.WD || 0,
+          month_days: item.MnthDays || 0,
+          days_worked: item.DaysWorked || 0,
+          days_physically_present: item.DaysPhyPres || 0,
+          lwp: item.LWP || 0,
+          cl: item.CL || 0,
+          el: item.EL || 0,
+          co: item.CO || 0,
         };
       }
     } catch (err) {
@@ -2077,6 +2115,7 @@ export async function getSalarySlip(token, month, year, empId = null) {
     }
     return null;
   };
+
 
   let slipData = await fetchDirectSalary(month, year);
   // If current month has no generated slip yet, automatically try previous month
@@ -2570,13 +2609,39 @@ export async function uploadLectureMaterial(empId, department, fileUri, fileName
 /**
  * Fetch other faculty members in the same department as the logged-in faculty (POST).
  * Used to populate the "Work In-charge" dropdown.
+ *
+ * Routes through the backend proxy first — this avoids Android 13 / MIUI 14 TLS
+ * compatibility issues with myportal.srms.ac.in when called directly from the app.
+ * Falls back to a direct ERP call if the proxy is unavailable.
+ *
+ * @param {string} empId   - Employee ID of the logged-in faculty
+ * @param {string} [token] - Bearer access token (optional, enables backend proxy path)
  */
-export async function getDepartmentFacultyList(empId) {
+export async function getDepartmentFacultyList(empId, token = null) {
   if (!empId) return [];
+
+  // 1. Try backend proxy (works on all Android versions — server-to-server call)
+  if (token) {
+    try {
+      const res = await apiCall('/api/v1/faculty/faculty-list', {
+        method: 'POST',
+        headers: authHeaders(token),
+        body: JSON.stringify({ emp_id: String(empId) }),
+      });
+      // Backend returns { success: true, data: [...] }
+      if (res.ok && res.json?.success && Array.isArray(res.json.data) && res.json.data.length > 0) {
+        return res.json.data;
+      }
+    } catch (err) {
+      console.warn('[apiService] getDepartmentFacultyList proxy failed:', err);
+    }
+  }
+
+  // 2. Direct ERP call as fallback (works on higher Android, may fail on Android 13)
   try {
     const response = await fetch('https://myportal.srms.ac.in/SRMSERP/PGMBBS/getfaclist', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
       body: JSON.stringify({
         facid: 'ddl_faculty2',
         EmpId: String(empId),
@@ -2585,7 +2650,7 @@ export async function getDepartmentFacultyList(empId) {
     const data = await response.json();
     return Array.isArray(data) ? data : [];
   } catch (err) {
-    console.warn('[apiService] getDepartmentFacultyList failed:', err);
+    console.warn('[apiService] getDepartmentFacultyList direct ERP failed:', err);
     return [];
   }
 }
@@ -2767,3 +2832,186 @@ export async function updateFoundationLogbook(payload) {
   }
 }
 
+// ─── Faculty Credential Detail (pg_verify / pg_hod flags) ──────────────────────
+
+/**
+ * Fetch faculty credential detail including permission flags (pg_verify, pg_hod).
+ * POST https://myportal.srms.ac.in/SRMSERP/Faculty/FacultyLoginCredential
+ * Payload: { emp_id, password }   ← both required by the API
+ * Returns first element of array: { ..., pg_verify: 2, pg_hod: 3, ... }
+ */
+export async function getFacultyCredentialDetail(empId, password) {
+  try {
+    const body = { emp_id: String(empId) };
+    if (password) body.password = password;
+    const response = await fetch('https://myportal.srms.ac.in/SRMSERP/Faculty/FacultyLoginCredential', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'User-Agent': 'Mozilla/5.0' },
+      body: JSON.stringify(body),
+    });
+    const data = await response.json();
+    // API returns an array; take the first element
+    if (Array.isArray(data) && data.length > 0) return data[0];
+    if (data && typeof data === 'object' && !Array.isArray(data)) return data;
+    return null;
+  } catch (err) {
+    console.warn('[apiService] getFacultyCredentialDetail failed:', err);
+    return null;
+  }
+}
+
+// ─── PG Logbook Verification (Faculty) ───────────────────────────────────────
+
+/**
+ * Fetch list of PG students for a given batch & department.
+ * POST https://myportal.srms.ac.in/SRMSERP/PGMBBS/stud_name_select
+ * Payload: { batch, department }
+ */
+export async function getPGStudentList(batch, department) {
+  try {
+    const response = await fetch('https://myportal.srms.ac.in/SRMSERP/PGMBBS/stud_name_select', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'User-Agent': 'Mozilla/5.0' },
+      body: JSON.stringify({ batch, department }),
+    });
+    const data = await response.json();
+    if (Array.isArray(data)) {
+      return data.map(s => ({
+        ...s,
+        stud_id: s.EmpID || s.stud_id || s.rollno || '',
+        rollno: s.EmpID || s.rollno || s.stud_id || '',
+        stud_name: s.EmpName || s.stud_name || s.name || '',
+        name: s.EmpName || s.name || s.stud_name || '',
+      }));
+    }
+    return [];
+  } catch (err) {
+    console.warn('[apiService] getPGStudentList failed:', err);
+    return [];
+  }
+}
+
+
+/**
+ * Fetch filtered PG logbook entries for verification.
+ * POST https://myportal.srms.ac.in/SRMSERP/PGMBBS/getFillterverificationByFaculty1
+ * Payload: { sem_dept, colg_cd, batch, rollno, hodid, Depart, pend_status, From_Date, to_Date }
+ */
+export async function getPGVerificationEntries(payload) {
+  try {
+    const response = await fetch('https://myportal.srms.ac.in/SRMSERP/PGMBBS/getFillterverificationByFaculty1', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'User-Agent': 'Mozilla/5.0' },
+      body: JSON.stringify(payload),
+    });
+    const data = await response.json();
+    return Array.isArray(data) ? data : [];
+  } catch (err) {
+    console.warn('[apiService] getPGVerificationEntries failed:', err);
+    return [];
+  }
+}
+
+/**
+ * Verify a PG logbook entry (assign grade + remark).
+ * POST https://myportal.srms.ac.in/SRMSERP/PGMBBS/updatepglogbooktopic
+ * Payload: { pgrollno, pgtype, empid, sem_dept, username, pgemp, remarks, gradfac }
+ */
+export async function updatePGLogbookVerify(payload) {
+  try {
+    const response = await fetch('https://myportal.srms.ac.in/SRMSERP/PGMBBS/updatepglogbooktopic', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'User-Agent': 'Mozilla/5.0' },
+      body: JSON.stringify(payload),
+    });
+    const text = await response.text();
+    return text.trim();
+  } catch (err) {
+    console.warn('[apiService] updatePGLogbookVerify failed:', err);
+    throw err;
+  }
+}
+
+/**
+ * Mark a PG student absent for a logbook entry.
+ * POST https://myportal.srms.ac.in/SRMSERP/PGMBBS/Saveabsent
+ * Payload: { rollNo, depar, StudName, sem_type, sem_topic, semTime, semDate, atten, remarks,
+ *            extra, colg_cd, course_cd, course_type, sem_verfiedby, sem_status, sem_verified_id }
+ */
+export async function savePGStudentAbsent(payload) {
+  try {
+    const response = await fetch('https://myportal.srms.ac.in/SRMSERP/PGMBBS/Saveabsent', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'User-Agent': 'Mozilla/5.0' },
+      body: JSON.stringify(payload),
+    });
+    const text = await response.text();
+    return text.trim();
+  } catch (err) {
+    console.warn('[apiService] savePGStudentAbsent failed:', err);
+    throw err;
+  }
+}
+
+// ─── PG Logbook HOD Verification ─────────────────────────────────────────────
+
+/**
+ * Fetch PG logbook entries for HOD verification.
+ * POST https://myportal.srms.ac.in/SRMSERP/PGMBBS/GetPGListForLogBookVerifyHOD
+ * Payload: { sem_type, sem_dept, colg_cd, empid, Roll_No, Depart, pend_status, from_date, to_date, batch }
+ */
+export async function getPGHODVerifyList(payload) {
+  try {
+    const response = await fetch('https://myportal.srms.ac.in/SRMSERP/PGMBBS/GetPGListForLogBookVerifyHOD', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'User-Agent': 'Mozilla/5.0' },
+      body: JSON.stringify(payload),
+    });
+    const data = await response.json();
+    return Array.isArray(data) ? data : [];
+  } catch (err) {
+    console.warn('[apiService] getPGHODVerifyList failed:', err);
+    return [];
+  }
+}
+
+/**
+ * HOD verification of a PG logbook entry.
+ * POST https://myportal.srms.ac.in/SRMSERP/PGMBBS/verify_hod
+ * Payload: { roll_no, semType, HodId, depart, pend_Verf_status }
+ * Response: '0' means success
+ */
+export async function verifyPGHOD(payload) {
+  try {
+    const response = await fetch('https://myportal.srms.ac.in/SRMSERP/PGMBBS/verify_hod', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'User-Agent': 'Mozilla/5.0' },
+      body: JSON.stringify(payload),
+    });
+    const text = await response.text();
+    return text.trim();
+  } catch (err) {
+    console.warn('[apiService] verifyPGHOD failed:', err);
+    throw err;
+  }
+}
+
+/**
+ * Fetch PG student list for HOD batch/department selection.
+ * POST https://myportal.srms.ac.in/SRMSERP/PGMBBS/Getpgstu
+ * Payload: { value, department, Stud_Roll, batch }
+ */
+export async function getPGStudentListForHOD(payload) {
+  try {
+    const response = await fetch('https://myportal.srms.ac.in/SRMSERP/PGMBBS/Getpgstu', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'User-Agent': 'Mozilla/5.0' },
+      body: JSON.stringify(payload),
+    });
+    const data = await response.json();
+    return Array.isArray(data) ? data : [];
+  } catch (err) {
+    console.warn('[apiService] getPGStudentListForHOD failed:', err);
+    return [];
+  }
+}

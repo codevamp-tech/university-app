@@ -311,7 +311,9 @@ const LeaveBalanceScreen = ({ navigation }) => {
     if (!user?.emp_id) return;
     setFacLoading(true);
     try {
-      const data = await getDepartmentFacultyList(user.emp_id);
+      // Pass accessToken so getDepartmentFacultyList can use the backend proxy
+      // (avoids Android 13 TLS issues when calling myportal.srms.ac.in directly)
+      const data = await getDepartmentFacultyList(user.emp_id, accessToken);
       // Filter out the current user themselves
       const filtered = (data || []).filter(f => f.EmpID !== user.emp_id);
       setFacList(filtered);
@@ -323,7 +325,7 @@ const LeaveBalanceScreen = ({ navigation }) => {
     } finally {
       setFacLoading(false);
     }
-  }, [user?.emp_id]);
+  }, [user?.emp_id, accessToken]);
 
   useEffect(() => {
     if (applyModalVisible) {

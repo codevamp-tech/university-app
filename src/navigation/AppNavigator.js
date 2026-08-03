@@ -111,6 +111,8 @@ import StudentFacultyDirectoryScreen from '../screens/student/FacultyDirectorySc
 import FoundationLogbookScreen from '../screens/student/FoundationLogbookScreen';
 import FacultyFoundationScreen from '../screens/teacher/FacultyFoundationScreen';
 import FacultyStudentFoundationDetailScreen from '../screens/teacher/FacultyStudentFoundationDetailScreen';
+import PGLogbookVerificationScreen from '../screens/teacher/PGLogbookVerificationScreen';
+import PGLogbookHODVerifyScreen from '../screens/teacher/PGLogbookHODVerifyScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -242,6 +244,8 @@ const AppNavigator = () => {
       <Stack.Screen name="FoundationLogbook" component={FoundationLogbookScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="FacultyFoundation" component={FacultyFoundationScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="FacultyStudentFoundationDetail" component={FacultyStudentFoundationDetailScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="PGLogbookVerification" component={PGLogbookVerificationScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="PGLogbookHODVerify" component={PGLogbookHODVerifyScreen} options={{ animation: 'slide_from_right' }} />
     </Stack.Navigator>
   );
 };

@@ -5,6 +5,9 @@
 		},
 		{
 			"path": "../../unicampus"
+		},
+		{
+			"path": "../../unicampus-erp"
 		}
 	],
 	"settings": {}

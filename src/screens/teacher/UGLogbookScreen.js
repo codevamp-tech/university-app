@@ -46,6 +46,27 @@ const EVENT_OPTIONS = [
   { value: 'ClinicalVisitDepartment', label: 'Visit to Clinical Department' },
 ];
 
+const DEPARTMENT_OPTIONS = [
+  { label: 'Pharmacology (PH)', value: 'PH' },
+  { label: 'Pathology (PA)', value: 'PA' },
+  { label: 'Physiology (PY)', value: 'PY' },
+  { label: 'Anatomy (AN)', value: 'AN' },
+  { label: 'Biochemistry (BI)', value: 'BI' },
+  { label: 'Microbiology (MI)', value: 'MI' },
+  { label: 'Forensic Medicine (FM)', value: 'FM' },
+  { label: 'Community Medicine (CM)', value: 'CM' },
+  { label: 'General Medicine (IM)', value: 'IM' },
+  { label: 'General Surgery (SU)', value: 'SU' },
+  { label: 'Obstetrics & Gynaecology (OG)', value: 'OG' },
+  { label: 'Paediatrics (PE)', value: 'PE' },
+  { label: 'Ophthalmology (OP)', value: 'OP' },
+  { label: 'Orthopedics (OR)', value: 'OR' },
+  { label: 'ENT (EN)', value: 'EN' },
+  { label: 'Radiodiagnosis (RD)', value: 'RD' },
+  { label: 'Dentistry (DE)', value: 'DE' },
+  { label: 'Anesthesiology (AS)', value: 'AS' },
+];
+
 
 const GROUP_OPTIONS = [
   { value: 'A', label: 'A' },
@@ -353,66 +374,52 @@ const UGLogbookScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const { user, accessToken } = useUser();
 
-  // Filters
-  const [selectedPhase, setSelectedPhase] = useState(PHASE_OPTIONS[0]);
+  // Resolve initial phase synchronously from user context
+  const getInitialPhase = () => {
+    if (user?.phase) {
+      const matched = PHASE_OPTIONS.find(p => p.value === String(user.phase));
+      if (matched) return matched;
+    }
+    return PHASE_OPTIONS[0]; // Default Phase 1
+  };
 
-  // Resolve faculty subcode dynamically based on user context and current filter selection
-  const getSubCodeForState = () => {
-    if (!user) return 'PY';
-    let facultyDept = (user.department || '').trim().toLowerCase();
-    
-    const DEPT_TO_SUBCODE = {
-      'anatomy': 'AN',
-      'physiology': 'PY',
-      'biochemistry': 'BI',
-      'pharmacology': 'PH',
-      'pathology': 'PA',
-      'microbiology': 'MI',
-      'forensic medicine': 'FM',
-      'community medicine': 'CM',
-      'medicine': 'IM',
-      'surgery': 'SU',
-      'obstetrics': 'OG',
-      'gynaecology': 'OG',
-      'obg': 'OG',
-      'pediatrics': 'PE',
-      'paediatrics': 'PE',
-      'ophthalmology': 'OP',
-      'orthopedics': 'OR',
-      'ent': 'EN',
-      'otorhinolaryngology': 'EN',
-      'radio': 'RD',
-      'dentistry': 'DE',
-      'anesthesiology': 'AS'
-    };
-    
-    // 1. Try to match by department name first (highly dynamic for any faculty member)
-    if (facultyDept && facultyDept !== 'medical faculty' && facultyDept !== 'teacher') {
-      for (const [deptKey, code] of Object.entries(DEPT_TO_SUBCODE)) {
-        if (facultyDept.includes(deptKey) || deptKey.includes(facultyDept)) {
-          return code;
+  const [selectedPhase, setSelectedPhase] = useState(getInitialPhase);
+
+  // Dynamic department selection state
+  const getInitialDept = () => {
+    if (user?.department) {
+      const deptLower = (user.department || '').trim().toLowerCase();
+      const DEPT_MAP = {
+        'anatomy': 'AN', 'physiology': 'PY', 'biochemistry': 'BI',
+        'pharmacology': 'PH', 'pathology': 'PA', 'microbiology': 'MI',
+        'forensic': 'FM', 'community': 'CM', 'medicine': 'IM',
+        'surgery': 'SU', 'obstetrics': 'OG', 'gynaecology': 'OG', 'obg': 'OG',
+        'pediatrics': 'PE', 'paediatrics': 'PE', 'ophthalmology': 'OP',
+        'orthopedics': 'OR', 'ent': 'EN', 'radio': 'RD', 'dentistry': 'DE', 'anesthesiology': 'AS'
+      };
+      for (const [key, code] of Object.entries(DEPT_MAP)) {
+        if (deptLower.includes(key)) {
+          const found = DEPARTMENT_OPTIONS.find(d => d.value === code);
+          if (found) return found;
         }
       }
     }
-    
-    // 2. If generic department (e.g. "Medical Faculty" or "Teacher"), match the subcode dynamically
-    // to the currently selected Phase filter to prevent phase-subject mismatch errors
-    if (selectedPhase.value === '2') {
-      return 'PA'; // Pathology for Phase 2
-    } else if (selectedPhase.value === '3') {
-      return 'IM'; // Medicine for Phase 3
-    }
-    return 'PY'; // Physiology for Phase 1
+    // Defaults by phase (using initial phase value)
+    const currentPhaseVal = user?.phase ? String(user.phase) : '1';
+    if (currentPhaseVal === '2') return DEPARTMENT_OPTIONS.find(d => d.value === 'PH') || DEPARTMENT_OPTIONS[0]; // Pharmacology (PH) for Phase 2
+    if (currentPhaseVal === '3') return DEPARTMENT_OPTIONS.find(d => d.value === 'CM') || DEPARTMENT_OPTIONS[7]; // Community Medicine (CM) for Phase 3
+    return DEPARTMENT_OPTIONS.find(d => d.value === 'PY') || DEPARTMENT_OPTIONS[2]; // Physiology (PY) for Phase 1
   };
 
-  const subCode = getSubCodeForState();
+  const [selectedDept, setSelectedDept] = useState(getInitialDept);
+  const subCode = selectedDept.value;
 
   const [selectedEvent, setSelectedEvent] = useState(EVENT_OPTIONS[0]);
   const [selectedGroup, setSelectedGroup] = useState(GROUP_OPTIONS[3]); // A1
   const [selectedActivity, setSelectedActivity] = useState(null);
   const [selectedDate, setSelectedDate] = useState(new Date());
 
-  // Initialize selectedPhase from user.phase context dynamically on mount/load
+  // Update phase & department if user context updates late
   useEffect(() => {
     if (user?.phase) {
       const matchedPhase = PHASE_OPTIONS.find(p => p.value === String(user.phase));
@@ -420,7 +427,10 @@ const UGLogbookScreen = ({ navigation }) => {
         setSelectedPhase(matchedPhase);
       }
     }
-  }, [user?.phase]);
+    if (user) {
+      setSelectedDept(getInitialDept());
+    }
+  }, [user]);
 
   // Activities from ERP
   const [activities, setActivities] = useState([]);
@@ -1246,7 +1256,7 @@ const UGLogbookScreen = ({ navigation }) => {
           <View style={styles.filterMetaBadges}>
             <Ionicons name="funnel" size={12} color="#EA580C" style={{ marginRight: 6 }} />
             <Text style={styles.collapsedFilterText} numberOfLines={1}>
-              Phase {selectedPhase.value} · {selectedGroup.value} · {formatDateDisplay(selectedDate)}
+              Phase {selectedPhase.value} · {selectedDept.value} · {selectedGroup.value} · {formatDateDisplay(selectedDate)}
             </Text>
           </View>
           <View style={styles.filterEditButton}>
@@ -1287,12 +1297,13 @@ const UGLogbookScreen = ({ navigation }) => {
 
               <ScrollView contentContainerStyle={styles.filterGridModal} showsVerticalScrollIndicator={false}>
                 <FilterRow label="BATCH / PHASE" value={selectedPhase.label} onPress={() => openModal('phase')} />
-                <FilterRow label="EVENT TYPE" value={selectedEvent.label} onPress={() => openModal('event')} />
+                <FilterRow label="DEPARTMENT / SUBJECT" value={selectedDept.label} onPress={() => openModal('dept')} />
                 <FilterRow label="GROUP" value={selectedGroup.label} onPress={() => openModal('group')} />
+                <FilterRow label="EVENT TYPE" value={selectedEvent.label} onPress={() => openModal('event')} />
+                <DatePicker date={selectedDate} onChange={setSelectedDate} />
                 {selectedEvent.value !== 'RefSelfDirectedLearning' && selectedEvent.value !== 'Foundation' && (
                   <FilterRow label="ACTIVITY" value={activityLabel} onPress={() => openModal('activity')} loading={activitiesLoading} />
                 )}
-                <DatePicker date={selectedDate} onChange={setSelectedDate} />
               </ScrollView>
 
               <TouchableOpacity
@@ -1678,7 +1689,30 @@ const UGLogbookScreen = ({ navigation }) => {
         title="Select Batch / Phase"
         options={PHASE_OPTIONS}
         selectedValue={selectedPhase.value}
-        onSelect={item => { setSelectedPhase(item); setStudentsLoaded(false); setStudentList([]); }}
+        onSelect={item => {
+          setSelectedPhase(item);
+          // Auto-adjust default department if switching phase
+          if (item.value === '3') {
+            const cm = DEPARTMENT_OPTIONS.find(d => d.value === 'CM') || DEPARTMENT_OPTIONS[7];
+            setSelectedDept(cm);
+          } else if (item.value === '2' && ['AN', 'PY', 'BI'].includes(selectedDept.value)) {
+            const pharm = DEPARTMENT_OPTIONS.find(d => d.value === 'PH') || DEPARTMENT_OPTIONS[0];
+            setSelectedDept(pharm);
+          } else if (item.value === '1' && ['PH', 'PA', 'MI', 'FM', 'CM', 'IM'].includes(selectedDept.value)) {
+            const physio = DEPARTMENT_OPTIONS.find(d => d.value === 'PY') || DEPARTMENT_OPTIONS[2];
+            setSelectedDept(physio);
+          }
+          setStudentsLoaded(false);
+          setStudentList([]);
+        }}
+        onClose={closeModal}
+      />
+      <DropdownModal
+        visible={modalType === 'dept'}
+        title="Select Department / Subject"
+        options={DEPARTMENT_OPTIONS}
+        selectedValue={selectedDept.value}
+        onSelect={item => { setSelectedDept(item); setStudentsLoaded(false); setStudentList([]); }}
         onClose={closeModal}
       />
       <DropdownModal

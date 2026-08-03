@@ -73,6 +73,9 @@ const ERPHubScreen = ({ navigation, route }) => {
   });
   const [myOutpasses, setMyOutpasses] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
+  // Track image load errors for avatar fallback (Android 13 / MIUI 14 TLS compatibility fix)
+  const [studentImgErr, setStudentImgErr] = useState(false);
+  const [userImgErr, setUserImgErr] = useState(false);
 
   const loadOutpassStatus = async () => {
     if (!accessToken) return;
@@ -561,10 +564,19 @@ const ERPHubScreen = ({ navigation, route }) => {
                 </View>
 
                 <View style={styles.lcStudentRow}>
-                  <Image
-                    source={{ uri: getAvatarUrl(student?.avatar_url || student?.name || student?.id || 'me', student?.rollno) }}
-                    style={styles.lcAvatar}
-                  />
+                  {!studentImgErr ? (
+                    <Image
+                      source={{ uri: getAvatarUrl(student?.avatar_url || student?.name || student?.id || 'me', student?.rollno) }}
+                      style={styles.lcAvatar}
+                      onError={() => setStudentImgErr(true)}
+                    />
+                  ) : (
+                    <View style={[styles.lcAvatar, { backgroundColor: '#EA580C', alignItems: 'center', justifyContent: 'center' }]}>
+                      <Text style={{ color: '#FFF', fontWeight: '800', fontSize: 20 }}>
+                        {(student?.name || 'S').charAt(0).toUpperCase()}
+                      </Text>
+                    </View>
+                  )}
                   <View style={styles.lcStudentInfo}>
                     <Text style={styles.lcStudentName}>{student?.name || 'Aryan Kumar'}</Text>
                     <Text style={styles.lcStudentDept}>
@@ -1037,10 +1049,19 @@ const ERPHubScreen = ({ navigation, route }) => {
 
             <TouchableOpacity activeOpacity={1}>
               <LinearGradient colors={['#EA580C', '#9A3412']} style={styles.drawerHeader}>
-                <Image
-                  source={{ uri: getAvatarUrl(user?.avatar_url || user?.name || user?.id || 'me', user?.rollno) }}
-                  style={styles.drawerAvatar}
-                />
+{!userImgErr ? (
+                  <Image
+                    source={{ uri: getAvatarUrl(user?.avatar_url || user?.name || user?.id || 'me', user?.rollno) }}
+                    style={styles.drawerAvatar}
+                    onError={() => setUserImgErr(true)}
+                  />
+                ) : (
+                  <View style={[styles.drawerAvatar, { backgroundColor: 'rgba(255,255,255,0.3)', alignItems: 'center', justifyContent: 'center' }]}>
+                    <Text style={{ color: '#FFF', fontWeight: '900', fontSize: 28 }}>
+                      {(user?.name || 'U').charAt(0).toUpperCase()}
+                    </Text>
+                  </View>
+                )}
                 <Text style={styles.drawerName}>{user?.name || 'Aryan Kumar'}</Text>
                 <Text style={styles.drawerRole}>{getDisplayCourse(user)}</Text>
                 <Text style={styles.drawerId}>ID: {user?.id || `${APP_CONFIG.UNIVERSITY_ID_PREFIX}2024001`}</Text>

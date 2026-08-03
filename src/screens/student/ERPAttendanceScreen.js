@@ -750,7 +750,7 @@ const ERPAttendanceScreen = ({ route, navigation }) => {
             requiredPct,
             // CRITICAL FIX: backend semester is always 1 for MBBS students (sync bug).
             // Override with medYear so phase mapping works correctly.
-            semester: isMedical ? medYear : (item.semester || semNum),
+            semester: item.semester || item.sem_no || item.sem_year || (isMedical ? medYear : semNum),
           };
         });
       }
@@ -815,24 +815,24 @@ const ERPAttendanceScreen = ({ route, navigation }) => {
     });
 
     // ── Direct parent-name → MBBS phase mapping ──────────────────────────────
-    // Uses the canonical parent name returned by getParentSubjectName().
-    // This is authoritative — do NOT derive phase from subject code or semester.
-    // ── Direct parent-name → MBBS phase mapping ──────────────────────────────
     const PARENT_NAME_TO_PHASE = {
-      // 1st Prof (1st Year) ─ AN, PY, BC
+      // 1st Prof (1st Year) ─ 4 Subjects: AN, PY, BC, CM (84401, 84402)
       'Anatomy':                       '1st Prof',
       'Physiology':                    '1st Prof',
       'Biochemistry_(CBME 2024)':      '1st Prof',
       'Biochemistry_(CBME 2019)':      '1st Prof',
       'Biochemistry':                  '1st Prof',
-      // 2nd Prof (2nd Year) ─ PA, PH, MI
+
+      // 2nd Prof (2nd Year) ─ 9 Subjects: PA, PH, MI, Gen Med, Gen Surg, OBG, Paed, Derm, Ortho (+ Dentistry, FMT)
       'Pathology':                     '2nd Prof',
       'Pharmacology':                  '2nd Prof',
       'Microbiology':                  '2nd Prof',
-      // 3rd Prof Part I (3rd Year) ─ FM, CM
+
+      // 3rd Prof Part I (3rd Year) ─ 11 Subjects: CM, FMT, Ophtha, ENT, Gen Med, Gen Surg, OBG, Paed, Ortho, Derm, Dentistry
       'FORENSIC MEDICINE':             '3rd Prof Part I',
       'Community Medicine':            '3rd Prof Part I',
-      // 3rd Prof Part II (4th Year) ─ all 4th year specialties
+
+      // 3rd Prof Part II (4th Year)
       'General Medicine':              '3rd Prof Part II',
       'GENERAL SURGERY':               '3rd Prof Part II',
       'PAEDIATRICS':                   '3rd Prof Part II',
@@ -850,86 +850,133 @@ const ERPAttendanceScreen = ({ route, navigation }) => {
     };
 
     // ── Phase-Specific MBBS Subcategory / Code Evaluator ─────────────────────
-    // Maps ERP codes and subcategories to the appropriate Prof Phase based on student year
+    // PHASE 1 = 4 parents: Anatomy, Physiology, Biochemistry, Community Medicine
+    // PHASE 2 = 9 parents: Pathology, Microbiology, Pharmacology, GenMed, GenSurg, OBG, Paed, Derm, Ortho
+    // PHASE 3 = 11 parents: CommMed, FMT, Ophthalmology, ENT, GenMed, GenSurg, OBG, Paed, Ortho, Derm, Dentistry
     const getMedicalPhaseForSubcategory = (sub, semNumber) => {
       if (!isMedical) return null;
       const code = String(sub.erpCode || sub.code || '').trim();
       const subNameUpper = String(sub.name || '').toUpperCase().trim();
       const parentName = getParentSubjectName(sub.name, sub.code);
 
-      // ── Rule 1: Community Medicine -> Always 3rd Prof Part I ──────────────
-      if (parentName === 'Community Medicine' || subNameUpper.includes('COMMUNITY MEDICINE') || subNameUpper.includes('FAMILY ADOPTION')) {
-        return '3rd Prof Part I';
-      }
-
-      // ── Rule 2: Forensic Medicine -> 3rd Prof Part I (or 2nd Prof if current phase is 2nd Prof)
-      if (parentName === 'FORENSIC MEDICINE' || subNameUpper.includes('FORENSIC MEDICINE')) {
-        return currentPhaseName === '2nd Prof' ? '2nd Prof' : '3rd Prof Part I';
-      }
-
-      // ── Phase 1 (1st Prof) Subjects ──────────────────────────────────────
-      // Anatomy, Physiology, Biochemistry, Sports & Extracurricular (84817), SDL & AITO (84818-84822)
-      if (['84395', '84396', '84397', '84398', '84399', '84400', '84817', '84818', '84819', '84820', '84821', '84822', '87224', '87225', '87226', '87227', '87228', '87229', '87230', '87231', '87232'].includes(code) ||
-          subNameUpper.includes('SPORTS') || subNameUpper.includes('EXTRACURRICULAR')) {
+      // ── PHASE 1 (4 parent subjects) ──────────────────────────────────────────
+      const PHASE1_CODES = new Set([
+        '84395','84396','84397','84398','84399','84400', // Anatomy
+        '84817','84818','84819','84820','84821','84822', // Anatomy (CBME)
+        '87224','87225','87226','87227','87228','87229','87230','87231','87232', // Physiology/Biochem
+        '84401','84402', // Community Medicine Phase 1
+      ]);
+      if (PHASE1_CODES.has(code) ||
+          ['Anatomy', 'Physiology', 'Biochemistry_(CBME 2024)', 'Biochemistry_(CBME 2019)', 'Biochemistry'].includes(parentName) ||
+          subNameUpper === 'COMMUNITY MEDICINE-THEORY' ||
+          subNameUpper === 'COMMUNITY MEDICINE-PRACTICAL' ||
+          subNameUpper.includes('FAMILY ADOPTION') ||
+          subNameUpper.includes('SPORTS') ||
+          subNameUpper.includes('EXTRACURRICULAR')) {
         return '1st Prof';
       }
-      if (['Anatomy', 'Physiology', 'Biochemistry_(CBME 2024)', 'Biochemistry_(CBME 2019)', 'Biochemistry'].includes(parentName)) return '1st Prof';
 
-      // ── Phase 3 Part I Subjects (Core 2 + Additional 7 = 9 Parent Subjects) ──────
-      // 1. Ophthalmology: 87247, 87249, 87255, 42
-      // 2. Otorhinolaryngology (ENT): 87248, 87250, 87256, 87574, 21
-      // 3. Paediatrics Th/Pr: 87253, 87254
-      // 4. Orthopedics Th/Pr: 87251, 87252
-      // 5. Gen Med Practical: 85797
-      // 6. Gen Surg Practical: 85799
-      // 7. OBG Practical: 85801
-      if ([
-        '87247', '87248', '87249', '87250', '87251', '87252', '87253', '87254', '87255', '87256', '87574',
-        '85797', '85799', '85801', '42', '21', '25', '13', '17', '18'
-      ].includes(code) ||
-      subNameUpper.includes('OPHTHALMOLOGY') ||
-      subNameUpper.includes('OTORHINOLARYNGOLOGY') ||
-      subNameUpper.includes('OTORHINOLARYGOLOGY') ||
-      subNameUpper.includes('E.N.T.') ||
-      subNameUpper.includes('PAEDIATRICS-THEORY') ||
-      subNameUpper.includes('PAEDIATRICS-PRACTICAL') ||
-      subNameUpper.includes('ORTHOPAEDICS-THEORY') ||
-      subNameUpper.includes('ORTHOPAEDICS-PRACTICAL') ||
-      subNameUpper.includes('GENERAL MEDICINE-PRACTICAL') ||
-      subNameUpper.includes('GENERAL SURGERY-PRACTICAL') ||
-      subNameUpper.includes('OBSTETRICS & GYNAECOLOGY-PRACTICAL')) {
-        if (currentPhaseName === '2nd Prof') return '2nd Prof'; // CBME 2024 ENT/Ophtha studied in Phase 2
+      // ── 2nd Prof parentName GUARD (runs before PHASE3_CODES) ─────────────────
+      // For 2nd Prof students: if the ERP has assigned a Phase 3 code to what is
+      // actually a Phase 2 subject (e.g. Paed with code 87253 instead of 85807),
+      // the parentName check must run FIRST so it isn't intercepted by PHASE3_CODES.
+      if (currentPhaseName === '2nd Prof') {
+        const PHASE2_PARENT_NAMES = [
+          'Pathology', 'Pharmacology', 'Microbiology',
+          'General Medicine', 'GENERAL SURGERY',
+          'Obstetrics & Gynaecology', 'PAEDIATRICS',
+          'Dermatology, Venereology & Leprosy', 'Orthopedics',
+        ];
+        if (PHASE2_PARENT_NAMES.includes(parentName) ||
+            subNameUpper.includes('PATHOLOGY') ||
+            subNameUpper.includes('MICROBIOLOGY') ||
+            subNameUpper.includes('PHARMACOLOGY') ||
+            subNameUpper.includes('DERMATOLOGY') ||
+            subNameUpper.includes('VENEREOLOGY') ||
+            subNameUpper.includes('ORTHOPAEDICS') ||
+            subNameUpper.includes('OBSTETRICS') ||
+            subNameUpper.includes('GYNAECOLOGY') ||
+            subNameUpper.includes('PAEDIATRICS') ||
+            subNameUpper.includes('1ST SESSIONAL') ||
+            subNameUpper.includes('2ND SESSIONAL')) {
+          return '2nd Prof';
+        }
+      }
+
+      // ── PHASE 3 EXCLUSIVE (always 3rd Prof Part I, filtered out for Phase 1/2 students) ─
+      // These codes ONLY belong in Phase 3. For Phase 2 students they are excluded via subPhaseIdx filter.
+      const PHASE3_CODES = new Set([
+        '87247','87249','87255',         // Ophthalmology
+        '87248','87250','87256','87574', // ENT
+        '87253','87254',                 // Paediatrics Phase 3
+        '87251','87252','87575',         // Orthopedics Phase 3
+        '85797',                         // General Medicine Phase 3
+        '85799',                         // General Surgery Phase 3
+        '85801',                         // OBG Phase 3
+        '85802','85803','87258',         // Forensic Medicine & Toxicology
+        '85808','87259','87260',         // Community Medicine Posting
+        '85811',                         // Dentistry
+      ]);
+      if (PHASE3_CODES.has(code) ||
+          ['Ophthalmology', 'Otorhinolaryngology', 'Dentistry', 'FORENSIC MEDICINE'].includes(parentName) ||
+          subNameUpper.includes('OPHTHALMOLOGY') ||
+          subNameUpper.includes('OTORHINOLARYNGOLOGY') ||
+          subNameUpper.includes('OTORHINOLARYGOLOGY') ||
+          subNameUpper.includes('E.N.T.') ||
+          subNameUpper.includes('FORENSIC MEDICINE') ||
+          subNameUpper.includes('DENTISTRY') ||
+          subNameUpper.includes('CLINICAL POSTING-COMMUNITY MEDICINE')) {
         return '3rd Prof Part I';
       }
 
-      // ── Phase 2 (2nd Prof) Subjects ─ All Phase 2 parent subjects ─────────
-      // Pathology (85790, 85791), Microbiology (85792, 85793), Pharmacology (85794, 85795)
-      // Phase 2 Clinical Postings & Theory (Gen Med 85796/85804, Gen Surg 85798/85805, OBG 85800/85806, Paed 85807, Ortho 85810)
-      if ([
-        '85790', '85791', // Pathology
-        '85792', '85793', // Microbiology
-        '85794', '85795', // Pharmacology
-        '85809',          // Clinical Posting Dermatology
-        '85796', '85804', // General Medicine (Theory, Clinical Posting)
-        '85798', '85805', // General Surgery (Theory, Clinical Posting)
-        '85800', '85806', // OBG (Theory, Clinical Posting)
-        '85807',          // Paediatrics (Clinical Posting)
-        '85810'           // Orthopedics (Clinical Posting)
-      ].includes(code) ||
-      subNameUpper.includes('1ST SESSIONAL') ||
-      subNameUpper.includes('2ND SESSIONAL')) {
+      // ── PHASE 2 EXCLUSIVE (9 parent subjects) ────────────────────────────────
+      // Explicit numeric codes for Phase 2 records.
+      // NOTE: 85809 (Derm) is NOT here — it's handled below so 3rd Prof students
+      //       can see Derm in Phase 3 via the ambiguous fallback.
+      const PHASE2_CODES = new Set([
+        '85790','85791', // Pathology
+        '85792','85793', // Microbiology
+        '85794','85795', // Pharmacology
+        '85796','85804', // General Medicine Phase 2
+        '85798','85805', // General Surgery Phase 2
+        '85800','85806', // OBG Phase 2
+        '85807',         // Paediatrics Phase 2
+        '85810',         // Orthopedics Phase 2
+      ]);
+      if (PHASE2_CODES.has(code) ||
+          ['Pathology', 'Pharmacology', 'Microbiology'].includes(parentName) ||
+          subNameUpper.includes('MICROBIOLOGY') ||
+          subNameUpper.includes('PATHOLOGY') ||
+          subNameUpper.includes('PHARMACOLOGY') ||
+          subNameUpper.includes('1ST SESSIONAL') ||
+          subNameUpper.includes('2ND SESSIONAL')) {
         return '2nd Prof';
       }
 
-      if (['Pathology', 'Pharmacology', 'Microbiology', 'Dermatology, Venereology & Leprosy', 'Dentistry'].includes(parentName)) return '2nd Prof';
-
-      // Fallback: Default mapping based on parent name
-      const defaultPhase = PARENT_NAME_TO_PHASE[parentName];
-      if (defaultPhase) {
-        return defaultPhase;
+      // ── DERMATOLOGY SPECIAL HANDLING ─────────────────────────────────────────
+      // 85809 = Derm Phase 2 posting. ALWAYS routes to 2nd Prof so Phase 2 = 9.
+      // For 3rd Prof students, Derm is ALSO manually cloned into Phase 3 in the
+      // forEach loop below so Phase 3 = 11 (see DERM CLONE block).
+      if (code === '85809' ||
+          subNameUpper.includes('DERMATOLOGY') ||
+          subNameUpper.includes('VENEREOLOGY') ||
+          parentName === 'Dermatology, Venereology & Leprosy') {
+        return '2nd Prof';
       }
 
-      return currentPhaseName || '1st Prof';
+      // ── SHARED CLINICAL SUBJECTS (GenMed, GenSurg, OBG, Paed, Ortho by name) ─
+      // For subjects with abbreviation codes that didn't match PHASE2_CODES above.
+      if (currentPhaseName === '2nd Prof' &&
+          ['General Medicine', 'GENERAL SURGERY', 'Obstetrics & Gynaecology', 'PAEDIATRICS', 'Orthopedics'].includes(parentName)) {
+        return '2nd Prof';
+      }
+
+      // ── 3rd Prof students: remaining subjects are Phase 3 active ─────────────
+      if (currentPhaseName.includes('3rd Prof')) {
+        return '3rd Prof Part I';
+      }
+
+      return '2nd Prof';
     };
 
     attendanceData.subjects.forEach(sub => {
@@ -950,18 +997,37 @@ const ERPAttendanceScreen = ({ route, navigation }) => {
         if (subPhaseIdx > currentPhaseIdx) return;
       }
 
-      if (!grouped[phaseName]) {
-        grouped[phaseName] = {
-          label: phaseName === currentPhaseName ? 'Ongoing' : (order.indexOf(phaseName) < order.indexOf(currentPhaseName) ? 'Completed' : 'Upcoming'),
-          percentageSum: 0,
-          count: 0,
-          subjects: []
-        };
-      }
+      const addToGroup = (phase, s) => {
+        if (!grouped[phase]) {
+          grouped[phase] = {
+            label: phase === currentPhaseName ? 'Ongoing' : (order.indexOf(phase) < order.indexOf(currentPhaseName) ? 'Completed' : 'Upcoming'),
+            percentageSum: 0,
+            count: 0,
+            subjects: []
+          };
+        }
+        grouped[phase].subjects.push(s);
+        grouped[phase].percentageSum += s.percentage;
+        grouped[phase].count += 1;
+      };
 
-      grouped[phaseName].subjects.push(sub);
-      grouped[phaseName].percentageSum += sub.percentage;
-      grouped[phaseName].count += 1;
+      addToGroup(phaseName, sub);
+
+      // ── DERM CLONE for 3rd Prof students ─────────────────────────────────────
+      // Dermatology (85809) goes to Phase 2 (history). For 3rd Prof students it
+      // also belongs in Phase 3 Part I as an active subject (11th parent subject).
+      // We clone the same record into Phase 3 so both counts are correct.
+      if (isMedical && currentPhaseName.includes('3rd Prof') && phaseName === '2nd Prof') {
+        const subCode = String(sub.code || '').trim();
+        const subNameUp = String(sub.name || '').toUpperCase().trim();
+        const isDerm = subCode === '85809' ||
+          subNameUp.includes('DERMATOLOGY') ||
+          subNameUp.includes('VENEREOLOGY') ||
+          getParentSubjectName(sub.name, sub.code) === 'Dermatology, Venereology & Leprosy';
+        if (isDerm) {
+          addToGroup('3rd Prof Part I', { ...sub, _clonedForPhase3: true });
+        }
+      }
     });
 
     // Filter out groups with no subjects, but keep the current ongoing phase if it exists.

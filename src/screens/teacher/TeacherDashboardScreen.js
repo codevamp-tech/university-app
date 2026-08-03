@@ -75,8 +75,11 @@ function formatDayOnly(iso) {
 
 const TeacherDashboardScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
-  const { user, accessToken, logout, updateAvatarUrl } = useUser();
+  const { user, accessToken, logout, updateAvatarUrl, refreshFacultyFlags } = useUser();
   const { totalUnreadCount } = useNotifications();
+
+  // Local PG permission flags — fetched directly so they don't depend on session timing
+  const [pgFlags, setPgFlags] = useState({ pg_verify: null, pg_hod: null });
 
   const [timetable, setTimetable] = useState([]);
   const [topics, setTopics] = useState([]);
@@ -140,6 +143,22 @@ const TeacherDashboardScreen = ({ navigation }) => {
     });
     return unsubscribe;
   }, [navigation, fetchRaisedIssues]);
+
+  // Populate pgFlags from the user object (set at login via FacultyLoginCredential API)
+  // Falls back to a fresh API fetch only if the session predates this feature
+  useEffect(() => {
+    if (!user?.emp_id || user.role !== 'teacher') return;
+
+    // User object already has flags (fresh login after the fix)
+    if (user.pg_verify != null || user.pg_hod != null) {
+      setPgFlags({ pg_verify: user.pg_verify, pg_hod: user.pg_hod });
+      return;
+    }
+
+    // Stale session — flags missing; user must re-login (password not available here)
+    // Show a subtle indicator or just wait; nothing to do without password
+    console.log('[TeacherDashboard] pg_verify/pg_hod not in session. Re-login required for PG/HOD cards.');
+  }, [user?.emp_id, user?.pg_verify, user?.pg_hod]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!user || user.role !== 'teacher') return;
@@ -249,36 +268,88 @@ const TeacherDashboardScreen = ({ navigation }) => {
     if (!accessToken) { setLoading(false); return; }
     setLoading(true);
     try {
-      const [ttData, topicsData, punchesData] = await Promise.all([
+      // 1. Try token-based attendance first (what worked previously)
+      let punchesData = [];
+      try {
+        punchesData = await getFacultyAttendance(accessToken);
+        if (!Array.isArray(punchesData) || punchesData.length === 0) {
+          if (user?.emp_id) {
+            punchesData = await getFacultyAttendance(accessToken, user.emp_id);
+          }
+        }
+      } catch (err) {
+        console.warn('[TeacherDashboard] punches fetch warning:', err);
+      }
+
+      const [ttData, topicsData] = await Promise.all([
         getFacultyTimetable(accessToken, user?.emp_id),
         getFacultyTopics(accessToken),
-        getFacultyAttendance(accessToken),
       ]);
       setTimetable(Array.isArray(ttData) ? ttData : []);
       setTopics(Array.isArray(topicsData) ? topicsData : []);
 
-      if (Array.isArray(punchesData)) {
-        const todayStr = new Date().toDateString();
-        const todayPunches = punchesData.filter(p => {
-          if (!p.punch_time) return false;
-          return new Date(p.punch_time).toDateString() === todayStr;
-        });
+      if (Array.isArray(punchesData) && punchesData.length > 0) {
+        const safeParse = (str) => {
+          if (!str) return null;
+          if (str instanceof Date) return isNaN(str.getTime()) ? null : str;
+          let s = String(str).trim();
+          if (s.includes(' ') && !s.includes('T')) s = s.replace(' ', 'T');
+          let d = new Date(s);
+          if (!isNaN(d.getTime())) return d;
+          const parts = String(str).split(/[- :T/.]/);
+          if (parts.length >= 3) {
+            const y = parseInt(parts[0], 10);
+            const m = parseInt(parts[1], 10) - 1;
+            const day = parseInt(parts[2], 10);
+            const h = parts[3] ? parseInt(parts[3], 10) : 0;
+            const min = parts[4] ? parseInt(parts[4], 10) : 0;
+            const sec = parts[5] ? parseInt(parts[5], 10) : 0;
+            d = new Date(y, m, day, h, min, sec);
+            return !isNaN(d.getTime()) ? d : null;
+          }
+          return null;
+        };
 
-        // Find IN and OUT punches
-        const inPunch = todayPunches.find(p => p.in_out?.toUpperCase() === 'IN');
-        const outPunch = todayPunches.find(p => p.in_out?.toUpperCase() === 'OUT');
+        // Parse all punch objects with valid dates
+        const validPunches = punchesData.map(p => ({
+          raw: p,
+          date: safeParse(p.punch_time || p.PunchTime || p.punchtime || p.time || p.LogTime || p.date || p.created_at || p.datetime),
+        })).filter(item => item.date !== null);
 
-        if (inPunch && inPunch.punch_time) {
-          const t = new Date(inPunch.punch_time);
-          setTodayInTime(t.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }));
+        // Sort chronologically
+        validPunches.sort((a, b) => a.date - b.date);
+
+        const now = new Date();
+        const targetPunches = validPunches.filter(item =>
+          item.date.getFullYear() === now.getFullYear() &&
+          item.date.getMonth() === now.getMonth() &&
+          item.date.getDate() === now.getDate()
+        );
+
+        if (targetPunches.length > 0) {
+          const inPunchItem = targetPunches.find(item => {
+            const io = String(item.raw.in_out || item.raw.InOut || item.raw.type || item.raw.punch_type || '').toUpperCase();
+            return io === 'IN' || io === 'PUNCH IN' || io === '1';
+          }) || targetPunches[0];
+
+          const outPunchItem = targetPunches.find(item => {
+            const io = String(item.raw.in_out || item.raw.InOut || item.raw.type || item.raw.punch_type || '').toUpperCase();
+            return io === 'OUT' || io === 'PUNCH OUT' || io === '2';
+          }) || (targetPunches.length > 1 ? targetPunches[targetPunches.length - 1] : null);
+
+          if (inPunchItem) {
+            setTodayInTime(inPunchItem.date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }));
+          } else {
+            setTodayInTime(null);
+          }
+
+          if (outPunchItem && outPunchItem !== inPunchItem) {
+            setTodayOutTime(outPunchItem.date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }));
+          } else {
+            setTodayOutTime(null);
+          }
         } else {
           setTodayInTime(null);
-        }
-
-        if (outPunch && outPunch.punch_time) {
-          const t = new Date(outPunch.punch_time);
-          setTodayOutTime(t.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }));
-        } else {
           setTodayOutTime(null);
         }
       } else {
@@ -670,11 +741,31 @@ const TeacherDashboardScreen = ({ navigation }) => {
             <Text style={styles.quickActionLabel}>Salary Slip</Text>
           </TouchableOpacity>
 
-          {/* Spacer to align grid correctly */}
-          <View style={[styles.quickActionCard, { opacity: 0 }]} pointerEvents="none">
-            <View style={styles.quickActionIconBg} />
-            <Text style={styles.quickActionLabel}>Spacer</Text>
-          </View>
+          {pgFlags.pg_verify === 2 && (
+            <TouchableOpacity
+              style={styles.quickActionCard}
+              onPress={() => navigation.navigate('PGLogbookVerification')}
+              activeOpacity={0.8}
+            >
+              <View style={[styles.quickActionIconBg, { backgroundColor: '#EDE9FE' }]}>
+                <Ionicons name="shield-checkmark-outline" size={20} color="#6D28D9" />
+              </View>
+              <Text style={styles.quickActionLabel}>PG Verify</Text>
+            </TouchableOpacity>
+          )}
+
+          {pgFlags.pg_hod === 3 && (
+            <TouchableOpacity
+              style={styles.quickActionCard}
+              onPress={() => navigation.navigate('PGLogbookHODVerify')}
+              activeOpacity={0.8}
+            >
+              <View style={[styles.quickActionIconBg, { backgroundColor: '#DCFCE7' }]}>
+                <Ionicons name="ribbon-outline" size={20} color="#16A34A" />
+              </View>
+              <Text style={styles.quickActionLabel}>HOD Verify</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Campus Fitness (same as student app) */}

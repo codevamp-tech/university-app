@@ -1,7 +1,7 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { loginWithRollNumber, logoutAPI, getMyProfile, updateMyProfile, loginFacultyWithEmpId, getFacultyProfile, setUnauthorizedCallback } from '../data/apiService';
+import { loginWithRollNumber, logoutAPI, getMyProfile, updateMyProfile, loginFacultyWithEmpId, getFacultyProfile, getFacultyCredentialDetail, setUnauthorizedCallback } from '../data/apiService';
 import * as RootNavigation from '../navigation/RootNavigation';
 import * as NotificationService from '../utils/NotificationService';
 
@@ -53,9 +53,18 @@ export const UserProvider = ({ children }) => {
           } catch (_) {}
 
           const fac = facultyData.faculty || {};
+          const empIdResolved = fac.emp_id || queryId;
+
+          // Fetch FacultyLoginCredential for pg_verify / pg_hod permission flags
+          // Password is required by this API — we have it available here at login time
+          let credDetail = null;
+          try {
+            credDetail = await getFacultyCredentialDetail(empIdResolved, password);
+          } catch (_) {}
+
           const u = {
             role: 'teacher',
-            emp_id: fac.emp_id || queryId,
+            emp_id: empIdResolved,
             name: dbProfile?.name || fac.name || 'Faculty Member',
             department: dbProfile?.department || fac.department || 'Medical Faculty',
             department_code: fac.department_code || '60',
@@ -66,6 +75,9 @@ export const UserProvider = ({ children }) => {
             avatar_url: dbProfile?.avatar_url || fac.avatar_url || null,
             phase: dbProfile?.phase || fac.phase || null,
             accessToken: facultyData.access_token,
+            // Permission flags from FacultyLoginCredential
+            pg_verify: credDetail?.pg_verify ?? null,
+            pg_hod: credDetail?.pg_hod ?? null,
           };
           setUser(u);
           try {
@@ -237,6 +249,32 @@ export const UserProvider = ({ children }) => {
   };
 
 
+  /**
+   * Re-fetch pg_verify / pg_hod flags from FacultyLoginCredential and patch the user object.
+   * Call this on TeacherDashboard mount to handle stale cached sessions that pre-date this field.
+   */
+  const refreshFacultyFlags = async () => {
+    if (!user || user.role !== 'teacher') return;
+    // Already have both flags — nothing to do
+    if (user.pg_verify != null && user.pg_hod != null) return;
+    try {
+      const credDetail = await getFacultyCredentialDetail(user.emp_id);
+      if (!credDetail) return;
+      setUser(prev => {
+        if (!prev) return null;
+        const updated = {
+          ...prev,
+          pg_verify: credDetail.pg_verify ?? prev.pg_verify ?? null,
+          pg_hod: credDetail.pg_hod ?? prev.pg_hod ?? null,
+        };
+        AsyncStorage.setItem('@user', JSON.stringify(updated)).catch(() => {});
+        return updated;
+      });
+    } catch (err) {
+      console.warn('[UserContext] refreshFacultyFlags failed:', err.message);
+    }
+  };
+
   const updateAvatarUrl = async (newUrl) => {
     setUser(prevUser => {
       if (!prevUser) return null;
@@ -254,7 +292,7 @@ export const UserProvider = ({ children }) => {
   };
 
   return (
-    <UserContext.Provider value={{ user, accessToken, login, logout, updateSkillScore, updateAvatarUrl }}>
+    <UserContext.Provider value={{ user, accessToken, login, logout, updateSkillScore, updateAvatarUrl, refreshFacultyFlags }}>
       {children}
     </UserContext.Provider>
   );

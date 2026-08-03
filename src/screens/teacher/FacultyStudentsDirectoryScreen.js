@@ -118,6 +118,52 @@ const FacultyStudentsDirectoryScreen = ({ navigation }) => {
       params: { student }
     });
   };
+
+  // ── StudentCard: isolated component so each card has its own imgError state ──
+  // This is critical for Android 13 / MIUI 14: the ERP image URLs at
+  // myportal.srms.ac.in fail silently on older Android (TLS/cipher issues).
+  // Without onError + per-card state, the Image just shows blank forever.
+  const StudentCard = React.memo(({ student: s, onPress }) => {
+    const [imgErr, setImgErr] = React.useState(false);
+    const phase = getStudentPhase(s);
+    const displayInitial = (s.full_name || s.username || 'S').charAt(0).toUpperCase();
+    const hasRealImage = s.avatar_url && !s.avatar_url.includes('pravatar.cc') && !imgErr;
+
+    return (
+      <TouchableOpacity
+        style={styles.studentCard}
+        onPress={() => onPress(s)}
+        activeOpacity={0.8}
+      >
+        <View style={styles.studentAvatar}>
+          {hasRealImage ? (
+            <Image
+              source={{ uri: s.avatar_url }}
+              style={styles.avatarImage}
+              onError={() => setImgErr(true)}
+            />
+          ) : (
+            <LinearGradient colors={['#EA580C', '#9A3412']} style={styles.avatarGradient}>
+              <Text style={styles.avatarInitial}>{displayInitial}</Text>
+            </LinearGradient>
+          )}
+        </View>
+
+        <View style={styles.studentInfo}>
+          <Text style={styles.studentName} numberOfLines={1}>
+            {s.full_name || s.username || 'Student'}
+          </Text>
+          <Text style={styles.studentSub}>
+            Roll No: {s.rollno || '—'}  ·  {s.branch || s.course || 'MBBS'}
+          </Text>
+        </View>
+
+        <View style={styles.studentBadge}>
+          <Text style={styles.badgeText}>Phase {phase}</Text>
+        </View>
+      </TouchableOpacity>
+    );
+  });
   
   // Parse faculty's phases (e.g. "1,2" -> [1, 2], "1" -> [1])
   const facultyPhases = React.useMemo(() => {
@@ -354,41 +400,9 @@ const FacultyStudentsDirectoryScreen = ({ navigation }) => {
           maxToRenderPerBatch={10}
           windowSize={5}
           removeClippedSubviews={Platform.OS === 'android'}
-          renderItem={({ item: student }) => {
-            const phase = getStudentPhase(student);
-            const displayInitial = (student.full_name || student.username || 'S').charAt(0).toUpperCase();
-
-            return (
-              <TouchableOpacity
-                style={styles.studentCard}
-                onPress={() => handleStudentClick(student)}
-                activeOpacity={0.8}
-              >
-                <View style={styles.studentAvatar}>
-                  {student.avatar_url && !student.avatar_url.includes('pravatar.cc') ? (
-                    <Image source={{ uri: student.avatar_url }} style={styles.avatarImage} />
-                  ) : (
-                    <LinearGradient colors={['#EA580C', '#9A3412']} style={styles.avatarGradient}>
-                      <Text style={styles.avatarInitial}>{displayInitial}</Text>
-                    </LinearGradient>
-                  )}
-                </View>
-
-                <View style={styles.studentInfo}>
-                  <Text style={styles.studentName} numberOfLines={1}>
-                    {student.full_name || student.username || 'Student'}
-                  </Text>
-                  <Text style={styles.studentSub}>
-                    Roll No: {student.rollno || '—'}  ·  {student.branch || student.course || 'MBBS'}
-                  </Text>
-                </View>
-
-                <View style={styles.studentBadge}>
-                  <Text style={styles.badgeText}>Phase {phase}</Text>
-                </View>
-              </TouchableOpacity>
-            );
-          }}
+          renderItem={({ item: student }) => (
+            <StudentCard student={student} onPress={handleStudentClick} />
+          )}
         />
       )}
 
