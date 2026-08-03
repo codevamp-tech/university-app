@@ -2161,10 +2161,13 @@ export async function getLeaveSummary(token, month, year, empId = null) {
       return Array.isArray(d) ? d : [];
     };
 
-    const [entList, balPrivList, balCasList, balEarList, advList] = await Promise.all([
+    const [entList, balPrivList, balCasList, balEarList] = await Promise.all([
       postJson('https://myportal.srms.ac.in/ops/Home/GetLeaveEnt', { empId: String(targetEmpId) }),
       postJson('https://myportal.srms.ac.in/ops/Home/GetLeaveBal', { empId: String(targetEmpId), leavecd: '1' }),
       postJson('https://myportal.srms.ac.in/ops/Home/GetLeaveBal', { empId: String(targetEmpId), leavecd: '2' }),
+      postJson('https://myportal.srms.ac.in/ops/Home/GetLeaveBal', { empId: String(targetEmpId), leavecd: '9' }),
+    ]);
+
     // Fetch recent months if month not explicitly passed
     let advList = [];
     if (month) {
