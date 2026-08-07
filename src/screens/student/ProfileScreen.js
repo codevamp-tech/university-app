@@ -205,7 +205,7 @@ const ProfileScreen = () => {
                     </View>
                     <View style={styles.infoCapsule}>
                       <Text style={styles.infoLabel}>ID</Text>
-                      <Text style={styles.infoValue}>{user.id}</Text>
+                      <Text style={styles.infoValue}>{user.rollno || user.username || (user.id && !user.id.includes('-') ? user.id : 'N/A')}</Text>
                     </View>
                     <View style={styles.infoCapsule}>
                       <Text style={styles.infoLabel}>VIBE</Text>

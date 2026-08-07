@@ -22,6 +22,7 @@ import Svg, { Circle, G, Text as SvgText, Path } from 'react-native-svg';
 
 import { useTheme } from '../../hooks/useTheme';
 import { useUser } from '../../context/UserContext';
+import { isMedicalStudent } from '../../utils/courseDisplay';
 import { APP_CONFIG } from '../../config/appConfig';
 import {
   getResults,
@@ -1220,8 +1221,7 @@ const ERPResultsScreen = ({ route, navigation }) => {
   const [selectedSubject, setSelectedSubject] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
 
-  const isMedical = user?.course?.replace(/\./g, '').toUpperCase().includes('MBBS')
-    || user?.category?.toLowerCase() === 'medical';
+  const isMedical = isMedicalStudent(user);
 
   useEffect(() => {
     loadResults(false);
@@ -1235,7 +1235,7 @@ const ERPResultsScreen = ({ route, navigation }) => {
       if (!forceFetch) setLoading(true);
       else setRefreshing(true);
       try {
-        const studentId = user?.id || user?.rollno || user?.username;
+        const studentId = user?.user_id || user?.id || user?.rollno || user?.username;
         const [sgpaData, utData] = await Promise.all([
           getNonMedicalSGPA(accessToken, studentId),
           getNonMedicalUTMarks(accessToken, studentId),

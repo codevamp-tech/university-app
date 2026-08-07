@@ -261,7 +261,7 @@ const TalentIdentityScreen = ({ navigation }) => {
             </View>
             <View style={[styles.capsule, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
               <Text style={styles.capsuleLabel}>STUDENT ID</Text>
-              <Text style={[styles.capsuleValue, { color: colors.textPrimary }]}>{user?.id || 'ID-XXX'}</Text>
+              <Text style={[styles.capsuleValue, { color: colors.textPrimary }]}>{user?.rollno || user?.username || (user?.id && !String(user.id).includes('-') ? user.id : 'N/A')}</Text>
             </View>
             <View style={[styles.capsule, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
               <Text style={styles.capsuleLabel}>VIBE CHECK</Text>

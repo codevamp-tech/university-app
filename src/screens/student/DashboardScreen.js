@@ -629,9 +629,8 @@ const DashboardScreen = ({ navigation }) => {
                 style={styles.menuAvatar}
               />
               <View>
-                <Text style={[styles.menuName, { color: colors.textPrimary }]}>{user?.name || 'Student'}</Text>
-                <Text style={[styles.menuSub, { color: colors.textSecondary }]}>{user?.id || 'Student Account'}</Text>
-
+                <Text style={[styles.menuName, { color: colors.textPrimary }]}>{user?.name || user?.full_name || 'Student'}</Text>
+                <Text style={[styles.menuSub, { color: colors.textSecondary }]}>{user?.rollno || user?.username || 'Student Account'}</Text>
               </View>
             </View>
 
@@ -898,9 +897,16 @@ const DashboardScreen = ({ navigation }) => {
           >
             <View style={styles.userCardTop}>
               <View>
-                <Text style={[styles.welcomeTitle, { color: colors.textPrimary }]}>Hello, {user?.name?.split(' ')[0] || 'Student'}</Text>
+                <Text style={[styles.welcomeTitle, { color: colors.textPrimary }]}>
+                  Hello, {(() => {
+                    const candidate = user?.name || user?.full_name;
+                    if (candidate && isNaN(Number(candidate))) {
+                      return candidate.split(' ')[0];
+                    }
+                    return 'Student';
+                  })()}
+                </Text>
                 <Text style={[styles.welcomeSub, { color: colors.textSecondary }]}>{getDisplayCourse(user)}</Text>
-
               </View>
               <MaterialCommunityIcons name="star-shooting-outline" size={32} color={colors.primary} style={{ opacity: 0.2 }} />
             </View>
@@ -912,7 +918,9 @@ const DashboardScreen = ({ navigation }) => {
                 colors={isDark ? ['rgba(234, 88, 12, 0.2)', 'rgba(234, 88, 12, 0.1)'] : ['#FFF7ED', '#FFEDD5']}
                 style={[styles.statPillOrange, { borderColor: isDark ? 'rgba(234, 88, 12, 0.3)' : '#FFEDD5' }]}
               >
-                <Text style={[styles.statValueOrange, { color: isDark ? '#FB923C' : '#9A3412' }]}>{user?.cgpa || '0.0'}</Text>
+                <Text style={[styles.statValueOrange, { color: isDark ? '#FB923C' : '#9A3412' }]}>
+                  {user?.cgpa ? (typeof user.cgpa === 'number' ? user.cgpa.toFixed(1) : parseFloat(user.cgpa).toFixed(1)) : '0.0'}
+                </Text>
                 <Text style={[styles.statLabelOrange, { color: isDark ? '#FB923C' : '#9A3412' }]}>ACADEMIC CGPA</Text>
               </LinearGradient>
               <LinearGradient

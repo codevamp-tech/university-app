@@ -82,7 +82,7 @@ const MainWalletScreen = ({ navigation }) => {
           <View style={styles.cardBottom}>
             <View>
               <Text style={styles.cardHolderLabel}>STUDENT ID</Text>
-              <Text style={styles.cardHolderValue}>{user?.id || (APP_CONFIG.UNIVERSITY_ID_PREFIX + '-2022-094')}</Text>
+              <Text style={styles.cardHolderValue}>{user?.rollno || user?.username || (user?.id && !String(user.id).includes('-') ? user.id : 'N/A')}</Text>
             </View>
             <TouchableOpacity style={styles.rechargeBtn}>
               <Text style={styles.rechargeText}>ADD MONEY</Text>

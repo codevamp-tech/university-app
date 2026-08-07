@@ -71,11 +71,12 @@ export function getPersonaBadge(personaType = '') {
 }
 
 // ─── Expected Academic Subjects by Course ────────────────────────────────────
+// ─── Expected Academic Subjects by Course ────────────────────────────────────
 export function getAcademicSubjects(student) {
-  const c = (student.course || '').replace(/\./g, '').toLowerCase();
+  const c = ((student.course || '') + ' ' + (student.branch || '')).replace(/\./g, '').toLowerCase();
   const cat = resolveCategory(student);
   
-  if (c.includes('cse') || c.includes('computer science')) {
+  if (c.includes('cse') || c.includes('computer science') || c.includes('btech') || c.includes('b.tech')) {
     return ['DSA', 'DBMS', 'OS', 'Computer Networks', 'Software Engineering'];
   }
   if (c.includes(' it') || c.includes('information tech')) {
@@ -96,7 +97,7 @@ export function getAcademicSubjects(student) {
   if (c.includes('mca')) {
     return ['Design & Analysis of Algorithms', 'Database Systems (DBMS)', 'Software Engineering & PM'];
   }
-  if (c.includes('mba') && c.includes('finance')) {
+  if (c.includes('mba') && (c.includes('finance') || c.includes('commerce'))) {
     return ['Corporate Finance', 'Financial Accounting', 'Valuation & Security Analysis', 'Risk Management'];
   }
   if (c.includes('mba') && c.includes('marketing')) {
@@ -114,32 +115,14 @@ export function getAcademicSubjects(student) {
   if (c.includes('b.com') || c.includes('bcom')) {
     return ['Financial Accounting', 'Cost & Management Accounting', 'Auditing Principles', 'Corporate Laws'];
   }
-  if (c.includes('mbbs') || (cat === 'medical' && !c.includes('bds'))) {
-    // Return ONLY current-year subjects. Completed Prof years are tracked separately
-    // via getCompletedMBBSPhases() and are never shown as skill gaps.
+  if (c.includes('mbbs') || (cat === 'medical' && !c.includes('bds') && !c.includes('pharm'))) {
     const yr = parseInt(student.year || student.current_year, 10) || Math.ceil((parseInt(student.semester, 10) || 1) / 2) || 1;
     if (yr === 1) return ['Anatomy', 'Physiology', 'Biochemistry'];
     if (yr === 2) return ['Pathology', 'Pharmacology', 'Microbiology', 'Forensic Medicine'];
     if (yr === 3) return ['ENT', 'Ophthalmology', 'Community Medicine', 'PSM'];
     return ['General Medicine', 'General Surgery', 'Pediatrics', 'Obstetrics & Gynecology', 'Orthopaedics'];
   }
-  if (c.includes('bds')) {
-    const yr = parseInt(student.year || student.current_year, 10) || Math.ceil((parseInt(student.semester, 10) || 1) / 2) || 1;
-    if (yr === 1) return ['General Human Anatomy', 'Physiology & Biochemistry', 'Dental Anatomy'];
-    if (yr === 2) return ['General Pathology', 'Microbiology', 'Dental Pharmacology', 'Dental Materials'];
-    if (yr === 3) return ['General Medicine', 'General Surgery', 'Oral Pathology'];
-    return ['Oral Medicine & Radiology', 'Orthodontics', 'Oral Surgery', 'Prosthodontics', 'Periodontics'];
-  }
-  if (c.includes('nursing')) {
-    return ['Anatomy & Physiology', 'Nursing Foundations', 'Nutrition & Dietetics', 'Pharmacology'];
-  }
-  if (c.includes('bpt')) {
-    return ['Anatomy', 'Physiology', 'Kinesiology & Biomechanics', 'Electrotherapy'];
-  }
-  if (c.includes('bmlt') || c.includes('lab tech')) {
-    return ['General Microbiology', 'Human Anatomy & Physiology', 'Clinical Biochemistry'];
-  }
-  if (c.includes('pharma') || c.includes('pharmacy')) {
+  if (c.includes('pharma') || c.includes('pharmacy') || c.includes('pharm')) {
     return [
       'Pharmaceutical Chemistry',
       'Pharmacognosy & Phytochemistry',
@@ -154,10 +137,10 @@ export function getAcademicSubjects(student) {
 
 // ─── Expected Industry Skills by Course ──────────────────────────────────────
 export function getIndustrySkills(student) {
-  const c = (student.course || '').replace(/\./g, '').toLowerCase();
+  const c = ((student.course || '') + ' ' + (student.branch || '')).replace(/\./g, '').toLowerCase();
   const cat = resolveCategory(student);
   
-  if (c.includes('cse') || c.includes('computer science')) {
+  if (c.includes('cse') || c.includes('computer science') || c.includes('btech') || c.includes('b.tech')) {
     return ['Python Programming', 'Java Programming', 'System Design', 'Git & Version Control', 'SQL & Database Design', 'Cloud Computing (AWS/GCP)'];
   }
   if (c.includes(' it') || c.includes('information tech')) {
@@ -178,11 +161,11 @@ export function getIndustrySkills(student) {
   if (c.includes('mca')) {
     return ['Java Core & Advanced', 'Python Scripting', 'Full Stack Development', 'Cloud Computing Concepts'];
   }
-  if (c.includes('mba') && c.includes('finance')) {
-    return ['Financial Modeling', 'Advanced Excel', 'Power BI Dashboarding', 'Equity Research Analysis', 'Bloomberg Terminal'];
-  }
   if (c.includes('mba') && c.includes('marketing')) {
     return ['Digital Marketing Campaigns', 'CRM Tools (Salesforce)', 'Marketing Analytics', 'SEO Optimization', 'Content Strategy & Writing'];
+  }
+  if (c.includes('mba') && (c.includes('finance') || c.includes('commerce'))) {
+    return ['Financial Modeling', 'Advanced Excel', 'Power BI Dashboarding', 'Equity Research Analysis', 'Accounting & Tally'];
   }
   if (c.includes('mba') && c.includes('hr')) {
     return ['Talent Acquisition & Recruitment', 'HRIS Tools', 'Employee Relations & Engagement'];
@@ -195,6 +178,9 @@ export function getIndustrySkills(student) {
   }
   if (c.includes('b.com') || c.includes('bcom')) {
     return ['Tally ERP 9', 'GST Return Filing', 'Financial Statements Analysis'];
+  }
+  if (c.includes('pharma') || c.includes('pharmacy') || c.includes('pharm')) {
+    return ['Drug Safety & Pharmacovigilance', 'GMP & Quality Assurance', 'Clinical Trial Management', 'HPLC Instrument Operation'];
   }
   if (c.includes('mbbs') || (cat === 'medical' && !c.includes('bds'))) {
     // Year-gated: return only the clinical competencies appropriate for this student's year.
@@ -535,12 +521,31 @@ export function computeSkillGap(student, results = [], erpCompetencyData = null)
   const academicExpected = getAcademicSubjects(student);
   const industryExpected = getIndustrySkills(student);
 
-  const matchSkill = (skill, list) =>
-    list.some(cs => {
-      const csL = cs.toLowerCase();
-      const sL = skill.toLowerCase();
-      return csL.includes(sL) || sL.includes(csL);
+  const matchSkill = (skill, list) => {
+    if (!list || !Array.isArray(list)) return false;
+    return list.some(cs => {
+      if (!cs || typeof cs !== 'string') return false;
+      const csL = cs.toLowerCase().trim();
+      const sL = skill.toLowerCase().trim();
+      if (csL.includes(sL) || sL.includes(csL)) return true;
+
+      // Intelligent keyword equivalents
+      if ((sL.includes('python') && csL.includes('python')) ||
+          (sL.includes('java') && csL.includes('java')) ||
+          (sL.includes('c++') && (csL.includes('c++') || csL.includes('cpp'))) ||
+          (sL.includes('dsa') && (csL.includes('data structure') || csL.includes('algo'))) ||
+          (sL.includes('dbms') && (csL.includes('database') || csL.includes('dbms') || csL.includes('sql'))) ||
+          (sL.includes('sql') && (csL.includes('sql') || csL.includes('database'))) ||
+          (sL.includes('excel') && csL.includes('excel')) ||
+          (sL.includes('tally') && csL.includes('tally')) ||
+          (sL.includes('html') && csL.includes('html')) ||
+          (sL.includes('css') && csL.includes('css')) ||
+          (sL.includes('web') && (csL.includes('html') || csL.includes('web') || csL.includes('js')))) {
+        return true;
+      }
+      return false;
     });
+  };
 
   const academicMatched = academicExpected.filter(skill => matchSkill(skill, student.currentSkills));
   const academicMissing = academicExpected.filter(skill => !academicMatched.includes(skill));

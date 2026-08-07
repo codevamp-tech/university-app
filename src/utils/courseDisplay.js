@@ -48,8 +48,7 @@ function getPhaseRoman(sem, year) {
 export function isMedicalStudent(user) {
   if (!user) return false;
   const course = (user.course || '').replace(/\./g, '').toUpperCase();
-  const category = (user.category || '').toLowerCase();
-  return course.includes('MBBS') || category.includes('medical');
+  return course.includes('MBBS') || course.includes('MD') || course.includes('MS') || course.includes('BDS');
 }
 
 /**

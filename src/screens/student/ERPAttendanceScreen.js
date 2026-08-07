@@ -13,6 +13,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { APP_CONFIG } from '../../config/appConfig';
 
 import { getAttendance, getNonMedicalAttendance } from '../../data/apiService';
+import { isMedicalStudent } from '../../utils/courseDisplay';
 
 const { width } = Dimensions.get('window');
 
@@ -518,7 +519,7 @@ const ERPAttendanceScreen = ({ route, navigation }) => {
   }, [studentUid]);
 
   const roman = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
-  const isMedical = user?.course?.replace(/\./g, '').toUpperCase().includes('MBBS') || user?.category?.toLowerCase() === 'medical';
+  const isMedical = isMedicalStudent(user);
 
   // For MBBS students: use current_year (= ERP phase 1/2/3/4) directly.
   // The backend sets current_year = batch phase from the ERP, never from academic records.
@@ -582,7 +583,7 @@ const ERPAttendanceScreen = ({ route, navigation }) => {
       setLoading(true);
     }
     try {
-      const studentId = user?.id || user?.rollno || user?.username;
+      const studentId = user?.user_id || user?.id || user?.rollno || user?.username;
 
       // ── NON-MEDICAL: fetch from unicampus backend only (no SRMS ERP) ──────────
       if (!isMedical) {

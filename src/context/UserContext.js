@@ -18,7 +18,37 @@ export const UserProvider = ({ children }) => {
         const savedUser = await AsyncStorage.getItem('@user');
         if (token && savedUser) {
           setAccessToken(token);
-          setUser(JSON.parse(savedUser));
+          const parsed = JSON.parse(savedUser);
+          setUser(parsed);
+
+          // Background refresh from API to update cached profiles
+          getMyProfile(token).then(dbProfile => {
+            if (dbProfile) {
+              const rawName = dbProfile.full_name || dbProfile.name;
+              const resolvedFullName = (rawName && isNaN(Number(rawName))) ? rawName : parsed.name;
+              setUser(prev => {
+                if (!prev) return null;
+                const updated = {
+                  ...prev,
+                  name: resolvedFullName || prev.name,
+                  full_name: resolvedFullName || prev.full_name,
+                  rollno: dbProfile.rollno || prev.rollno || prev.username,
+                  username: dbProfile.username || prev.username || prev.rollno,
+                  user_id: dbProfile.id || prev.user_id || prev.id,
+                  id: dbProfile.id || prev.id,
+                  cgpa: (dbProfile.cgpa !== undefined && dbProfile.cgpa !== null) ? dbProfile.cgpa : prev.cgpa,
+                  attendance: dbProfile.attendance || prev.attendance,
+                  course: dbProfile.course || prev.course,
+                  branch: dbProfile.branch || prev.branch,
+                  department_id: dbProfile.department_id || prev.department_id,
+                  currentSkills: dbProfile.current_skills || prev.currentSkills,
+                  certsDone: dbProfile.certificates_done || prev.certsDone,
+                };
+                AsyncStorage.setItem('@user', JSON.stringify(updated)).catch(() => {});
+                return updated;
+              });
+            }
+          }).catch(() => {});
         }
       } catch (e) {
         console.warn('[UserContext] Error loading session:', e.message);
@@ -127,17 +157,22 @@ export const UserProvider = ({ children }) => {
           department_id: dbDeptId,
           role: dbRole,
           current_year: dbCurrentYear,
+          full_name: dbFullName,
           ...dbProfileRest
         } = dbProfile || {};
 
-        const resolvedFullName = dbProfileRest.full_name || (usernameForApi === '202313564' ? 'Mahendra Singh Butola' : usernameForApi);
+        const rawName = dbFullName || dbProfileRest.full_name;
+        const resolvedFullName = (rawName && rawName !== usernameForApi)
+          ? rawName
+          : (usernameForApi === '202313564' ? 'Mahendra Singh Butola' : usernameForApi);
+
         const u = {
-          id: usernameForApi,
+          id: dbUserId || usernameForApi,
+          user_id: dbUserId || null,
           name: resolvedFullName,
           full_name: resolvedFullName,
           role: dbRole || role,
-          user_id: dbUserId || null,
-          cgpa: dbCgpa || 0,
+          cgpa: (dbCgpa !== undefined && dbCgpa !== null) ? dbCgpa : (dbProfileRest.cgpa || 0),
           attendance: dbProfileRest.attendance || 0,
           currentSkills: dbProfileRest.current_skills || [],
           certsDone: dbProfileRest.certificates_done || [],
@@ -146,7 +181,7 @@ export const UserProvider = ({ children }) => {
           sgpaHistory: dbProfileRest.sgpa_history || [],
           current_year: dbCurrentYear || (dbProfileRest.semester ? Math.ceil(parseInt(dbProfileRest.semester, 10) / 2) : 1),
           year: dbCurrentYear || (dbProfileRest.semester ? Math.ceil(parseInt(dbProfileRest.semester, 10) / 2) : 1),
-          rollno: dbRollNo || null,
+          rollno: dbRollNo || usernameForApi,
           batch_year: dbBatchYear || null,
           department_id: dbDeptId || null,
           ...dbProfileRest,

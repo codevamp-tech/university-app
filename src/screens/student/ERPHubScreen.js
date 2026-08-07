@@ -12,7 +12,7 @@ import { MaterialIcons, MaterialCommunityIcons, Feather, Ionicons } from '@expo/
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { APP_CONFIG } from '../../config/appConfig';
-import { getDisplayCourse, getMBBSProfLabel } from '../../utils/courseDisplay';
+import { getDisplayCourse, getMBBSProfLabel, isMedicalStudent } from '../../utils/courseDisplay';
 
 const { width } = Dimensions.get('window');
 
@@ -21,7 +21,7 @@ const ERPHubScreen = ({ navigation, route }) => {
   const student = route?.params?.student || route?.params?.params?.student || user;
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
-  const isMedical = student?.course?.replace(/\./g, '').toUpperCase().includes('MBBS') || student?.category?.toLowerCase() === 'medical';
+  const isMedical = isMedicalStudent(student);
   const isLibraryLocked = true;
   const isStaffOrAdmin = user?.role === 'super_admin' || user?.role === 'admin' || user?.role === 'faculty' || user?.role === 'teacher' || user?.role === 'warden' || !!route?.params?.student || !!route?.params?.params?.student;
 
@@ -488,7 +488,8 @@ const ERPHubScreen = ({ navigation, route }) => {
             </TouchableOpacity>
             )}
 
-            {/* Card 5: Group Chats */}
+            {/* Card 5: Group Chats — MEDICAL ONLY */}
+            {isMedical && (
             <TouchableOpacity
               style={[styles.gridCard, { backgroundColor: colors.card, borderColor: colors.border }]}
               onPress={() => navigation.navigate('Chat')}
@@ -502,6 +503,7 @@ const ERPHubScreen = ({ navigation, route }) => {
                 Faculty & Peers
               </Text>
             </TouchableOpacity>
+            )}
 
 
 
@@ -864,7 +866,7 @@ const ERPHubScreen = ({ navigation, route }) => {
               <MaterialCommunityIcons name="qrcode" size={200} color={isDark ? '#FFF' : '#111827'} />
               <View style={[styles.qrStatusBadge, { backgroundColor: '#EA580C' }]}>
                 <Text style={styles.qrStatusText}>
-                  {user?.id ? `LIB-${user.id}` : `LIB-2024-001`}
+                  {user?.rollno ? `LIB-${user.rollno}` : user?.username ? `LIB-${user.username}` : `LIB-2024-001`}
                 </Text>
               </View>
             </View>
