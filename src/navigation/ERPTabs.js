@@ -10,6 +10,7 @@ import ERPAttendanceScreen from '../screens/student/ERPAttendanceScreen';
 import StudentScheduleScreen from '../screens/student/StudentScheduleScreen';
 import ERPLogBookScreen from '../screens/student/ERPLogBookScreen';
 import { useTheme } from '../hooks/useTheme';
+import { useUser } from '../context/UserContext';
 
 const Tab = createBottomTabNavigator();
 
@@ -97,6 +98,12 @@ const CustomTabBar = ({ state, descriptors, navigation, student }) => {
 
 const ERPTabs = ({ route }) => {
   const student = route.params?.student || route.params?.params?.student;
+  const { user: contextUser } = useUser();
+  const activeUser = student || contextUser;
+
+  // Non-medical students do NOT get the Logbook tab
+  const isMedical = activeUser?.course?.replace(/\./g, '').toUpperCase().includes('MBBS')
+    || activeUser?.category?.toLowerCase() === 'medical';
 
   return (
     <Tab.Navigator
@@ -109,7 +116,10 @@ const ERPTabs = ({ route }) => {
       <Tab.Screen name="ERPResultsTab" component={ERPResultsScreen} initialParams={{ student }} />
       <Tab.Screen name="ERPScheduleTab" component={StudentScheduleScreen} initialParams={{ student }} />
       <Tab.Screen name="ERPAttendanceTab" component={ERPAttendanceScreen} initialParams={{ student }} />
-      <Tab.Screen name="ERPLogBookTab" component={ERPLogBookScreen} initialParams={{ student }} />
+      {/* Logbook tab: medical students only */}
+      {isMedical && (
+        <Tab.Screen name="ERPLogBookTab" component={ERPLogBookScreen} initialParams={{ student }} />
+      )}
     </Tab.Navigator>
   );
 };

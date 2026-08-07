@@ -12,7 +12,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { APP_CONFIG } from '../../config/appConfig';
 
-import { getAttendance } from '../../data/apiService';
+import { getAttendance, getNonMedicalAttendance } from '../../data/apiService';
 
 const { width } = Dimensions.get('window');
 
@@ -582,8 +582,51 @@ const ERPAttendanceScreen = ({ route, navigation }) => {
       setLoading(true);
     }
     try {
-      const studentId = user?.rollno || user?.username || user?.id;
+      const studentId = user?.id || user?.rollno || user?.username;
 
+      // ── NON-MEDICAL: fetch from unicampus backend only (no SRMS ERP) ──────────
+      if (!isMedical) {
+        const attData = await getNonMedicalAttendance(
+          accessToken,
+          studentId,
+          user?.semester ? parseInt(user.semester, 10) : null
+        );
+        const subjects = (attData.subjects || []).map(s => {
+          const pct = Math.round(s.percentage || 0);
+          const isPractical = (s.subject_name || '').toUpperCase().includes('LAB') ||
+            (s.subject_name || '').toUpperCase().includes('PRACTICAL');
+          const requiredPct = isPractical ? 80 : 75;
+          const status = pct >= requiredPct ? 'safe' : pct >= (requiredPct - 5) ? 'warning' : 'danger';
+          return {
+            code: s.subject_code,
+            name: s.subject_name || s.subject_code,
+            percentage: pct,
+            hasData: s.total_lectures > 0,
+            status,
+            isPractical,
+            requiredPct,
+            semester: user?.semester ? parseInt(user.semester, 10) : 1,
+          };
+        });
+
+        const overall = attData.overall?.percentage
+          ? Math.round(attData.overall.percentage)
+          : subjects.length > 0
+            ? Math.round(subjects.reduce((sum, s) => sum + s.percentage, 0) / subjects.length)
+            : 0;
+
+        setApiAttendance({
+          overall,
+          totalClasses: attData.overall?.total || subjects.length * 30,
+          attendedClasses: attData.overall?.attended || Math.round(overall * 0.01 * (subjects.length * 30)),
+          subjects,
+        });
+        setLoading(false);
+        setRefreshing(false);
+        return;
+      }
+
+      // ── MEDICAL / MBBS: existing SRMS ERP path (completely unchanged) ─────────
       // ── Step 1: fetch ERP subject list (authoritative list of subjects + ERP codes) ──
       let erpSubjectList = []; // [{sub_name, sub_cd, department}]
       try {

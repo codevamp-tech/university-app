@@ -189,16 +189,15 @@ const FacultyStudentsDirectoryScreen = ({ navigation }) => {
     const counts = { ALL: 0, 1: 0, 2: 0, 3: 0 };
     students.forEach(s => {
       const isStudent = s.role?.toLowerCase() === 'student';
-      const isMedical = (!s.category && !s.branch && !s.course) ||
-                        s.category === 'medical' || 
-                        (s.branch && s.branch.toUpperCase() === 'MBBS') || 
-                        (s.course && s.course.toUpperCase().includes('MBBS')) ||
-                        (s.course && s.course.replace(/\./g, '').toUpperCase().includes('MBBS'));
-                        
-      if (isStudent && isMedical) {
+      if (!isStudent) return;
+      counts.ALL += 1;
+      // Phase breakdown only meaningful for medical/MBBS students
+      const isMedical = s.category === 'medical' ||
+        (s.branch && s.branch.toUpperCase() === 'MBBS') ||
+        (s.course && s.course.replace(/\./g, '').toUpperCase().includes('MBBS'));
+      if (isMedical) {
         const studentPhase = getStudentPhase(s);
         counts[studentPhase] = (counts[studentPhase] || 0) + 1;
-        counts.ALL += 1;
       }
     });
     return counts;
@@ -267,40 +266,36 @@ const FacultyStudentsDirectoryScreen = ({ navigation }) => {
     fetchStudents();
   }, [accessToken]);
 
-  // Filter students based on phase permissions, selected filter, and search query
+  // Filter students based on phase filter, course filter, and search query
   const filteredStudents = React.useMemo(() => {
     const list = students.filter(s => {
-      // Must be a student and belong to the medical/MBBS category
-      const isStudent = s.role?.toLowerCase() === 'student';
-      const isMedical = (!s.category && !s.branch && !s.course) ||
-                        s.category === 'medical' || 
-                        (s.branch && s.branch.toUpperCase() === 'MBBS') || 
-                        (s.course && s.course.toUpperCase().includes('MBBS')) ||
-                        (s.course && s.course.replace(/\./g, '').toUpperCase().includes('MBBS'));
-                        
-      if (!isStudent || !isMedical) {
-        return false;
+      // Must be a student role
+      if (s.role?.toLowerCase() !== 'student') return false;
+
+      const isMedical = s.category === 'medical' ||
+        (s.branch && s.branch.toUpperCase() === 'MBBS') ||
+        (s.course && s.course.replace(/\./g, '').toUpperCase().includes('MBBS'));
+
+      // Phase filter applies only to medical students — non-medical always pass
+      if (selectedPhaseFilter !== 'ALL') {
+        if (!isMedical) return true; // non-medical: always show regardless of phase filter
+        const studentPhase = getStudentPhase(s);
+        if (studentPhase !== selectedPhaseFilter) return false;
       }
 
-      const studentPhase = getStudentPhase(s);
-
-      // Filter by selected phase filter capsule
-      if (selectedPhaseFilter !== 'ALL' && studentPhase !== selectedPhaseFilter) {
-        return false;
-      }
-
-      // Filter by search query
+      // Search filter
       if (searchQuery) {
         const query = searchQuery.toLowerCase();
         const name = (s.full_name || s.username || '').toLowerCase();
         const roll = (s.rollno || '').toLowerCase();
-        return name.includes(query) || roll.includes(query);
+        const course = (s.course || s.branch || '').toLowerCase();
+        return name.includes(query) || roll.includes(query) || course.includes(query);
       }
 
       return true;
     });
 
-    // Sort alphabetically by name / username
+    // Sort: medical students first (by phase), then non-medical alphabetically
     return list.sort((a, b) => {
       const nameA = (a.full_name || a.username || '').trim().toLowerCase();
       const nameB = (b.full_name || b.username || '').trim().toLowerCase();

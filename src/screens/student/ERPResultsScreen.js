@@ -29,6 +29,8 @@ import {
   getPaperList,
   getPaperCompetencies,
   getCompetencyChart,
+  getNonMedicalSGPA,
+  getNonMedicalUTMarks,
 } from '../../data/apiService';
 
 const { width } = Dimensions.get('window');
@@ -1227,7 +1229,99 @@ const ERPResultsScreen = ({ route, navigation }) => {
 
   const loadResults = async (forceFetch = false) => {
     const cacheKey = `@erp_results_cache_${user?.id || 'default'}`;
-    
+
+    // ── NON-MEDICAL: use unicampus examination endpoints ────────────────────
+    if (!isMedical) {
+      if (!forceFetch) setLoading(true);
+      else setRefreshing(true);
+      try {
+        const studentId = user?.id || user?.rollno || user?.username;
+        const [sgpaData, utData] = await Promise.all([
+          getNonMedicalSGPA(accessToken, studentId),
+          getNonMedicalUTMarks(accessToken, studentId),
+        ]);
+
+        if (!sgpaData || sgpaData.length === 0) {
+          // No published results yet
+          setPhases([]);
+          return;
+        }
+
+        // Group UT marks by semester then subject
+        const utBySemSubject = {};
+        (utData || []).forEach(m => {
+          const key = `${m.semester}_${m.subject_code}`;
+          if (!utBySemSubject[key]) {
+            utBySemSubject[key] = {
+              subject_code: m.subject_code,
+              subject_name: m.subject_name,
+              papers: [],
+            };
+          }
+          utBySemSubject[key].papers.push({
+            paper_code: `UT${m.ut_number}`,
+            paper_name: `Unit Test ${m.ut_number}`,
+            obtained_marks: m.obtained_marks,
+            total_marks: m.max_marks,
+            pct: m.percentage,
+          });
+        });
+
+        // Build phase array from SGPA records (one per semester)
+        const phases = sgpaData
+          .filter(r => r.is_published)
+          .map(r => {
+            const semStr = `Semester ${r.semester}`;
+            // Subjects for this semester from UT marks
+            const subjects = Object.values(utBySemSubject)
+              .filter(sub => {
+                // match semester from subject key
+                const key = `${r.semester}_${sub.subject_code}`;
+                return utBySemSubject[key];
+              })
+              .map(sub => {
+                const takenPapers = sub.papers.filter(p => !p.is_absent);
+                const combinedPct = takenPapers.length > 0
+                  ? Math.round(takenPapers.reduce((s, p) => s + p.pct, 0) / takenPapers.length)
+                  : null;
+                return {
+                  subject_code: sub.subject_code,
+                  subject_name: sub.subject_name,
+                  papers: sub.papers,
+                  sessional: sub.papers,
+                  university: [],
+                  combinedPct,
+                };
+              });
+
+            return {
+              phase: semStr,
+              yr_fk: r.semester,
+              sgpa: r.sgpa,
+              cgpa: r.cgpa,
+              totalCredits: r.total_credits,
+              earnedCredits: r.earned_credits,
+              backlogs: r.backlogs_count,
+              status: r.status,
+              subjects,
+              combinedPct: Math.round(r.sgpa * 10) || null, // use SGPA*10 as a proxy % for display
+            };
+          })
+          .sort((a, b) => a.yr_fk - b.yr_fk);
+
+        setPhases(phases);
+        if (phases.length > 0) setExpandedPhase(phases[phases.length - 1].phase);
+      } catch (e) {
+        console.warn('[ERPResults] non-medical fetch error:', e);
+        setPhases([]);
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
+      }
+      return;
+    }
+
+    // ── MEDICAL / MBBS: existing SRMS paper list path (completely unchanged) ────
     if (!forceFetch) {
       try {
         const cached = await AsyncStorage.getItem(cacheKey);
@@ -1519,13 +1613,15 @@ const ERPResultsScreen = ({ route, navigation }) => {
             </LinearGradient>
           </View>
 
-          {/* NMC Info */}
+          {/* NMC Info — medical only */}
+          {isMedical && (
           <View style={[styles.nmcInfo, { backgroundColor: isDark ? 'rgba(239,68,68,0.08)' : '#FEF2F2', borderColor: isDark ? 'rgba(239,68,68,0.2)' : '#FCA5A5', marginHorizontal: 20, marginTop: 16 }]}>
             <MaterialIcons name="info-outline" size={14} color="#DC2626" />
             <Text style={[styles.nmcText, { color: '#DC2626' }]}>
               NMC 2024: ≥50% required in each competency. Red = Competency Gap.
             </Text>
           </View>
+          )}
 
           {/* Phase Cards */}
           <View style={[styles.sectionContainer, { marginTop: 24 }]}>
@@ -1535,9 +1631,13 @@ const ERPResultsScreen = ({ route, navigation }) => {
             {phases.length === 0 ? (
               <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32, backgroundColor: colors.card, borderStyle: 'dashed', borderWidth: 1, borderColor: colors.border, borderRadius: 16 }}>
                 <MaterialCommunityIcons name="alert-circle-outline" size={48} color={colors.textMuted} />
-                <Text style={{ fontSize: 16, fontWeight: '800', color: colors.textPrimary, marginTop: 12 }}>No Academic Results Available</Text>
+                <Text style={{ fontSize: 16, fontWeight: '800', color: colors.textPrimary, marginTop: 12 }}>
+                  {isMedical ? 'No Academic Results Available' : 'Results Not Yet Published'}
+                </Text>
                 <Text style={{ fontSize: 12, color: colors.textSecondary, textAlign: 'center', marginTop: 6, lineHeight: 18 }}>
-                  We couldn't retrieve your professional year/semester results from the ERP portal. Please verify if your batch details are registered correctly.
+                  {isMedical
+                    ? "We couldn't retrieve your professional year/semester results from the ERP portal. Please verify if your batch details are registered correctly."
+                    : 'Your semester results will appear here once they are published by your department. Unit Test marks appear as soon as they are entered.'}
                 </Text>
               </View>
             ) : (

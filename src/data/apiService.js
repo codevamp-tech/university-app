@@ -3196,3 +3196,71 @@ export async function submitHODAppraisalRating(accessToken, appraisalId, { ratin
     return { success: false, error: err.message };
   }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// NON-MEDICAL ERP — Attendance & Results (unicampus backend only, no SRMS ERP)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Get full attendance for a non-medical student.
+ * GET /api/v1/attendance/student/{studentId}?semester=X
+ *
+ * Returns { student_id, subjects: [{subject_code, subject_name, total_lectures,
+ *   attended, percentage}], overall: {total, attended, percentage} }
+ */
+export async function getNonMedicalAttendance(accessToken, studentId, semester = null) {
+  try {
+    const params = semester ? `?semester=${semester}` : '';
+    const response = await fetch(`${BASE}/api/v1/attendance/student/${studentId}${params}`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    const json = await response.json();
+    return json.success ? (json.data || { subjects: [], overall: {} }) : { subjects: [], overall: {} };
+  } catch (err) {
+    console.warn('[apiService] getNonMedicalAttendance failed:', err);
+    return { subjects: [], overall: {} };
+  }
+}
+
+/**
+ * Get UT (Unit Test) marks for a non-medical student.
+ * GET /api/v1/examination/ut/marks?student_id=X&semester=Y
+ *
+ * Returns array of {subject_code, subject_name, semester, ut_number,
+ *   obtained_marks, max_marks, percentage}
+ */
+export async function getNonMedicalUTMarks(accessToken, studentId, semester = null) {
+  try {
+    const params = new URLSearchParams({ student_id: studentId });
+    if (semester) params.append('semester', String(semester));
+    const response = await fetch(`${BASE}/api/v1/examination/ut/marks?${params.toString()}`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    const json = await response.json();
+    return json.success ? (json.data || []) : [];
+  } catch (err) {
+    console.warn('[apiService] getNonMedicalUTMarks failed:', err);
+    return [];
+  }
+}
+
+/**
+ * Get SGPA/CGPA semester results for a non-medical student.
+ * GET /api/v1/examination/results/sgpa?student_id=X
+ *
+ * Returns array of {semester, academic_year, sgpa, cgpa, total_credits,
+ *   earned_credits, backlogs_count, status, is_published}
+ */
+export async function getNonMedicalSGPA(accessToken, studentId) {
+  try {
+    const response = await fetch(
+      `${BASE}/api/v1/examination/results/sgpa?student_id=${studentId}`,
+      { headers: { Authorization: `Bearer ${accessToken}` } }
+    );
+    const json = await response.json();
+    return json.success ? (json.data || []) : [];
+  } catch (err) {
+    console.warn('[apiService] getNonMedicalSGPA failed:', err);
+    return [];
+  }
+}

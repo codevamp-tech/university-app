@@ -187,7 +187,9 @@ const MyCoursesScreen = ({ navigation }) => {
       dynamicCourses.push({
         id: item.tt_cd || (idx + 1),
         title: item.subject_name,
-        code: item.subject_code || (isMedical ? `PE-${301 + idx}` : `CS-${301 + idx}`),
+        code: item.subject_code || (isMedical
+          ? `PE-${301 + idx}`
+          : `${(user?.department || 'GN').substring(0, 2).toUpperCase()}-${301 + idx}`),
         students: isMedical ? 64 : 54,
         lectures: item.lecture_type || 'Lecture',
         progress: isMedical ? 45 : 75,
