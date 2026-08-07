@@ -3032,3 +3032,167 @@ export async function getPGStudentListForHOD(payload) {
     return [];
   }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// NON-MEDICAL ERP APIs
+// These endpoints are served by the unicampus backend (non-medical-erp branch).
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Fetch live timetable for non-medical students.
+ * GET /api/v1/academic-ops/timetable?semester=X&department_id=Y
+ * Returns an array of timetable slots grouped by the caller.
+ */
+export async function getTimetable(accessToken, { semester, department_id } = {}) {
+  try {
+    const params = new URLSearchParams();
+    if (semester) params.append('semester', String(semester));
+    if (department_id) params.append('department_id', department_id);
+    const url = `${BASE}/api/v1/academic-ops/timetable${params.toString() ? '?' + params.toString() : ''}`;
+    const response = await fetch(url, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    const json = await response.json();
+    return json.success ? (json.data || []) : [];
+  } catch (err) {
+    console.warn('[apiService] getTimetable failed:', err);
+    return [];
+  }
+}
+
+/**
+ * Fetch active placement drives.
+ * GET /api/v1/placement/drives?status=active
+ */
+export async function getPlacementDrives(accessToken, status = null) {
+  try {
+    const params = status ? `?status=${status}` : '';
+    const response = await fetch(`${BASE}/api/v1/placement/drives${params}`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    const json = await response.json();
+    return json.success ? (json.data || []) : [];
+  } catch (err) {
+    console.warn('[apiService] getPlacementDrives failed:', err);
+    return [];
+  }
+}
+
+/**
+ * Register student for a placement drive.
+ * POST /api/v1/placement/registrations
+ */
+export async function registerForDrive(accessToken, { drive_id, cgpa }) {
+  try {
+    const response = await fetch(`${BASE}/api/v1/placement/registrations`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ drive_id, cgpa }),
+    });
+    const json = await response.json();
+    return json;
+  } catch (err) {
+    console.warn('[apiService] registerForDrive failed:', err);
+    return { success: false, error: err.message };
+  }
+}
+
+/**
+ * Fetch current student's placement registrations.
+ * GET /api/v1/placement/registrations
+ */
+export async function getMyPlacementRegistrations(accessToken) {
+  try {
+    const response = await fetch(`${BASE}/api/v1/placement/registrations`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    const json = await response.json();
+    return json.success ? (json.data || []) : [];
+  } catch (err) {
+    console.warn('[apiService] getMyPlacementRegistrations failed:', err);
+    return [];
+  }
+}
+
+/**
+ * Fetch placement offers for the current student.
+ * GET /api/v1/placement/offers
+ */
+export async function getPlacementOffers(accessToken) {
+  try {
+    const response = await fetch(`${BASE}/api/v1/placement/offers`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    const json = await response.json();
+    return json.success ? (json.data || []) : [];
+  } catch (err) {
+    console.warn('[apiService] getPlacementOffers failed:', err);
+    return [];
+  }
+}
+
+/**
+ * Fetch HOD department summary stats.
+ * GET /api/v1/faculty-hr/hod-summary?department_id=X
+ */
+export async function getHODSummary(accessToken, department_id = null) {
+  try {
+    const params = department_id ? `?department_id=${department_id}` : '';
+    const response = await fetch(`${BASE}/api/v1/faculty-hr/hod-summary${params}`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    const json = await response.json();
+    return json.success ? (json.data || {}) : {};
+  } catch (err) {
+    console.warn('[apiService] getHODSummary failed:', err);
+    return {};
+  }
+}
+
+/**
+ * HOD approves or rejects a faculty leave request.
+ * PATCH /api/v1/faculty-hr/leave/{leaveId}/action
+ * action: "approved" | "rejected"
+ */
+export async function approveLeave(accessToken, leaveId, action, remarks = '') {
+  try {
+    const response = await fetch(`${BASE}/api/v1/faculty-hr/leave/${leaveId}/action`, {
+      method: 'PATCH',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ action, remarks }),
+    });
+    const json = await response.json();
+    return json;
+  } catch (err) {
+    console.warn('[apiService] approveLeave failed:', err);
+    return { success: false, error: err.message };
+  }
+}
+
+/**
+ * HOD submits a rating for a faculty appraisal.
+ * PATCH /api/v1/faculty-hr/appraisal/{appraisalId}/hod-rating
+ */
+export async function submitHODAppraisalRating(accessToken, appraisalId, { rating, comments }) {
+  try {
+    const response = await fetch(`${BASE}/api/v1/faculty-hr/appraisal/${appraisalId}/hod-rating`, {
+      method: 'PATCH',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ rating, comments }),
+    });
+    const json = await response.json();
+    return json;
+  } catch (err) {
+    console.warn('[apiService] submitHODAppraisalRating failed:', err);
+    return { success: false, error: err.message };
+  }
+}

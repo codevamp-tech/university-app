@@ -18,7 +18,7 @@ import { MaterialIcons, MaterialCommunityIcons, Ionicons } from '@expo/vector-ic
 import { useTheme } from '../../hooks/useTheme';
 import { useUser } from '../../context/UserContext';
 import { APP_CONFIG } from '../../config/appConfig';
-import { getStudentSchedule } from '../../data/apiService';
+import { getStudentSchedule, getTimetable } from '../../data/apiService';
 
 const { width } = Dimensions.get('window');
 
@@ -170,11 +170,50 @@ const StudentScheduleScreen = ({ route, navigation }) => {
     loadSchedule();
   }, [accessToken]);
 
+  const isMedical = user?.course?.replace(/\./g, '').toUpperCase().includes('MBBS')
+    || user?.category?.toLowerCase() === 'medical';
+
   const loadSchedule = async () => {
     if (!accessToken) return;
     setLoading(true);
     try {
       const studentId = user?.rollno || user?.id || user?.username;
+
+      // ── Non-medical students: live timetable from academic-ops endpoint ──────
+      if (!isMedical) {
+        const semester = user?.semester ? parseInt(user.semester, 10) : null;
+        const department_id = user?.department_id || null;
+        const slots = await getTimetable(accessToken, { semester, department_id });
+
+        if (slots && slots.length > 0) {
+          const mapped = {};
+          DAYS.forEach(d => { mapped[d] = []; });
+          slots.forEach(s => {
+            // day_of_week: 1=Mon … 6=Sat
+            const idx = (s.day_of_week || 1) - 1;
+            if (idx >= 0 && idx < DAYS.length) {
+              mapped[DAYS[idx]].push({
+                time: `${s.start_time?.slice(0, 5)} – ${s.end_time?.slice(0, 5)}`,
+                subject: s.subject_name || 'Class',
+                topic: '',
+                faculty: s.faculty_name || '',
+                type: s.lecture_type === 'practical' ? 'Practical'
+                    : s.lecture_type === 'tutorial' ? 'Tutorial'
+                    : 'Lecture',
+                room: s.room || '',
+              });
+            }
+          });
+          setSchedule(mapped);
+        } else {
+          // No timetable configured yet — show empty state
+          setSchedule({});
+        }
+        setLoading(false);
+        return;
+      }
+
+      // ── Medical students: existing MBBS ERP path (unchanged) ─────────────────
       let data = await getStudentSchedule(accessToken, studentId);
 
       // Robust fallback: If backend returns no schedule, query SRMS ERP directly
@@ -217,7 +256,6 @@ const StudentScheduleScreen = ({ route, navigation }) => {
                       dayNo = 1;
                     }
                   }
-
                   flattened.push({
                     day_no: dayNo,
                     from_time: lec.lectureStart || '08:00 AM',
@@ -266,9 +304,6 @@ const StudentScheduleScreen = ({ route, navigation }) => {
       setLoading(false);
     }
   };
-
-  const isMedical = user?.course?.replace(/\./g, '').toUpperCase().includes('MBBS')
-    || user?.category?.toLowerCase() === 'medical';
 
   return (
     <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>

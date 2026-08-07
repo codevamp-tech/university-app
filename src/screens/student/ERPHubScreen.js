@@ -420,7 +420,8 @@ const ERPHubScreen = ({ navigation, route }) => {
               </Text>
             </TouchableOpacity>
 
-            {/* Card 4: Logbook */}
+            {/* Card 4: Logbook — MEDICAL ONLY */}
+            {isMedical && (
             <TouchableOpacity
               style={[styles.gridCard, { backgroundColor: colors.card, borderColor: colors.border }]}
               onPress={() => navigation.navigate('ERPLogBookTab', { student })}
@@ -434,8 +435,10 @@ const ERPHubScreen = ({ navigation, route }) => {
                 Clinical Record
               </Text>
             </TouchableOpacity>
+            )}
 
-            {/* Card 4b: Foundation Logbook */}
+            {/* Card 4b: Foundation Logbook — MEDICAL ONLY */}
+            {isMedical && (
             <TouchableOpacity
               style={[styles.gridCard, { backgroundColor: colors.card, borderColor: colors.border }]}
               onPress={() => navigation.navigate('FoundationLogbook', { student })}
@@ -449,6 +452,41 @@ const ERPHubScreen = ({ navigation, route }) => {
                 Foundation Course
               </Text>
             </TouchableOpacity>
+            )}
+
+            {/* Card 4c: Timetable — NON-MEDICAL ONLY */}
+            {!isMedical && (
+            <TouchableOpacity
+              style={[styles.gridCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+              onPress={() => navigation.navigate('StudentSchedule', { student })}
+              activeOpacity={0.85}
+            >
+              <LinearGradient colors={isDark ? ['#0F766E', '#115E59'] : ['#E6FDF9', '#CCFBF1']} style={styles.gridIconBg}>
+                <MaterialIcons name="event-note" size={24} color={isDark ? '#2DD4BF' : '#0D9488'} />
+              </LinearGradient>
+              <Text style={[styles.gridCardTitle, { color: colors.textPrimary }]}>Timetable</Text>
+              <Text style={[styles.gridCardDesc, { color: colors.textSecondary }]}>
+                Weekly Schedule
+              </Text>
+            </TouchableOpacity>
+            )}
+
+            {/* Card 4d: Placement — NON-MEDICAL ONLY */}
+            {!isMedical && (
+            <TouchableOpacity
+              style={[styles.gridCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+              onPress={() => navigation.navigate('Placement', { student })}
+              activeOpacity={0.85}
+            >
+              <LinearGradient colors={isDark ? ['#4C1D95', '#5B21B6'] : ['#F5F3FF', '#EDE9FE']} style={styles.gridIconBg}>
+                <MaterialIcons name="work" size={24} color={isDark ? '#A78BFA' : '#7C3AED'} />
+              </LinearGradient>
+              <Text style={[styles.gridCardTitle, { color: colors.textPrimary }]}>Placement</Text>
+              <Text style={[styles.gridCardDesc, { color: colors.textSecondary }]}>
+                Drives & Offers
+              </Text>
+            </TouchableOpacity>
+            )}
 
             {/* Card 5: Group Chats */}
             <TouchableOpacity

@@ -46,7 +46,7 @@ export const UserProvider = ({ children }) => {
         if (facultyData?.access_token) {
           setAccessToken(facultyData.access_token);
 
-          // Fetch full DB profile too
+          // Fetch full DB profile too (includes is_hod from non-medical-erp backend)
           let dbProfile = null;
           try {
             dbProfile = await getFacultyProfile(facultyData.access_token);
@@ -68,6 +68,7 @@ export const UserProvider = ({ children }) => {
             name: dbProfile?.name || fac.name || 'Faculty Member',
             department: dbProfile?.department || fac.department || 'Medical Faculty',
             department_code: fac.department_code || '60',
+            department_id: dbProfile?.department_id || fac.department_id || null,
             email: dbProfile?.email || fac.email || null,
             mobile: dbProfile?.mobile || null,
             user_id: fac.user_id || null,
@@ -78,6 +79,8 @@ export const UserProvider = ({ children }) => {
             // Permission flags from FacultyLoginCredential
             pg_verify: credDetail?.pg_verify ?? null,
             pg_hod: credDetail?.pg_hod ?? null,
+            // HOD flag from DB profile (non-medical-erp backend)
+            is_hod: dbProfile?.is_hod ?? false,
           };
           setUser(u);
           try {
@@ -291,8 +294,11 @@ export const UserProvider = ({ children }) => {
     }
   };
 
+  // Derived: true if this faculty is an HOD (has extra dept management tabs)
+  const isHOD = user?.is_hod === true && user?.role === 'teacher';
+
   return (
-    <UserContext.Provider value={{ user, accessToken, login, logout, updateSkillScore, updateAvatarUrl, refreshFacultyFlags }}>
+    <UserContext.Provider value={{ user, accessToken, login, logout, updateSkillScore, updateAvatarUrl, refreshFacultyFlags, isHOD }}>
       {children}
     </UserContext.Provider>
   );

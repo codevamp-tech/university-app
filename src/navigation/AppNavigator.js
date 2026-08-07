@@ -114,6 +114,10 @@ import FacultyStudentFoundationDetailScreen from '../screens/teacher/FacultyStud
 import PGLogbookVerificationScreen from '../screens/teacher/PGLogbookVerificationScreen';
 import PGLogbookHODVerifyScreen from '../screens/teacher/PGLogbookHODVerifyScreen';
 
+// Non-Medical ERP Screens
+import HODDashboardScreen from '../screens/teacher/HODDashboardScreen';
+import PlacementScreen from '../screens/student/PlacementScreen';
+
 const Stack = createNativeStackNavigator();
 
 const AppNavigator = () => {
@@ -246,6 +250,10 @@ const AppNavigator = () => {
       <Stack.Screen name="FacultyStudentFoundationDetail" component={FacultyStudentFoundationDetailScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="PGLogbookVerification" component={PGLogbookVerificationScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="PGLogbookHODVerify" component={PGLogbookHODVerifyScreen} options={{ animation: 'slide_from_right' }} />
+
+      {/* Non-Medical ERP Screens */}
+      <Stack.Screen name="HODDashboard" component={HODDashboardScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="Placement" component={PlacementScreen} options={{ animation: 'slide_from_right' }} />
     </Stack.Navigator>
   );
 };

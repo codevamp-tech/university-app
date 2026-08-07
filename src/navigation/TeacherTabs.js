@@ -2,16 +2,20 @@ import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../constants/colors';
+import { useUser } from '../context/UserContext';
 
 // Teacher Screens
 import TeacherDashboardScreen from '../screens/teacher/TeacherDashboardScreen';
 import CourseManagementScreen from '../screens/teacher/CourseManagementScreen';
 import TeacherAttendanceScreen from '../screens/teacher/TeacherAttendanceScreen';
 import TeacherProfileScreen from '../screens/teacher/TeacherProfileScreen';
+import HODDashboardScreen from '../screens/teacher/HODDashboardScreen';
 
 const Tab = createBottomTabNavigator();
 
 const TeacherTabs = () => {
+  const { isHOD } = useUser();
+
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -42,14 +46,25 @@ const TeacherTabs = () => {
             Schedule: focused ? 'calendar' : 'calendar-outline',
             Attendance: focused ? 'finger-print' : 'finger-print-outline',
             Profile: focused ? 'person' : 'person-outline',
+            'My Dept': focused ? 'business' : 'business-outline',
           };
-          return <Ionicons name={icons[route.name]} size={22} color={color} />;
+          return <Ionicons name={icons[route.name] || 'ellipse-outline'} size={22} color={color} />;
         },
       })}
     >
       <Tab.Screen name="Home" component={TeacherDashboardScreen} />
       <Tab.Screen name="Schedule" component={CourseManagementScreen} />
       <Tab.Screen name="Attendance" component={TeacherAttendanceScreen} />
+      {/* HOD-only tab: My Department — only visible when faculty has is_hod=true */}
+      {isHOD && (
+        <Tab.Screen
+          name="My Dept"
+          component={HODDashboardScreen}
+          options={{
+            tabBarBadge: undefined,
+          }}
+        />
+      )}
       <Tab.Screen name="Profile" component={TeacherProfileScreen} />
     </Tab.Navigator>
   );
