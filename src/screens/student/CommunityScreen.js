@@ -31,8 +31,13 @@ import {
   createStoryAPI,
   viewStoryAPI,
   likeStoryAPI,
+  deleteStoryAPI,
   followUserAPI,
   getAllStudents,
+  getPostLikersAPI,
+  getStoryCommentsAPI,
+  addStoryCommentAPI,
+  removeConnectionAPI,
 } from '../../data/apiService';
 import { APP_CONFIG } from '../../config/appConfig';
 import { useTheme } from '../../hooks/useTheme';
@@ -114,6 +119,70 @@ const CommunityScreen = ({ navigation }) => {
   const [commenting, setCommenting] = useState(false);
   const [replyingTo, setReplyingTo] = useState(null);
   const [expandedReplies, setExpandedReplies] = useState({});
+
+  // Post Likers Modal
+  const [postLikersModalVisible, setPostLikersModalVisible] = useState(false);
+  const [postLikers, setPostLikers] = useState([]);
+  const [loadingPostLikers, setLoadingPostLikers] = useState(false);
+
+  // Story Comments
+  const [storyCommentsModalVisible, setStoryCommentsModalVisible] = useState(false);
+  const [activeStoryItem, setActiveStoryItem] = useState(null);
+  const [storyCommentsList, setStoryCommentsList] = useState([]);
+  const [loadingStoryComments, setLoadingStoryComments] = useState(false);
+  const [newStoryCommentText, setNewStoryCommentText] = useState('');
+  const [postingStoryComment, setPostingStoryComment] = useState(false);
+
+  const handleOpenPostLikers = async (postId) => {
+    setPostLikersModalVisible(true);
+    setLoadingPostLikers(true);
+    try {
+      const data = await getPostLikersAPI(accessToken, postId);
+      setPostLikers(data || []);
+    } catch (e) {
+      console.warn("Failed to load post likers:", e);
+    } finally {
+      setLoadingPostLikers(false);
+    }
+  };
+
+  const handleOpenStoryComments = async (item) => {
+    setActiveStoryItem(item);
+    setStoryCommentsModalVisible(true);
+    setLoadingStoryComments(true);
+    try {
+      const data = await getStoryCommentsAPI(accessToken, item.id);
+      setStoryCommentsList(data || []);
+    } catch (e) {
+      console.warn("Failed to load story comments:", e);
+    } finally {
+      setLoadingStoryComments(false);
+    }
+  };
+
+  const handleSendStoryComment = async () => {
+    if (!newStoryCommentText.trim() || !activeStoryItem) return;
+    setPostingStoryComment(true);
+    const content = newStoryCommentText.trim();
+    setNewStoryCommentText('');
+    try {
+      const res = await addStoryCommentAPI(accessToken, activeStoryItem.id, content);
+      if (res) {
+        setStoryCommentsList(prev => [...prev, {
+          id: res.id,
+          content: res.content,
+          created_at: res.created_at || new Date().toISOString(),
+          username: user?.name || 'You',
+          full_name: user?.name || 'You',
+          avatar_url: user?.avatar_url,
+        }]);
+      }
+    } catch (e) {
+      console.warn("Failed to send story comment:", e);
+    } finally {
+      setPostingStoryComment(false);
+    }
+  };
 
   // ── Load / persist stories ────────────────────────────────────────────────
   const loadStories = useCallback(async () => {
@@ -799,10 +868,10 @@ const CommunityScreen = ({ navigation }) => {
                   fontSize: 13
                 }}>
                   {targetPost.connection_status === 'Connected'
-                    ? 'Following'
+                    ? 'Connected'
                     : targetPost.connection_status === 'Pending'
                       ? 'Pending'
-                      : '+ Follow'}
+                      : '+ Connect'}
                 </Text>
               </TouchableOpacity>
             )
@@ -813,16 +882,16 @@ const CommunityScreen = ({ navigation }) => {
         {renderPostImages(targetPost.media_urls)}
 
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 16, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: colors.border }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+          <TouchableOpacity onPress={() => handleOpenPostLikers(targetPost.id)} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
             {topReactions.map((r, i) => (
                <Text key={i} style={{ fontSize: 14 }}>{REACTION_ICONS[r]?.icon}</Text>
             ))}
-            <Text style={{ color: colors.textSecondary, fontSize: 13, marginLeft: 4 }}>
-              {targetPost.like_count > 0 ? targetPost.like_count : ''}
+            <Text style={{ color: colors.textSecondary, fontSize: 13, marginLeft: 4, textDecorationLine: targetPost.like_count > 0 ? 'underline' : 'none' }}>
+              {targetPost.like_count > 0 ? `${targetPost.like_count} ${targetPost.like_count === 1 ? 'like' : 'likes'}` : '0 likes'}
             </Text>
-          </View>
+          </TouchableOpacity>
           
-          <TouchableOpacity onPress={() => openComments(post.id)}>
+          <TouchableOpacity onPress={() => openComments(targetPost.id)}>
             <Text style={{ color: colors.textSecondary, fontSize: 13 }}>
               {targetPost.comment_count > 0 ? `${targetPost.comment_count} comments • ` : ''}
               {targetPost.repost_count > 0 ? `${targetPost.repost_count} reposts` : ''}
@@ -834,8 +903,8 @@ const CommunityScreen = ({ navigation }) => {
           <View style={styles.footerActions}>
             <TouchableOpacity 
               style={styles.actionBtn} 
-              onLongPress={() => setActiveReactionPostId(post.id)}
-              onPress={() => handleReaction(post.id, targetPost.user_reaction || 'like')}
+              onLongPress={() => setActiveReactionPostId(targetPost.id)}
+              onPress={() => handleReaction(targetPost.id, targetPost.user_reaction || 'like')}
             >
               {targetPost.user_reaction ? (
                 <Text style={{ fontSize: 18 }}>{REACTION_ICONS[targetPost.user_reaction].icon}</Text>
@@ -847,12 +916,12 @@ const CommunityScreen = ({ navigation }) => {
               </Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.actionBtn} onPress={() => openComments(post.id)}>
+            <TouchableOpacity style={styles.actionBtn} onPress={() => openComments(targetPost.id)}>
               <Ionicons name="chatbubble-outline" size={20} color={colors.textSecondary} />
               <Text style={[styles.actionCount, { color: colors.textSecondary }]}>Comment</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.actionBtn} onPress={() => handleRepost(post.id)}>
+            <TouchableOpacity style={styles.actionBtn} onPress={() => handleRepost(targetPost.id)}>
               <MaterialCommunityIcons name="repeat" size={22} color={colors.textSecondary} />
               <Text style={[styles.actionCount, { color: colors.textSecondary }]}>Repost</Text>
             </TouchableOpacity>
@@ -863,10 +932,10 @@ const CommunityScreen = ({ navigation }) => {
             </TouchableOpacity>
           </View>
 
-          {activeReactionPostId === post.id && (
+          {activeReactionPostId === targetPost.id && (
             <View style={[styles.reactionPopover, { backgroundColor: colors.card, borderColor: colors.border }]}>
               {Object.keys(REACTION_ICONS).map(type => (
-                <TouchableOpacity key={type} onPress={() => handleReaction(post.id, type)} style={{ padding: 8 }}>
+                <TouchableOpacity key={type} onPress={() => handleReaction(targetPost.id, type)} style={{ padding: 8 }}>
                   <Text style={{ fontSize: 28 }}>{REACTION_ICONS[type].icon}</Text>
                 </TouchableOpacity>
               ))}
@@ -1308,13 +1377,38 @@ const CommunityScreen = ({ navigation }) => {
                   ))}
                 </View>
 
-                {/* Header: avatar + name + close */}
+                {/* Header: avatar + name + delete + close */}
                 <View style={styles.svHeader}>
                   <Image source={{ uri: group.avatarUrl || getAvatarUrl(group.userId) }} style={styles.svAvatar} />
                   <View style={{ flex: 1 }}>
                     <Text style={styles.svUsername}>{group.username}</Text>
                     <Text style={styles.svTime}>{timeAgo(new Date(item.createdAt).toISOString())}</Text>
                   </View>
+                  {(group.userId === (user?.id || user?.user_id || 'me') || user?.role === 'super_admin' || user?.role === 'admin') && (
+                    <TouchableOpacity
+                      onPress={() => {
+                        Alert.alert("Delete Story", "Are you sure you want to delete this story?", [
+                          { text: "Cancel", style: "cancel" },
+                          {
+                            text: "Delete",
+                            style: "destructive",
+                            onPress: async () => {
+                              closeViewer();
+                              try {
+                                await deleteStoryAPI(accessToken, item.id);
+                                loadStories();
+                              } catch (e) {
+                                console.warn("Delete story error", e);
+                              }
+                            }
+                          }
+                        ]);
+                      }}
+                      style={{ padding: 6, marginRight: 8 }}
+                    >
+                      <Ionicons name="trash-outline" size={22} color="#FFFFFF" />
+                    </TouchableOpacity>
+                  )}
                   <TouchableOpacity onPress={closeViewer} style={styles.svClose}>
                     <Ionicons name="close" size={26} color="#fff" />
                   </TouchableOpacity>
@@ -1364,6 +1458,7 @@ const CommunityScreen = ({ navigation }) => {
 
                         try {
                           await likeStoryAPI(accessToken, item.id);
+                          loadStories();
                         } catch (e) {
                           console.warn('Story like error', e);
                         }
@@ -1377,6 +1472,14 @@ const CommunityScreen = ({ navigation }) => {
                       {item.like_count > 0 && (
                         <Text style={styles.svLikeCount}>{item.like_count}</Text>
                       )}
+                    </TouchableOpacity>
+
+                    {/* Comment on Story button */}
+                    <TouchableOpacity
+                      style={styles.svLikeButton}
+                      onPress={() => handleOpenStoryComments(item)}
+                    >
+                      <Ionicons name="chatbubble-outline" size={26} color="#FFFFFF" />
                     </TouchableOpacity>
 
                     {/* Own story viewer stats badge */}
@@ -1554,6 +1657,110 @@ const CommunityScreen = ({ navigation }) => {
             />
           </View>
         </View>
+      </Modal>
+
+      {/* ── Post Likers Modal ── */}
+      <Modal visible={postLikersModalVisible} animationType="slide" transparent onRequestClose={() => setPostLikersModalVisible(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: colors.card, maxHeight: '70%' }]}>
+            <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
+              <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>Reactions</Text>
+              <TouchableOpacity onPress={() => setPostLikersModalVisible(false)} style={styles.modalCloseBtn}>
+                <Ionicons name="close" size={24} color={colors.textPrimary} />
+              </TouchableOpacity>
+            </View>
+
+            {loadingPostLikers ? (
+              <ActivityIndicator size="large" color={colors.primary} style={{ marginVertical: 40 }} />
+            ) : postLikers.length === 0 ? (
+              <View style={{ padding: 40, alignItems: 'center' }}>
+                <Ionicons name="heart-outline" size={48} color={colors.textSecondary} />
+                <Text style={{ color: colors.textSecondary, marginTop: 12, fontSize: 14 }}>No reactions yet</Text>
+              </View>
+            ) : (
+              <FlatList
+                data={postLikers}
+                keyExtractor={(item) => item.user_id}
+                renderItem={({ item }) => (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.border }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                      <Image source={{ uri: getAvatarUrl(item.avatar_url || item.username) }} style={{ width: 44, height: 44, borderRadius: 22 }} />
+                      <View>
+                        <Text style={{ fontWeight: '700', fontSize: 15, color: colors.textPrimary }}>{item.full_name || item.username}</Text>
+                        <Text style={{ fontSize: 12, color: colors.textSecondary }}>@{item.username}</Text>
+                      </View>
+                    </View>
+                    <Text style={{ fontSize: 20 }}>
+                      {REACTION_ICONS[item.reaction_type]?.icon || '👍'}
+                    </Text>
+                  </View>
+                )}
+              />
+            )}
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── Story Comments Modal ── */}
+      <Modal visible={storyCommentsModalVisible} animationType="slide" transparent onRequestClose={() => setStoryCommentsModalVisible(false)}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+          <View style={styles.modalOverlay}>
+            <View style={[styles.modalContent, { backgroundColor: colors.card, maxHeight: '80%' }]}>
+              <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
+                <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>Story Comments</Text>
+                <TouchableOpacity onPress={() => setStoryCommentsModalVisible(false)} style={styles.modalCloseBtn}>
+                  <Ionicons name="close" size={24} color={colors.textPrimary} />
+                </TouchableOpacity>
+              </View>
+
+              {loadingStoryComments ? (
+                <ActivityIndicator size="large" color={colors.primary} style={{ marginVertical: 40 }} />
+              ) : storyCommentsList.length === 0 ? (
+                <View style={{ padding: 40, alignItems: 'center' }}>
+                  <Ionicons name="chatbubbles-outline" size={48} color={colors.textSecondary} />
+                  <Text style={{ color: colors.textSecondary, marginTop: 12, fontSize: 14 }}>No comments yet. Be the first!</Text>
+                </View>
+              ) : (
+                <FlatList
+                  data={storyCommentsList}
+                  keyExtractor={(item) => item.id}
+                  renderItem={({ item }) => (
+                    <View style={{ flexDirection: 'row', gap: 12, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: colors.border }}>
+                      <Image source={{ uri: getAvatarUrl(item.avatar_url || item.username) }} style={{ width: 36, height: 36, borderRadius: 18 }} />
+                      <View style={{ flex: 1 }}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <Text style={{ fontWeight: '700', fontSize: 14, color: colors.textPrimary }}>{item.full_name || item.username}</Text>
+                          {item.created_at && (
+                            <Text style={{ fontSize: 11, color: colors.textSecondary }}>{timeAgo(item.created_at)}</Text>
+                          )}
+                        </View>
+                        <Text style={{ fontSize: 14, color: colors.textPrimary, marginTop: 2 }}>{item.content}</Text>
+                      </View>
+                    </View>
+                  )}
+                />
+              )}
+
+              {/* Story comment input bar */}
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingTop: 12, borderTopWidth: 1, borderTopColor: colors.border }}>
+                <TextInput
+                  style={{ flex: 1, backgroundColor: isDark ? colors.background : '#F3F4F6', color: colors.textPrimary, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20, fontSize: 14 }}
+                  placeholder="Reply to story..."
+                  placeholderTextColor={colors.textSecondary}
+                  value={newStoryCommentText}
+                  onChangeText={setNewStoryCommentText}
+                />
+                <TouchableOpacity
+                  style={{ backgroundColor: newStoryCommentText.trim() ? colors.primary : colors.border, width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' }}
+                  onPress={handleSendStoryComment}
+                  disabled={!newStoryCommentText.trim() || postingStoryComment}
+                >
+                  <Ionicons name="send" size={18} color="#FFFFFF" />
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
       </Modal>
 
     </View>

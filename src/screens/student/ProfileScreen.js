@@ -9,7 +9,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { APP_CONFIG } from '../../config/appConfig';
 import { useUser } from '../../context/UserContext';
 import { getPersonaBadge } from '../../data/aiEngine';
-import { uploadAvatarAPI, connectionStatsAPI, getStartups, getConnectionList } from '../../data/apiService';
+import { uploadAvatarAPI, connectionStatsAPI, getStartups, getConnectionList, removeConnectionAPI } from '../../data/apiService';
 import { getAvatarUrl } from '../../utils/avatar';
 import { SafeStudentAvatar } from '../../components/SafeStudentAvatar';
 import { isMedicalStudent, getDisplayCourse, getMBBSProfLabel } from '../../utils/courseDisplay';
@@ -26,25 +26,31 @@ const ProfileScreen = () => {
   const [loadingStartups, setLoadingStartups] = React.useState(true);
 
   const [showConnectionsModal, setShowConnectionsModal] = React.useState(false);
-  const [connectionsModalType, setConnectionsModalType] = React.useState('followers'); // 'followers' or 'connections'
   const [connectionsList, setConnectionsList] = React.useState([]);
   const [loadingConnections, setLoadingConnections] = React.useState(false);
 
-  const handleOpenConnectionsModal = async (type) => {
-    setConnectionsModalType(type);
+  const handleOpenConnectionsModal = async () => {
     setShowConnectionsModal(true);
     setLoadingConnections(true);
     try {
       const data = await getConnectionList(accessToken);
-      if (type === 'followers') {
-        setConnectionsList(data.followers || []);
-      } else {
-        setConnectionsList(data.connections || []);
-      }
+      setConnectionsList(data.connections || []);
     } catch (e) {
       console.warn("Error loading connection list:", e);
     } finally {
       setLoadingConnections(false);
+    }
+  };
+
+  const handleRemoveConnection = async (item) => {
+    try {
+      const connId = item.connection_id || item.id;
+      setConnectionsList(prev => prev.filter(c => c.id !== item.id));
+      await removeConnectionAPI(accessToken, connId);
+      const updatedStats = await connectionStatsAPI(accessToken);
+      setStats(updatedStats || { followers: 0, following: 0, connections: 0 });
+    } catch (err) {
+      console.warn("Remove connection failed:", err);
     }
   };
 
@@ -216,11 +222,7 @@ const ProfileScreen = () => {
               );
             })()}
             <View style={[styles.infoCapsuleRow, { marginTop: 8 }]}>
-              <TouchableOpacity style={styles.infoCapsule} onPress={() => handleOpenConnectionsModal('followers')}>
-                <Text style={styles.infoLabel}>FOLLOWERS</Text>
-                <Text style={styles.infoValue}>{stats.followers}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.infoCapsule} onPress={() => handleOpenConnectionsModal('connections')}>
+              <TouchableOpacity style={[styles.infoCapsule, { flex: 1 }]} onPress={() => handleOpenConnectionsModal()}>
                 <Text style={styles.infoLabel}>CONNECTIONS</Text>
                 <Text style={styles.infoValue}>{stats.connections}</Text>
               </TouchableOpacity>
@@ -386,13 +388,13 @@ const ProfileScreen = () => {
         <View style={{ height: 100 }} />
       </ScrollView>
 
-      {/* Connections/Followers list Modal */}
+      {/* Connections list Modal */}
       <Modal visible={showConnectionsModal} transparent animationType="slide" onRequestClose={() => setShowConnectionsModal(false)}>
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: '#FFFFFF' }]}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>
-                {connectionsModalType === 'followers' ? 'Followers' : 'Connections'} ({connectionsList.length})
+                My Connections ({connectionsList.length})
               </Text>
               <TouchableOpacity onPress={() => setShowConnectionsModal(false)} style={styles.modalCloseBtn}>
                 <Ionicons name="close" size={24} color="#1F2937" />
@@ -404,7 +406,7 @@ const ProfileScreen = () => {
             ) : connectionsList.length === 0 ? (
               <View style={styles.emptyConnections}>
                 <Ionicons name="people-outline" size={48} color="#9CA3AF" />
-                <Text style={styles.emptyConnectionsText}>No users found</Text>
+                <Text style={styles.emptyConnectionsText}>No connections yet</Text>
               </View>
             ) : (
               <ScrollView contentContainerStyle={{ gap: 12 }} showsVerticalScrollIndicator={false}>
@@ -415,6 +417,26 @@ const ProfileScreen = () => {
                       <Text style={styles.connectionName}>{item.full_name || item.username}</Text>
                       <Text style={styles.connectionUsername}>@{item.username}</Text>
                     </View>
+                    <TouchableOpacity
+                      style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, backgroundColor: '#EEF2FF', marginRight: 6 }}
+                      onPress={() => {
+                        setShowConnectionsModal(false);
+                        navigation.navigate('DMConversation', { recipientId: item.id, recipientName: item.full_name || item.username });
+                      }}
+                    >
+                      <Ionicons name="chatbubble-ellipses-outline" size={18} color="#4F46E5" />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={{ paddingHorizontal: 10, paddingVertical: 6, borderRadius: 16, backgroundColor: '#FEE2E2' }}
+                      onPress={() => {
+                        Alert.alert("Remove Connection", `Remove ${item.full_name || item.username} from your connections?`, [
+                          { text: "Cancel", style: "cancel" },
+                          { text: "Remove", style: "destructive", onPress: () => handleRemoveConnection(item) }
+                        ]);
+                      }}
+                    >
+                      <Ionicons name="person-remove-outline" size={18} color="#EF4444" />
+                    </TouchableOpacity>
                   </View>
                 ))}
               </ScrollView>

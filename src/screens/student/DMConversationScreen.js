@@ -23,7 +23,12 @@ const DMConversationScreen = ({ route, navigation }) => {
   const insets = useSafeAreaInsets();
   const { accessToken, user } = useUser();
   const { colors, isDark } = useTheme();
-  const contact = route.params?.contact || {};
+  const contact = route.params?.contact || {
+    user_id: route.params?.recipientId,
+    username: route.params?.recipientName,
+    full_name: route.params?.recipientName,
+    avatar_url: route.params?.avatar_url,
+  };
   const dmSource = route.params?.source || 'social'; // 'marketplace' | 'social'
   const product = route.params?.product;
   

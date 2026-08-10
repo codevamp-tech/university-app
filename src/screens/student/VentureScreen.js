@@ -16,6 +16,20 @@ const { width } = Dimensions.get('window');
 
 const FALLBACK_STARTUPS = [];
 
+function timeAgo(dateString) {
+  if (!dateString) return '';
+  const formattedString = dateString.replace(' ', 'T');
+  const past = new Date(formattedString);
+  if (isNaN(past.getTime())) return '';
+  const diffInSeconds = Math.floor((new Date() - past) / 1000);
+  if (isNaN(diffInSeconds)) return '';
+  if (diffInSeconds < 60) return `${Math.max(0, diffInSeconds)}s ago`;
+  if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
+  if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
+  if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)}d ago`;
+  return past.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
 const getStartupIconInfo = (category, isDark) => {
   const cat = (category || '').toLowerCase();
   if (cat.includes('agri')) {
@@ -469,6 +483,7 @@ const VentureScreen = ({ navigation }) => {
           </View>
         ) : (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.startupScroll} contentContainerStyle={styles.startupContainer}>
+
             {startups.map((startup) => {
               const iconInfo = getStartupIconInfo(startup.category, isDark);
               const milestone = startup.milestone_pct !== undefined ? startup.milestone_pct : 50;
@@ -491,6 +506,20 @@ const VentureScreen = ({ navigation }) => {
                       <Text style={[styles.progressPct, { color: colors.primary }]}>{milestone}%</Text>
                     </View>
                     <View style={[styles.progressBar, { backgroundColor: colors.border }]}><View style={[styles.progressFill, { width: `${milestone}%`, backgroundColor: colors.primary }]} /></View>
+                  </View>
+
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 12, paddingTop: 10, borderTopWidth: 1, borderTopColor: colors.border }}>
+                    <Image source={{ uri: getAvatarUrl(startup.avatar_url || startup.founder_username || startup.founder_name || 'Founder') }} style={{ width: 26, height: 26, borderRadius: 13 }} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 12, fontWeight: '700', color: colors.textPrimary }} numberOfLines={1}>
+                        {startup.founder_name || (startup.founder_username ? `@${startup.founder_username}` : 'Student Researcher')}
+                      </Text>
+                      {startup.created_at ? (
+                        <Text style={{ fontSize: 10, color: colors.textSecondary }}>
+                          Posted {timeAgo(startup.created_at)}
+                        </Text>
+                      ) : null}
+                    </View>
                   </View>
                 </View>
               );

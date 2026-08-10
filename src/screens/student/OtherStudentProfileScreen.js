@@ -16,28 +16,22 @@ const OtherStudentProfileScreen = ({ route, navigation }) => {
   const { student } = route.params || {};
   const { accessToken } = useUser();
   const { colors, isDark } = useTheme();
-  const [connectionStatus, setConnectionStatus] = useState('Follow'); // 'Follow', 'Pending', 'Following', 'Follow Back', 'Connected'
+  const [connectionStatus, setConnectionStatus] = useState('Connect'); // 'Connect', 'Pending', 'Connected'
 
   const [profile, setProfile] = useState(null);
   const [stats, setStats] = useState({ followers: 0, following: 0, connections: 0 });
   const [loading, setLoading] = useState(true);
 
   const [showConnectionsModal, setShowConnectionsModal] = useState(false);
-  const [connectionsModalType, setConnectionsModalType] = useState('followers'); // 'followers' or 'connections'
   const [connectionsList, setConnectionsList] = useState([]);
   const [loadingConnections, setLoadingConnections] = useState(false);
 
-  const handleOpenConnectionsModal = async (type) => {
-    setConnectionsModalType(type);
+  const handleOpenConnectionsModal = async () => {
     setShowConnectionsModal(true);
     setLoadingConnections(true);
     try {
       const data = await getConnectionList(accessToken, student?.id);
-      if (type === 'followers') {
-        setConnectionsList(data.followers || []);
-      } else {
-        setConnectionsList(data.connections || []);
-      }
+      setConnectionsList(data.connections || []);
     } catch (e) {
       console.warn("Error loading connection list:", e);
     } finally {
@@ -61,7 +55,12 @@ const OtherStudentProfileScreen = ({ route, navigation }) => {
           if (profData) {
             setProfile(profData);
             if (profData.connection_status) {
-              setConnectionStatus(profData.connection_status);
+              const statusMap = {
+                'Follow': 'Connect',
+                'Following': 'Connected',
+                'Follow Back': 'Connect',
+              };
+              setConnectionStatus(statusMap[profData.connection_status] || profData.connection_status);
             }
           }
           if (statsData) setStats(statsData);
@@ -77,23 +76,50 @@ const OtherStudentProfileScreen = ({ route, navigation }) => {
   }, [student?.id, accessToken]);
 
   const handleConnect = async () => {
-    if ((connectionStatus === 'Follow' || connectionStatus === 'Follow Back') && student?.id) {
+    if (connectionStatus === 'Connected') {
+      Alert.alert(
+        "Remove Connection",
+        `Remove ${profile?.full_name || student?.name} from your connections?`,
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Remove",
+            style: "destructive",
+            onPress: async () => {
+              setConnectionStatus('Connect');
+              try {
+                if (profile?.connection_id) {
+                  await removeConnectionAPI(accessToken, profile.connection_id);
+                }
+              } catch (e) {
+                console.warn('Remove connection error', e);
+              }
+            }
+          }
+        ]
+      );
+      return;
+    }
+
+    if (connectionStatus === 'Connect' && student?.id) {
       const prevStatus = connectionStatus;
       setConnectionStatus('Pending');
       try {
         await followUserAPI(accessToken, student.id);
       } catch(e) {
         setConnectionStatus(prevStatus);
-        console.warn('Follow error', e);
+        console.warn('Connect error', e);
       }
     }
   };
 
   const handleMessage = () => {
     navigation.navigate('DMConversation', {
+      recipientId: student?.id,
+      recipientName: profile?.full_name || student?.name,
       contact: {
         user_id: student?.id,
-        username: student?.name,
+        username: profile?.full_name || student?.name,
         avatar_url: student?.avatar_url,
       },
       source: 'social',
@@ -114,7 +140,7 @@ const OtherStudentProfileScreen = ({ route, navigation }) => {
     ? (profile.branch ? `${profile.course} ${profile.branch}` : profile.course)
     : (student?.course || 'Student');
 
-  const disableActionBtn = connectionStatus === 'Pending' || connectionStatus === 'Following' || connectionStatus === 'Connected';
+  const disableActionBtn = connectionStatus === 'Pending';
 
   return (
     <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
@@ -133,7 +159,8 @@ const OtherStudentProfileScreen = ({ route, navigation }) => {
         <View style={styles.profileHeroSection}>
           <View style={styles.profileHeroCard}>
             <LinearGradient colors={['#4953ac', '#8b2fc9']} style={styles.heroImgPlaceholder}>
-              <Image source={{ uri: getAvatarUrl(profile?.avatar_url || student.avatar_url || student.name) }} style={{ width: '100%', height: '100%', opacity: 0.6 }} />            </LinearGradient>
+              <Image source={{ uri: getAvatarUrl(profile?.avatar_url || student.avatar_url || student.name) }} style={{ width: '100%', height: '100%', opacity: 0.6 }} />
+            </LinearGradient>
             <LinearGradient colors={['transparent', 'rgba(0,0,0,0.85)']} style={styles.heroOverlay}>
               <Text style={styles.heroName}>{profile?.full_name || student.name}</Text>
             </LinearGradient>
@@ -146,11 +173,7 @@ const OtherStudentProfileScreen = ({ route, navigation }) => {
           <Text style={[styles.batchSubText, { color: colors.textSecondary }]}>Batch of {profile?.batch_year || '2025'} • {profile?.rollno || student.rollNo}</Text>
           
           <View style={styles.capsuleRow}>
-            <TouchableOpacity style={[styles.capsule, { backgroundColor: colors.card, borderColor: colors.border }]} onPress={() => handleOpenConnectionsModal('followers')}>
-              <Text style={styles.capsuleLabel}>FOLLOWERS</Text>
-              <Text style={[styles.capsuleValue, { color: colors.textPrimary }]}>{stats.followers}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.capsule, { backgroundColor: colors.card, borderColor: colors.border }]} onPress={() => handleOpenConnectionsModal('connections')}>
+            <TouchableOpacity style={[styles.capsule, { flex: 1, backgroundColor: colors.card, borderColor: colors.border }]} onPress={handleOpenConnectionsModal}>
               <Text style={styles.capsuleLabel}>CONNECTIONS</Text>
               <Text style={[styles.capsuleValue, { color: colors.textPrimary }]}>{stats.connections}</Text>
             </TouchableOpacity>
@@ -161,19 +184,20 @@ const OtherStudentProfileScreen = ({ route, navigation }) => {
             <TouchableOpacity 
               style={[
                 styles.actionBtnPrimary, 
-                { backgroundColor: colors.primary, shadowColor: colors.primary },
+                { backgroundColor: connectionStatus === 'Connected' ? colors.card : colors.primary, borderWidth: connectionStatus === 'Connected' ? 1 : 0, borderColor: colors.border },
                 disableActionBtn && [styles.actionBtnPending, { backgroundColor: colors.border }]
               ]}
               onPress={handleConnect}
               disabled={disableActionBtn}
             >
               <Ionicons 
-                name={disableActionBtn ? "checkmark-outline" : "person-add-outline"} 
+                name={connectionStatus === 'Connected' ? "checkmark-circle" : (connectionStatus === 'Pending' ? "time-outline" : "person-add-outline")} 
                 size={18} 
-                color={disableActionBtn ? colors.textSecondary : '#FFFFFF'} 
+                color={connectionStatus === 'Connected' ? "#10B981" : (disableActionBtn ? colors.textSecondary : '#FFFFFF')} 
               />
               <Text style={[
                 styles.actionBtnTextPrimary,
+                connectionStatus === 'Connected' && { color: colors.textPrimary },
                 disableActionBtn && { color: colors.textSecondary }
               ]}>
                 {connectionStatus}

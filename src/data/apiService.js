@@ -750,6 +750,39 @@ export async function acceptRequestAPI(token, connection_id) {
   return unwrap(res, null);
 }
 
+export async function removeConnectionAPI(token, connection_id) {
+  const res = await apiCall(`/api/v1/social/connections/${connection_id}`, {
+    method: 'DELETE',
+    headers: authHeaders(token),
+  });
+  return unwrap(res, null);
+}
+
+export async function getPostLikersAPI(token, postId) {
+  const res = await apiCall(`/api/v1/social/posts/${postId}/likers`, {
+    method: 'GET',
+    headers: authHeaders(token),
+  });
+  return unwrap(res, []);
+}
+
+export async function getStoryCommentsAPI(token, storyId) {
+  const res = await apiCall(`/api/v1/social/stories/${storyId}/comments`, {
+    method: 'GET',
+    headers: authHeaders(token),
+  });
+  return unwrap(res, []);
+}
+
+export async function addStoryCommentAPI(token, storyId, content) {
+  const res = await apiCall(`/api/v1/social/stories/${storyId}/comments`, {
+    method: 'POST',
+    headers: authHeaders(token),
+    body: JSON.stringify({ content }),
+  });
+  return unwrap(res, null);
+}
+
 export async function connectionStatsAPI(token, userId = null) {
   const url = userId ? `/api/v1/social/connections/stats?user_id=${userId}` : `/api/v1/social/connections/stats`;
   const res = await apiCall(url, {
@@ -1252,6 +1285,14 @@ export async function viewStoryAPI(token, storyId) {
 export async function likeStoryAPI(token, storyId) {
   const res = await apiCall(`/api/v1/social/stories/${storyId}/like`, {
     method: 'POST',
+    headers: authHeaders(token),
+  });
+  return unwrap(res);
+}
+
+export async function deleteStoryAPI(token, storyId) {
+  const res = await apiCall(`/api/v1/social/stories/${storyId}`, {
+    method: 'DELETE',
     headers: authHeaders(token),
   });
   return unwrap(res);

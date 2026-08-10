@@ -172,7 +172,7 @@ const ChatScreen = ({ navigation, route }) => {
             return matchBySlug || chs[0];
           });
         }
-        if (dms?.length) {
+        if (Array.isArray(dms)) {
           const enrichedDms = dms.map(dm => ({
             ...dm,
             username: dm.full_name || dm.username,
