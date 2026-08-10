@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "UniCampus Non-Med",
+    "name": "University Portal",
     "slug": "university-portal",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -20,7 +20,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.unicampus.nonmed",
+      "bundleIdentifier": "com.university.portal",
       "entitlements": {
         "com.apple.developer.healthkit": true,
         "com.apple.developer.healthkit.background-delivery": true
@@ -39,7 +39,7 @@
         "foregroundImage": "./assets/unicampus-icon.png",
         "backgroundColor": "#F0F4FF"
       },
-      "package": "com.unicampus.nonmed",
+      "package": "com.university.portal",
       "edgeToEdgeEnabled": false,
       "permissions": [
         "android.permission.health.READ_STEPS",

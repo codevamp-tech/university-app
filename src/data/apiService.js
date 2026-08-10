@@ -1816,13 +1816,162 @@ export async function getFacultyTopics(token) {
 }
 
 /**
+ * Direct SRMS ERP call to fetch punch history and leave records for any faculty member by Employee ID.
+ */
+export async function fetchFacultyPunchesSRMS(empId) {
+  if (!empId) return { punches: [], absentRecords: [] };
+  const punches = [];
+  const absentRecords = [];
+
+  const parseDateJson = (dateStr) => {
+    if (!dateStr) return null;
+    const match = String(dateStr).match(/\d+/);
+    if (match) {
+      const ts = parseInt(match[0], 10);
+      const d = new Date(ts);
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return { dateStr: `${year}-${month}-${day}`, fullDate: d };
+    }
+    return null;
+  };
+
+  // 1. Fetch current month punches (GetEmpInOutTime)
+  try {
+    const res1 = await fetch(`https://myportal.srms.ac.in/ops/Home/GetEmpInOutTime?empid=${encodeURIComponent(empId)}&DEVICECD=19185`, {
+      headers: { 'User-Agent': 'Mozilla/5.0' },
+    });
+    const data1 = await res1.json();
+    if (Array.isArray(data1)) {
+      data1.forEach(item => {
+        const parsed = parseDateJson(item.logdate);
+        if (!parsed) return;
+        const { dateStr } = parsed;
+        
+        const intime = (item.intime || '').trim();
+        if (intime && intime !== 'NOT PROCESSED' && intime !== '00:00:00') {
+          punches.push({
+            empid: empId,
+            device_cd: '19185',
+            punch_time: `${dateStr}T${intime}+05:30`,
+            in_out: 'IN',
+            status: item.attsts || 'PRESENT',
+          });
+        }
+        const outtime = (item.outtime || '').trim();
+        if (outtime && outtime !== 'NOT PROCESSED' && outtime !== '00:00:00') {
+          punches.push({
+            empid: empId,
+            device_cd: '19185',
+            punch_time: `${dateStr}T${outtime}+05:30`,
+            in_out: 'OUT',
+            status: item.attsts || 'PRESENT',
+          });
+        }
+      });
+    }
+  } catch (err) {
+    console.warn('[apiService] fetchFacultyPunchesSRMS InOut failed:', err);
+  }
+
+  // 2. Fetch previous month punches & leaves (GetPrevMnthAttendance)
+  try {
+    const res2 = await fetch(`https://myportal.srms.ac.in/ops/Home/GetPrevMnthAttendance?empid=${encodeURIComponent(empId)}`, {
+      headers: { 'User-Agent': 'Mozilla/5.0' },
+    });
+    const data2 = await res2.json();
+    if (Array.isArray(data2)) {
+      data2.forEach(item => {
+        const parsed = parseDateJson(item.AttDate);
+        if (!parsed) return;
+        const { dateStr, fullDate } = parsed;
+        const devSts = (item.devicests || '').toUpperCase();
+        
+        const intime = (item.Inpuchtime || '').trim();
+        const outtime = (item.Outpuchtime || '').trim();
+
+        const hasIn = intime && intime !== 'NOT PROCESSED' && intime !== '00:00:00';
+        const hasOut = outtime && outtime !== 'NOT PROCESSED' && outtime !== '00:00:00';
+
+        if (hasIn) {
+          punches.push({
+            empid: empId,
+            device_cd: '19185',
+            punch_time: `${dateStr}T${intime}+05:30`,
+            in_out: 'IN',
+            status: devSts || 'PRESENT',
+          });
+        }
+        if (hasOut) {
+          punches.push({
+            empid: empId,
+            device_cd: '19185',
+            punch_time: `${dateStr}T${outtime}+05:30`,
+            in_out: 'OUT',
+            status: devSts || 'PRESENT',
+          });
+        }
+
+        if (!hasIn && !hasOut && devSts && devSts !== 'WEEK OFF' && devSts !== 'PRESENT' && devSts !== 'N.A') {
+          const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+          absentRecords.push({
+            date: dateStr,
+            day_name: days[fullDate.getDay()],
+            is_present: false,
+            status: devSts || 'ON LEAVE',
+          });
+        }
+      });
+    }
+  } catch (err) {
+    console.warn('[apiService] fetchFacultyPunchesSRMS PrevMonth failed:', err);
+  }
+
+  punches.sort((a, b) => new Date(b.punch_time) - new Date(a.punch_time));
+  absentRecords.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+  return { punches, absentRecords };
+}
+
+/**
  * GET /api/v1/faculty/attendance
- * Returns faculty punch history records.
+ * Returns faculty punch history records and leave records.
  */
 export async function getFacultyAttendance(token, empId = null) {
-  const url = empId 
-    ? `/api/v1/faculty/attendance?emp_id=${encodeURIComponent(empId)}`
-    : '/api/v1/faculty/attendance';
+  if (empId) {
+    let punches = [];
+    let absentRecords = [];
+
+    // Always fetch SRMS ERP for live punches & leave history
+    try {
+      const srmsRes = await fetchFacultyPunchesSRMS(empId);
+      if (srmsRes) {
+        punches = srmsRes.punches || [];
+        absentRecords = srmsRes.absentRecords || [];
+      }
+    } catch (e) {
+      console.warn('[apiService] fetchFacultyPunchesSRMS error:', e);
+    }
+
+    // Also fetch backend proxy punches if available
+    try {
+      const url = `/api/v1/faculty/attendance?emp_id=${encodeURIComponent(empId)}`;
+      const res = await apiCall(url, { headers: authHeaders(token) });
+      const backendData = unwrap(res, []);
+      if (Array.isArray(backendData) && backendData.length > 0) {
+        if (punches.length === 0) {
+          punches = backendData;
+        }
+      }
+    } catch (e) {
+      console.warn('[apiService] getFacultyAttendance backend call failed:', e);
+    }
+
+    return { punches, absentRecords };
+  }
+
+  const url = '/api/v1/faculty/attendance';
   const res = await apiCall(url, {
     headers: authHeaders(token),
   });

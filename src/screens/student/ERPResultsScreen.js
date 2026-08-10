@@ -1377,10 +1377,30 @@ const ERPResultsScreen = ({ route, navigation }) => {
         return;
       }
 
+      // ── LOCKED: getPhaseForPaper ─────────────────────────────────────────────
+      // The SRMS ERP stores Yr_FK=1 on early clinical sessionals (e.g. General
+      // Medicine orientation exams). We must NOT blindly trust Yr_FK=1 → '1st Prof'
+      // for those subjects. However, Community Medicine genuinely has Yr_FK=1 papers
+      // (Theory/Practical) that ARE 1st Prof — and getPhaseForSubject classifies
+      // Community Medicine as '3rd Prof Part I' (because the 3rd Prof postings are
+      // the dominant use). So we cannot gate on subjectPhaseByName === '1st Prof'.
+      //
+      // RULE: Only suppress Yr_FK=1 → '1st Prof' when defaultPhase === '3rd Prof Part II'.
+      //       That is the clinical fallback (General Medicine, General Surgery, etc.).
+      //       Anatomy/Physiology/Biochemistry → defaultPhase='1st Prof'  → Yr_FK=1 ✓
+      //       Community Medicine             → defaultPhase='3rd Prof Part I' → Yr_FK=1 ✓ (1st Prof paper)
+      //       General Medicine               → defaultPhase='3rd Prof Part II' → Yr_FK=1 ✗ blocked
+      //
+      // DO NOT modify this logic — see .agents/AGENTS.md for the locked subject list.
       const getPhaseForPaper = (paperName, dbYrFk, defaultPhase) => {
         if (dbYrFk) {
           const yr = String(dbYrFk);
-          if (yr === '1') return '1st Prof';
+          // Block Yr_FK=1 → '1st Prof' ONLY for clinical subjects (defaultPhase='3rd Prof Part II').
+          // All other subjects (including Community Medicine) trust Yr_FK=1 normally.
+          if (yr === '1') {
+            if (defaultPhase === '3rd Prof Part II') return defaultPhase; // clinical subject, suppress leak
+            return '1st Prof';
+          }
           if (yr === '2') return '2nd Prof';
           if (yr === '3') return '3rd Prof Part I';
           if (yr === '4') return '3rd Prof Part II';
@@ -1397,6 +1417,7 @@ const ERPResultsScreen = ({ route, navigation }) => {
         }
         return defaultPhase;
       };
+
 
       const byPhase = {};
       listData.forEach(item => {

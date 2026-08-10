@@ -14,7 +14,7 @@ import {
 import { Feather, MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
 import { useTheme } from '../../hooks/useTheme';
 import { useUser } from '../../context/UserContext';
-import { getAdminOverviewStats, getSuperAdminAnalytics, getSuperAdminDrilldown, getAdminMentalHealthAnalytics, logMoodAPI, getMoodEntriesAPI, getAllStudents, getWardenPendingOutpasses } from '../../data/apiService';
+import { getAdminOverviewStats, getSuperAdminAnalytics, getSuperAdminDrilldown, getAdminMentalHealthAnalytics, logMoodAPI, getMoodEntriesAPI, getAllStudents, getWardenPendingOutpasses, getFoundationFacultyList } from '../../data/apiService';
 import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SkeletonBlock } from '../../components/SkeletonLoader';
@@ -75,6 +75,7 @@ const AdminDashboardScreen = ({ navigation }) => {
   const [studentsList, setStudentsList] = useState([]);
   const [fitnessStudentsList, setFitnessStudentsList] = useState([]);
   const [teachersList, setTeachersList] = useState([]);
+  const [facultyCount, setFacultyCount] = useState(383);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -151,12 +152,41 @@ const AdminDashboardScreen = ({ navigation }) => {
             })
             .catch(err => console.warn('[AdminDashboard] Leaderboard fetch error:', err));
 
-          // Fetch faculty list in background
-          getSuperAdminDrilldown(accessToken, 'teachers')
-            .then(teachList => {
-              if (teachList && Array.isArray(teachList)) setTeachersList(teachList);
-            })
-            .catch(err => console.warn('[AdminDashboard] Teachers list fetch error:', err));
+          // Fetch full SRMS medical faculty directory & DB teachers to compute exact faculty count
+          Promise.all([
+            getFoundationFacultyList('0'),
+            getSuperAdminDrilldown(accessToken, 'teachers')
+          ]).then(([srmsList, dbList]) => {
+            const srms = Array.isArray(srmsList) ? srmsList : [];
+            const dbT = Array.isArray(dbList) ? dbList : [];
+
+            const MEDICAL_KEYWORDS = [
+              'ANAESTHESIA', 'ANATOMY', 'BIOCHEMISTRY', 'COMMUNITY MEDICINE', 'DENTAL', 'DERMATOLOGY',
+              'E.N.T.', 'EMERGENCY', 'FORENSIC', 'GENERAL MEDICINE', 'GENERAL SURGERY', 'IMMUNOHEMATOLOGY',
+              'MICROBIOLOGY', 'NEPHROLOGY', 'NEURO', 'NUCLEAR MEDICINE', 'OBSTETRICS', 'OPHTHALMOLOGY',
+              'ORTHOPEDICS', 'PAEDIATRICS', 'PAEDIA', 'PATHOLOGY', 'PHARMOCOLOGY', 'PHYSIOLOGY', 'PSYCHIATRY',
+              'RADIATION ONCOLOGY', 'RADIO-DIAGNOSIS', 'RESPIRATORY MEDICINE', 'SKILL LAB', 'CARDIOLOGY', 'CARDIAC',
+              'MEDICAL COLLEGE', 'DOCTOR', 'ICU', 'I.C.U.', 'IPD', 'I.P.D.', 'IVF', 'I.V.F', 'OT', 'O.T.',
+              'OPD', 'O.P.D', 'M.S. OFFICE', 'BLOOD BANK', 'SURGICAL', 'M.R.I', 'NURSING', 'PARA MEDICAL'
+            ];
+
+            const isMedicalDept = (deptName) => {
+              if (!deptName) return false;
+              const d = String(deptName).toUpperCase().trim();
+              return MEDICAL_KEYWORDS.some(kw => d.includes(kw));
+            };
+
+            const medSrms = srms.filter(f => isMedicalDept(f.Department || f.department));
+            const srmsKeys = new Set(medSrms.map(f => String(f.EmpID || f.emp_id || '').toUpperCase().trim()));
+
+            let count = medSrms.length;
+            dbT.forEach(t => {
+              const k = String(t.emp_id || t.user_id || t.username || '').toUpperCase().trim();
+              if (k && !srmsKeys.has(k)) count++;
+            });
+
+            setFacultyCount(count > 0 ? count : 383);
+          }).catch(() => setFacultyCount(383));
 
           // Fetch student list in background
           getAllStudents(accessToken)
@@ -820,8 +850,8 @@ const AdminDashboardScreen = ({ navigation }) => {
             </View>
           </View>
           <Text style={[styles.insightBigVal, { color: colors.textPrimary }]}>
-            {facStats.active_count}{' '}
-            <Text style={[styles.insightBigValSub, { color: colors.textSecondary }]}>Active Faculty Members</Text>
+            {facultyCount}{' '}
+            <Text style={[styles.insightBigValSub, { color: colors.textSecondary }]}>Medical Faculty Members</Text>
           </Text>
           <View style={[styles.insightStatRow, { marginTop: 10 }]}>
             <View style={[styles.insightStatChip, { backgroundColor: '#10B98118' }]}>

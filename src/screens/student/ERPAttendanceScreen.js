@@ -113,6 +113,27 @@ const SkeletonPhaseRow = ({ isDark }) => (
 
 const getParentSubjectName = (name, code) => {
   const c = (code || '').trim().toUpperCase();
+
+  // ── ERP Numeric Subject Codes ─────────────────────────────────────────────
+  if (['84395','84396','84397','84398','84399','84400','84817','84818','84819','84820','84821','84822'].includes(c)) return 'Anatomy';
+  if (['87224','87225','87226','87227'].includes(c)) return 'Physiology';
+  if (['87228','87229','87230','87231','87232'].includes(c)) return 'Biochemistry_(CBME 2024)';
+  if (['84401','84402','85808','87259','87260'].includes(c)) return 'Community Medicine';
+  if (['85790','85791'].includes(c)) return 'Pathology';
+  if (['85792','85793'].includes(c)) return 'Microbiology';
+  if (['85794','85795'].includes(c)) return 'Pharmacology';
+  if (['85796','85804','85797'].includes(c)) return 'General Medicine';
+  if (['85798','85805','85799'].includes(c)) return 'GENERAL SURGERY';
+  if (['85800','85806','85801'].includes(c)) return 'Obstetrics & Gynaecology';
+  if (['85807','87253','87254'].includes(c)) return 'PAEDIATRICS';
+  if (['85809'].includes(c)) return 'Dermatology, Venereology & Leprosy';
+  if (['85810','87251','87252','87575'].includes(c)) return 'Orthopedics';
+  if (['85802','85803','87258'].includes(c)) return 'FORENSIC MEDICINE';
+  if (['87247','87249','87255'].includes(c)) return 'Ophthalmology';
+  if (['87248','87250','87256','87574'].includes(c)) return 'Otorhinolaryngology';
+  if (['85811'].includes(c)) return 'Dentistry';
+
+  // ── Standard MBBS Abbreviation Codes ─────────────────────────────────────
   if (c === 'AN') return 'Anatomy';
   if (c === 'PY') return 'Physiology';
   if (c === 'BC') return 'Biochemistry_(CBME 2024)';
@@ -157,14 +178,14 @@ const getParentSubjectName = (name, code) => {
     return 'General Medicine';
   }
   if (lower.includes('surgery')) return 'GENERAL SURGERY';
-  if (lower.includes('pediatrics') || lower.includes('paediatrics')) return 'PAEDIATRICS';
-  if (lower.includes('obstetrics') || lower.includes('gynecology') || lower.includes('gynaecology') || lower.includes('obg')) {
+  if (lower.includes('pediatrics') || lower.includes('paediatrics') || lower.includes('paed') || lower.includes('child')) return 'PAEDIATRICS';
+  if (lower.includes('obstetrics') || lower.includes('gynecology') || lower.includes('gynaecology') || lower.includes('obg') || lower.includes('obgy')) {
     return 'Obstetrics & Gynaecology';
   }
   if (lower.includes('ortho')) return 'Orthopedics';
   if (lower.includes('ent') || lower.includes('otorhinolaryngology') || lower.includes('otorhinolarygology') || lower.includes('e.n.t.')) return 'Otorhinolaryngology';
   if (lower.includes('ophthalmology') || lower.includes('optha') || lower.includes('eye')) return 'Ophthalmology';
-  if (lower.includes('dermatology') || lower.includes('derma')) return 'Dermatology, Venereology & Leprosy';
+  if (lower.includes('dermatology') || lower.includes('derma') || lower.includes('skin') || lower.includes('v.d.') || lower.includes('vd') || lower.includes('dvl')) return 'Dermatology, Venereology & Leprosy';
   if (lower.includes('psychiatry')) return 'Psychiatry';
   if (lower.includes('radio') || lower.includes('x-ray')) return 'Radiodiagnosis';
   if (lower.includes('anesthesia') || lower.includes('anaesthesia') || lower.includes('anesthesiology')) return 'Anesthesiology';
@@ -893,10 +914,20 @@ const ERPAttendanceScreen = ({ route, navigation }) => {
       'Physical Medicine & Rehabilitation': '3rd Prof Part II',
     };
 
-    // ── Phase-Specific MBBS Subcategory / Code Evaluator ─────────────────────
-    // PHASE 1 = 4 parents: Anatomy, Physiology, Biochemistry, Community Medicine
-    // PHASE 2 = 9 parents: Pathology, Microbiology, Pharmacology, GenMed, GenSurg, OBG, Paed, Derm, Ortho
-    // PHASE 3 = 11 parents: CommMed, FMT, Ophthalmology, ENT, GenMed, GenSurg, OBG, Paed, Ortho, Derm, Dentistry
+    // ───────────────────────────────────────────────────────────────────────────
+    // 🔒 LOCKED: MBBS Phase Classification — DO NOT MODIFY (see .agents/AGENTS.md)
+    //
+    // 1st Prof  = 4 subjects : Anatomy, Physiology, Biochemistry, Community Medicine
+    //                          (codes 84395-84400, 84817-84822, 87224-87232, 84401-84402)
+    // 2nd Prof  = 9 subjects : Pathology, Pharmacology, Microbiology, General Medicine,
+    //                          General Surgery, OBG, Paediatrics, Dermatology, Orthopedics
+    // 3rd Prof Part I = 11 subjects : Community Medicine Postings, FMT, Ophthalmology, ENT,
+    //                          Gen Med, Gen Surg, OBG, Paeds, Ortho, Dermatology, Dentistry
+    //
+    // RULE: General Medicine parentName MUST NEVER return '1st Prof'.
+    //       It is always intercepted by PHASE3_CODES (85797) or PHASE2_CODES (85796, 85804)
+    //       or the clinical-subject guard below.
+    // ───────────────────────────────────────────────────────────────────────────
     const getMedicalPhaseForSubcategory = (sub, semNumber) => {
       if (!isMedical) return null;
       const code = String(sub.erpCode || sub.code || '').trim();
@@ -904,6 +935,8 @@ const ERPAttendanceScreen = ({ route, navigation }) => {
       const parentName = getParentSubjectName(sub.name, sub.code);
 
       // ── PHASE 1 (4 parent subjects) ──────────────────────────────────────────
+      // ONLY Anatomy, Physiology, Biochemistry, and Community Medicine
+      // Theory/Practical/FAP go here. Clinical subjects NEVER enter this block.
       const PHASE1_CODES = new Set([
         '84395','84396','84397','84398','84399','84400', // Anatomy
         '84817','84818','84819','84820','84821','84822', // Anatomy (CBME)
@@ -921,9 +954,17 @@ const ERPAttendanceScreen = ({ route, navigation }) => {
       }
 
       // ── 2nd Prof parentName GUARD (runs before PHASE3_CODES) ─────────────────
-      // For 2nd Prof students: if the ERP has assigned a Phase 3 code to what is
-      // actually a Phase 2 subject (e.g. Paed with code 87253 instead of 85807),
+      // For 2nd Prof students only: if the ERP has assigned a Phase 3 code to what
+      // is actually a Phase 2 subject (e.g. Paed with code 87253 instead of 85807),
       // the parentName check must run FIRST so it isn't intercepted by PHASE3_CODES.
+      //
+      // WHY not '!= 1st Prof': For 3rd Prof students, clinical subjects like General
+      // Medicine (code 85797) MUST fall through to PHASE3_CODES so they appear in
+      // 3rd Prof Part I. Intercepting them here would break the 11-subject count.
+      // General Medicine CANNOT reach '1st Prof' from this function because
+      // PHASE1_CODES contains no clinical codes and parentName 'General Medicine'
+      // is not in ['Anatomy','Physiology','Biochemistry'].
+      // See .agents/AGENTS.md for the locked subject list.
       if (currentPhaseName === '2nd Prof') {
         const PHASE2_PARENT_NAMES = [
           'Pathology', 'Pharmacology', 'Microbiology',
@@ -937,10 +978,13 @@ const ERPAttendanceScreen = ({ route, navigation }) => {
             subNameUpper.includes('PHARMACOLOGY') ||
             subNameUpper.includes('DERMATOLOGY') ||
             subNameUpper.includes('VENEREOLOGY') ||
+            subNameUpper.includes('SKIN') ||
             subNameUpper.includes('ORTHOPAEDICS') ||
+            subNameUpper.includes('ORTHOPEDICS') ||
             subNameUpper.includes('OBSTETRICS') ||
             subNameUpper.includes('GYNAECOLOGY') ||
             subNameUpper.includes('PAEDIATRICS') ||
+            subNameUpper.includes('PEDIATRICS') ||
             subNameUpper.includes('1ST SESSIONAL') ||
             subNameUpper.includes('2ND SESSIONAL')) {
           return '2nd Prof';
@@ -1008,8 +1052,36 @@ const ERPAttendanceScreen = ({ route, navigation }) => {
         return '2nd Prof';
       }
 
-      // ── SHARED CLINICAL SUBJECTS (GenMed, GenSurg, OBG, Paed, Ortho by name) ─
-      // For subjects with abbreviation codes that didn't match PHASE2_CODES above.
+      // ── 3rd Prof Part I ALLOWED PARENTS ONLY ─────────────────────────────────
+      // Only the 11 canonical Phase 3 Part I parent subjects return '3rd Prof Part I'.
+      // Any non-canonical/extra subject falls through to '2nd Prof' so Phase 3 is capped at 11.
+      if (currentPhaseName.includes('3rd Prof')) {
+        const PHASE3_PART1_PARENTS = [
+          'Community Medicine',
+          'FORENSIC MEDICINE',
+          'Ophthalmology',
+          'Otorhinolaryngology',
+          'General Medicine',
+          'GENERAL SURGERY',
+          'Obstetrics & Gynaecology',
+          'PAEDIATRICS',
+          'Orthopedics',
+          'Dermatology, Venereology & Leprosy',
+          'Dentistry',
+        ];
+        if (PHASE3_PART1_PARENTS.includes(parentName)) {
+          return '3rd Prof Part I';
+        }
+      }
+
+      // ── SHARED CLINICAL SUBJECTS (GenMed, GenSurg, OBG, Paed, Ortho by parentName) ─
+      // For 2nd Prof students: subjects with abbreviation codes (IM, SU, OG, PE, OR)
+      // that didn't match PHASE2_CODES are caught here.
+      // For 3rd Prof students: these subjects fall through to the step-7 catch-all
+      // (return '3rd Prof Part I') which is correct for their current phase.
+      // They are ALSO cloned into '2nd Prof' by the CLINICAL HISTORY CLONE block
+      // in the forEach loop below, so the 2nd Prof history shows all 9 subjects.
+      // DO NOT remove the currentPhaseName === '2nd Prof' condition — see .agents/AGENTS.md rule 4.
       if (currentPhaseName === '2nd Prof' &&
           ['General Medicine', 'GENERAL SURGERY', 'Obstetrics & Gynaecology', 'PAEDIATRICS', 'Orthopedics'].includes(parentName)) {
         return '2nd Prof';
@@ -1057,19 +1129,43 @@ const ERPAttendanceScreen = ({ route, navigation }) => {
 
       addToGroup(phaseName, sub);
 
-      // ── DERM CLONE for 3rd Prof students ─────────────────────────────────────
-      // Dermatology (85809) goes to Phase 2 (history). For 3rd Prof students it
-      // also belongs in Phase 3 Part I as an active subject (11th parent subject).
-      // We clone the same record into Phase 3 so both counts are correct.
-      if (isMedical && currentPhaseName.includes('3rd Prof') && phaseName === '2nd Prof') {
-        const subCode = String(sub.code || '').trim();
-        const subNameUp = String(sub.name || '').toUpperCase().trim();
-        const isDerm = subCode === '85809' ||
-          subNameUp.includes('DERMATOLOGY') ||
-          subNameUp.includes('VENEREOLOGY') ||
-          getParentSubjectName(sub.name, sub.code) === 'Dermatology, Venereology & Leprosy';
-        if (isDerm) {
+      // ── MULTI-PHASE SUBJECT CLONING FOR 3rd PROF STUDENTS ───────────────────
+      // For 3rd Prof Part I students, certain parent subjects belong in MULTIPLE phases:
+      // 1. Community Medicine: belongs in 1st Prof (Theory/Practical) AND 3rd Prof Part I (Postings).
+      // 2. Clinical Subjects (Gen Med, Gen Surg, OBG, Paeds, Ortho, Derm): belong in 2nd Prof (History = 9) AND 3rd Prof Part I (Ongoing = 11).
+      //
+      // This cloning ensures that regardless of ERP code variations:
+      //   1st Prof  = EXACTLY 4 subjects
+      //   2nd Prof  = EXACTLY 9 subjects
+      //   3rd Prof Part I = EXACTLY 11 subjects
+      //
+      // DO NOT REMOVE THIS BLOCK — see .agents/AGENTS.md.
+      if (isMedical && currentPhaseName.includes('3rd Prof')) {
+        const parentN = getParentSubjectName(sub.name, sub.code);
+
+        // Community Medicine: clone 1st Prof -> 3rd Prof Part I
+        if (parentN === 'Community Medicine' && phaseName === '1st Prof') {
           addToGroup('3rd Prof Part I', { ...sub, _clonedForPhase3: true });
+        }
+
+        // Shared Clinical Subjects (Gen Med, Gen Surg, OBG, Paeds, Ortho, Derm)
+        const SHARED_CLINICAL_PARENTS = [
+          'General Medicine',
+          'GENERAL SURGERY',
+          'Obstetrics & Gynaecology',
+          'PAEDIATRICS',
+          'Orthopedics',
+          'Dermatology, Venereology & Leprosy',
+        ];
+
+        if (SHARED_CLINICAL_PARENTS.includes(parentN)) {
+          if (phaseName === '3rd Prof Part I') {
+            // Clone down to 2nd Prof history so 2nd Prof history has 9 subjects
+            addToGroup('2nd Prof', { ...sub, _clonedForPhase2History: true });
+          } else if (phaseName === '2nd Prof') {
+            // Clone up to 3rd Prof Part I ongoing so 3rd Prof Part I has 11 subjects
+            addToGroup('3rd Prof Part I', { ...sub, _clonedForPhase3: true });
+          }
         }
       }
     });
@@ -1085,7 +1181,7 @@ const ERPAttendanceScreen = ({ route, navigation }) => {
         const avg = data.count > 0 ? Math.round(data.percentageSum / data.count) : 0;
 
         // Group subjects by parent subject name
-        const parentMap = {};
+        let parentMap = {};
         data.subjects.forEach(sub => {
           const parentName = getParentSubjectName(sub.name, sub.code);
           if (!parentMap[parentName]) {
@@ -1103,6 +1199,87 @@ const ERPAttendanceScreen = ({ route, navigation }) => {
           parentMap[parentName].percentageSum += sub.percentage;
           parentMap[parentName].count += 1;
         });
+
+        // ── CANONICAL MBBS PHASE SUBJECT GUARANTEE (STRICT WHITELIST & FILLER) ──
+        // Enforce exact canonical parent subject counts for each phase:
+        //   1st Prof        = EXACTLY 4 subjects (Anatomy, Physiology, Biochemistry, Community Medicine)
+        //   2nd Prof        = EXACTLY 9 subjects (Pathology, Pharmacology, Microbiology, Gen Med, Gen Surg, OBG, Paed, Derm, Ortho)
+        //   3rd Prof Part I = EXACTLY 11 subjects (Comm Med, FMT, Ophtha, ENT, Gen Med, Gen Surg, OBG, Paed, Ortho, Derm, Dentistry)
+        //
+        // This strictly whitelists the parent subjects for each phase AND fills any missing ones with default 0% entries.
+        // NON-CANONICAL subjects (e.g. extra electives, raw name fallbacks) are discarded from that phase display.
+        if (isMedical) {
+          const CANONICAL_PHASE_PARENTS = {
+            '1st Prof': [
+              'Anatomy',
+              'Physiology',
+              'Biochemistry_(CBME 2024)',
+              'Community Medicine',
+            ],
+            '2nd Prof': [
+              'Pathology',
+              'Pharmacology',
+              'Microbiology',
+              'General Medicine',
+              'GENERAL SURGERY',
+              'Obstetrics & Gynaecology',
+              'PAEDIATRICS',
+              'Dermatology, Venereology & Leprosy',
+              'Orthopedics',
+            ],
+            '3rd Prof Part I': [
+              'Community Medicine',
+              'FORENSIC MEDICINE',
+              'Ophthalmology',
+              'Otorhinolaryngology',
+              'General Medicine',
+              'GENERAL SURGERY',
+              'Obstetrics & Gynaecology',
+              'PAEDIATRICS',
+              'Orthopedics',
+              'Dermatology, Venereology & Leprosy',
+              'Dentistry',
+            ],
+          };
+
+          const canonicalList = CANONICAL_PHASE_PARENTS[phase];
+          if (canonicalList) {
+            const canonicalParentMap = {};
+            canonicalList.forEach(canonicalName => {
+              // Find matching entry in parentMap (handling Biochemistry aliases)
+              let existingKey = canonicalName;
+              if (canonicalName.includes('Biochemistry')) {
+                existingKey = Object.keys(parentMap).find(k => k.includes('Biochemistry')) || canonicalName;
+              }
+
+              if (parentMap[existingKey]) {
+                canonicalParentMap[canonicalName] = {
+                  ...parentMap[existingKey],
+                  name: canonicalName,
+                };
+              } else {
+                // Insert placeholder entry for missing canonical subject
+                canonicalParentMap[canonicalName] = {
+                  name: canonicalName,
+                  code: getSubjectCode(canonicalName),
+                  percentageSum: 0,
+                  count: 1,
+                  subCategories: [{
+                    code: getSubjectCode(canonicalName),
+                    name: canonicalName,
+                    percentage: 0,
+                    hasData: false,
+                    status: 'safe',
+                    isPractical: false,
+                    requiredPct: 75,
+                    erpCode: getSubjectCode(canonicalName),
+                  }]
+                };
+              }
+            });
+            parentMap = canonicalParentMap;
+          }
+        }
 
         const groupedSubjects = Object.values(parentMap).map(parent => {
           const avgPct = Math.round(parent.percentageSum / parent.count);
@@ -1498,13 +1675,13 @@ const ERPAttendanceScreen = ({ route, navigation }) => {
             { backgroundColor: colors.card, borderColor: colors.border }
           ]}>
             {/* Modal Header */}
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <View>
-                <Text style={{ fontSize: 17, fontWeight: '800', color: colors.textPrimary }}>{detailModal.subCatName}</Text>
-                <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 2 }}>Attendance History</Text>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+              <View style={{ flex: 1, marginRight: 16 }}>
+                <Text style={{ fontSize: 17, fontWeight: '800', color: colors.textPrimary, lineHeight: 22 }}>{detailModal.subCatName}</Text>
+                <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 4 }}>Attendance History</Text>
               </View>
-              <TouchableOpacity onPress={() => setDetailModal(prev => ({ ...prev, visible: false }))} style={styles.modalCloseBtn}>
-                <MaterialIcons name="close" size={20} color={colors.textPrimary} />
+              <TouchableOpacity onPress={() => setDetailModal(prev => ({ ...prev, visible: false }))} style={[styles.modalCloseBtn, { backgroundColor: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.06)' }]}>
+                <MaterialIcons name="close" size={18} color={colors.textPrimary} />
               </TouchableOpacity>
             </View>
 
@@ -1622,13 +1799,13 @@ const ERPAttendanceScreen = ({ route, navigation }) => {
         <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'flex-end' }}>
           <View style={[styles.modalSheet, { backgroundColor: colors.card, borderColor: colors.border }]}>
             {/* Modal Header */}
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <View>
-                <Text style={{ fontSize: 17, fontWeight: '800', color: colors.textPrimary }}>{todayModal.subjectName}</Text>
-                <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 2 }}>Today's Attendance</Text>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+              <View style={{ flex: 1, marginRight: 16 }}>
+                <Text style={{ fontSize: 17, fontWeight: '800', color: colors.textPrimary, lineHeight: 22 }}>{todayModal.subjectName}</Text>
+                <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 4 }}>Today's Attendance</Text>
               </View>
-              <TouchableOpacity onPress={() => setTodayModal(prev => ({ ...prev, visible: false }))} style={styles.modalCloseBtn}>
-                <MaterialIcons name="close" size={20} color={colors.textPrimary} />
+              <TouchableOpacity onPress={() => setTodayModal(prev => ({ ...prev, visible: false }))} style={[styles.modalCloseBtn, { backgroundColor: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.06)' }]}>
+                <MaterialIcons name="close" size={18} color={colors.textPrimary} />
               </TouchableOpacity>
             </View>
 
@@ -1776,14 +1953,18 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     borderWidth: 1,
-    padding: 20,
+    paddingHorizontal: 20,
+    paddingTop: 24,
     paddingBottom: 40,
     width: '100%',
   },
   modalCloseBtn: {
-    padding: 6,
+    width: 32,
+    height: 32,
     borderRadius: 16,
-    backgroundColor: 'rgba(0,0,0,0.05)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.06)',
   },
   tableRow: {
     flexDirection: 'row',

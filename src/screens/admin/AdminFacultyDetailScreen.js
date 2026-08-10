@@ -5,9 +5,8 @@ import {
   StyleSheet,
   ScrollView,
   SafeAreaView,
-  RefreshControl,
   TouchableOpacity,
-  ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -16,13 +15,14 @@ import { useUser } from '../../context/UserContext';
 import { getAdminFacultyDetail, getFacultyAttendance } from '../../data/apiService';
 import { SkeletonBlock } from '../../components/SkeletonLoader';
 
-const AdminFacultyDetailScreen = ({ navigation, route }) => {
+const AdminFacultyDetailScreen = ({ route, navigation }) => {
   const { teacher } = route.params || {};
   const { colors, isDark } = useTheme();
   const { accessToken } = useUser();
 
   const [data, setData] = useState(null);
   const [punches, setPunches] = useState([]);
+  const [srmsAbsentRecords, setSrmsAbsentRecords] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState('attendance');
@@ -37,7 +37,14 @@ const AdminFacultyDetailScreen = ({ navigation, route }) => {
         getFacultyAttendance(accessToken, empId),
       ]);
       if (result) setData(result);
-      if (Array.isArray(punchesData)) setPunches(punchesData);
+      if (Array.isArray(punchesData)) {
+        setPunches(punchesData);
+      } else if (punchesData?.punches) {
+        setPunches(punchesData.punches || []);
+        if (Array.isArray(punchesData.absentRecords)) {
+          setSrmsAbsentRecords(punchesData.absentRecords);
+        }
+      }
     } catch (err) {
       console.warn('[FacultyDetail] Fetch error:', err);
     } finally {
@@ -65,31 +72,18 @@ const AdminFacultyDetailScreen = ({ navigation, route }) => {
     return name.split(' ').map((w) => w[0]).join('').toUpperCase().slice(0, 2);
   };
 
-  if (loading) {
-    return (
-      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-        <ScrollView contentContainerStyle={styles.scroll}>
-          <View style={[styles.header, { height: 130 }]}>
-            <SkeletonBlock width={60} height={60} borderRadius={30} />
-            <View style={{ marginLeft: 16, gap: 8 }}>
-              <SkeletonBlock width={160} height={16} borderRadius={8} />
-              <SkeletonBlock width={100} height={12} borderRadius={6} />
-            </View>
-          </View>
-          <SkeletonBlock width="100%" height={80} borderRadius={16} style={{ marginTop: 16 }} />
-          <SkeletonBlock width="100%" height={200} borderRadius={16} style={{ marginTop: 16 }} />
-        </ScrollView>
-      </SafeAreaView>
-    );
-  }
-
   const profile = data?.profile || teacher || {};
-  const summary = data?.attendance_summary || { present_days: 0, absent_days: 0, total_days: 0, present_pct: 0 };
   const dailyRecords = data?.daily_records || [];
-  const presentRecords = dailyRecords.filter((r) => r.is_present);
-  const absentRecords = dailyRecords.filter((r) => !r.is_present);
+  const absentRecords = (dailyRecords.length > 0)
+    ? dailyRecords.filter((r) => !r.is_present)
+    : srmsAbsentRecords;
+  const summary = data?.attendance_summary || {
+    present_days: 0,
+    absent_days: absentRecords.length,
+    total_days: absentRecords.length,
+    present_pct: 0,
+  };
 
-  const pctColor = summary.present_pct >= 75 ? '#10B981' : summary.present_pct >= 50 ? '#F59E0B' : '#EF4444';
   const avatarColors = ['#10B981', '#3B82F6', '#8B5CF6', '#F59E0B', '#EF4444', '#EC4899'];
   const avatarBgColor = avatarColors[(profile.name?.charCodeAt(0) || 0) % avatarColors.length];
 
@@ -121,7 +115,7 @@ const AdminFacultyDetailScreen = ({ navigation, route }) => {
         contentContainerStyle={styles.scroll}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} />}
       >
-        {/* Header */}
+        {/* Header - Instant render using teacher profile */}
         <LinearGradient colors={isDark ? ['#1E3A5F', '#0F172A'] : ['#EFF6FF', '#FFFFFF']} style={styles.header}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
             <Feather name="arrow-left" size={22} color={colors.textPrimary} />
@@ -161,103 +155,139 @@ const AdminFacultyDetailScreen = ({ navigation, route }) => {
           )}
         </View>
 
-
-
-        {/* Tabs */}
-        <View style={[styles.tabRow, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        {/* Tab Bar */}
+        <View style={[styles.tabBar, { backgroundColor: colors.card }]}>
           <TouchableOpacity
-            style={[styles.tab, activeTab === 'attendance' && { borderBottomColor: '#3B82F6', borderBottomWidth: 2 }]}
+            style={[styles.tab, activeTab === 'attendance' && styles.activeTab]}
             onPress={() => setActiveTab('attendance')}
           >
-            <MaterialCommunityIcons name="clock-check-outline" size={16} color={activeTab === 'attendance' ? '#3B82F6' : colors.textMuted} />
-            <Text style={[styles.tabLabel, { color: activeTab === 'attendance' ? '#3B82F6' : colors.textMuted }]}>Punch Timing</Text>
+            <Feather name="clock" size={16} color={activeTab === 'attendance' ? colors.primary : colors.textMuted} />
+            <Text style={[styles.tabLabel, { color: activeTab === 'attendance' ? colors.primary : colors.textMuted }]}>Punch Timing</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.tab, activeTab === 'leaves' && { borderBottomColor: '#EF4444', borderBottomWidth: 2 }]}
+            style={[styles.tab, activeTab === 'leaves' && styles.activeTab]}
             onPress={() => setActiveTab('leaves')}
           >
-            <Feather name="calendar" size={15} color={activeTab === 'leaves' ? '#EF4444' : colors.textMuted} />
-            <Text style={[styles.tabLabel, { color: activeTab === 'leaves' ? '#EF4444' : colors.textMuted }]}>Leaves ({summary.absent_days})</Text>
+            <Feather name="calendar" size={16} color={activeTab === 'leaves' ? '#EF4444' : colors.textMuted} />
+            <Text style={[styles.tabLabel, { color: activeTab === 'leaves' ? '#EF4444' : colors.textMuted }]}>
+              Leaves ({loading ? '...' : absentRecords.length})
+            </Text>
           </TouchableOpacity>
         </View>
 
-        {/* Punch Timing Tab */}
-        {activeTab === 'attendance' && (
-          <View style={{ marginTop: 4 }}>
-            {sortedDates.length === 0 ? (
-              <View style={[styles.emptyBox, { backgroundColor: colors.card }]}>
-                <MaterialCommunityIcons name="clock-remove-outline" size={40} color={colors.textMuted} />
-                <Text style={[styles.emptyText, { color: colors.textSecondary }]}>No punch records found in the database yet.</Text>
-              </View>
-            ) : (
-              sortedDates.map((dateStr) => {
-                const dayPunches = groupedPunches[dateStr];
-                const dateLabel = formatDate(dayPunches[0]?.punch_time);
+        {/* Tab Content or Loading Skeleton */}
+        {loading ? (
+          <View style={{ marginTop: 12, gap: 16 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginVertical: 8 }}>
+              <SkeletonBlock width={12} height={12} borderRadius={6} />
+              <Text style={{ fontSize: 12, fontWeight: '600', color: colors.textMuted }}>Fetching live SRMS ERP punch & leave logs...</Text>
+            </View>
 
-                return (
-                  <View key={dateStr} style={{ marginBottom: 20 }}>
-                    <Text style={{ fontSize: 13, fontWeight: '800', color: colors.textSecondary, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>{dateLabel}</Text>
-                    <View style={{ backgroundColor: colors.card, borderRadius: 20, padding: 16, borderWidth: 1, borderColor: colors.border, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.03, shadowRadius: 6, elevation: 1 }}>
-                      {dayPunches.map((punch, idx) => {
-                        const time = formatTime(punch.punch_time);
-                        const isInOut = String(punch.in_out).toUpperCase();
-                        const isEntry = isInOut === 'IN' || isInOut === 'I';
-                        
-                        return (
-                          <View key={punch.id || idx} style={[
-                            { flexDirection: 'row', alignItems: 'center' },
-                            idx > 0 && { borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 12, marginTop: 12 }
-                          ]}>
-                            <View style={{ width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: isEntry ? '#E0F2FE' : '#FEE2E2' }}>
-                              <MaterialCommunityIcons name={isEntry ? 'login' : 'logout'} size={18} color={isEntry ? '#0284C7' : '#EF4444'} />
-                            </View>
-                            <View style={{ flex: 1, marginLeft: 12 }}>
-                              <View style={{ backgroundColor: isEntry ? '#F0F9FF' : '#FEF2F2', alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 }}>
-                                <Text style={{ fontSize: 9, fontWeight: '800', letterSpacing: 0.3, color: isEntry ? '#0284C7' : '#EF4444' }}>
-                                  {isEntry ? 'PUNCH IN' : 'PUNCH OUT'}
-                                </Text>
-                              </View>
-                              <Text style={{ fontSize: 11, color: colors.textMuted, marginTop: 2, fontWeight: '500' }}>Device Code: {punch.device_cd || '—'}</Text>
-                            </View>
-                            <View style={{ alignItems: 'flex-end' }}>
-                              <Text style={{ fontSize: 14, fontWeight: '800', color: colors.textPrimary, marginBottom: 4 }}>{time}</Text>
-                            </View>
-                          </View>
-                        );
-                      })}
+            {[1, 2, 3].map((item) => (
+              <View key={item} style={{ marginBottom: 12 }}>
+                <SkeletonBlock width={90} height={12} borderRadius={6} style={{ marginBottom: 8 }} />
+                <View style={{ backgroundColor: colors.card, borderRadius: 20, padding: 16, borderWidth: 1, borderColor: colors.border, gap: 12 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                    <SkeletonBlock width={40} height={40} borderRadius={20} />
+                    <View style={{ flex: 1, gap: 6 }}>
+                      <SkeletonBlock width={80} height={14} borderRadius={7} />
+                      <SkeletonBlock width={110} height={10} borderRadius={5} />
                     </View>
+                    <SkeletonBlock width={55} height={16} borderRadius={8} />
                   </View>
-                );
-              })
-            )}
-          </View>
-        )}
-
-        {/* Leaves Tab */}
-        {activeTab === 'leaves' && (
-          <View style={{ marginTop: 4 }}>
-            {absentRecords.length === 0 ? (
-              <View style={[styles.emptyBox, { backgroundColor: colors.card }]}>
-                <Feather name="check-circle" size={40} color="#10B981" />
-                <Text style={[styles.emptyText, { color: colors.textSecondary }]}>No absent days recorded — perfect attendance!</Text>
-              </View>
-            ) : (
-              <>
-                <Text style={[styles.leavesNote, { color: colors.textMuted }]}>Days with no punch record are counted as absent/leave.</Text>
-                <View style={styles.leavesGrid}>
-                  {absentRecords.map((rec) => (
-                    <View key={rec.date} style={[styles.leaveChip, { backgroundColor: 'rgba(239,68,68,0.08)', borderColor: 'rgba(239,68,68,0.2)' }]}>
-                      <Text style={styles.leaveChipDay}>{getDayShort(rec.day_name)}</Text>
-                      <Text style={styles.leaveChipDate}>{formatDate(rec.date)}</Text>
-                      <View style={styles.leaveLabel}>
-                        <Text style={{ fontSize: 8, color: '#EF4444', fontWeight: '700' }}>ABSENT</Text>
-                      </View>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingTop: 10, borderTopWidth: 1, borderTopColor: colors.border }}>
+                    <SkeletonBlock width={40} height={40} borderRadius={20} />
+                    <View style={{ flex: 1, gap: 6 }}>
+                      <SkeletonBlock width={80} height={14} borderRadius={7} />
+                      <SkeletonBlock width={110} height={10} borderRadius={5} />
                     </View>
-                  ))}
+                    <SkeletonBlock width={55} height={16} borderRadius={8} />
+                  </View>
                 </View>
-              </>
-            )}
+              </View>
+            ))}
           </View>
+        ) : (
+          <>
+            {/* Punch Timing Tab */}
+            {activeTab === 'attendance' && (
+              <View style={{ marginTop: 4 }}>
+                {sortedDates.length === 0 ? (
+                  <View style={[styles.emptyBox, { backgroundColor: colors.card }]}>
+                    <MaterialCommunityIcons name="clock-remove-outline" size={40} color={colors.textMuted} />
+                    <Text style={[styles.emptyText, { color: colors.textSecondary }]}>No punch records found in the database yet.</Text>
+                  </View>
+                ) : (
+                  sortedDates.map((dateStr) => {
+                    const dayPunches = groupedPunches[dateStr];
+                    const dateLabel = formatDate(dayPunches[0]?.punch_time);
+
+                    return (
+                      <View key={dateStr} style={{ marginBottom: 20 }}>
+                        <Text style={{ fontSize: 13, fontWeight: '800', color: colors.textSecondary, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>{dateLabel}</Text>
+                        <View style={{ backgroundColor: colors.card, borderRadius: 20, padding: 16, borderWidth: 1, borderColor: colors.border, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.03, shadowRadius: 6, elevation: 1 }}>
+                          {dayPunches.map((punch, idx) => {
+                            const time = formatTime(punch.punch_time);
+                            const isInOut = String(punch.in_out).toUpperCase();
+                            const isEntry = isInOut === 'IN' || isInOut === 'I';
+
+                            return (
+                              <View key={punch.id || idx} style={[
+                                { flexDirection: 'row', alignItems: 'center' },
+                                idx > 0 && { borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 12, marginTop: 12 }
+                              ]}>
+                                <View style={{ width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: isEntry ? '#E0F2FE' : '#FEE2E2' }}>
+                                  <MaterialCommunityIcons name={isEntry ? 'login' : 'logout'} size={18} color={isEntry ? '#0284C7' : '#EF4444'} />
+                                </View>
+                                <View style={{ flex: 1, marginLeft: 12 }}>
+                                  <View style={{ backgroundColor: isEntry ? '#F0F9FF' : '#FEF2F2', alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 }}>
+                                    <Text style={{ fontSize: 9, fontWeight: '800', letterSpacing: 0.3, color: isEntry ? '#0284C7' : '#EF4444' }}>
+                                      {isEntry ? 'PUNCH IN' : 'PUNCH OUT'}
+                                    </Text>
+                                  </View>
+                                  <Text style={{ fontSize: 11, color: colors.textMuted, marginTop: 2, fontWeight: '500' }}>Device Code: {punch.device_cd || '—'}</Text>
+                                </View>
+                                <View style={{ alignItems: 'flex-end' }}>
+                                  <Text style={{ fontSize: 14, fontWeight: '800', color: colors.textPrimary, marginBottom: 4 }}>{time}</Text>
+                                </View>
+                              </View>
+                            );
+                          })}
+                        </View>
+                      </View>
+                    );
+                  })
+                )}
+              </View>
+            )}
+
+            {/* Leaves Tab */}
+            {activeTab === 'leaves' && (
+              <View style={{ marginTop: 4 }}>
+                {absentRecords.length === 0 ? (
+                  <View style={[styles.emptyBox, { backgroundColor: colors.card }]}>
+                    <Feather name="check-circle" size={40} color="#10B981" />
+                    <Text style={[styles.emptyText, { color: colors.textSecondary }]}>No absent days recorded — perfect attendance!</Text>
+                  </View>
+                ) : (
+                  <>
+                    <Text style={[styles.leavesNote, { color: colors.textMuted }]}>Days with no punch record are counted as absent/leave.</Text>
+                    <View style={styles.leavesGrid}>
+                      {absentRecords.map((rec) => (
+                        <View key={rec.date} style={[styles.leaveChip, { backgroundColor: 'rgba(239,68,68,0.08)', borderColor: 'rgba(239,68,68,0.2)' }]}>
+                          <Text style={styles.leaveChipDay}>{getDayShort(rec.day_name)}</Text>
+                          <Text style={styles.leaveChipDate}>{formatDate(rec.date)}</Text>
+                          <View style={styles.leaveLabel}>
+                            <Text style={{ fontSize: 8, color: '#EF4444', fontWeight: '700' }}>{rec.status || 'ON LEAVE'}</Text>
+                          </View>
+                        </View>
+                      ))}
+                    </View>
+                  </>
+                )}
+              </View>
+            )}
+          </>
         )}
 
         <View style={{ height: 80 }} />
@@ -268,52 +298,33 @@ const AdminFacultyDetailScreen = ({ navigation, route }) => {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  scroll: { paddingHorizontal: 20, paddingTop: 10 },
-  header: { borderRadius: 18, padding: 20, marginBottom: 16 },
-  backBtn: { marginBottom: 12 },
+  scroll: { paddingHorizontal: 16, paddingTop: 12 },
+  header: { borderRadius: 20, padding: 16, marginBottom: 14 },
+  backBtn: { marginBottom: 12, alignSelf: 'flex-start' },
   headerContent: { flexDirection: 'row', alignItems: 'center', gap: 14 },
-  avatar: { width: 64, height: 64, borderRadius: 32, justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
-  avatarText: { fontSize: 24, fontWeight: '800' },
-  facultyName: { fontSize: 18, fontWeight: '800', marginBottom: 2, lineHeight: 22 },
-  facultyDept: { fontSize: 12, fontWeight: '500', marginBottom: 6 },
-  empBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(59,130,246,0.1)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20, alignSelf: 'flex-start' },
-  empBadgeText: { fontSize: 10, color: '#3B82F6', fontWeight: '700' },
-  card: { borderRadius: 16, padding: 16, marginBottom: 14, elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4 },
-  sectionLabel: { fontSize: 10, fontWeight: '700', letterSpacing: 1, marginBottom: 12 },
+  avatar: { width: 56, height: 56, borderRadius: 28, justifyContent: 'center', alignItems: 'center' },
+  avatarText: { fontSize: 20, fontWeight: '800' },
+  facultyName: { fontSize: 17, fontWeight: '800', marginBottom: 2 },
+  facultyDept: { fontSize: 12, fontWeight: '600', marginBottom: 6 },
+  empBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(59,130,246,0.1)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, alignSelf: 'flex-start' },
+  empBadgeText: { fontSize: 10, fontWeight: '700', color: '#3B82F6' },
+  card: { borderRadius: 16, padding: 14, marginBottom: 14, elevation: 1 },
+  sectionLabel: { fontSize: 10, fontWeight: '800', letterSpacing: 0.5, marginBottom: 10 },
   contactRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 },
-  contactIcon: { width: 32, height: 32, borderRadius: 8, justifyContent: 'center', alignItems: 'center' },
-  contactText: { fontSize: 13, fontWeight: '500', flex: 1 },
-  summaryGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 14 },
-  summaryBox: { flex: 1, minWidth: '40%', borderRadius: 12, paddingVertical: 12, paddingHorizontal: 10, alignItems: 'center' },
-  summaryVal: { fontSize: 22, fontWeight: '800', marginBottom: 2 },
-  summaryKey: { fontSize: 10, fontWeight: '600' },
-  progressTrack: { height: 6, borderRadius: 3, overflow: 'hidden', marginBottom: 6 },
-  progressFill: { height: '100%', borderRadius: 3 },
-  progressLabel: { fontSize: 10, textAlign: 'right' },
-  tabRow: { flexDirection: 'row', borderRadius: 14, borderWidth: 1, overflow: 'hidden', marginBottom: 12 },
-  tab: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 12 },
+  contactIcon: { width: 28, height: 28, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
+  contactText: { fontSize: 13, fontWeight: '600' },
+  tabBar: { flexDirection: 'row', borderRadius: 14, padding: 4, marginBottom: 14 },
+  tab: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, borderRadius: 10 },
+  activeTab: { backgroundColor: 'rgba(99,102,241,0.1)' },
   tabLabel: { fontSize: 12, fontWeight: '700' },
-  punchCard: { flexDirection: 'row', alignItems: 'center', borderRadius: 14, borderWidth: 1, padding: 12, marginBottom: 10, gap: 12 },
-  dateBadge: { alignItems: 'center', minWidth: 40 },
-  dateBadgeDay: { fontSize: 9, fontWeight: '700', color: '#3B82F6', letterSpacing: 0.5 },
-  dateBadgeDate: { fontSize: 18, fontWeight: '800', color: '#1E293B' },
-  dateBadgeMonth: { fontSize: 9, fontWeight: '600', color: '#64748B' },
-  punchInfo: { flex: 1 },
-  punchTimeRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 6 },
-  punchTime: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  punchDot: { width: 8, height: 8, borderRadius: 4 },
-  punchTimeVal: { fontSize: 15, fontWeight: '700' },
-  hoursChip: { flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-start', backgroundColor: 'rgba(139,92,246,0.1)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20 },
-  hoursText: { fontSize: 10, color: '#8B5CF6', fontWeight: '700' },
-  statusDot: { width: 24, height: 24, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
-  leavesNote: { fontSize: 11, fontStyle: 'italic', marginBottom: 12 },
+  emptyBox: { borderRadius: 16, padding: 32, alignItems: 'center', gap: 12, marginTop: 8 },
+  emptyText: { fontSize: 13, textAlign: 'center', fontWeight: '600' },
+  leavesNote: { fontSize: 11, marginBottom: 12, fontStyle: 'italic' },
   leavesGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  leaveChip: { width: '30%', borderRadius: 12, borderWidth: 1, padding: 10, alignItems: 'center', gap: 4 },
-  leaveChipDay: { fontSize: 10, fontWeight: '700', color: '#EF4444' },
-  leaveChipDate: { fontSize: 11, fontWeight: '600', color: '#64748B', textAlign: 'center' },
-  leaveLabel: { backgroundColor: 'rgba(239,68,68,0.15)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 8 },
-  emptyBox: { borderRadius: 16, padding: 32, alignItems: 'center', gap: 12, marginBottom: 16 },
-  emptyText: { fontSize: 13, textAlign: 'center', lineHeight: 18 },
+  leaveChip: { width: '31%', borderRadius: 14, borderWidth: 1, padding: 10, alignItems: 'center', gap: 2 },
+  leaveChipDay: { fontSize: 12, fontWeight: '800', color: '#EF4444' },
+  leaveChipDate: { fontSize: 10, color: '#6B7280', fontWeight: '600' },
+  leaveLabel: { marginTop: 4, backgroundColor: 'rgba(239,68,68,0.15)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
 });
 
 export default AdminFacultyDetailScreen;
