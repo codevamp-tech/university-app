@@ -44,12 +44,21 @@ function getPhaseRoman(sem, year) {
 
 /**
  * Detect whether this student is a medical (MBBS) student.
+ * Checks course, category, and rollno pattern as fallbacks.
+ * This handles stale cached user objects that don't have the category field set yet.
  */
 export function isMedicalStudent(user) {
   if (!user) return false;
   const course = (user.course || '').replace(/\./g, '').toUpperCase();
   const category = (user.category || '').toLowerCase();
-  return course.includes('MBBS') || category.includes('medical');
+  const branch = (user.branch || '').toUpperCase();
+  // Explicit course/category check
+  if (course.includes('MBBS') || category.includes('medical') || branch.includes('MBBS')) return true;
+  // Rollno-pattern fallback: SRMS MBBS roll numbers start with 213xxxx, 214xxxx, 215xxxx
+  // (2nd digit is 1, 3rd digit is 3/4/5 for medical batches)
+  const rollno = (user.rollno || user.id || '').toString();
+  if (/^21[3-9]\d{4}$/.test(rollno)) return true;
+  return false;
 }
 
 /**

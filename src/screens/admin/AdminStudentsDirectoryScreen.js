@@ -291,7 +291,7 @@ const AdminStudentsDirectoryScreen = ({ navigation }) => {
         {(() => {
           const getBatchLabel = (phase) => {
             if (phase === 'ALL') return 'All Batches';
-            const year = 2026 - parseInt(phase);
+            const year = new Date().getFullYear() - parseInt(phase);
             return `${year} Batch`;
           };
 
@@ -435,7 +435,7 @@ const AdminStudentsDirectoryScreen = ({ navigation }) => {
                 </TouchableOpacity>
 
               {ALL_PHASES.map(ph => {
-                const year = 2026 - ph;
+                const year = new Date().getFullYear() - ph;
                 const label = `${year} Batch`;
                 const count = batchCounts[ph] || 0;
                 const isSelected = selectedPhaseFilter === ph;

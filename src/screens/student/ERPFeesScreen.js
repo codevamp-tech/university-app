@@ -56,7 +56,7 @@ const ERPFeesScreen = ({ navigation, route }) => {
   };
 
   const yearNum = parseInt(student?.year) || 4;
-  const startYear = 2026 - yearNum;
+  const startYear = new Date().getFullYear() - yearNum;
   const currentAcademicYearStart = startYear + yearNum - 1;
   const currentAcademicYearEnd = currentAcademicYearStart + 1;
   const academicYearStr = `Academic Year ${currentAcademicYearStart}-${currentAcademicYearEnd.toString().slice(-2)}`;

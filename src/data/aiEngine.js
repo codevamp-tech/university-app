@@ -1435,7 +1435,7 @@ Make earlier steps "done" or "current" based roughly on the fact they are in Yea
 
   try {
     const data = await aiChatCompletionAPI(accessToken, {
-      model: 'llama-3.3-70b-versatile',
+      model: 'llama-3.1-8b-instant',
       messages: [
         { role: 'user', content: prompt }
       ],
@@ -1589,7 +1589,7 @@ Use this exact JSON structure:
 
   try {
     const data = await aiChatCompletionAPI(accessToken, {
-      model: 'llama-3.3-70b-versatile',
+      model: 'llama-3.1-8b-instant',
       messages: [
         { role: 'user', content: prompt }
       ],
@@ -1879,7 +1879,7 @@ Do not use markdown. Just return the text. Be inspiring but professional.
 
   try {
     const data = await aiChatCompletionAPI(accessToken, {
-      model: 'llama-3.3-70b-versatile',
+      model: 'llama-3.1-8b-instant',
       messages: [{ role: 'user', content: prompt }],
       temperature: 0.7
     });
@@ -1964,7 +1964,7 @@ Guidelines for Education:
 
   try {
     const data = await aiChatCompletionAPI(accessToken, {
-      model: 'llama-3.3-70b-versatile',
+      model: 'llama-3.1-8b-instant',
       messages: [{ role: 'user', content: prompt }],
       temperature: 0.6,
       response_format: { type: "json_object" }

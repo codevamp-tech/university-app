@@ -23,7 +23,7 @@ const ERPDocumentsScreen = ({ navigation }) => {
   const [isLocked, setIsLocked] = React.useState(false);
 
   const yearNum = parseInt(user?.year) || 4;
-  const startYear = 2026 - yearNum;
+  const startYear = new Date().getFullYear() - yearNum;
   const endYear = startYear + 4; // Default 4-year course
   const validityText = `Valid until July ${endYear}`;
 

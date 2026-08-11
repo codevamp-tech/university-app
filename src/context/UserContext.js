@@ -124,10 +124,35 @@ export const UserProvider = ({ children }) => {
           department_id: dbDeptId,
           role: dbRole,
           current_year: dbCurrentYear,
+          category: dbCategory,
+          course: dbCourse,
+          branch: dbBranch,
           ...dbProfileRest
         } = dbProfile || {};
 
         const resolvedFullName = dbProfileRest.full_name || (usernameForApi === '202313564' ? 'Mahendra Singh Butola' : usernameForApi);
+
+        // Derive category from rollno pattern as fallback (SRMS MBBS: 213xxxx, 214xxxx, 215xxxx)
+        const rollnoStr = (dbRollNo || usernameForApi || '').toString();
+        const isMedByRollno = /^21[3-9]\d{4}$/.test(rollnoStr);
+        const resolvedCategory = dbCategory || (isMedByRollno ? 'medical' : undefined);
+        const resolvedCourse = dbCourse || (isMedByRollno ? 'M.B.B.S.' : undefined);
+        const resolvedBranch = dbBranch || (isMedByRollno ? 'MBBS' : undefined);
+
+        // For MBBS students, compute phase from batch_year client-side as the
+        // most reliable source. The API does the same (2026 - batch_year) but
+        // only when dept_code == "MEDIC" is already set — which may not be true
+        // for students who logged in before their department was synced.
+        // This client-side computation prevents Prof 2 students appearing as Prof 1.
+        const currentYear = new Date().getFullYear();
+        let resolvedCurrentYear;
+        if (isMedByRollno && dbBatchYear) {
+          // Same formula as user_service.py: clamp between 1 and 4
+          resolvedCurrentYear = Math.max(1, Math.min(4, currentYear - dbBatchYear));
+        } else {
+          resolvedCurrentYear = dbCurrentYear || (dbProfileRest.semester ? Math.ceil(parseInt(dbProfileRest.semester, 10) / 2) : 1);
+        }
+
         const u = {
           id: usernameForApi,
           name: resolvedFullName,
@@ -141,11 +166,14 @@ export const UserProvider = ({ children }) => {
           certsInProgress: dbProfileRest.certificates_in_progress || [],
           semester: dbProfileRest.semester || null,
           sgpaHistory: dbProfileRest.sgpa_history || [],
-          current_year: dbCurrentYear || (dbProfileRest.semester ? Math.ceil(parseInt(dbProfileRest.semester, 10) / 2) : 1),
-          year: dbCurrentYear || (dbProfileRest.semester ? Math.ceil(parseInt(dbProfileRest.semester, 10) / 2) : 1),
+          current_year: resolvedCurrentYear,
+          year: resolvedCurrentYear,
           rollno: dbRollNo || null,
           batch_year: dbBatchYear || null,
           department_id: dbDeptId || null,
+          category: resolvedCategory,
+          course: resolvedCourse,
+          branch: resolvedBranch,
           ...dbProfileRest,
         };
 

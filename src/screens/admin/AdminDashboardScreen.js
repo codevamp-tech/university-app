@@ -695,7 +695,7 @@ const AdminDashboardScreen = ({ navigation }) => {
 
           <View style={{ flexDirection: 'row', gap: 10, marginTop: 4 }}>
             {[1, 2, 3].map((phase) => {
-              const year = 2026 - phase;
+              const year = new Date().getFullYear() - phase;
               const phaseCount = studentsList.filter(s => {
                 const isStudent = s.role?.toLowerCase() === 'student';
                 const isMedical = (!s.category && !s.branch && !s.course) ||
