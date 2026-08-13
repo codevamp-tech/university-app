@@ -39,7 +39,10 @@ const MarketplaceScreen = ({ navigation }) => {
         getMyShopListings(accessToken).catch(() => []),
       ]);
       if (data) {
-        setApiListings(data.filter(l => l.category !== 'gig' && l.category !== 'request'));
+        const listings = data
+          .filter(l => l.category !== 'gig' && l.category !== 'request')
+          .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+        setApiListings(listings);
       } else {
         setApiListings([]);
       }

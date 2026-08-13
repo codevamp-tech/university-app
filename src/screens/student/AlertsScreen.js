@@ -223,13 +223,13 @@ const AlertsScreen = ({ navigation }) => {
 
       const now = new Date();
       const isToday = d.toDateString() === now.toDateString();
+      const isYesterday = new Date(now - 86400000).toDateString() === d.toDateString();
 
       const timeStr = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
-      if (isToday) {
-        return timeStr;
-      }
-
       const dateStr = d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+
+      if (isToday) return `Today, ${timeStr}`;
+      if (isYesterday) return `Yesterday, ${timeStr}`;
       return `${dateStr}, ${timeStr}`;
     };
 
