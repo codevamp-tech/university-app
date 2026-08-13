@@ -1722,10 +1722,17 @@ export async function actionWardenOutpass(token, outpassId, status, remarks = ""
 }
 
 export async function getPendingStartups(token) {
-  const res = await apiCall('/api/v1/venture/startups/pending', {
+  let res = await apiCall('/api/v1/venture/startups', {
     headers: authHeaders(token),
   });
-  return unwrap(res, []);
+  let list = unwrap(res, []);
+  if (!list || list.length === 0) {
+    res = await apiCall('/api/v1/venture/startups/pending', {
+      headers: authHeaders(token),
+    });
+    list = unwrap(res, []);
+  }
+  return list;
 }
 
 export async function reviewStartup(token, startupId, status, notes) {
