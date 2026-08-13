@@ -417,12 +417,25 @@ const SubjectDetailModal = ({ visible, subject, onClose, accessToken, student })
         const raw = compData.value?.data || compData.value || {};
         const list = raw.competencies || raw.data?.competencies || (Array.isArray(raw) ? raw : []);
         nextComps = list.map(c => {
-          const match = c.score?.match(/^([\d.]+)\/([\d.]+)=([\d.]+)%$/);
+          const compCode = c.competency || c.code || c.comp_code || 'COMP';
+          const scoreStr = String(c.score || '').trim();
+          let obt = 0;
+          let tot = 10;
+          if (scoreStr.includes('/')) {
+            const m = scoreStr.match(/([\d.]+)\s*\/\s*([\d.]+)/);
+            if (m) {
+              obt = parseFloat(m[1]);
+              tot = parseFloat(m[2]);
+            }
+          } else {
+            obt = parseFloat(c.obtained || c.obtained_marks || 0);
+            tot = parseFloat(c.total || c.total_marks || 10);
+          }
           return {
-            code: c.competency,
-            description: c.competency,
-            obtained: match ? parseFloat(match[1]) : 0,
-            total: match ? parseFloat(match[2]) : 10,
+            code: compCode,
+            description: compCode,
+            obtained: obt,
+            total: tot,
           };
         });
       }
@@ -507,6 +520,14 @@ const SubjectDetailModal = ({ visible, subject, onClose, accessToken, student })
             value: typeof d.pct === 'number' ? d.pct : (parseFloat(d.pct || d.value || 0) || 0)
           }));
         }
+      }
+
+      // Guaranteed fallback: If chart API returned empty, generate chart directly from loaded competencies
+      if (nextChart.length === 0 && nextComps.length > 0) {
+        nextChart = nextComps.map(c => ({
+          label: c.code,
+          value: c.total > 0 ? Math.round((c.obtained / c.total) * 100) : 0
+        }));
       }
       setChartData(nextChart);
 
