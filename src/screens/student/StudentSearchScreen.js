@@ -245,26 +245,16 @@ const StudentSearchScreen = ({ navigation }) => {
 
           if (isMed) {
             return (
-              <>
-                <Text style={[styles.studentCourse, { color: colors.textSecondary, fontSize: 13, marginTop: 2 }]}>
-                  {formattedYear ? `${formattedYear} • ` : ''}MBBS
-                </Text>
-                <Text style={{ color: colors.textMuted, fontSize: 12, marginTop: 2 }}>
-                  {item.followers || 0} followers
-                </Text>
-              </>
+              <Text style={[styles.studentCourse, { color: colors.textSecondary, fontSize: 13, marginTop: 2 }]}>
+                {formattedYear ? `${formattedYear} • ` : ''}MBBS
+              </Text>
             );
           }
 
           return (
-            <>
-              <Text style={[styles.studentCourse, { color: colors.textSecondary, fontSize: 13, marginTop: 2 }]}>
-                {item.course || 'Student'} {item.branch ? `• ${item.branch}` : ''}
-              </Text>
-              <Text style={{ color: colors.textMuted, fontSize: 12, marginTop: 2 }}>
-                {item.year ? `Year ${item.year} ` : ''}• {item.followers || 0} followers
-              </Text>
-            </>
+            <Text style={[styles.studentCourse, { color: colors.textSecondary, fontSize: 13, marginTop: 2 }]}>
+              {item.course || 'Student'} {item.branch ? `• ${item.branch}` : ''}
+            </Text>
           );
         })()}
       </View>

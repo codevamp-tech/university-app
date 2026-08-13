@@ -305,12 +305,8 @@ const AdminStudentProfileScreen = ({ navigation, route }) => {
           <Text style={[styles.batchSubText, { color: colors.textSecondary }]}>{APP_CONFIG.CAMPUS_LOCATION}</Text>
 
 
-          {/* LinkedIn-style Connections */}
+          {/* Connections */}
           <View style={styles.networkStats}>
-            <TouchableOpacity onPress={() => handleOpenConnectionsModal('followers')}>
-              <Text style={[styles.networkText, { color: isDark ? colors.primary : '#3474ec' }]}><Text style={[styles.networkBold, { color: colors.textPrimary }]}>{stats.followers}</Text> Followers</Text>
-            </TouchableOpacity>
-            <Text style={[styles.networkDivider, { color: colors.textMuted }]}>•</Text>
             <TouchableOpacity onPress={() => handleOpenConnectionsModal('connections')}>
               <Text style={[styles.networkText, { color: isDark ? colors.primary : '#3474ec' }]}><Text style={[styles.networkBold, { color: colors.textPrimary }]}>{stats.connections}</Text> Connections</Text>
             </TouchableOpacity>
