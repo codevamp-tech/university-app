@@ -300,7 +300,7 @@ const DashboardScreen = ({ navigation }) => {
           if (accessToken) {
             const records = await getResults(accessToken, stId);
             if (records && Array.isArray(records) && records.length > 0) {
-              const computed = calculateExactMedicalPerformance(records);
+              const computed = calculateExactMedicalPerformance(records, user);
               if (computed && computed > 0) {
                 setMedMarksPct(computed);
                 await AsyncStorage.setItem(`@erp_overall_pct_${stId}`, String(computed));

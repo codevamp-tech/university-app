@@ -42,7 +42,7 @@ const ERPHubScreen = ({ navigation, route }) => {
         if (accessToken) {
           const records = await getResults(accessToken, stId);
           if (records && Array.isArray(records) && records.length > 0) {
-            const computed = calculateExactMedicalPerformance(records);
+            const computed = calculateExactMedicalPerformance(records, student);
             if (computed && computed > 0) {
               setMedMarksPct(computed);
               await AsyncStorage.setItem(`@erp_overall_pct_${stId}`, String(computed));
