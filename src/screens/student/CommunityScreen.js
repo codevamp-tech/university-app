@@ -696,37 +696,38 @@ const CommunityScreen = ({ navigation }) => {
 
     // Optimistic UI update
     setApiFeed(prev => prev.map(p => {
-      // Check if p is a repost card pointing to targetStr or matching targetStr
       const isRepostCard = !!p.original_post;
-      const isOriginalTarget = isRepostCard && (
-        String(p.original_post.id) === targetStr || 
-        (p.original_post_id && String(p.original_post_id) === targetStr) ||
-        String(p.id) === targetStr
-      );
 
-      if (isOriginalTarget) {
+      if (isRepostCard) {
         const orig = p.original_post;
-        const isRemoving = orig.user_reaction === type;
-        const newReaction = isRemoving ? null : type;
-        const newLikeCount = isRemoving ? Math.max(0, (orig.like_count || 0) - 1) : (orig.user_reaction ? orig.like_count : (orig.like_count || 0) + 1);
-        
-        const newCounts = { ...(orig.reaction_counts || {}) };
-        if (orig.user_reaction) newCounts[orig.user_reaction] = Math.max(0, (newCounts[orig.user_reaction] || 1) - 1);
-        if (newReaction) newCounts[newReaction] = (newCounts[newReaction] || 0) + 1;
+        const isOriginalMatch = orig && (
+          String(orig.id) === targetStr || 
+          (p.original_post_id && String(p.original_post_id) === targetStr)
+        );
 
-        return {
-          ...p,
-          original_post: {
-            ...orig,
-            user_reaction: newReaction,
-            like_count: newLikeCount,
-            reaction_counts: newCounts,
-          }
-        };
+        if (isOriginalMatch) {
+          const isRemoving = orig.user_reaction === type;
+          const newReaction = isRemoving ? null : type;
+          const newLikeCount = isRemoving ? Math.max(0, (orig.like_count || 0) - 1) : (orig.user_reaction ? orig.like_count : (orig.like_count || 0) + 1);
+          
+          const newCounts = { ...(orig.reaction_counts || {}) };
+          if (orig.user_reaction) newCounts[orig.user_reaction] = Math.max(0, (newCounts[orig.user_reaction] || 1) - 1);
+          if (newReaction) newCounts[newReaction] = (newCounts[newReaction] || 0) + 1;
+
+          return {
+            ...p,
+            original_post: {
+              ...orig,
+              user_reaction: newReaction,
+              like_count: newLikeCount,
+              reaction_counts: newCounts,
+            }
+          };
+        }
+        return p;
       }
 
-      // Check if p is a direct post matching targetStr
-      if (!isRepostCard && String(p.id) === targetStr) {
+      if (String(p.id) === targetStr) {
         const isRemoving = p.user_reaction === type;
         const newReaction = isRemoving ? null : type;
         const newLikeCount = isRemoving ? Math.max(0, (p.like_count || 0) - 1) : (p.user_reaction ? p.like_count : (p.like_count || 0) + 1);
