@@ -377,10 +377,12 @@ const VentureScreen = ({ navigation }) => {
         </View>
 
         <View style={styles.headerRight}>
-          <Image
-            source={{ uri: avatarUrl }}
-            style={[styles.avatarSmall, { borderColor: colors.primary }]}
-          />
+          <TouchableOpacity onPress={() => navigation.navigate('Profile')} activeOpacity={0.8}>
+            <Image
+              source={{ uri: avatarUrl }}
+              style={[styles.avatarSmall, { borderColor: colors.primary }]}
+            />
+          </TouchableOpacity>
         </View>
       </View>
 

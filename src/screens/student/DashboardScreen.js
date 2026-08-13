@@ -1399,18 +1399,15 @@ const DashboardScreen = ({ navigation }) => {
                 ...gapData.academicMissingSkills.map(skill => ({ name: skill, isAcademic: true, isMissing: true })),
                 ...gapData.industryMissingSkills.map(skill => ({ name: skill, isAcademic: false, isMissing: true }))
               ];
-              if (missingItems.length === 0) {
-                missingItems = [
-                  ...gapData.academicExpectedSkills.map(skill => ({ name: skill, isAcademic: true, isMissing: false })),
-                  ...gapData.industryExpectedSkills.map(skill => ({ name: skill, isAcademic: false, isMissing: false }))
-                ];
-              }
-              const displaySkills = missingItems.slice(0, 6).map(item => {
-                const score = gapData.skillScores?.[item.name] ??
-                  (item.isMissing ? 0 : 90);
+              // Only include "expected" (non-missing) items if they actually scored below 50%
+              // Never show items that are performing well (GOOD tag but > 50%)
+              const allScoredItems = missingItems.slice(0, 6).map(item => {
+                const score = gapData.skillScores?.[item.name] ?? (item.isMissing ? 0 : 90);
                 const color = score >= 75 ? '#10B981' : score >= 50 ? '#F59E0B' : '#EF4444';
                 return { ...item, score, color };
               });
+              // Filter strictly to items below 50% — these are the real gaps
+              const displaySkills = allScoredItems.filter(s => s.score < 50);
 
               return (
                 <>
@@ -1471,7 +1468,15 @@ const DashboardScreen = ({ navigation }) => {
                   </View>
 
                   <View style={styles.skillGapProgressSection}>
-                    {displaySkills.map((skill, idx) => (
+                    {displaySkills.length === 0 ? (
+                      <View style={{ alignItems: 'center', paddingVertical: 20, gap: 8, backgroundColor: isDark ? 'rgba(16,185,129,0.08)' : '#F0FDF4', borderRadius: 12, borderWidth: 1, borderColor: isDark ? 'rgba(16,185,129,0.2)' : '#BBF7D0' }}>
+                        <Ionicons name="checkmark-circle" size={32} color="#10B981" />
+                        <Text style={{ fontSize: 14, fontWeight: '800', color: '#10B981' }}>All Competencies On Track ✓</Text>
+                        <Text style={{ fontSize: 12, color: colors.textSecondary, textAlign: 'center', paddingHorizontal: 16 }}>
+                          {isMed ? 'No clinical competency gaps detected. Keep up the great work!' : 'No skill gaps detected. All areas are performing above threshold.'}
+                        </Text>
+                      </View>
+                    ) : displaySkills.map((skill, idx) => (
                       <View key={idx} style={styles.skillProgressItem}>
                         <View style={styles.skillProgressHeader}>
                           <View style={{ flex: 1, marginRight: 8 }}>
@@ -1498,15 +1503,15 @@ const DashboardScreen = ({ navigation }) => {
                                 paddingHorizontal: 6,
                                 paddingVertical: 2,
                                 borderRadius: 6,
-                                backgroundColor: skill.isMissing ? (isDark ? 'rgba(239,68,68,0.2)' : '#FEE2E2') : (isDark ? 'rgba(16,185,129,0.2)' : '#D1FAE5'),
+                                backgroundColor: isDark ? 'rgba(239,68,68,0.2)' : '#FEE2E2',
                               }}>
                                 <Text style={{
                                   fontSize: 8,
                                   fontWeight: '800',
-                                  color: skill.isMissing ? '#EF4444' : '#10B981',
+                                  color: '#EF4444',
                                   textTransform: 'uppercase',
                                 }}>
-                                  {skill.isMissing ? 'Gap' : 'Good'}
+                                  Gap
                                 </Text>
                               </View>
                             </View>

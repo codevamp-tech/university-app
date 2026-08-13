@@ -99,31 +99,41 @@ const RaiseIssueScreen = ({ navigation, route }) => {
     try {
       const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (permissionResult.granted === false) {
-        Alert.alert('Permission required', 'Permission to access camera roll is required!');
+        Alert.alert('Permission required', 'Please allow access to your photo library.');
         return;
       }
 
       const pickerResult = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
-        quality: 0.3,
+        quality: 0.4,
       });
 
       if (!pickerResult.canceled && pickerResult.assets?.length > 0) {
         const uri = pickerResult.assets[0].uri;
         setAttachmentUri(uri);
         setIsUploading(true);
-        const res = await uploadAvatarAPI(accessToken, uri);
-        if (res.ok && res.json?.success) {
-          setAttachmentUrl(res.json.data.avatar_url);
-          Alert.alert('Upload Successful', 'Attachment uploaded to Cloudinary.');
-        } else {
-          Alert.alert('Upload Failed', 'Could not upload attachment.');
+        try {
+          const res = await uploadAvatarAPI(accessToken, uri);
+          if (res.ok && res.json?.success && res.json?.data?.avatar_url) {
+            setAttachmentUrl(res.json.data.avatar_url);
+            Alert.alert('Attachment Added', 'Your image has been attached successfully.');
+          } else {
+            // Upload reached server but failed — show the real error reason
+            const errMsg = res.json?.message || res.json?.error || `Upload failed (status ${res.status})`;
+            console.warn('[Grievance] Attachment upload failed:', errMsg, res.json);
+            setAttachmentUri(null); // clear preview — nothing was actually uploaded
+            Alert.alert('Upload Failed', errMsg);
+          }
+        } catch (uploadErr) {
+          console.warn('[Grievance] Attachment upload error:', uploadErr);
+          setAttachmentUri(null);
+          Alert.alert('Upload Failed', 'Could not reach the server. Please check your connection and try again.');
         }
       }
     } catch (e) {
-      console.warn("Error picking attachment:", e);
-      Alert.alert('Error', 'An error occurred while picking the attachment.');
+      console.warn('Error picking attachment:', e);
+      Alert.alert('Error', 'Could not open the photo library. Please try again.');
     } finally {
       setIsUploading(false);
     }

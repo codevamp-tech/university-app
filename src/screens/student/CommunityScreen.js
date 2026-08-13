@@ -11,6 +11,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSocket } from '../../hooks/useSocket';
+import { useNotifications } from '../../context/NotificationContext';
 
 const STORY_KEY = '@unicampus_stories_v2';
 const STORY_TTL = 24 * 60 * 60 * 1000; // 24 h
@@ -78,6 +79,7 @@ const CommunityScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
   const { accessToken, user } = useUser();
+  const { refreshUnreadCounts } = useNotifications();
 
   const [apiFeed, setApiFeed] = useState([]);
   const [loadingFeed, setLoadingFeed] = useState(true);
@@ -141,12 +143,19 @@ const CommunityScreen = ({ navigation }) => {
     });
   }, []);
 
+  // Handle real-time notification events (likes, comments, reposts directed at current user)
+  const handleWsNotification = useCallback(() => {
+    // Immediately refresh the notification badge count without waiting for 30s poll
+    refreshUnreadCounts();
+  }, [refreshUnreadCounts]);
+
   // Connect to WebSocket
   const { isConnected: wsConnected } = useSocket(accessToken, {
     onPostLike: handleWsPostLike,
     onPostReaction: handleWsPostReaction,
     onNewComment: handleWsNewComment,
     onNewPost: handleWsNewPost,
+    onNotification: handleWsNotification,
   });
 
 
@@ -931,10 +940,16 @@ const CommunityScreen = ({ navigation }) => {
                   if (targetPost.connection_status === 'Pending' || targetPost.connection_status === 'Connected') return;
                   try {
                     await followUserAPI(accessToken, targetPost.author_id);
-                    Alert.alert('Success', `You are now following ${displayName}`);
-                    loadFeed();
+                    const name = targetPost.author_name || displayName;
+                    Alert.alert('Connection Request Sent', `Your connection request has been sent to ${name}.`);
+                    // Optimistically update all posts from this author to show Pending
+                    setApiFeed(prev => prev.map(p =>
+                      p.author_id === targetPost.author_id
+                        ? { ...p, connection_status: 'Pending' }
+                        : p
+                    ));
                   } catch (e) {
-                    Alert.alert('Error', 'Failed to follow user');
+                    Alert.alert('Error', 'Failed to send connection request.');
                   }
                 }}
                 disabled={targetPost.connection_status === 'Pending' || targetPost.connection_status === 'Connected'}

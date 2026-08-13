@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-  View, Text, StyleSheet, TextInput, FlatList, TouchableOpacity, Image, Alert, Modal, ScrollView
+  View, Text, StyleSheet, TextInput, FlatList, TouchableOpacity, Image, Alert, Modal, ScrollView, ActivityIndicator
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -21,13 +21,21 @@ const StudentSearchScreen = ({ navigation }) => {
   const [showFilterModal, setShowFilterModal] = useState(false);
 
   useEffect(() => {
+    // Don't search on empty query — show prompt instead
+    if (!searchQuery.trim() && filters.year === 'All' && filters.branch === 'All' && filters.status === 'All') {
+      setUsers([]);
+      setLoading(false);
+      return;
+    }
+
     const delayDebounceFn = setTimeout(async () => {
       setLoading(true);
       try {
         const results = await searchUsersAPI(accessToken, searchQuery, filters);
-        setUsers(results);
+        setUsers(Array.isArray(results) ? results : []);
       } catch(e) {
         console.warn("Search error:", e);
+        setUsers([]);
       } finally {
         setLoading(false);
       }
@@ -36,16 +44,18 @@ const StudentSearchScreen = ({ navigation }) => {
     return () => clearTimeout(delayDebounceFn);
   }, [searchQuery, accessToken, filters]);
 
-  const handleFollow = async (userId) => {
+  const handleFollow = async (targetUserId) => {
     try {
-      const res = await followUserAPI(accessToken, userId);
+      const res = await followUserAPI(accessToken, targetUserId);
       if (res) {
-        Alert.alert("Success", "Follow request sent!");
-        setUsers(prev => prev.map(u => u.id === userId ? { ...u, connection_status: 'Pending' } : u));
+        const targetUser = users.find(u => u.id === targetUserId);
+        const name = targetUser?.name || targetUser?.username || 'Student';
+        Alert.alert('Connection Request Sent', `Your connection request has been sent to ${name}.`);
+        setUsers(prev => prev.map(u => u.id === targetUserId ? { ...u, connection_status: 'Pending' } : u));
       }
     } catch (error) {
       console.warn("Follow error:", error);
-      Alert.alert("Error", "Failed to send follow request.");
+      Alert.alert("Error", "Failed to send connection request.");
     }
   };
 
@@ -193,8 +203,24 @@ const StudentSearchScreen = ({ navigation }) => {
         contentContainerStyle={styles.listContent}
         ListEmptyComponent={
           <View style={styles.emptyState}>
-            <Ionicons name="search-outline" size={48} color={colors.textMuted || "#D1D5DB"} />
-            <Text style={[styles.emptyStateText, { color: colors.textSecondary }]}>{loading ? "Searching..." : "No students found"}</Text>
+            {loading ? (
+              <>
+                <ActivityIndicator size="large" color={colors.primary} />
+                <Text style={[styles.emptyStateText, { color: colors.textSecondary, marginTop: 12 }]}>Searching...</Text>
+              </>
+            ) : !searchQuery.trim() && filters.year === 'All' && filters.branch === 'All' && filters.status === 'All' ? (
+              <>
+                <Ionicons name="search-outline" size={48} color={colors.textMuted || "#D1D5DB"} />
+                <Text style={[styles.emptyStateText, { color: colors.textSecondary }]}>Search students by name or roll no.</Text>
+                <Text style={{ fontSize: 13, color: colors.textMuted, textAlign: 'center', paddingHorizontal: 24 }}>Use filters to browse by year or branch.</Text>
+              </>
+            ) : (
+              <>
+                <Ionicons name="people-outline" size={48} color={colors.textMuted || "#D1D5DB"} />
+                <Text style={[styles.emptyStateText, { color: colors.textSecondary }]}>No students found</Text>
+                <Text style={{ fontSize: 13, color: colors.textMuted }}>Try a different name or adjust filters.</Text>
+              </>
+            )}
           </View>
         }
       />

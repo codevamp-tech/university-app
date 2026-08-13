@@ -64,10 +64,10 @@ export function getPortalSubjects(user) {
 
 // ── Default channels shown before API loads ──────────────────────────────────
 const DEFAULT_CHANNELS = [
-  { id: 'official-batch-chat', name: 'Official Batch Chat', slug: 'official-batch-chat', icon: 'chat-outline', desc: 'Sync of ERP Official Batch Chat 🏛️' },
   { id: null, name: 'Campus Pulse', slug: 'campus-pulse', icon: 'lightning-bolt', desc: 'Daily campus life & vibes 🎓' },
   { id: null, name: 'Career Launchpad', slug: 'career-launchpad', icon: 'rocket-launch', desc: 'Placements, internships & prep 🚀' },
   { id: null, name: "Maker's Den", slug: 'makers-den', icon: 'hammer-wrench', desc: 'Hackathons & side projects 🛠️' },
+  { id: 'official-batch-chat', name: 'Official Batch Chat', slug: 'official-batch-chat', icon: 'chat-outline', desc: 'Sync of ERP Official Batch Chat 🏛️' },
 ];
 
 const ChatSkeletonLoader = ({ isDark }) => {
@@ -117,8 +117,10 @@ const ChatScreen = ({ navigation, route }) => {
   const [selectedBatch, setSelectedBatch] = useState(user?.batch_year || user?.batch || '2025');
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [channels, setChannels] = useState(DEFAULT_CHANNELS);
+  // Default to Campus Pulse (index 0) — NOT Official Batch Chat
   const [activeChannel, setActiveChannel] = useState(DEFAULT_CHANNELS[0]);
   const [dmContacts, setDmContacts] = useState([]);
+  const [loadingDMs, setLoadingDMs] = useState(false);
   const [inputText, setInputText] = useState('');
   const [portalMessages, setPortalMessages] = useState([]);
   const [loadingPortal, setLoadingPortal] = useState(false);
@@ -153,23 +155,25 @@ const ChatScreen = ({ navigation, route }) => {
   // ── Fetch channels & DM contacts ──────────────────────────────────────────
   useEffect(() => {
     const load = async () => {
+      setLoadingDMs(true);
       try {
         const [chs, dms] = await Promise.all([
           getChatChannelsAPI(accessToken),
           getDMContactsAPI(accessToken),
         ]);
         if (chs?.length) {
+          // Official Batch Chat goes at the END — social channels are shown first
           const merged = [
+            ...chs,
             { id: 'official-batch-chat', name: 'Official Batch Chat', slug: 'official-batch-chat', icon: 'chat-outline', desc: 'Sync of ERP Official Batch Chat 🏛️' },
-            ...chs
           ];
           setChannels(merged);
           // Auto-switch activeChannel to the real channel matching the current slug
           // (default channels have id: null, so we upgrade to the real API channel)
           setActiveChannel(prev => {
-            if (prev?.id) return prev; // already has a real ID
+            if (prev?.id && prev.id !== 'official-batch-chat') return prev; // already has a real social channel
             const matchBySlug = chs.find(c => c.slug === prev?.slug);
-            return matchBySlug || chs[0];
+            return matchBySlug || chs[0]; // land on first social channel
           });
         }
         if (Array.isArray(dms)) {
@@ -181,6 +185,8 @@ const ChatScreen = ({ navigation, route }) => {
         }
       } catch (e) {
         console.warn('[ChatScreen] load error', e);
+      } finally {
+        setLoadingDMs(false);
       }
     };
     if (accessToken) load();
@@ -856,11 +862,37 @@ const ChatScreen = ({ navigation, route }) => {
 
           {/* Direct Messages */}
           <Text style={styles.drawerSectionTitle}>DIRECT MESSAGES</Text>
-          {socialDMs.length === 0 && (
-            <Text style={{ fontSize: 13, color: '#9CA3AF', paddingHorizontal: 12, paddingBottom: 8 }}>
-              Connect with students to start DMing 👋
-            </Text>
-          )}
+          {loadingDMs ? (
+            <View style={{ paddingHorizontal: 12, paddingBottom: 8 }}>
+              <ActivityIndicator size="small" color={colors.primary} />
+            </View>
+          ) : socialDMs.length === 0 ? (
+            <View style={{ paddingHorizontal: 12, paddingBottom: 12, gap: 8 }}>
+              <Text style={{ fontSize: 13, color: colors.textSecondary }}>
+                No connections yet. Connect with students on the Social tab to start DMing.
+              </Text>
+              <TouchableOpacity
+                onPress={async () => {
+                  // Retry loading DM contacts
+                  setLoadingDMs(true);
+                  try {
+                    const dms = await getDMContactsAPI(accessToken);
+                    if (Array.isArray(dms)) {
+                      setDmContacts(dms.map(dm => ({ ...dm, username: dm.full_name || dm.username })));
+                    }
+                  } catch (e) {
+                    console.warn('[ChatScreen] DM refresh error', e);
+                  } finally {
+                    setLoadingDMs(false);
+                  }
+                }}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 6, paddingHorizontal: 10, borderRadius: 8, backgroundColor: colors.primary + '18', alignSelf: 'flex-start' }}
+              >
+                <Ionicons name="refresh-outline" size={14} color={colors.primary} />
+                <Text style={{ fontSize: 12, fontWeight: '700', color: colors.primary }}>Refresh Connections</Text>
+              </TouchableOpacity>
+            </View>
+          ) : null}
           {socialDMs.map((dm) => {
             const isOnline = onlineUsers.includes(dm.user_id);
             return (

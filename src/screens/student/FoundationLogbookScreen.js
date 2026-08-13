@@ -528,8 +528,16 @@ const FoundationLogbookScreen = ({ navigation }) => {
   const { colors, isDark } = useTheme();
   const { user: contextUser } = useUser();
 
-  const rollno = String(contextUser?.rollno || contextUser?.username || contextUser?.id || '');
-  const username = String(contextUser?.name || contextUser?.full_name || '');
+  // Robust fallbacks: ERP needs the student's name and rollno; different profiles
+  // may store them in different fields — handle every known variation.
+  const rollno = String(
+    contextUser?.rollno || contextUser?.roll_no || contextUser?.username || contextUser?.id || ''
+  );
+  const username = String(
+    contextUser?.full_name || contextUser?.name ||
+    contextUser?.student_name || contextUser?.username ||
+    rollno  // last resort: rollno is better than empty string
+  );
   const userBatchYear = parseInt(contextUser?.batch_year || contextUser?.year || '2024', 10);
   const batchCd = BATCH_YEAR_TO_CD[userBatchYear] || '63';
 
@@ -565,14 +573,19 @@ const FoundationLogbookScreen = ({ navigation }) => {
     setFormA3('');
   };
 
+  const [loadError, setLoadError] = useState(false);
+
   const loadEntries = async (showLoading = true) => {
     if (showLoading) setLoading(true);
+    setLoadError(false);
     try {
+      console.log('[FoundationLogbook] Fetching for username:', username, 'rollno:', rollno);
       const data = await getFoundationData(username, rollno);
       setEntries(Array.isArray(data) ? data : []);
     } catch (e) {
       console.warn('[FoundationLogbook] load error:', e);
       setEntries([]);
+      setLoadError(true);
     } finally {
       setLoading(false);
       setRefreshing(false);
