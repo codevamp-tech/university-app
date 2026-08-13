@@ -629,6 +629,9 @@ const AdminStudentProfileScreen = ({ navigation, route }) => {
               </ScrollView>
             )}
           </View>
+        </View>
+      </Modal>
+
       {/* Edit Bio Modal */}
       <Modal visible={showEditBioModal} transparent animationType="fade" onRequestClose={() => setShowEditBioModal(false)}>
         <View style={styles.modalOverlay}>
