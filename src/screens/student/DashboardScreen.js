@@ -24,6 +24,7 @@ import { booksData } from '../student/library/LibraryMainScreen';
 import { listGrievancesAPI, deleteGrievanceAPI, uploadAvatarAPI, createOutpass, getStudentOutpasses, getResults, getCompetencyGaps, logMoodAPI, getMoodEntriesAPI } from '../../data/apiService';
 import { getDisplayCourse, isMedicalStudent } from '../../utils/courseDisplay';
 import { calculateExactMedicalPerformance } from '../../utils/academicPerformance';
+import { readCachedMedicalPct } from '../../utils/medicalPctCache';
 
 const { width } = Dimensions.get('window');
 
@@ -295,8 +296,14 @@ const DashboardScreen = ({ navigation }) => {
   useFocusEffect(
     React.useCallback(() => {
       async function loadStoredPct() {
-        const stId = user?.id || user?.username || user?.rollno || 'default';
         try {
+          const cachedVal = await readCachedMedicalPct(user);
+          if (cachedVal !== null && cachedVal > 0) {
+            setMedMarksPct(cachedVal);
+            return;
+          }
+
+          const stId = user?.id || user?.username || user?.rollno || 'default';
           if (accessToken) {
             const records = await getResults(accessToken, stId);
             if (records && Array.isArray(records) && records.length > 0) {
@@ -308,33 +315,10 @@ const DashboardScreen = ({ navigation }) => {
               }
             }
           }
-
-          const cacheStr = await AsyncStorage.getItem(`@erp_results_cache_${stId}`);
-          if (cacheStr) {
-            const parsed = JSON.parse(cacheStr);
-            if (parsed?.phases && Array.isArray(parsed.phases)) {
-              const taken = parsed.phases.filter(p => p.combinedPct !== null);
-              if (taken.length > 0) {
-                const computed = Math.round(taken.reduce((s, p) => s + p.combinedPct, 0) / taken.length);
-                setMedMarksPct(computed);
-                await AsyncStorage.setItem(`@erp_overall_pct_${stId}`, String(computed));
-                return;
-              }
-            }
-          }
-
-          const directPct = await AsyncStorage.getItem(`@erp_overall_pct_${stId}`);
-          if (directPct !== null) {
-            const val = parseInt(directPct, 10);
-            if (!isNaN(val) && val > 0) {
-              setMedMarksPct(val);
-              return;
-            }
-          }
         } catch (_) {}
       }
       loadStoredPct();
-    }, [accessToken, user?.id, user?.username, user?.rollno])
+    }, [accessToken, user])
   );
 
   useFocusEffect(
