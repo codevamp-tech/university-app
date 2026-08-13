@@ -2666,21 +2666,32 @@ export async function getAdminGeneralNotifications() {
     if (Array.isArray(data)) {
       const currentYear = new Date().getFullYear();
       return data.map((item, index) => {
-        let rawDate = new Date();
+        let rawDate = null;
         try {
           const dateStr = String(item.formatted_date || '').trim();
           if (dateStr) {
-            // dateStr format: "21 Jul,5:01 PM" or "06 Jul,12:30 PM"
+            // dateStr format: "21 Jul,5:01 PM" or "06 Aug,2:25 AM"
+            // ERP returns IST local times without timezone info.
+            // We reconstruct the string and parse it explicitly.
             const [dPart, tPart] = dateStr.split(',').map(s => s ? s.trim() : '');
             if (dPart) {
-              const fullStr = `${dPart} ${currentYear} ${tPart || ''}`.trim();
-              const parsed = Date.parse(fullStr);
-              if (!isNaN(parsed)) {
-                rawDate = new Date(parsed);
+              // Try with current year, then previous year if it's in the future
+              for (const yr of [new Date().getFullYear(), new Date().getFullYear() - 1]) {
+                const fullStr = `${dPart} ${yr} ${tPart || ''}`.trim();
+                const parsed = Date.parse(fullStr);
+                if (!isNaN(parsed)) {
+                  const candidate = new Date(parsed);
+                  // If candidate is in the future by more than a few minutes, use previous year
+                  if (candidate.getTime() <= Date.now() + 5 * 60 * 1000) {
+                    rawDate = candidate;
+                    break;
+                  }
+                }
               }
             }
           }
         } catch {}
+        if (!rawDate) rawDate = new Date();
 
         let attachmentUrl = null;
         const attachmentRaw = item.Attachment || item.attachment;
