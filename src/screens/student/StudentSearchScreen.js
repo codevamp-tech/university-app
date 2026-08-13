@@ -318,9 +318,14 @@ const StudentSearchScreen = ({ navigation }) => {
       {/* Active Filters */}
       {(filters.year !== 'All' || filters.branch !== 'All' || filters.status !== 'All') && (
         <View style={styles.activeFiltersContainer}>
-          {filters.year !== 'All' && <FilterPill label={`Year: ${filters.year}`} onRemove={() => setFilters(f => ({...f, year: 'All'}))} />}
-          {filters.branch !== 'All' && <FilterPill label={`Branch: ${filters.branch}`} onRemove={() => setFilters(f => ({...f, branch: 'All'}))} />}
-          {filters.status !== 'All' && <FilterPill label={`Status: ${filters.status}`} onRemove={() => setFilters(f => ({...f, status: 'All'}))} />}
+          {filters.year !== 'All' && (
+            <FilterPill
+              label={`Prof: ${filters.year === '1' ? '1st Prof' : filters.year === '2' ? '2nd Prof' : filters.year === '3' ? '3rd Prof' : 'Final Prof'}`}
+              onRemove={() => setFilters(f => ({...f, year: 'All'}))}
+            />
+          )}
+          {filters.branch !== 'All' && <FilterPill label={`Stream: ${filters.branch}`} onRemove={() => setFilters(f => ({...f, branch: 'All'}))} />}
+          {filters.status !== 'All' && <FilterPill label={`Status: ${filters.status === 'Connect' ? 'Not Connected' : filters.status}`} onRemove={() => setFilters(f => ({...f, status: 'All'}))} />}
         </View>
       )}
 
@@ -366,20 +371,33 @@ const StudentSearchScreen = ({ navigation }) => {
             </View>
             
             <ScrollView style={styles.modalScroll}>
-              <Text style={[styles.filterSectionTitle, { color: colors.textSecondary }]}>Year</Text>
+              <Text style={[styles.filterSectionTitle, { color: colors.textSecondary }]}>Professional Year</Text>
               <View style={styles.filterOptions}>
-                {['All', '1', '2', '3', '4'].map(y => (
-                  <TouchableOpacity key={y} onPress={() => setFilters(f => ({...f, year: y}))} style={[styles.filterOption, filters.year === y && { backgroundColor: colors.primary, borderColor: colors.primary }]}>
-                    <Text style={[styles.filterOptionText, { color: filters.year === y ? '#FFF' : colors.textPrimary }]}>{y === 'All' ? 'All Years' : `Year ${y}`}</Text>
+                {[
+                  { id: 'All', label: 'All Profs' },
+                  { id: '1', label: '1st Prof' },
+                  { id: '2', label: '2nd Prof' },
+                  { id: '3', label: '3rd Prof' },
+                  { id: '4', label: 'Final Prof' }
+                ].map(y => (
+                  <TouchableOpacity key={y.id} onPress={() => setFilters(f => ({...f, year: y.id}))} style={[styles.filterOption, filters.year === y.id && { backgroundColor: colors.primary, borderColor: colors.primary }]}>
+                    <Text style={[styles.filterOptionText, { color: filters.year === y.id ? '#FFF' : colors.textPrimary }]}>{y.label}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
 
-              <Text style={[styles.filterSectionTitle, { color: colors.textSecondary, marginTop: 16 }]}>Branch</Text>
+              <Text style={[styles.filterSectionTitle, { color: colors.textSecondary, marginTop: 16 }]}>Medical Stream / Department</Text>
               <View style={styles.filterOptions}>
-                {['All', 'CSE', 'EE', 'MBBS', 'Engineering', 'Management'].map(b => (
-                  <TouchableOpacity key={b} onPress={() => setFilters(f => ({...f, branch: b}))} style={[styles.filterOption, filters.branch === b && { backgroundColor: colors.primary, borderColor: colors.primary }]}>
-                    <Text style={[styles.filterOptionText, { color: filters.branch === b ? '#FFF' : colors.textPrimary }]}>{b}</Text>
+                {[
+                  { id: 'All', label: 'All Streams' },
+                  { id: 'MBBS', label: 'MBBS' },
+                  { id: 'Pre-Clinical', label: 'Pre-Clinical' },
+                  { id: 'Para-Clinical', label: 'Para-Clinical' },
+                  { id: 'Clinical', label: 'Clinical' },
+                  { id: 'Internship', label: 'Internship' }
+                ].map(b => (
+                  <TouchableOpacity key={b.id} onPress={() => setFilters(f => ({...f, branch: b.id}))} style={[styles.filterOption, filters.branch === b.id && { backgroundColor: colors.primary, borderColor: colors.primary }]}>
+                    <Text style={[styles.filterOptionText, { color: filters.branch === b.id ? '#FFF' : colors.textPrimary }]}>{b.label}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
