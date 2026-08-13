@@ -2663,25 +2663,42 @@ export async function getAdminGeneralNotifications() {
   try {
     const response = await fetch('https://myportal.srms.ac.in/SRMSERP/Home/GetAdminGNotf');
     const data = await response.json();
-    if (Array.isArray(data)) {
-      const currentYear = new Date().getFullYear();
-      return data.map((item, index) => {
+
+    if (!Array.isArray(data)) return [];
+
+    // Load cached first-seen timestamps for ERP notifications
+    let erpTimestampCache = {};
+    try {
+      const cached = await AsyncStorage.getItem('erp_notification_timestamps');
+      if (cached) erpTimestampCache = JSON.parse(cached);
+    } catch {}
+
+    const results = [];
+    const now = new Date();
+
+    for (let index = 0; index < data.length; index++) {
+      const item = data[index];
+
+      // Build a stable content-based ID (independent of timestamp)
+      const stableKey = `erp-${String(item.FacultyName || '').trim()}-${String(item.Chat_Desc || '').trim().slice(0, 40)}`;
+
+      // Look up cached first-seen time
+      let createdAt;
+      if (erpTimestampCache[stableKey]) {
+        createdAt = new Date(erpTimestampCache[stableKey]);
+      } else {
+        // First time we see this notification — try to parse ERP date
         let rawDate = null;
         try {
           const dateStr = String(item.formatted_date || '').trim();
           if (dateStr) {
-            // dateStr format: "21 Jul,5:01 PM" or "06 Aug,2:25 AM"
-            // ERP returns IST local times without timezone info.
-            // We reconstruct the string and parse it explicitly.
             const [dPart, tPart] = dateStr.split(',').map(s => s ? s.trim() : '');
             if (dPart) {
-              // Try with current year, then previous year if it's in the future
-              for (const yr of [new Date().getFullYear(), new Date().getFullYear() - 1]) {
+              for (const yr of [now.getFullYear(), now.getFullYear() - 1]) {
                 const fullStr = `${dPart} ${yr} ${tPart || ''}`.trim();
                 const parsed = Date.parse(fullStr);
                 if (!isNaN(parsed)) {
                   const candidate = new Date(parsed);
-                  // If candidate is in the future by more than a few minutes, use previous year
                   if (candidate.getTime() <= Date.now() + 5 * 60 * 1000) {
                     rawDate = candidate;
                     break;
@@ -2691,40 +2708,52 @@ export async function getAdminGeneralNotifications() {
             }
           }
         } catch {}
-        if (!rawDate) rawDate = new Date();
+        // If ERP returned today's date+time (i.e., within last 5 min), treat as "now"
+        // Otherwise use the parsed date. Either way, cache it.
+        createdAt = rawDate || now;
+        erpTimestampCache[stableKey] = createdAt.toISOString();
+      }
 
-        let attachmentUrl = null;
-        const attachmentRaw = item.Attachment || item.attachment;
-        const baseurl = item.baseurl || item.baseUrl || '';
-        if (attachmentRaw && String(attachmentRaw).trim() !== '' && String(attachmentRaw) !== '0' && String(attachmentRaw).toLowerCase() !== 'null') {
-          const cleanAttach = String(attachmentRaw).replace(/\\/g, '/');
-          if (cleanAttach.startsWith('http')) {
-            attachmentUrl = cleanAttach;
-          } else if (baseurl) {
-            attachmentUrl = baseurl + cleanAttach;
-          } else {
-            attachmentUrl = 'https://myportal.srms.ac.in/SRMSERP/Faculty/ChatsFile?pathname=' + cleanAttach;
-          }
+      let attachmentUrl = null;
+      const attachmentRaw = item.Attachment || item.attachment;
+      const baseurl = item.baseurl || item.baseUrl || '';
+      if (attachmentRaw && String(attachmentRaw).trim() !== '' && String(attachmentRaw) !== '0' && String(attachmentRaw).toLowerCase() !== 'null') {
+        const cleanAttach = String(attachmentRaw).replace(/\\/g, '/');
+        if (cleanAttach.startsWith('http')) {
+          attachmentUrl = cleanAttach;
+        } else if (baseurl) {
+          attachmentUrl = baseurl + cleanAttach;
+        } else {
+          attachmentUrl = 'https://myportal.srms.ac.in/SRMSERP/Faculty/ChatsFile?pathname=' + cleanAttach;
         }
+      }
 
-        return {
-          id: `erp-announcement-${index}-${item.formatted_date}`,
-          title: `[ERP] ${item.FacultyName || 'Administration'}`,
-          body: (item.Chat_Desc || '').trim(),
-          type: 'announcement',
-          urgency: 'medium',
-          is_read: false,
-          created_at: rawDate.toISOString(),
-          attachment: attachmentUrl,
-          batch: item.batch ? String(item.batch) : null,
-        };
+      results.push({
+        id: `erp-${stableKey}`,
+        title: `[ERP] ${item.FacultyName || 'Administration'}`,
+        body: (item.Chat_Desc || '').trim(),
+        type: 'announcement',
+        urgency: 'medium',
+        is_read: false,
+        created_at: createdAt.toISOString(),
+        attachment: attachmentUrl,
+        batch: item.batch ? String(item.batch) : null,
       });
     }
+
+    // Persist updated cache
+    try {
+      await AsyncStorage.setItem('erp_notification_timestamps', JSON.stringify(erpTimestampCache));
+    } catch {}
+
+    return results;
   } catch (err) {
     console.warn('[apiService] getAdminGeneralNotifications failed:', err);
   }
   return [];
 }
+
+
 
 export async function getConnectionList(token, userId = null) {
   try {
