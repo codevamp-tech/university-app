@@ -48,7 +48,8 @@ const TalentIdentityScreen = ({ navigation }) => {
     setLoadingConnections(true);
     try {
       const data = await getConnectionList(accessToken, user?.id);
-      setConnectionsList(data.connections || []);
+      const list = Array.isArray(data) ? data : (data?.connections || []);
+      setConnectionsList(list);
     } catch (e) {
       console.warn("Error loading connection list:", e);
     } finally {
