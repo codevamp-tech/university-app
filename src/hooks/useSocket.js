@@ -14,6 +14,7 @@
  */
 
 import { useEffect, useRef, useCallback, useState } from 'react';
+import { AppState } from 'react-native';
 import { APP_CONFIG } from '../config/appConfig';
 
 // Derive WebSocket URL from the HTTP base URL
@@ -166,6 +167,34 @@ export function useSocket(accessToken, handlers = {}) {
       setIsConnected(false);
     };
   }, [accessToken]); // Only reconnect when token changes
+
+  // Close WS when app goes to background, reconnect when it comes back
+  useEffect(() => {
+    const handleAppStateChange = (nextState) => {
+      if (nextState === 'background' || nextState === 'inactive') {
+        // App going to background — cleanly close WS to release server DB connection
+        console.log('[WS] App backgrounded — closing WebSocket to release server connection');
+        clearPing();
+        clearReconnect();
+        if (wsRef.current) {
+          wsRef.current.onclose = null; // Suppress auto-reconnect triggered by this close
+          wsRef.current.close(1000, 'app_backgrounded');
+          wsRef.current = null;
+        }
+        setIsConnected(false);
+      } else if (nextState === 'active') {
+        // App coming back to foreground — reconnect if we have a token
+        if (accessToken && isMounted.current) {
+          console.log('[WS] App foregrounded — reconnecting WebSocket');
+          reconnectAttempts.current = 0;
+          connect();
+        }
+      }
+    };
+
+    const subscription = AppState.addEventListener('change', handleAppStateChange);
+    return () => subscription.remove();
+  }, [accessToken, connect, clearPing, clearReconnect]);
 
   return { isConnected };
 }

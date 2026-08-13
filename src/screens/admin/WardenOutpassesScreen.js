@@ -242,7 +242,7 @@ const WardenOutpassesScreen = ({ navigation }) => {
             
             <TextInput
               style={[styles.modalInput, { backgroundColor: isDark ? '#1F2937' : '#F9FAFB', borderColor: colors.border, color: colors.textPrimary }]}
-              placeholder="e.g., Have a safe trip..."
+              placeholder={actionType === 'rejected' ? "e.g., Reason for rejection..." : "e.g., Have a safe trip! 🎒"}
               placeholderTextColor={colors.textSecondary}
               value={actionRemarks}
               onChangeText={setActionRemarks}

@@ -49,9 +49,17 @@ const TheHustleScreen = ({ navigation }) => {
           if (accessToken) {
             const list = await getAllStudents(accessToken);
             if (active) {
+              // Sanitize display names: roll numbers / phone numbers should not appear
+              const sanitizeName = (raw) => {
+                if (!raw) return 'Student';
+                const stripped = raw.toString().replace(/[\s\-_.]/g, '');
+                // If the value is mostly numeric and longer than 6 chars, it's a roll/phone number
+                if (stripped.length > 6 && /^\d+$/.test(stripped)) return null; // will use 'Student' fallback
+                return raw;
+              };
               const mapped = list.map(s => ({
                 id: s.rollno || s.username || s.id,
-                name: s.full_name || s.username || 'Student',
+                name: sanitizeName(s.full_name) || sanitizeName(s.name) || 'Student',
                 course: s.course,
                 branch: s.branch,
                 category: s.category,
@@ -372,7 +380,11 @@ const TheHustleScreen = ({ navigation }) => {
                 { borderBottomColor: colors.border }
               ]}>
                 <View style={[styles.boardItemLeft, { flex: 1, marginRight: 8 }]}>
-                  <Text style={[styles.boardRank, { color: colors.textMuted }, item.rank <= 3 && { color: colors.primary }]}>{item.rank}</Text>
+                  <Text style={[
+                    styles.boardRank,
+                    { color: colors.textMuted, fontSize: item.rank >= 100 ? 10 : 13, minWidth: 28, textAlign: 'center' },
+                    item.rank <= 3 && { color: colors.primary }
+                  ]}>{item.rank}</Text>
                   <Image source={{ uri: item.avatar }} style={styles.boardAvatar} />
                   <View style={{ flex: 1 }}>
                     <Text style={[styles.boardName, { color: colors.textPrimary }, item.isMe && { color: colors.primary }]} numberOfLines={1}>
@@ -400,7 +412,10 @@ const TheHustleScreen = ({ navigation }) => {
                   { backgroundColor: isDark ? 'rgba(234, 88, 12, 0.2)' : '#FFF7ED', borderBottomWidth: 0 }
                 ]}>
                   <View style={[styles.boardItemLeft, { flex: 1, marginRight: 8 }]}>
-                    <Text style={[styles.boardRank, { color: colors.primary }]}>{myRecord.rank}</Text>
+                    <Text style={[
+                      styles.boardRank,
+                      { color: colors.primary, fontSize: myRecord.rank >= 100 ? 10 : 13, minWidth: 28, textAlign: 'center' }
+                    ]}>{myRecord.rank}</Text>
                     <Image source={{ uri: myRecord.avatar }} style={styles.boardAvatar} />
                     <View style={{ flex: 1 }}>
                       <Text style={[styles.boardName, { color: colors.primary }]} numberOfLines={1}>

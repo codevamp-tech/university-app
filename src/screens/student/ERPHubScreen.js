@@ -377,6 +377,17 @@ const ERPHubScreen = ({ navigation, route }) => {
                     <Text style={[styles.essentialCardDesc, { color: colors.textSecondary, marginTop: 4 }]}>
                       From: {op.from || 'N/A'}{'\n'}To: {op.to || 'N/A'}
                     </Text>
+                    {/* Warden remark — shown when approved/rejected */}
+                    {(op.remarks || op.warden_remark || op.comment) ? (
+                      <View style={{ marginTop: 8, padding: 8, borderRadius: 8, backgroundColor: opStatus === 'rejected' ? (isDark ? 'rgba(239,68,68,0.1)' : '#FEF2F2') : (isDark ? 'rgba(16,185,129,0.08)' : '#F0FDF4'), borderLeftWidth: 3, borderLeftColor: opStatus === 'rejected' ? '#EF4444' : '#10B981' }}>
+                        <Text style={{ fontSize: 10, fontWeight: '800', color: opStatus === 'rejected' ? '#EF4444' : '#10B981', marginBottom: 2, textTransform: 'uppercase' }}>
+                          Warden's Note
+                        </Text>
+                        <Text style={{ fontSize: 13, color: colors.textPrimary }}>
+                          {op.remarks || op.warden_remark || op.comment}
+                        </Text>
+                      </View>
+                    ) : null}
                   </View>
                 </View>
               );
@@ -714,41 +725,61 @@ const ERPHubScreen = ({ navigation, route }) => {
           </View>
         )}
 
-        {/* Recent Alerts */}
+        {/* Recent Alerts — ERP only (no social/venture/marketplace) */}
         {!isStaffOrAdmin && (
           <View style={styles.sectionContainer}>
             <Text style={[styles.sectionHeading, { color: colors.textPrimary }]}>Recent Alerts</Text>
             <View style={[styles.alertsCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-
-              {alerts.length === 0 ? (
-                <View style={{ padding: 24, alignItems: 'center' }}>
-                  <Text style={{ color: colors.textSecondary, fontWeight: '600' }}>No recent alerts</Text>
-                </View>
-              ) : (
-                alerts.slice(0, 3).map((alert, idx) => (
-                  <View key={alert.id || idx}>
-                    <View style={styles.alertItem}>
-                      <View style={[styles.alertIconBox, { backgroundColor: isDark ? 'rgba(234, 88, 12, 0.2)' : '#FFF7ED' }]}>
-                        <MaterialIcons name={alert.type === 'urgent' ? 'error-outline' : 'notifications-none'} size={16} color={colors.primary} />
-                      </View>
-                      <View style={styles.alertContent}>
-                        <View style={styles.alertTitleRow}>
-                          <Text style={[styles.alertItemTitle, { color: colors.textPrimary }]}>{alert.title || 'Notification'}</Text>
-                          {alert.type && (
-                            <Text style={[styles.alertTag, { color: colors.primary, backgroundColor: isDark ? 'rgba(234, 88, 12, 0.2)' : '#FFF7ED' }]}>
-                              {alert.type.toUpperCase()}
-                            </Text>
-                          )}
-                        </View>
-                        <Text style={[styles.alertItemDesc, { color: colors.textSecondary }]}>
-                          {alert.message || alert.content || ''}
-                        </Text>
-                      </View>
+              {(() => {
+                // Only show ERP-relevant alert types — exclude social, venture, marketplace
+                const ERP_TYPES = ['grade', 'deadline', 'announcement', 'reward', 'urgent'];
+                const erpAlerts = alerts.filter(a =>
+                  !a.type || ERP_TYPES.includes(a.type?.toLowerCase())
+                );
+                if (erpAlerts.length === 0) {
+                  return (
+                    <View style={{ padding: 24, alignItems: 'center' }}>
+                      <Text style={{ color: colors.textSecondary, fontWeight: '600' }}>No recent ERP alerts</Text>
                     </View>
-                    {idx < alerts.length - 1 && <View style={[styles.alertDivider, { backgroundColor: colors.border }]} />}
-                  </View>
-                ))
-              )}
+                  );
+                }
+                return erpAlerts.slice(0, 3).map((alert, idx) => {
+                  // Format date + time
+                  let timeStr = '';
+                  if (alert.created_at) {
+                    const d = new Date(alert.created_at);
+                    if (!isNaN(d)) {
+                      timeStr = d.toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+                    }
+                  }
+                  return (
+                    <View key={alert.id || idx}>
+                      <View style={styles.alertItem}>
+                        <View style={[styles.alertIconBox, { backgroundColor: isDark ? 'rgba(234, 88, 12, 0.2)' : '#FFF7ED' }]}>
+                          <MaterialIcons name={alert.type === 'urgent' ? 'error-outline' : 'notifications-none'} size={16} color={colors.primary} />
+                        </View>
+                        <View style={styles.alertContent}>
+                          <View style={styles.alertTitleRow}>
+                            <Text style={[styles.alertItemTitle, { color: colors.textPrimary, flex: 1 }]}>{alert.title || 'Notification'}</Text>
+                            {alert.type && (
+                              <Text style={[styles.alertTag, { color: colors.primary, backgroundColor: isDark ? 'rgba(234, 88, 12, 0.2)' : '#FFF7ED' }]}>
+                                {alert.type.toUpperCase()}
+                              </Text>
+                            )}
+                          </View>
+                          <Text style={[styles.alertItemDesc, { color: colors.textSecondary }]}>
+                            {alert.body || alert.message || alert.content || ''}
+                          </Text>
+                          {timeStr ? (
+                            <Text style={{ fontSize: 11, color: colors.textMuted, marginTop: 3 }}>{timeStr}</Text>
+                          ) : null}
+                        </View>
+                      </View>
+                      {idx < erpAlerts.slice(0, 3).length - 1 && <View style={[styles.alertDivider, { backgroundColor: colors.border }]} />}
+                    </View>
+                  );
+                });
+              })()}
 
               {alerts.length > 0 && (
                 <TouchableOpacity style={[styles.clearAllBtn, { backgroundColor: isDark ? colors.background : '#F9FAFB', borderTopColor: colors.border }]}>
