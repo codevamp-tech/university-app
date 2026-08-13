@@ -30,6 +30,16 @@ function timeAgo(dateString) {
   return past.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
+function formatSubmittedAt(dateString) {
+  if (!dateString) return '';
+  const formattedString = dateString.replace(' ', 'T');
+  const d = new Date(formattedString);
+  if (isNaN(d.getTime())) return '';
+  const date = d.toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' });
+  const time = d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: true });
+  return `${date} • ${time}`;
+}
+
 const getStartupIconInfo = (category, isDark) => {
   const cat = (category || '').toLowerCase();
   if (cat.includes('agri')) {
@@ -597,6 +607,12 @@ const VentureScreen = ({ navigation }) => {
                       ) : null}
                     </View>
                   )}
+
+                  {startup.created_at ? (
+                    <Text style={{ fontSize: 11, color: colors.textMuted, marginTop: 8 }}>
+                      Submitted: {formatSubmittedAt(startup.created_at)}
+                    </Text>
+                  ) : null}
 
                   <View style={styles.myProgressSection}>
                     <View style={styles.myProgressHeader}>
