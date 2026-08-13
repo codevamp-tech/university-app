@@ -23,6 +23,7 @@ import { generateAIInsight, generateRoadmap, computeSkillGap, generateDynamicRoa
 import { booksData } from '../student/library/LibraryMainScreen';
 import { listGrievancesAPI, deleteGrievanceAPI, uploadAvatarAPI, createOutpass, getStudentOutpasses, getResults, getCompetencyGaps, logMoodAPI, getMoodEntriesAPI } from '../../data/apiService';
 import { getDisplayCourse, isMedicalStudent } from '../../utils/courseDisplay';
+import { calculateExactMedicalPerformance } from '../../utils/academicPerformance';
 
 const { width } = Dimensions.get('window');
 
@@ -289,13 +290,25 @@ const DashboardScreen = ({ navigation }) => {
   const isMed = user && (isMedicalStudent(user) || (user.course || '').toLowerCase().includes('mbbs') || (user.category || '').toLowerCase().includes('medical'));
   const [activeMood, setActiveMood] = React.useState(2);
 
-  const [medMarksPct, setMedMarksPct] = React.useState(61);
+  const [medMarksPct, setMedMarksPct] = React.useState(46);
 
   useFocusEffect(
     React.useCallback(() => {
       async function loadStoredPct() {
         const stId = user?.id || user?.username || user?.rollno || 'default';
         try {
+          if (accessToken) {
+            const records = await getResults(accessToken, stId);
+            if (records && Array.isArray(records) && records.length > 0) {
+              const computed = calculateExactMedicalPerformance(records);
+              if (computed && computed > 0) {
+                setMedMarksPct(computed);
+                await AsyncStorage.setItem(`@erp_overall_pct_${stId}`, String(computed));
+                return;
+              }
+            }
+          }
+
           const directPct = await AsyncStorage.getItem(`@erp_overall_pct_${stId}`);
           if (directPct !== null) {
             const val = parseInt(directPct, 10);
@@ -315,30 +328,6 @@ const DashboardScreen = ({ navigation }) => {
               const taken = parsed.phases.filter(p => p.combinedPct !== null);
               if (taken.length > 0) {
                 setMedMarksPct(Math.round(taken.reduce((s, p) => s + p.combinedPct, 0) / taken.length));
-                return;
-              }
-            }
-          }
-
-          if (accessToken) {
-            const records = await getResults(accessToken, stId);
-            if (records && Array.isArray(records) && records.length > 0) {
-              let totalSum = 0;
-              let paperCount = 0;
-              records.forEach(r => {
-                const rawObt = parseFloat(r.obtained_marks ?? r.obtainedMarks ?? 0);
-                const pcode = String(r.paper_code || r.paperCode || '').trim();
-                let rawTot = parseFloat(r.total_marks ?? r.totalMarks ?? 100);
-                if (rawTot <= 0 || (rawTot === 100 && ['30157', '30163', '30166', '30104'].includes(pcode))) {
-                  rawTot = 30.0;
-                }
-                totalSum += Math.min(100, Math.max(0, (rawObt / rawTot) * 100));
-                paperCount++;
-              });
-              if (paperCount > 0) {
-                const computed = Math.round(totalSum / paperCount);
-                setMedMarksPct(computed);
-                await AsyncStorage.setItem(`@erp_overall_pct_${stId}`, String(computed));
                 return;
               }
             }

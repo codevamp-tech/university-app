@@ -14,39 +14,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { APP_CONFIG } from '../../config/appConfig';
 import { getDisplayCourse, getMBBSProfLabel } from '../../utils/courseDisplay';
 
-function calculateOverallPctFromRecords(records) {
-  if (!records || !Array.isArray(records) || records.length === 0) return null;
-  const byPhase = {};
-
-  records.forEach(r => {
-    const rawObtained = parseFloat(r.obtained_marks ?? r.obtainedMarks ?? 0);
-    const pcode = String(r.paper_code || r.paperCode || '').trim();
-    let rawTotal = parseFloat(r.total_marks ?? r.totalMarks ?? 100);
-    if (rawTotal <= 0 || (rawTotal === 100 && ['30157', '30163', '30166', '30104'].includes(pcode))) {
-      rawTotal = 30.0;
-    }
-    const paperPct = Math.min(100, Math.max(0, (rawObtained / rawTotal) * 100));
-    const phaseName = r.phase || 'Phase';
-
-    if (!byPhase[phaseName]) {
-      byPhase[phaseName] = { totalPct: 0, count: 0 };
-    }
-    byPhase[phaseName].totalPct += paperPct;
-    byPhase[phaseName].count += 1;
-  });
-
-  const phaseAverages = [];
-  Object.values(byPhase).forEach(p => {
-    if (p.count > 0) {
-      phaseAverages.push(p.totalPct / p.count);
-    }
-  });
-
-  if (phaseAverages.length > 0) {
-    return Math.round(phaseAverages.reduce((a, b) => a + b, 0) / phaseAverages.length);
-  }
-  return null;
-}
+import { calculateExactMedicalPerformance } from '../../utils/academicPerformance';
 
 const { width } = Dimensions.get('window');
 
@@ -65,12 +33,24 @@ const ERPHubScreen = ({ navigation, route }) => {
   };
 
   const [alerts, setAlerts] = useState([]);
-  const [medMarksPct, setMedMarksPct] = useState(61);
+  const [medMarksPct, setMedMarksPct] = useState(46);
 
   React.useEffect(() => {
     async function loadStoredPct() {
       const stId = student?.id || student?.username || student?.rollno || 'default';
       try {
+        if (accessToken) {
+          const records = await getResults(accessToken, stId);
+          if (records && Array.isArray(records) && records.length > 0) {
+            const computed = calculateExactMedicalPerformance(records);
+            if (computed && computed > 0) {
+              setMedMarksPct(computed);
+              await AsyncStorage.setItem(`@erp_overall_pct_${stId}`, String(computed));
+              return;
+            }
+          }
+        }
+
         const directPct = await AsyncStorage.getItem(`@erp_overall_pct_${stId}`);
         if (directPct !== null) {
           const val = parseInt(directPct, 10);
@@ -90,18 +70,6 @@ const ERPHubScreen = ({ navigation, route }) => {
             const taken = parsed.phases.filter(p => p.combinedPct !== null);
             if (taken.length > 0) {
               setMedMarksPct(Math.round(taken.reduce((s, p) => s + p.combinedPct, 0) / taken.length));
-              return;
-            }
-          }
-        }
-
-        if (accessToken) {
-          const records = await getResults(accessToken, stId);
-          if (records && Array.isArray(records) && records.length > 0) {
-            const computed = calculateOverallPctFromRecords(records);
-            if (computed && computed > 0) {
-              setMedMarksPct(computed);
-              await AsyncStorage.setItem(`@erp_overall_pct_${stId}`, String(computed));
               return;
             }
           }
