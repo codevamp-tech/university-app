@@ -12,6 +12,15 @@ import { getAvatarUrl } from '../../utils/avatar';
 
 const { width } = Dimensions.get('window');
 
+function formatListingDate(dateString) {
+  if (!dateString) return '';
+  const d = new Date(dateString.replace(' ', 'T'));
+  if (isNaN(d.getTime())) return '';
+  const date = d.toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' });
+  const time = d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: true });
+  return `${date} • ${time}`;
+}
+
 const ProductDetailScreen = ({ route, navigation }) => {
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
@@ -105,6 +114,11 @@ const ProductDetailScreen = ({ route, navigation }) => {
             </View>
             <Text style={[styles.title, { color: colors.textPrimary }]}>{product.title}</Text>
             <Text style={[styles.price, { color: colors.primary }]}>₹{product.price}</Text>
+            {product.created_at ? (
+              <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 4 }}>
+                Posted: {formatListingDate(product.created_at)}
+              </Text>
+            ) : null}
           </View>
 
           {/* Seller Info */}

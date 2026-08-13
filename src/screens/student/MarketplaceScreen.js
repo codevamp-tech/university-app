@@ -13,6 +13,15 @@ import { getShopListings, createOrder, getShopGigs, getShopRequests, getWalletBa
 
 const { width } = Dimensions.get('window');
 
+function formatListingDate(dateString) {
+  if (!dateString) return '';
+  const d = new Date(dateString.replace(' ', 'T'));
+  if (isNaN(d.getTime())) return '';
+  const date = d.toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' });
+  const time = d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: true });
+  return `${date} • ${time}`;
+}
+
 const MarketplaceScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
@@ -175,6 +184,11 @@ const MarketplaceScreen = ({ navigation }) => {
                   <View style={styles.itemContent}>
                     <Text style={[styles.itemTitle, { color: colors.textPrimary }]}>{item.title}</Text>
                     <Text style={[styles.itemDesc, { color: colors.textSecondary }]} numberOfLines={2}>{item.description}</Text>
+                    {item.created_at ? (
+                      <Text style={{ fontSize: 10, color: colors.textMuted, marginTop: 4 }}>
+                        {formatListingDate(item.created_at)}
+                      </Text>
+                    ) : null}
                     <View style={styles.itemFooter}>
                       <Text style={[styles.itemPrice, { color: colors.textPrimary }]}>₹{item.price}</Text>
                       <MaterialIcons name="favorite-border" size={18} color={colors.textMuted} />
