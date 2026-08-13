@@ -553,8 +553,16 @@ const VentureScreen = ({ navigation }) => {
             {myStartups.map((startup) => {
               const iconInfo = getStartupIconInfo(startup.category, isDark);
               const milestone = startup.milestone_pct !== undefined ? startup.milestone_pct : 0;
+              const appStatus = (startup.approval_status || 'pending_review').toLowerCase();
+              const isApproved = appStatus === 'approved';
+              const isRejected = appStatus === 'rejected';
+
+              const statusBg = isApproved ? colors.successLight : isRejected ? colors.dangerLight : colors.warningLight;
+              const statusColor = isApproved ? colors.success : isRejected ? colors.danger : colors.warning;
+              const statusLabel = isApproved ? 'APPROVED' : isRejected ? 'REJECTED' : 'PENDING REVIEW';
+
               return (
-                <View key={startup.id} style={[styles.myStartupItemCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                <View key={startup.id} style={[styles.myStartupItemCard, { backgroundColor: colors.card, borderColor: isRejected ? colors.danger : colors.border }]}>
                   <View style={styles.myStartupHeader}>
                     <View style={[styles.myStartupIconCircle, { backgroundColor: iconInfo.bgColor }]}>
                       <MaterialIcons name={iconInfo.name} size={20} color={iconInfo.color} />
@@ -565,15 +573,29 @@ const VentureScreen = ({ navigation }) => {
                         {(startup.category || '').toUpperCase()} • {getStageLabel(startup.stage)}
                       </Text>
                     </View>
-                    <View style={[styles.myStatusBadge, { backgroundColor: iconInfo.tagBg }]}>
-                      <Text style={[styles.myStatusBadgeText, { color: iconInfo.tagColor }]}>
-                        {getStageLabel(startup.stage)}
+                    <View style={[styles.myStatusBadge, { backgroundColor: statusBg }]}>
+                      <Text style={[styles.myStatusBadgeText, { color: statusColor, fontWeight: '700' }]}>
+                        {statusLabel}
                       </Text>
                     </View>
                   </View>
+
                   <Text style={[styles.myStartupDescText, { color: colors.textSecondary }]}>
                     {startup.tagline || startup.description}
                   </Text>
+
+                  {isRejected && (
+                    <View style={{ backgroundColor: isDark ? '#2D1B1B' : '#FEE2E2', borderColor: '#EF4444', borderWidth: 1, borderRadius: 8, padding: 10, marginTop: 10 }}>
+                      <Text style={{ fontSize: 12, fontWeight: '700', color: '#B91C1C' }}>
+                        Status: Proposal Rejected
+                      </Text>
+                      {startup.admin_notes ? (
+                        <Text style={{ fontSize: 12, color: colors.textPrimary, marginTop: 4 }}>
+                          Feedback: {startup.admin_notes}
+                        </Text>
+                      ) : null}
+                    </View>
+                  )}
 
                   <View style={styles.myProgressSection}>
                     <View style={styles.myProgressHeader}>
