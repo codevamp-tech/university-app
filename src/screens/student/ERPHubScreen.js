@@ -1,9 +1,18 @@
 import React, { useState, useRef } from 'react';
+import {
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, Image,
+  Dimensions, Animated, Modal, StatusBar, TextInput, Platform, Alert, RefreshControl,
+} from 'react-native';
+import { MaterialIcons, MaterialCommunityIcons, Feather, Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import { getAvatarUrl } from "../../utils/avatar";
 import { useTheme } from '../../hooks/useTheme';
 import { useUser } from '../../context/UserContext';
 import { createOutpass, getAlerts, getStudentOutpasses, getResults } from '../../data/apiService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { APP_CONFIG } from '../../config/appConfig';
+import { getDisplayCourse, getMBBSProfLabel } from '../../utils/courseDisplay';
 
 function calculateOverallPctFromRecords(records) {
   if (!records || !Array.isArray(records) || records.length === 0) return null;
