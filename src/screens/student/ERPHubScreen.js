@@ -38,6 +38,17 @@ const ERPHubScreen = ({ navigation, route }) => {
   React.useEffect(() => {
     async function loadStoredPct() {
       const stId = student?.id || student?.username || student?.rollno || 'default';
+      const studentYear = (() => {
+        const by = parseInt(student?.batch_year || student?.batchYear || 0, 10);
+        if (by >= 2025) return 1;
+        if (by === 2024) return 2;
+        if (by === 2023) return 3;
+        if (by > 0 && by <= 2022) return 4;
+        const cy = parseInt(student?.current_year || student?.year || (student?.semester ? Math.ceil(parseInt(student.semester) / 2) : 0), 10);
+        if (cy && cy >= 1 && cy <= 4) return cy;
+        return 2;
+      })();
+
       try {
         if (accessToken) {
           const records = await getResults(accessToken, stId);
@@ -51,6 +62,19 @@ const ERPHubScreen = ({ navigation, route }) => {
           }
         }
 
+        const cacheStr = await AsyncStorage.getItem(`@erp_results_cache_${stId}`);
+        if (cacheStr) {
+          const parsed = JSON.parse(cacheStr);
+          if (parsed?.phases && Array.isArray(parsed.phases)) {
+            const taken = parsed.phases.filter(p => p.combinedPct !== null && (!p.yr_fk || p.yr_fk <= studentYear));
+            if (taken.length > 0) {
+              const computed = Math.round(taken.reduce((s, p) => s + p.combinedPct, 0) / taken.length);
+              setMedMarksPct(computed);
+              return;
+            }
+          }
+        }
+
         const directPct = await AsyncStorage.getItem(`@erp_overall_pct_${stId}`);
         if (directPct !== null) {
           const val = parseInt(directPct, 10);
@@ -59,25 +83,10 @@ const ERPHubScreen = ({ navigation, route }) => {
             return;
           }
         }
-        const cacheStr = await AsyncStorage.getItem(`@erp_results_cache_${stId}`);
-        if (cacheStr) {
-          const parsed = JSON.parse(cacheStr);
-          if (parsed?.overallPct) {
-            setMedMarksPct(Math.round(parsed.overallPct));
-            return;
-          }
-          if (parsed?.phases && Array.isArray(parsed.phases)) {
-            const taken = parsed.phases.filter(p => p.combinedPct !== null);
-            if (taken.length > 0) {
-              setMedMarksPct(Math.round(taken.reduce((s, p) => s + p.combinedPct, 0) / taken.length));
-              return;
-            }
-          }
-        }
       } catch (_) {}
     }
     loadStoredPct();
-  }, [accessToken, student?.id, student?.username, student?.rollno]);
+  }, [accessToken, student?.id, student?.username, student?.rollno, student?.batch_year, student?.year]);
 
   React.useEffect(() => {
     async function loadAlerts() {
