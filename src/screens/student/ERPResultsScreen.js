@@ -1221,7 +1221,15 @@ const ERPResultsScreen = ({ route, navigation }) => {
   const loadResults = async (forceFetch = false) => {
     const cacheKey = `@erp_results_cache_${user?.id || 'default'}`;
     
-    if (!forceFetch) {
+    if (forceFetch) {
+      setRefreshing(true);
+      try {
+        await AsyncStorage.removeItem(cacheKey);
+        setPaperCache({});
+      } catch (e) {
+        console.warn('Failed to clear results cache:', e);
+      }
+    } else {
       try {
         const cached = await AsyncStorage.getItem(cacheKey);
         if (cached) {
@@ -1232,21 +1240,17 @@ const ERPResultsScreen = ({ route, navigation }) => {
               setExpandedPhase(parsed.phases[parsed.phases.length - 1].phase);
             }
             setLoading(false);
-            // Update in background silently
-            performFetch(cacheKey, false).catch(err => console.warn(err));
+            // Update in background silently with forceSync=true to refresh total marks
+            performFetch(cacheKey, false, true).catch(err => console.warn(err));
             return;
           }
         }
       } catch (e) {
         console.warn('Failed to load cached results:', e);
       }
-    }
-
-    if (forceFetch) {
-      setRefreshing(true);
-    } else {
       setLoading(true);
     }
+
     await performFetch(cacheKey, true, forceFetch);
   };
 
