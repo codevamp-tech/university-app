@@ -6,9 +6,9 @@ import { Ionicons, MaterialIcons, MaterialCommunityIcons } from '@expo/vector-ic
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
-import { uploadAvatarAPI, updateMyProfile, connectionStatsAPI, getStartups, getResults } from '../../data/apiService';
+import { uploadAvatarAPI, updateMyProfile, connectionStatsAPI, getStartups, getResults, getConnectionList, removeConnectionAPI } from '../../data/apiService';
 import { getAvatarUrl } from '../../utils/avatar';
-import { ActivityIndicator, Alert } from 'react-native';
+import { ActivityIndicator, Alert, Modal } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { calculateExactMedicalPerformance } from '../../utils/academicPerformance';
 import { readCachedMedicalPct } from '../../utils/medicalPctCache';
@@ -38,6 +38,33 @@ const TalentIdentityScreen = ({ navigation }) => {
   const [myStartups, setMyStartups] = React.useState([]);
   const [loadingData, setLoadingData] = React.useState(true);
   const [medMarksPct, setMedMarksPct] = React.useState(46);
+
+  const [showConnectionsModal, setShowConnectionsModal] = React.useState(false);
+  const [connectionsList, setConnectionsList] = React.useState([]);
+  const [loadingConnections, setLoadingConnections] = React.useState(false);
+
+  const handleOpenConnectionsModal = async () => {
+    setShowConnectionsModal(true);
+    setLoadingConnections(true);
+    try {
+      const data = await getConnectionList(accessToken, user?.id);
+      setConnectionsList(data.connections || []);
+    } catch (e) {
+      console.warn("Error loading connection list:", e);
+    } finally {
+      setLoadingConnections(false);
+    }
+  };
+
+  const handleRemoveConnection = async (targetId) => {
+    try {
+      await removeConnectionAPI(accessToken, targetId);
+      setConnectionsList(prev => prev.filter(c => (c.id || c.user_id) !== targetId));
+      setStats(prev => ({ ...prev, connections: Math.max(0, prev.connections - 1) }));
+    } catch (e) {
+      console.warn("Error removing connection:", e);
+    }
+  };
 
   React.useEffect(() => {
     async function loadPct() {
@@ -274,11 +301,11 @@ const TalentIdentityScreen = ({ navigation }) => {
           <Text style={[styles.batchSubText, { color: colors.textSecondary }]}>{APP_CONFIG.CAMPUS_LOCATION}</Text>
 
 
-          {/* LinkedIn-style Connections */}
+          {/* Connections */}
           <View style={styles.networkStats}>
-            <Text style={[styles.networkText, { color: isDark ? colors.primary : '#3474ec' }]}><Text style={[styles.networkBold, { color: colors.textPrimary }]}>{stats.followers}</Text> Followers</Text>
-            <Text style={[styles.networkDivider, { color: colors.textMuted }]}>•</Text>
-            <Text style={[styles.networkText, { color: isDark ? colors.primary : '#3474ec' }]}><Text style={[styles.networkBold, { color: colors.textPrimary }]}>{stats.connections}</Text> Connections</Text>
+            <TouchableOpacity onPress={handleOpenConnectionsModal}>
+              <Text style={[styles.networkText, { color: isDark ? colors.primary : '#3474ec' }]}><Text style={[styles.networkBold, { color: colors.textPrimary }]}>{stats.connections}</Text> Connections</Text>
+            </TouchableOpacity>
           </View>
 
 
@@ -492,6 +519,65 @@ const TalentIdentityScreen = ({ navigation }) => {
 
         <View style={{ height: 100 }} />
       </ScrollView>
+      {/* Connections List Modal */}
+      <Modal visible={showConnectionsModal} transparent animationType="slide" onRequestClose={() => setShowConnectionsModal(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>
+                Connections ({connectionsList.length})
+              </Text>
+              <TouchableOpacity onPress={() => setShowConnectionsModal(false)} style={styles.modalCloseBtn}>
+                <Ionicons name="close" size={24} color={colors.textPrimary} />
+              </TouchableOpacity>
+            </View>
+
+            {loadingConnections ? (
+              <ActivityIndicator size="large" color={colors.primary} style={{ marginVertical: 40 }} />
+            ) : connectionsList.length === 0 ? (
+              <View style={styles.emptyConnections}>
+                <Ionicons name="people-outline" size={48} color={colors.textMuted || '#9CA3AF'} />
+                <Text style={[styles.emptyConnectionsText, { color: colors.textSecondary }]}>No connections found</Text>
+              </View>
+            ) : (
+              <ScrollView contentContainerStyle={{ gap: 12, paddingVertical: 8 }} showsVerticalScrollIndicator={false}>
+                {connectionsList.map((item) => {
+                  const targetId = item.id || item.user_id;
+                  const displayName = item.full_name || item.name || item.username || 'Student';
+                  return (
+                    <View key={targetId} style={[styles.connectionRow, { borderColor: colors.border }]}>
+                      <TouchableOpacity 
+                        style={styles.connectionUserInfo}
+                        onPress={() => {
+                          setShowConnectionsModal(false);
+                          navigation.navigate('OtherStudentProfile', { student: { id: targetId, name: displayName, avatar_url: item.avatar_url, rollNo: item.rollno || item.username } });
+                        }}
+                      >
+                        <Image 
+                          source={{ uri: getAvatarUrl(item.avatar_url || displayName, item.rollno || item.username) }} 
+                          style={styles.connectionAvatar} 
+                        />
+                        <View style={{ flex: 1 }}>
+                          <Text style={[styles.connectionName, { color: colors.textPrimary }]}>{displayName}</Text>
+                          <Text style={[styles.connectionRole, { color: colors.textSecondary }]}>
+                            {item.course || 'MBBS'} {item.branch ? `• ${item.branch}` : ''}
+                          </Text>
+                        </View>
+                      </TouchableOpacity>
+                      <TouchableOpacity 
+                        style={[styles.removeBtn, { borderColor: colors.border }]}
+                        onPress={() => handleRemoveConnection(targetId)}
+                      >
+                        <Text style={[styles.removeBtnText, { color: colors.textSecondary }]}>Remove</Text>
+                      </TouchableOpacity>
+                    </View>
+                  );
+                })}
+              </ScrollView>
+            )}
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -984,6 +1070,78 @@ const styles = StyleSheet.create({
   aboutText: {
     fontSize: 14,
     lineHeight: 22,
+  },
+
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 20,
+    maxHeight: '75%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  modalCloseBtn: {
+    padding: 4,
+  },
+  emptyConnections: {
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  emptyConnectionsText: {
+    marginTop: 12,
+    fontSize: 15,
+  },
+  connectionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+  },
+  connectionUserInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+  },
+  connectionAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+  },
+  connectionName: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  connectionRole: {
+    fontSize: 13,
+    marginTop: 2,
+  },
+  removeBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  removeBtnText: {
+    fontSize: 12,
+    fontWeight: '600',
   },
 
 });
