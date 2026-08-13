@@ -317,6 +317,7 @@ const DashboardScreen = ({ navigation }) => {
               if (taken.length > 0) {
                 const computed = Math.round(taken.reduce((s, p) => s + p.combinedPct, 0) / taken.length);
                 setMedMarksPct(computed);
+                await AsyncStorage.setItem(`@erp_overall_pct_${stId}`, String(computed));
                 return;
               }
             }

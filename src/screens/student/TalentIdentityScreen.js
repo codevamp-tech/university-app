@@ -6,9 +6,11 @@ import { Ionicons, MaterialIcons, MaterialCommunityIcons } from '@expo/vector-ic
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
-import { uploadAvatarAPI, updateMyProfile, connectionStatsAPI, getStartups } from '../../data/apiService';
+import { uploadAvatarAPI, updateMyProfile, connectionStatsAPI, getStartups, getResults } from '../../data/apiService';
 import { getAvatarUrl } from '../../utils/avatar';
 import { ActivityIndicator, Alert } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { calculateExactMedicalPerformance } from '../../utils/academicPerformance';
 
 import { useTheme } from '../../hooks/useTheme';
 import { APP_CONFIG } from '../../config/appConfig';
@@ -34,6 +36,43 @@ const TalentIdentityScreen = ({ navigation }) => {
   const [stats, setStats] = React.useState({ followers: 0, following: 0, connections: 0 });
   const [myStartups, setMyStartups] = React.useState([]);
   const [loadingData, setLoadingData] = React.useState(true);
+  const [medMarksPct, setMedMarksPct] = React.useState(46);
+
+  React.useEffect(() => {
+    async function loadPct() {
+      const stId = user?.id || user?.username || user?.rollno || 'default';
+      try {
+        if (accessToken) {
+          const records = await getResults(accessToken, stId);
+          if (records && Array.isArray(records) && records.length > 0) {
+            const computed = calculateExactMedicalPerformance(records);
+            if (computed && computed > 0) {
+              setMedMarksPct(computed);
+              await AsyncStorage.setItem(`@erp_overall_pct_${stId}`, String(computed));
+              return;
+            }
+          }
+        }
+        const cacheStr = await AsyncStorage.getItem(`@erp_results_cache_${stId}`);
+        if (cacheStr) {
+          const parsed = JSON.parse(cacheStr);
+          if (parsed?.phases && Array.isArray(parsed.phases)) {
+            const taken = parsed.phases.filter(p => p.combinedPct !== null);
+            if (taken.length > 0) {
+              setMedMarksPct(Math.round(taken.reduce((s, p) => s + p.combinedPct, 0) / taken.length));
+              return;
+            }
+          }
+        }
+        const directPct = await AsyncStorage.getItem(`@erp_overall_pct_${stId}`);
+        if (directPct !== null) {
+          const val = parseInt(directPct, 10);
+          if (!isNaN(val) && val > 0) setMedMarksPct(val);
+        }
+      } catch (_) {}
+    }
+    loadPct();
+  }, [accessToken, user?.id, user?.username, user?.rollno]);
 
   React.useEffect(() => {
     let isMounted = true;
@@ -297,7 +336,7 @@ const TalentIdentityScreen = ({ navigation }) => {
             <View style={styles.acadItem}>
               <Text style={[styles.acadValue, { color: colors.primary }]}>
                 {isMed 
-                  ? `${Math.round((user?.cgpa ? (user.cgpa > 10 ? user.cgpa : user.cgpa * 10) : 75))}%` 
+                  ? `${medMarksPct}%` 
                   : `${user?.cgpa || '0.0'}`}
                 {!isMed && <Text style={[styles.acadMax, { color: colors.textMuted }]}> / 10.0</Text>}
               </Text>
@@ -305,7 +344,7 @@ const TalentIdentityScreen = ({ navigation }) => {
                 {isMed ? 'ACADEMIC MARKS' : 'CUMULATIVE GPA'}
               </Text>
               <View style={[styles.pBar, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : colors.border }]}>
-                <View style={[styles.pFill, { width: `${isMed ? Math.min(100, Math.round((user?.cgpa ? (user.cgpa > 10 ? user.cgpa : user.cgpa * 10) : 75))) : ((user?.cgpa || 0) * 10)}%`, backgroundColor: colors.primary }]} />
+                <View style={[styles.pFill, { width: `${isMed ? medMarksPct : ((user?.cgpa || 0) * 10)}%`, backgroundColor: colors.primary }]} />
               </View>
             </View>
 
