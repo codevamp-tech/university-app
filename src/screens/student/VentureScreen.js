@@ -529,7 +529,7 @@ const VentureScreen = ({ navigation }) => {
                       </Text>
                       {startup.created_at ? (
                         <Text style={{ fontSize: 10, color: colors.textSecondary }}>
-                          Posted {timeAgo(startup.created_at)}
+                          {formatSubmittedAt(startup.created_at)}
                         </Text>
                       ) : null}
                     </View>
@@ -583,6 +583,11 @@ const VentureScreen = ({ navigation }) => {
                       <Text style={[styles.myStartupCategoryText, { color: colors.textMuted }]}>
                         {(startup.category || '').toUpperCase()} • {getStageLabel(startup.stage)}
                       </Text>
+                      {startup.created_at ? (
+                        <Text style={{ fontSize: 11, color: colors.textMuted, marginTop: 2 }}>
+                          {formatSubmittedAt(startup.created_at)}
+                        </Text>
+                      ) : null}
                     </View>
                     <View style={[styles.myStatusBadge, { backgroundColor: statusBg }]}>
                       <Text style={[styles.myStatusBadgeText, { color: statusColor, fontWeight: '700' }]}>
@@ -607,12 +612,6 @@ const VentureScreen = ({ navigation }) => {
                       ) : null}
                     </View>
                   )}
-
-                  {startup.created_at ? (
-                    <Text style={{ fontSize: 11, color: colors.textMuted, marginTop: 8 }}>
-                      Submitted: {formatSubmittedAt(startup.created_at)}
-                    </Text>
-                  ) : null}
 
                   <View style={styles.myProgressSection}>
                     <View style={styles.myProgressHeader}>
