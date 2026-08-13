@@ -690,43 +690,59 @@ const CommunityScreen = ({ navigation }) => {
 
   const handleReaction = async (postId, type) => {
     setActiveReactionPostId(null);
-    if (!accessToken) return;
+    if (!accessToken || !postId) return;
     
-    // Optimistic UI update for both direct posts and original_post inside repost cards
+    const targetStr = String(postId);
+
+    // Optimistic UI update
     setApiFeed(prev => prev.map(p => {
-      const isDirectMatch = String(p.id) === String(postId);
-      const isOriginalMatch = (p.original_post_id && String(p.original_post_id) === String(postId)) || (p.original_post && String(p.original_post.id) === String(postId));
+      // Check if p is a repost card pointing to targetStr or matching targetStr
+      const isRepostCard = !!p.original_post;
+      const isOriginalTarget = isRepostCard && (
+        String(p.original_post.id) === targetStr || 
+        (p.original_post_id && String(p.original_post_id) === targetStr) ||
+        String(p.id) === targetStr
+      );
 
-      if (isDirectMatch || isOriginalMatch) {
-        let updatedPost = { ...p };
+      if (isOriginalTarget) {
+        const orig = p.original_post;
+        const isRemoving = orig.user_reaction === type;
+        const newReaction = isRemoving ? null : type;
+        const newLikeCount = isRemoving ? Math.max(0, (orig.like_count || 0) - 1) : (orig.user_reaction ? orig.like_count : (orig.like_count || 0) + 1);
+        
+        const newCounts = { ...(orig.reaction_counts || {}) };
+        if (orig.user_reaction) newCounts[orig.user_reaction] = Math.max(0, (newCounts[orig.user_reaction] || 1) - 1);
+        if (newReaction) newCounts[newReaction] = (newCounts[newReaction] || 0) + 1;
 
-        if (isDirectMatch) {
-          const isRemoving = updatedPost.user_reaction === type;
-          const newReaction = isRemoving ? null : type;
-          const newLikeCount = isRemoving ? Math.max(0, (updatedPost.like_count || 0) - 1) : (updatedPost.user_reaction ? updatedPost.like_count : (updatedPost.like_count || 0) + 1);
-          
-          const newCounts = { ...(updatedPost.reaction_counts || {}) };
-          if (updatedPost.user_reaction) newCounts[updatedPost.user_reaction] = Math.max(0, (newCounts[updatedPost.user_reaction] || 1) - 1);
-          if (newReaction) newCounts[newReaction] = (newCounts[newReaction] || 0) + 1;
-
-          updatedPost = { ...updatedPost, user_reaction: newReaction, like_count: newLikeCount, reaction_counts: newCounts };
-        }
-
-        if (updatedPost.original_post && (isOriginalMatch || String(updatedPost.original_post.id) === String(postId))) {
-          const orig = updatedPost.original_post;
-          const isRemoving = orig.user_reaction === type;
-          const newReaction = isRemoving ? null : type;
-          const newLikeCount = isRemoving ? Math.max(0, (orig.like_count || 0) - 1) : (orig.user_reaction ? orig.like_count : (orig.like_count || 0) + 1);
-          
-          const newCounts = { ...(orig.reaction_counts || {}) };
-          if (orig.user_reaction) newCounts[orig.user_reaction] = Math.max(0, (newCounts[orig.user_reaction] || 1) - 1);
-          if (newReaction) newCounts[newReaction] = (newCounts[newReaction] || 0) + 1;
-
-          updatedPost.original_post = { ...orig, user_reaction: newReaction, like_count: newLikeCount, reaction_counts: newCounts };
-        }
-
-        return updatedPost;
+        return {
+          ...p,
+          original_post: {
+            ...orig,
+            user_reaction: newReaction,
+            like_count: newLikeCount,
+            reaction_counts: newCounts,
+          }
+        };
       }
+
+      // Check if p is a direct post matching targetStr
+      if (!isRepostCard && String(p.id) === targetStr) {
+        const isRemoving = p.user_reaction === type;
+        const newReaction = isRemoving ? null : type;
+        const newLikeCount = isRemoving ? Math.max(0, (p.like_count || 0) - 1) : (p.user_reaction ? p.like_count : (p.like_count || 0) + 1);
+        
+        const newCounts = { ...(p.reaction_counts || {}) };
+        if (p.user_reaction) newCounts[p.user_reaction] = Math.max(0, (newCounts[p.user_reaction] || 1) - 1);
+        if (newReaction) newCounts[newReaction] = (newCounts[newReaction] || 0) + 1;
+
+        return {
+          ...p,
+          user_reaction: newReaction,
+          like_count: newLikeCount,
+          reaction_counts: newCounts,
+        };
+      }
+
       return p;
     }));
 
