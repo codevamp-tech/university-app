@@ -77,7 +77,16 @@ const StudentSearchScreen = ({ navigation }) => {
           }
         }
 
-        setUsers(Array.isArray(results) ? results : []);
+        let finalUsers = Array.isArray(results) ? results : [];
+        if (filters.branch === 'All') {
+          finalUsers = finalUsers.filter(s => {
+            const cStr = String(s.course || '').toUpperCase();
+            const bStr = String(s.branch || '').toUpperCase();
+            if (cStr.includes('B.TECH') || bStr.includes('CSE') || cStr.includes('ENGINEERING')) return false;
+            return true;
+          });
+        }
+        setUsers(finalUsers);
       } catch(e) {
         console.warn("Search error:", e);
         try {
@@ -150,16 +159,22 @@ const StudentSearchScreen = ({ navigation }) => {
     navigation.navigate('OtherStudentProfile', { student: item });
   };
 
-  const renderStudent = ({ item }) => (
-    <TouchableOpacity 
-      style={[styles.studentCard, { backgroundColor: colors.card, borderBottomColor: colors.border, borderBottomWidth: 1 }]}
-      onPress={() => handleProfileClick(item)}
-    >
-      <View style={styles.avatarPlaceholder}>
-        <Image source={{ uri: getAvatarUrl(item.avatar_url || item.username) }} style={{ width: 50, height: 50, borderRadius: 25 }} />
-      </View>
-      <View style={styles.studentInfo}>
-        <Text style={[styles.studentName, { color: colors.textPrimary, fontSize: 16 }]}>{item.name || item.username}</Text>
+  const renderStudent = ({ item }) => {
+    let displayName = item.name || item.full_name;
+    if (!displayName || /^\d+$/.test(String(displayName).trim())) {
+      displayName = 'Student';
+    }
+
+    return (
+      <TouchableOpacity 
+        style={[styles.studentCard, { backgroundColor: colors.card, borderBottomColor: colors.border, borderBottomWidth: 1 }]}
+        onPress={() => handleProfileClick(item)}
+      >
+        <View style={styles.avatarPlaceholder}>
+          <Image source={{ uri: getAvatarUrl(item.avatar_url || item.username, item.username || item.rollNo) }} style={{ width: 50, height: 50, borderRadius: 25 }} />
+        </View>
+        <View style={styles.studentInfo}>
+          <Text style={[styles.studentName, { color: colors.textPrimary, fontSize: 16 }]}>{displayName}</Text>
         {(() => {
           const isMed = String(item.course || '').toUpperCase().includes('MBBS') || 
                         String(item.branch || '').toUpperCase().includes('MBBS');
