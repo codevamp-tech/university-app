@@ -365,9 +365,15 @@ const AdminBroadcastCenterScreen = ({ navigation }) => {
           <Text style={[styles.emptyHistory, { color: colors.textMuted }]}>No previous broadcasts.</Text>
         ) : (
           <View style={styles.historyList}>
-            {stats.recent.map((item) => (
-              <View key={item.id} style={[styles.historyCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                <Text style={[styles.historyTitle, { color: colors.textPrimary }]}>{item.title}</Text>
+            {stats.recent.map((item) => {
+              const isCollegeAdmin = user?.username === 'collegeadmin' || user?.id === 'collegeadmin';
+              const displayTitle = isCollegeAdmin
+                ? item.title.replace(/\[Super Admin - admin\]/gi, '[College Admin]').replace(/\[Super Admin\]/gi, '[College Admin]')
+                : item.title;
+
+              return (
+                <View key={item.id} style={[styles.historyCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                  <Text style={[styles.historyTitle, { color: colors.textPrimary }]}>{displayTitle}</Text>
                 <View style={styles.historyMeta}>
                   <View style={styles.metaBadge}>
                     <Text style={[styles.metaBadgeText, { color: colors.textSecondary }]}>
