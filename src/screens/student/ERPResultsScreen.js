@@ -1304,6 +1304,8 @@ const ERPResultsScreen = ({ route, navigation }) => {
 
         (item.papers || []).forEach(p => {
           let obtained = null;
+          let totalMarks = null;
+          let serverPct = null;
           let found = false;
           let dbYrFk = null;
 
@@ -1311,7 +1313,9 @@ const ERPResultsScreen = ({ route, navigation }) => {
             const allMarks = [...(det.sessional || []), ...(det.university || [])];
             const matchMark = allMarks.find(m => String(m.paper_code) === String(p.paperCode));
             if (matchMark) {
-              obtained = matchMark.obtained_marks || 0;
+              obtained = matchMark.obtained_marks !== undefined ? matchMark.obtained_marks : null;
+              totalMarks = matchMark.total_marks !== undefined ? matchMark.total_marks : null;
+              serverPct = matchMark.pct !== undefined ? matchMark.pct : null;
               dbYrFk = matchMark.yr_fk;
               found = true;
               break;
@@ -1333,14 +1337,23 @@ const ERPResultsScreen = ({ route, navigation }) => {
             };
           }
 
-          const maxWtg = parseFloat(p.marksWtg || 100);
+          const fallbackTotal = parseFloat(p.marksWtg || p.totalMarks || 100);
           const rawObtained = obtained !== null ? parseFloat(obtained) : 0;
+          const rawTotal = totalMarks !== null && parseFloat(totalMarks) > 0 ? parseFloat(totalMarks) : fallbackTotal;
+          
+          let calculatedPct = 0;
+          if (serverPct !== null && !isNaN(parseFloat(serverPct))) {
+            calculatedPct = Math.round(parseFloat(serverPct));
+          } else if (rawTotal > 0) {
+            calculatedPct = Math.round((rawObtained / rawTotal) * 100);
+          }
+
           const paperObj = {
             paper_code: p.paperCode,
             paper_name: p.paperName,
             obtained_marks: rawObtained,
-            total_marks: maxWtg,
-            pct: maxWtg > 0 ? Math.round((rawObtained / maxWtg) * 100) : 0,
+            total_marks: rawTotal,
+            pct: calculatedPct,
             notTaken: !found
           };
 
