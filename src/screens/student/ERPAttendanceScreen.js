@@ -587,8 +587,10 @@ const ERPAttendanceScreen = ({ route, navigation }) => {
       // ── Step 1: fetch ERP subject list (authoritative list of subjects + ERP codes) ──
       let erpSubjectList = []; // [{sub_name, sub_cd, department}]
       try {
-        const getSubResp = await fetch(`https://myportal.srms.ac.in/SRMSERP/Faculty/GetUGSubjectCode?stud_roll_no=${studentId}`, {
+        const cacheBuster = force ? `&_t=${Date.now()}` : '';
+        const getSubResp = await fetch(`https://myportal.srms.ac.in/SRMSERP/Faculty/GetUGSubjectCode?stud_roll_no=${studentId}${cacheBuster}`, {
           method: 'GET',
+          headers: force ? { 'Cache-Control': 'no-cache, no-store, must-revalidate', 'Pragma': 'no-cache' } : {}
         });
         const resJson = await getSubResp.json();
         erpSubjectList = resJson.success && Array.isArray(resJson.data) ? resJson.data : [];
@@ -624,11 +626,15 @@ const ERPAttendanceScreen = ({ route, navigation }) => {
       // we ensure ALL registered subjects get their real percentage, not 0%.
       try {
         const batchCandidates = ['63', '60', '66', '61', '62', '64', '65', '67', '68', '69', '70'];
+        const cacheBuster = force ? `&_t=${Date.now()}` : '';
         for (const bcd of batchCandidates) {
           try {
             const erpAttResp = await fetch(
-              `https://myportal.srms.ac.in/SRMSERP/Faculty/getattendancementees?roll_no=${studentId}&batch_cd=${bcd}`,
-              { method: 'GET' }
+              `https://myportal.srms.ac.in/SRMSERP/Faculty/getattendancementees?roll_no=${studentId}&batch_cd=${bcd}${cacheBuster}`,
+              {
+                method: 'GET',
+                headers: force ? { 'Cache-Control': 'no-cache, no-store, must-revalidate', 'Pragma': 'no-cache' } : {}
+              }
             );
             if (erpAttResp.ok) {
               const erpAttData = await erpAttResp.json();

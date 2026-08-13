@@ -60,7 +60,8 @@ export function setUnauthorizedCallback(callback) {
 // ─── HTTP helpers ─────────────────────────────────────────────────────────────
 
 async function apiCall(path, options = {}) {
-  const url = `${BASE}${path}`;
+  const isForceSync = path.includes('force_sync=true') || (options.headers && options.headers['Cache-Control']);
+  const url = `${BASE}${path}${isForceSync && !path.includes('_t=') ? (path.includes('?') ? '&' : '?') + `_t=${Date.now()}` : ''}`;
   const method = options.method || 'GET';
   console.log(`[API Call] 📡 ${method} -> ${url}`);
   if (options.body) {
@@ -69,7 +70,12 @@ async function apiCall(path, options = {}) {
   try {
     const response = await fetch(url, {
       ...options,
-      headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(isForceSync ? { 'Cache-Control': 'no-cache, no-store, must-revalidate', 'Pragma': 'no-cache' } : {}),
+        ...(options.headers || {})
+      },
+      ...(isForceSync ? { cache: 'no-store' } : {})
     });
     let json = null;
     try {
