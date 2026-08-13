@@ -121,6 +121,7 @@ const ChatScreen = ({ navigation, route }) => {
   const insets = useSafeAreaInsets();
   const { accessToken, user } = useUser();
   const { colors, isDark } = useTheme();
+  const isSuperAdmin = user?.role === 'super_admin';
   const isMed = user && (
     (user.course || '').replace(/\./g, '').toLowerCase().includes('mbbs') ||
     (user.course || '').toLowerCase().includes('medicine') ||
