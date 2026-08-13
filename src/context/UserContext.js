@@ -136,7 +136,8 @@ export const UserProvider = ({ children }) => {
           ...dbProfileRest
         } = dbProfile || {};
 
-        const resolvedFullName = dbProfileRest.full_name || (usernameForApi === '202313564' ? 'Mahendra Singh Butola' : usernameForApi);
+        const isCollegeAdmin = usernameForApi === 'collegeadmin' || queryId === 'collegeadmin';
+        const resolvedFullName = isCollegeAdmin ? 'College Admin' : (dbProfileRest.full_name || (usernameForApi === '202313564' ? 'Mahendra Singh Butola' : usernameForApi));
 
         // Derive category from rollno pattern as fallback (SRMS MBBS: 213xxxx, 214xxxx, 215xxxx)
         const rollnoStr = (dbRollNo || usernameForApi || '').toString();
@@ -161,9 +162,10 @@ export const UserProvider = ({ children }) => {
 
         const u = {
           id: usernameForApi,
+          username: usernameForApi,
           name: resolvedFullName,
           full_name: resolvedFullName,
-          role: dbRole || role,
+          role: isCollegeAdmin ? 'admin' : (dbRole || role),
           user_id: dbUserId || null,
           cgpa: dbCgpa || 0,
           attendance: dbProfileRest.attendance || 0,

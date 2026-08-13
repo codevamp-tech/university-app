@@ -923,7 +923,8 @@ const CommunityScreen = ({ navigation }) => {
     const isCollegeAdminPost = posterUsername?.toLowerCase().includes('collegeadmin') || 
                                posterUsername?.toLowerCase() === 'college_admin' || 
                                targetPost.user?.username?.toLowerCase().includes('collegeadmin') ||
-                               displayName === 'College Admin';
+                               displayName === 'College Admin' ||
+                               (isMe && (user?.username === 'collegeadmin' || user?.id === 'collegeadmin'));
 
     if (isCollegeAdminPost) {
       displayName = 'College Admin';
