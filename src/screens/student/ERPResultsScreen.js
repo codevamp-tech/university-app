@@ -1341,9 +1341,25 @@ const ERPResultsScreen = ({ route, navigation }) => {
             };
           }
 
-          const fallbackTotal = parseFloat(p.marksWtg || p.totalMarks || 100);
+          const resolvePaperTotalMarks = (code, name, matchTotal, paperWtg) => {
+            if (matchTotal && parseFloat(matchTotal) > 0 && parseFloat(matchTotal) !== 100) {
+              return parseFloat(matchTotal);
+            }
+            const codeNum = parseInt(code, 10);
+            const thirtyMarkCodes = [30157, 30163, 30166, 30104];
+            if (thirtyMarkCodes.includes(codeNum)) {
+              return 30;
+            }
+            const nameLower = String(name || '').toLowerCase();
+            if ((nameLower.includes('community medicine') || nameLower.includes('surgery') || nameLower.includes('general medicine')) &&
+                nameLower.includes('sessional') && !nameLower.includes('pre-uni') && !nameLower.includes('university')) {
+              return 30;
+            }
+            return parseFloat(paperWtg || matchTotal || 100);
+          };
+
           const rawObtained = obtained !== null ? parseFloat(obtained) : 0;
-          const rawTotal = totalMarks !== null && parseFloat(totalMarks) > 0 ? parseFloat(totalMarks) : fallbackTotal;
+          const rawTotal = resolvePaperTotalMarks(p.paperCode, p.paperName, totalMarks, p.marksWtg || p.totalMarks);
           
           let calculatedPct = 0;
           if (serverPct !== null && !isNaN(parseFloat(serverPct))) {
