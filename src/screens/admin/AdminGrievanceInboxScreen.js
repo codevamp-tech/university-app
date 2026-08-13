@@ -15,7 +15,8 @@ import {
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../../hooks/useTheme';
 import { useUser } from '../../context/UserContext';
-import { listGrievancesAPI, updateGrievanceStatusAPI } from '../../data/apiService';
+import { listGrievancesAPI, updateGrievanceStatusAPI, getAllStudents } from '../../data/apiService';
+import { getAvatarUrl } from '../../utils/avatar';
 
 const CATEGORIES = ['All', 'Hostel', 'Academics', 'Canteen', 'Transport', 'Library', 'Other'];
 const STATUSES = ['all', 'pending', 'in_progress', 'resolved'];
@@ -24,6 +25,7 @@ const AdminGrievanceInboxScreen = ({ navigation }) => {
   const { colors, isDark } = useTheme();
   const { accessToken } = useUser();
   const [grievances, setGrievances] = useState([]);
+  const [studentMap, setStudentMap] = useState({});
   const [loading, setLoading] = useState(true);
   const [activeStatus, setActiveStatus] = useState('all');
   const [activeCategory, setActiveCategory] = useState('All');
@@ -33,6 +35,25 @@ const AdminGrievanceInboxScreen = ({ navigation }) => {
   const [selectedGrievance, setSelectedGrievance] = useState(null);
   const [actionInProgress, setActionInProgress] = useState(false);
   const [adminRemark, setAdminRemark] = useState('');
+
+  useEffect(() => {
+    if (accessToken) {
+      getAllStudents(accessToken)
+        .then(students => {
+          if (students && Array.isArray(students)) {
+            const map = {};
+            students.forEach(s => {
+              if (s.id) map[s.id.toLowerCase()] = s;
+              if (s.user_id) map[s.user_id.toLowerCase()] = s;
+              if (s.username) map[s.username.toLowerCase()] = s;
+              if (s.rollno) map[s.rollno.toLowerCase()] = s;
+            });
+            setStudentMap(map);
+          }
+        })
+        .catch(err => console.warn('[GrievanceInbox] Failed to load student directory:', err));
+    }
+  }, [accessToken]);
 
   const fetchGrievances = async () => {
     setLoading(true);
@@ -99,7 +120,15 @@ const AdminGrievanceInboxScreen = ({ navigation }) => {
   };
 
   const renderItem = ({ item }) => {
-    const studentDisplayName = item.student_name || (item.rollno ? `Roll: ${item.rollno}` : (item.student_id ? `ID: ${item.student_id.slice(0, 8)}...` : 'Student'));
+    const studentIdKey = (item.student_id || '').toLowerCase();
+    const studentData = studentMap[studentIdKey] || {};
+    
+    const displayName = (item.student_name && item.student_name !== 'Student') 
+      ? item.student_name 
+      : (studentData.full_name || studentData.name || (studentData.rollno ? `Roll: ${studentData.rollno}` : (item.student_id ? `ID: ${item.student_id.slice(0, 8)}...` : 'Student')));
+    
+    const rollNoStr = item.rollno || studentData.rollno || '';
+    const avatarUrl = item.avatar_url || studentData.avatar_url || getAvatarUrl(displayName, rollNoStr || displayName);
     const formattedDateTime = formatDateTime(item.created_at);
 
     return (
@@ -107,34 +136,46 @@ const AdminGrievanceInboxScreen = ({ navigation }) => {
         style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}
         onPress={() => openStatusModal(item)}
       >
-        <View style={styles.cardHeader}>
-          <View style={styles.categoryRow}>
-            <View style={[styles.categoryBadge, { backgroundColor: colors.primaryLight }]}>
-              <Text style={[styles.categoryText, { color: colors.primary }]}>{item.category || 'Support'}</Text>
-            </View>
-            <View style={[styles.priorityBadge, { borderColor: getPriorityColor(item.priority) }]}>
-              <Text style={[styles.priorityText, { color: getPriorityColor(item.priority) }]}>
-                {item.priority?.toUpperCase()}
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12, gap: 10 }}>
+          <Image source={{ uri: avatarUrl }} style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: colors.border }} />
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 15, fontWeight: '700', color: colors.textPrimary }} numberOfLines={1}>
+              {displayName}
+            </Text>
+            {rollNoStr ? (
+              <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 1 }}>
+                Roll No: {rollNoStr}
               </Text>
-            </View>
+            ) : null}
           </View>
           <View style={[
             styles.statusBadge,
             {
               backgroundColor:
-                item.status === 'resolved' ? colors.successLight :
-                  item.status === 'in_progress' ? colors.orangeLight : colors.dangerLight
+                item.status?.toLowerCase() === 'resolved' ? colors.successLight :
+                  item.status?.toLowerCase() === 'in_progress' ? colors.orangeLight : colors.dangerLight
             }
           ]}>
             <Text style={[
               styles.statusText,
               {
                 color:
-                  item.status === 'resolved' ? colors.success :
-                    item.status === 'in_progress' ? colors.orange : colors.danger
+                  item.status?.toLowerCase() === 'resolved' ? colors.success :
+                    item.status?.toLowerCase() === 'in_progress' ? colors.orange : colors.danger
               }
             ]}>
               {item.status?.replace('_', ' ')}
+            </Text>
+          </View>
+        </View>
+
+        <View style={styles.categoryRow}>
+          <View style={[styles.categoryBadge, { backgroundColor: colors.primaryLight }]}>
+            <Text style={[styles.categoryText, { color: colors.primary }]}>{item.category || 'Support'}</Text>
+          </View>
+          <View style={[styles.priorityBadge, { borderColor: getPriorityColor(item.priority) }]}>
+            <Text style={[styles.priorityText, { color: getPriorityColor(item.priority) }]}>
+              {item.priority?.toUpperCase()}
             </Text>
           </View>
         </View>
@@ -143,9 +184,6 @@ const AdminGrievanceInboxScreen = ({ navigation }) => {
         <Text style={[styles.desc, { color: colors.textSecondary }]} numberOfLines={2}>{item.description}</Text>
 
         <View style={styles.cardFooter}>
-          <Text style={[styles.metaText, { color: colors.textMuted, fontWeight: '600' }]}>
-            {studentDisplayName}
-          </Text>
           <Text style={[styles.metaText, { color: colors.textMuted }]}>
             {formattedDateTime}
           </Text>
