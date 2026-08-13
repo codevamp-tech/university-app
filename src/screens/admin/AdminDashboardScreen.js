@@ -1125,7 +1125,7 @@ const AdminDashboardScreen = ({ navigation }) => {
             <View>
               <Text style={[styles.welcomeText, { color: colors.textSecondary }]}>Control Center</Text>
               <Text style={[styles.adminName, { color: colors.textPrimary }]}>
-                {(user?.full_name && user.full_name !== user.id ? user.full_name : (user?.name && user.name !== user.id && user.name !== user.username ? user.name : (user?.username === '202313564' ? 'Mahendra Singh Butola' : (user?.username || 'UniCampus Staff'))))}
+                {user?.username === 'collegeadmin' || user?.id === 'collegeadmin' ? 'College Admin' : (user?.full_name && user.full_name !== user.id ? user.full_name : (user?.name && user.name !== user.id && user.name !== user.username ? user.name : (user?.username === '202313564' ? 'Mahendra Singh Butola' : (user?.username || 'UniCampus Staff'))))}
               </Text>
               <View style={[styles.badge, { backgroundColor: colors.primaryLight }]}>
                 <Text style={[styles.badgeText, { color: colors.primary }]}>{roleLabel()}</Text>

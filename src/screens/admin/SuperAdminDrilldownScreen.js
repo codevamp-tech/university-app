@@ -15,10 +15,11 @@ import {
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../../hooks/useTheme';
 import { useUser } from '../../context/UserContext';
-import { getSuperAdminDrilldown, getAllStudents } from '../../data/apiService';
+import { getSuperAdminDrilldown, getAllStudents, reviewVentureAPI } from '../../data/apiService';
 import { SkeletonBlock } from '../../components/SkeletonLoader';
 import { APP_CONFIG } from '../../config/appConfig';
 import { getStudentAvatar } from '../../utils/studentAvatarCache';
+import { getAvatarUrl } from '../../utils/avatar';
 
 const StudentAvatar = ({ uri, name, rollno, colors }) => {
   const [error, setError] = useState(false);
@@ -26,9 +27,11 @@ const StudentAvatar = ({ uri, name, rollno, colors }) => {
     ? name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
     : 'ST';
     
-  const avatarUri = uri || (rollno ? getStudentAvatar(rollno) : null);
+  const avatarUri = (uri && typeof uri === 'string' && !uri.includes('pravatar.cc'))
+    ? uri
+    : getAvatarUrl(name, rollno || name);
 
-  if (!avatarUri || error || avatarUri.includes('pravatar.cc')) {
+  if (!avatarUri || error) {
     return (
       <View style={[styles.avatar, { backgroundColor: colors.primaryLight, justifyContent: 'center', alignItems: 'center' }]}>
         <Text style={{ fontSize: 13, fontWeight: '700', color: colors.primary }}>
@@ -233,11 +236,36 @@ const SuperAdminDrilldownScreen = ({ route, navigation }) => {
 
   const renderItem = ({ item }) => {
     if (category === 'ventures') {
+      const isApproved = item.approval_status === 'approved' && item.reviewed_by;
+      const isPending = !isApproved && item.approval_status !== 'rejected';
+
+      const handleApprove = async () => {
+        try {
+          setData(prev => prev.map(v => v.id === item.id ? { ...v, approval_status: 'approved', reviewed_by: 'admin' } : v));
+          await reviewVentureAPI(accessToken, item.id, 'approved');
+          Alert.alert('Venture Approved', `Approved pitch deck for ${item.name}`);
+        } catch (e) {
+          Alert.alert('Error', 'Failed to approve venture');
+          fetchData();
+        }
+      };
+
+      const handleReject = async () => {
+        try {
+          setData(prev => prev.map(v => v.id === item.id ? { ...v, approval_status: 'rejected', reviewed_by: 'admin' } : v));
+          await reviewVentureAPI(accessToken, item.id, 'rejected');
+          Alert.alert('Venture Rejected', `Rejected pitch deck for ${item.name}`);
+        } catch (e) {
+          Alert.alert('Error', 'Failed to reject venture');
+          fetchData();
+        }
+      };
+
       return (
         <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <View style={styles.cardHeader}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
-              <StudentAvatar uri={item.avatar_url} name={item.student_name} colors={colors} />
+              <StudentAvatar uri={item.avatar_url} name={item.student_name} rollno={item.rollno} colors={colors} />
               <View style={{ flex: 1 }}>
                 <Text style={[styles.founderName, { color: colors.textPrimary }]}>{item.student_name}</Text>
                 <Text style={[styles.ventureName, { color: colors.textMuted }]}>{item.name}</Text>
@@ -253,19 +281,38 @@ const SuperAdminDrilldownScreen = ({ route, navigation }) => {
           <Text style={[styles.tagline, { color: colors.textSecondary }]}>"{item.tagline}"</Text>
           <Text style={[styles.description, { color: colors.textSecondary }]} numberOfLines={3}>{item.description}</Text>
 
-          <View style={styles.cardFooter}>
-            <Text style={[styles.footerStatus, { color: item.approval_status === 'approved' ? colors.success : colors.orange }]}>
-              ● {item.approval_status === 'approved' ? 'Approved' : 'Pending Review'}
-            </Text>
-            {item.pitch_deck_url ? (
-              <TouchableOpacity 
-                style={styles.deckBtn}
-                onPress={() => handleOpenLink(item.pitch_deck_url)}
-              >
-                <Feather name="file-text" size={14} color={colors.primary} />
-                <Text style={[styles.deckBtnText, { color: colors.primary }]}>View Pitch Deck</Text>
-              </TouchableOpacity>
-            ) : null}
+          <View style={[styles.cardFooter, { flexDirection: 'column', alignItems: 'stretch', gap: 10 }]}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Text style={[styles.footerStatus, { color: isApproved ? colors.success : (item.approval_status === 'rejected' ? colors.danger : colors.orange) }]}>
+                ● {isApproved ? 'Approved' : (item.approval_status === 'rejected' ? 'Rejected' : 'Pending Review')}
+              </Text>
+              {item.pitch_deck_url ? (
+                <TouchableOpacity 
+                  style={styles.deckBtn}
+                  onPress={() => handleOpenLink(item.pitch_deck_url)}
+                >
+                  <Feather name="file-text" size={14} color={colors.primary} />
+                  <Text style={[styles.deckBtnText, { color: colors.primary }]}>View Pitch Deck</Text>
+                </TouchableOpacity>
+              ) : null}
+            </View>
+
+            {isPending && (
+              <View style={{ flexDirection: 'row', gap: 10, marginTop: 4 }}>
+                <TouchableOpacity
+                  style={{ flex: 1, backgroundColor: colors.success, paddingVertical: 8, borderRadius: 8, alignItems: 'center' }}
+                  onPress={handleApprove}
+                >
+                  <Text style={{ color: '#FFF', fontWeight: '700', fontSize: 13 }}>Approve</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={{ flex: 1, backgroundColor: colors.danger + '20', paddingVertical: 8, borderRadius: 8, alignItems: 'center' }}
+                  onPress={handleReject}
+                >
+                  <Text style={{ color: colors.danger, fontWeight: '700', fontSize: 13 }}>Reject</Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
         </View>
       );

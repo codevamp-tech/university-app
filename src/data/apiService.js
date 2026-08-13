@@ -1270,6 +1270,14 @@ export async function deletePostAPI(token, postId) {
   return unwrap(res);
 }
 
+export async function reviewVentureAPI(token, ventureId, status) {
+  const res = await apiCall(`/api/v1/admin/ventures/${ventureId}/review?status=${status}`, {
+    method: 'POST',
+    headers: authHeaders(token),
+  });
+  return unwrap(res);
+}
+
 
 
 
