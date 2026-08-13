@@ -10,43 +10,43 @@
  * @param {string} rollno    - student roll number (optional) — used to resolve real ERP photo
  */
 export function getAvatarUrl(name, rollno) {
-  // 1. If it's a real custom uploaded HTTP image URL (Cloudinary, S3, Firebase, Imgur, etc.), use it directly
+  // If it's a real custom uploaded HTTP image URL (not pravatar or ui-avatars with digits), return it directly
   if (name && typeof name === 'string' && name.startsWith('http')) {
-    if (!name.includes('pravatar.cc') && !name.includes('ui-avatars.com') && !name.includes('myportal.srms.ac.in')) {
+    const isPravatar = name.includes('pravatar.cc');
+    const isUiAvatarsWithDigits = name.includes('ui-avatars.com') && /name=\d+/.test(name);
+    if (!isPravatar && !isUiAvatarsWithDigits) {
       return name;
     }
   }
 
-  // Helper to sanitize raw UUIDs or pure digits into valid human name seeds
-  const sanitizeSeed = (str) => {
-    if (!str || typeof str !== 'string') return '';
-    const trimmed = str.trim();
-    // Reject UUID format (e.g. 5cd4786b-f744-4a5d-95b9-cf87f50e6bc1) or pure digits
-    if (/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(trimmed) || /^\d+$/.test(trimmed)) {
-      return '';
+  // Extract roll number if provided or if name itself is a numeric roll number
+  let cleanRoll = (rollno && typeof rollno === 'string') ? rollno.trim() : '';
+  if (!cleanRoll && name && typeof name === 'string' && !name.startsWith('http')) {
+    const trimmed = name.trim();
+    if (/^\d+$/.test(trimmed)) {
+      cleanRoll = trimmed;
     }
-    return trimmed;
-  };
+  }
 
-  // 2. Extract clean seed name for ui-avatars initials
-  let seed = '';
-  if (name && typeof name === 'string') {
-    if (!name.startsWith('http')) {
-      seed = sanitizeSeed(name);
-    } else {
-      const match = name.match(/name=([^&]+)/);
+  // 1. If we have a numeric roll number, resolve the real ERP portal photo
+  if (cleanRoll && /^\d+$/.test(cleanRoll)) {
+    return `https://myportal.srms.ac.in/srMSERP/Registration/StudentDocument/11/${cleanRoll}/${cleanRoll}.jpg`;
+  }
+
+  // 2. Sanitize seed name for ui-avatars initials fallback (never use digits or UUIDs)
+  let seed = name || 'Student';
+  if (typeof seed === 'string') {
+    if (seed.startsWith('http')) {
+      const match = seed.match(/name=([^&]+)/);
       if (match && match[1]) {
-        seed = sanitizeSeed(decodeURIComponent(match[1]));
+        const decoded = decodeURIComponent(match[1]);
+        seed = /^\d+$/.test(decoded) ? 'Student' : decoded;
+      } else {
+        seed = 'Student';
       }
+    } else if (/^\d+$/.test(seed.trim()) || /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(seed.trim())) {
+      seed = 'Student';
     }
-  }
-
-  if (!seed && rollno && typeof rollno === 'string') {
-    seed = sanitizeSeed(rollno);
-  }
-
-  if (!seed) {
-    seed = 'Student';
   }
 
   return `https://ui-avatars.com/api/?name=${encodeURIComponent(seed)}&background=F97316&color=fff&size=250&bold=true`;
