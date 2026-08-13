@@ -64,7 +64,14 @@ export function getPortalSubjects(user) {
 }
 
 // ── Default channels shown before API loads ──────────────────────────────────
-const DEFAULT_CHANNELS = [
+const MEDICAL_CHANNELS = [
+  { id: null, name: 'Campus Pulse', slug: 'campus-pulse', icon: 'lightning-bolt', desc: 'Daily campus life, events & vibes 🎓' },
+  { id: null, name: 'Clinical Rotations', slug: 'clinical-rotations', icon: 'stethoscope', desc: 'Ward rounds, case presentations & OPD 🩺' },
+  { id: null, name: 'NEET-PG & NExT Prep', slug: 'neet-pg-prep', icon: 'book-open-variant', desc: 'Clinical pearls, MCQs & exam strategy 📚' },
+  { id: 'official-batch-chat', name: 'Official Batch Chat', slug: 'official-batch-chat', icon: 'chat-outline', desc: 'Sync of ERP Official Batch Chat 🏛️' },
+];
+
+const ENGINEERING_CHANNELS = [
   { id: null, name: 'Campus Pulse', slug: 'campus-pulse', icon: 'lightning-bolt', desc: 'Daily campus life & vibes 🎓' },
   { id: null, name: 'Career Launchpad', slug: 'career-launchpad', icon: 'rocket-launch', desc: 'Placements, internships & prep 🚀' },
   { id: null, name: "Maker's Den", slug: 'makers-den', icon: 'hammer-wrench', desc: 'Hackathons & side projects 🛠️' },
@@ -114,12 +121,19 @@ const ChatScreen = ({ navigation, route }) => {
   const insets = useSafeAreaInsets();
   const { accessToken, user } = useUser();
   const { colors, isDark } = useTheme();
-  const isSuperAdmin = user?.role === 'super_admin';
+  const isMed = user && (
+    (user.course || '').replace(/\./g, '').toLowerCase().includes('mbbs') ||
+    (user.course || '').toLowerCase().includes('medicine') ||
+    (user.category || '').toLowerCase().includes('medical')
+  );
+
+  const initialChannels = isMed ? MEDICAL_CHANNELS : ENGINEERING_CHANNELS;
+
   const [selectedBatch, setSelectedBatch] = useState(user?.batch_year || user?.batch || '2025');
   const [isDrawerOpen, setIsDrawerOpen] = useState(true);
-  const [channels, setChannels] = useState(DEFAULT_CHANNELS);
+  const [channels, setChannels] = useState(initialChannels);
   // Default to Campus Pulse (index 0) — NOT Official Batch Chat
-  const [activeChannel, setActiveChannel] = useState(DEFAULT_CHANNELS[0]);
+  const [activeChannel, setActiveChannel] = useState(initialChannels[0]);
   const [dmContacts, setDmContacts] = useState([]);
   const [loadingDMs, setLoadingDMs] = useState(false);
   const [inputText, setInputText] = useState('');
@@ -162,21 +176,37 @@ const ChatScreen = ({ navigation, route }) => {
           getChatChannelsAPI(accessToken),
           getDMContactsAPI(accessToken),
         ]);
+        const initialChs = isMed ? MEDICAL_CHANNELS : ENGINEERING_CHANNELS;
+        
+        let merged = initialChs;
         if (chs?.length) {
-          // Official Batch Chat goes at the END — social channels are shown first
-          const merged = [
-            ...chs,
-            { id: 'official-batch-chat', name: 'Official Batch Chat', slug: 'official-batch-chat', icon: 'chat-outline', desc: 'Sync of ERP Official Batch Chat 🏛️' },
-          ];
-          setChannels(merged);
-          // Auto-switch activeChannel to the real channel matching the current slug
-          // (default channels have id: null, so we upgrade to the real API channel)
-          setActiveChannel(prev => {
-            if (prev?.id && prev.id !== 'official-batch-chat') return prev; // already has a real social channel
-            const matchBySlug = chs.find(c => c.slug === prev?.slug);
-            return matchBySlug || chs[0]; // land on first social channel
-          });
+          if (isMed) {
+            const mappedChs = chs.map(c => {
+              if (c.slug === 'career-launchpad') {
+                return { ...c, name: 'Clinical Rotations', icon: 'stethoscope', desc: 'Ward rounds, case presentations & OPD 🩺' };
+              }
+              if (c.slug === 'makers-den') {
+                return { ...c, name: 'NEET-PG & NExT Prep', icon: 'book-open-variant', desc: 'Clinical pearls, MCQs & exam strategy 📚' };
+              }
+              return c;
+            });
+            merged = [
+              ...mappedChs,
+              { id: 'official-batch-chat', name: 'Official Batch Chat', slug: 'official-batch-chat', icon: 'chat-outline', desc: 'Sync of ERP Official Batch Chat 🏛️' },
+            ];
+          } else {
+            merged = [
+              ...chs,
+              { id: 'official-batch-chat', name: 'Official Batch Chat', slug: 'official-batch-chat', icon: 'chat-outline', desc: 'Sync of ERP Official Batch Chat 🏛️' },
+            ];
+          }
         }
+        setChannels(merged);
+        setActiveChannel(prev => {
+          if (prev?.id && prev.id !== 'official-batch-chat') return prev; // already has a real social channel
+          const matchBySlug = merged.find(c => c.slug === prev?.slug);
+          return matchBySlug || merged[0]; // land on first social channel
+        });
         if (Array.isArray(dms)) {
           const enrichedDms = dms.map(dm => ({
             ...dm,
@@ -191,7 +221,7 @@ const ChatScreen = ({ navigation, route }) => {
       }
     };
     if (accessToken) load();
-  }, [accessToken]);
+  }, [accessToken, isMed]);
 
   // ── Join channel & load history when active channel changes ───────────────
   useEffect(() => {
