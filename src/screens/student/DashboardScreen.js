@@ -361,7 +361,15 @@ const DashboardScreen = ({ navigation }) => {
   const [activeOutpass, setActiveOutpass] = React.useState(null);
   const [showQRModal, setShowQRModal] = React.useState(false);
   const [showRequestModal, setShowRequestModal] = React.useState(false);
-  const [outpassForm, setOutpassForm] = React.useState({ reason: '', duration: '2 Hours' });
+  const [outpassForm, setOutpassForm] = React.useState({
+    reason: '',
+    duration: 'Few Hours',
+    hours: '2',
+    startDate: '',
+    startTime: '09:00',
+    endDate: '',
+    endTime: '18:00'
+  });
   const [interestsInput, setInterestsInput] = React.useState('');
   const [activeInterests, setActiveInterests] = React.useState('');
 
@@ -866,7 +874,7 @@ const DashboardScreen = ({ navigation }) => {
             <View style={styles.formGroup}>
               <Text style={[styles.formLabel, { color: colors.textSecondary }]}>DURATION</Text>
               <View style={styles.durationRow}>
-                {['2 Hours', '4 Hours', 'Full Day', 'Overnight'].map((d) => (
+                {['Few Hours', 'Single Day', 'Multi-Day'].map((d) => (
                   <TouchableOpacity
                     key={d}
                     style={[
@@ -879,6 +887,92 @@ const DashboardScreen = ({ navigation }) => {
                   </TouchableOpacity>
                 ))}
               </View>
+
+              {outpassForm.duration === 'Few Hours' && (
+                <View style={{ marginTop: 16 }}>
+                  <Text style={[styles.formLabel, { color: colors.textSecondary }]}>NUMBER OF HOURS</Text>
+                  <TextInput
+                    style={[styles.formInput, { backgroundColor: isDark ? '#1F2937' : '#F9FAFB', borderColor: colors.border, color: colors.textPrimary, marginBottom: 12 }]}
+                    value={outpassForm.hours}
+                    onChangeText={(text) => setOutpassForm({ ...outpassForm, hours: text })}
+                    placeholder="2"
+                    keyboardType="numeric"
+                    placeholderTextColor={colors.textMuted}
+                  />
+                </View>
+              )}
+
+              {outpassForm.duration === 'Single Day' && (
+                <View style={{ marginTop: 16 }}>
+                  <Text style={[styles.formLabel, { color: colors.textSecondary }]}>DATE (YYYY-MM-DD)</Text>
+                  <TextInput
+                    style={[styles.formInput, { backgroundColor: isDark ? '#1F2937' : '#F9FAFB', borderColor: colors.border, color: colors.textPrimary, marginBottom: 12 }]}
+                    value={outpassForm.startDate}
+                    onChangeText={(text) => setOutpassForm({ ...outpassForm, startDate: text })}
+                    placeholder="2026-12-31"
+                    placeholderTextColor={colors.textMuted}
+                  />
+                  <View style={{ flexDirection: 'row', gap: 12 }}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.formLabel, { color: colors.textSecondary }]}>START TIME (HH:MM)</Text>
+                      <TextInput
+                        style={[styles.formInput, { backgroundColor: isDark ? '#1F2937' : '#F9FAFB', borderColor: colors.border, color: colors.textPrimary }]}
+                        value={outpassForm.startTime}
+                        onChangeText={(text) => setOutpassForm({ ...outpassForm, startTime: text })}
+                        placeholder="09:00"
+                        placeholderTextColor={colors.textMuted}
+                      />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.formLabel, { color: colors.textSecondary }]}>END TIME (HH:MM)</Text>
+                      <TextInput
+                        style={[styles.formInput, { backgroundColor: isDark ? '#1F2937' : '#F9FAFB', borderColor: colors.border, color: colors.textPrimary }]}
+                        value={outpassForm.endTime}
+                        onChangeText={(text) => setOutpassForm({ ...outpassForm, endTime: text })}
+                        placeholder="18:00"
+                        placeholderTextColor={colors.textMuted}
+                      />
+                    </View>
+                  </View>
+                </View>
+              )}
+
+              {outpassForm.duration === 'Multi-Day' && (
+                <View style={{ marginTop: 16 }}>
+                  <Text style={[styles.formLabel, { color: colors.textSecondary }]}>START DATE (YYYY-MM-DD)</Text>
+                  <TextInput
+                    style={[styles.formInput, { backgroundColor: isDark ? '#1F2937' : '#F9FAFB', borderColor: colors.border, color: colors.textPrimary, marginBottom: 12 }]}
+                    value={outpassForm.startDate}
+                    onChangeText={(text) => setOutpassForm({ ...outpassForm, startDate: text })}
+                    placeholder="2026-12-31"
+                    placeholderTextColor={colors.textMuted}
+                  />
+                  <Text style={[styles.formLabel, { color: colors.textSecondary }]}>START TIME (HH:MM)</Text>
+                  <TextInput
+                    style={[styles.formInput, { backgroundColor: isDark ? '#1F2937' : '#F9FAFB', borderColor: colors.border, color: colors.textPrimary, marginBottom: 12 }]}
+                    value={outpassForm.startTime}
+                    onChangeText={(text) => setOutpassForm({ ...outpassForm, startTime: text })}
+                    placeholder="09:00"
+                    placeholderTextColor={colors.textMuted}
+                  />
+                  <Text style={[styles.formLabel, { color: colors.textSecondary }]}>END DATE (YYYY-MM-DD)</Text>
+                  <TextInput
+                    style={[styles.formInput, { backgroundColor: isDark ? '#1F2937' : '#F9FAFB', borderColor: colors.border, color: colors.textPrimary, marginBottom: 12 }]}
+                    value={outpassForm.endDate}
+                    onChangeText={(text) => setOutpassForm({ ...outpassForm, endDate: text })}
+                    placeholder="2026-12-31"
+                    placeholderTextColor={colors.textMuted}
+                  />
+                  <Text style={[styles.formLabel, { color: colors.textSecondary }]}>END TIME (HH:MM)</Text>
+                  <TextInput
+                    style={[styles.formInput, { backgroundColor: isDark ? '#1F2937' : '#F9FAFB', borderColor: colors.border, color: colors.textPrimary }]}
+                    value={outpassForm.endTime}
+                    onChangeText={(text) => setOutpassForm({ ...outpassForm, endTime: text })}
+                    placeholder="18:00"
+                    placeholderTextColor={colors.textMuted}
+                  />
+                </View>
+              )}
             </View>
 
             <TouchableOpacity
@@ -889,8 +983,43 @@ const DashboardScreen = ({ navigation }) => {
                 try {
                   if (accessToken) {
                     const now = new Date();
-                    const exit_time = now.toISOString();
-                    const return_time = new Date(now.getTime() + 2 * 60 * 60 * 1000).toISOString();
+                    let exitDate = new Date(now.getTime());
+                    let returnDate = new Date(now.getTime());
+                    
+                    try {
+                      if (outpassForm.duration === 'Few Hours') {
+                        const hrs = parseInt(outpassForm.hours) || 2;
+                        returnDate.setHours(returnDate.getHours() + hrs);
+                      } else if (outpassForm.duration === 'Single Day') {
+                        const [yyyy, mm, dd] = (outpassForm.startDate || '').split('-');
+                        const [sH, sM] = (outpassForm.startTime || '09:00').split(':');
+                        const [eH, eM] = (outpassForm.endTime || '18:00').split(':');
+                        if (yyyy && mm && dd) {
+                          exitDate = new Date(parseInt(yyyy), parseInt(mm) - 1, parseInt(dd), parseInt(sH || 9), parseInt(sM || 0), 0, 0);
+                          returnDate = new Date(parseInt(yyyy), parseInt(mm) - 1, parseInt(dd), parseInt(eH || 18), parseInt(eM || 0), 0, 0);
+                        }
+                      } else if (outpassForm.duration === 'Multi-Day') {
+                        const [sy, sm, sd] = (outpassForm.startDate || '').split('-');
+                        const [ey, em, ed] = (outpassForm.endDate || '').split('-');
+                        const [sH, sM] = (outpassForm.startTime || '09:00').split(':');
+                        const [eH, eM] = (outpassForm.endTime || '18:00').split(':');
+                        if (sy && sm && sd) {
+                          exitDate = new Date(parseInt(sy), parseInt(sm) - 1, parseInt(sd), parseInt(sH || 9), parseInt(sM || 0), 0, 0);
+                        }
+                        if (ey && em && ed) {
+                          returnDate = new Date(parseInt(ey), parseInt(em) - 1, parseInt(ed), parseInt(eH || 18), parseInt(eM || 0), 0, 0);
+                        }
+                      }
+                      
+                      if (isNaN(exitDate.getTime())) exitDate = new Date(now.getTime());
+                      if (isNaN(returnDate.getTime())) returnDate = new Date(exitDate.getTime() + 2 * 60 * 60 * 1000);
+                    } catch (e) {
+                      console.warn('Date parsing error', e);
+                    }
+
+                    const exit_time = exitDate.toISOString();
+                    const return_time = returnDate.toISOString();
+
                     await createOutpass(accessToken, {
                       reason: `${outpassForm.reason};Out of Campus`,
                       destination: 'Out of Campus',
