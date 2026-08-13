@@ -91,7 +91,7 @@ const LoginScreen = ({ navigation }) => {
     if (role === 'student' && (/[a-zA-Z]/.test(cleanId) || cleanId.includes('/'))) {
       if (cleanId.toLowerCase() === 'warden') {
         finalRole = 'warden';
-      } else if (cleanId.toLowerCase() === 'admin') {
+      } else if (['admin', 'collegeadmin', 'superadmin', 'super_admin'].includes(cleanId.toLowerCase())) {
         finalRole = 'admin';
       } else {
         finalRole = 'teacher';
