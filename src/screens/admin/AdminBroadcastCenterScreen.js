@@ -107,7 +107,8 @@ const AdminBroadcastCenterScreen = ({ navigation }) => {
 
       const res = await createBroadcastAPI(accessToken, payload);
       if (res) {
-        Alert.alert('Success', 'Push notifications sent successfully.');
+        const countMsg = res.count !== undefined ? `Broadcast dispatched to ${res.count} recipient(s).` : 'Push notifications sent successfully.';
+        Alert.alert('Success', countMsg);
         setTitle('');
         setMessage('');
         setSelectedDepts([]);
