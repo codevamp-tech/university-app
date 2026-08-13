@@ -15,12 +15,19 @@ export function getAvatarUrl(name, rollno) {
     if (!name.includes('pravatar.cc')) {
       return name;
     }
-    // pravatar.cc — fall through to ERP or initials resolution below
   }
 
-  // If we have a roll number, resolve the real ERP portal photo
-  if (rollno && typeof rollno === 'string' && rollno.trim()) {
-    const cleanRoll = rollno.trim();
+  // Check rollno first, then name for a numeric roll number
+  let cleanRoll = (rollno && typeof rollno === 'string') ? rollno.trim() : '';
+  if (!cleanRoll && name && typeof name === 'string') {
+    const trimmed = name.trim();
+    if (/^\d+$/.test(trimmed)) {
+      cleanRoll = trimmed;
+    }
+  }
+
+  // If we have a numeric roll number, resolve the real ERP portal photo
+  if (cleanRoll && /^\d+$/.test(cleanRoll)) {
     return `https://myportal.srms.ac.in/srMSERP/Registration/StudentDocument/11/${cleanRoll}/${cleanRoll}.jpg`;
   }
 
