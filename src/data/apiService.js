@@ -718,9 +718,9 @@ export async function toggleLikeAPI(token, postId) {
 }
 
 // ─── Social Connections ────────────────────────────────────────────────────────
-export async function searchUsersAPI(token, query, filters = {}) {
+export async function searchUsersAPI(token, query, filters = {}, skip = 0, limit = 20) {
   try {
-    const params = new URLSearchParams({ q: query });
+    const params = new URLSearchParams({ q: query || '', skip, limit });
     if (filters.year && filters.year !== 'All') {
       params.append('year', filters.year);
     }

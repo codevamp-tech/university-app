@@ -20,14 +20,20 @@ const StudentSearchScreen = ({ navigation }) => {
   const [filters, setFilters] = useState({ year: 'All', branch: 'All', status: 'All' });
   const [showFilterModal, setShowFilterModal] = useState(false);
 
+  const [skip, setSkip] = useState(0);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+
   useEffect(() => {
     const isInitialLoad = !searchQuery.trim();
     const delay = isInitialLoad ? 0 : 300;
 
     const delayDebounceFn = setTimeout(async () => {
       setLoading(true);
+      setSkip(0);
+      setHasMore(true);
       try {
-        let results = await searchUsersAPI(accessToken, searchQuery, filters);
+        let results = await searchUsersAPI(accessToken, searchQuery, filters, 0, 20);
 
         // Fallback: if searchUsersAPI returned no results on initial empty search, fetch from getAllStudents
         if ((!results || results.length === 0) && !searchQuery.trim()) {
@@ -86,6 +92,9 @@ const StudentSearchScreen = ({ navigation }) => {
             return true;
           });
         }
+        if (finalUsers.length < 20) {
+          setHasMore(false);
+        }
         setUsers(finalUsers);
       } catch(e) {
         console.warn("Search error:", e);
@@ -96,7 +105,7 @@ const StudentSearchScreen = ({ navigation }) => {
             const filtered = qLower
               ? studs.filter(s => (s.full_name || s.name || '').toLowerCase().includes(qLower) || (s.username || '').toLowerCase().includes(qLower))
               : studs;
-            setUsers(filtered.map(s => ({
+            const mapped = filtered.map(s => ({
               user_id: s.user_id || s.id,
               id: s.user_id || s.id,
               name: s.full_name || s.name || s.username || 'Student',
@@ -109,7 +118,9 @@ const StudentSearchScreen = ({ navigation }) => {
               followers: s.followers || 0,
               connections: s.connections || 0,
               connection_status: s.connection_status || 'Connect',
-            })));
+            }));
+            setUsers(mapped);
+            setHasMore(false);
           } else {
             setUsers([]);
           }
@@ -123,6 +134,37 @@ const StudentSearchScreen = ({ navigation }) => {
 
     return () => clearTimeout(delayDebounceFn);
   }, [searchQuery, accessToken, filters]);
+
+  const handleLoadMore = async () => {
+    if (loading || loadingMore || !hasMore) return;
+    setLoadingMore(true);
+    const nextSkip = skip + 20;
+    try {
+      let nextBatch = await searchUsersAPI(accessToken, searchQuery, filters, nextSkip, 20);
+      let newBatch = Array.isArray(nextBatch) ? nextBatch : [];
+      if (filters.branch === 'All') {
+        newBatch = newBatch.filter(s => {
+          const cStr = String(s.course || '').toUpperCase();
+          const bStr = String(s.branch || '').toUpperCase();
+          if (cStr.includes('B.TECH') || bStr.includes('CSE') || cStr.includes('ENGINEERING')) return false;
+          return true;
+        });
+      }
+      if (newBatch.length < 20) {
+        setHasMore(false);
+      }
+      setUsers(prev => {
+        const existingIds = new Set(prev.map(u => u.id));
+        const uniqueNext = newBatch.filter(u => !existingIds.has(u.id));
+        return [...prev, ...uniqueNext];
+      });
+      setSkip(nextSkip);
+    } catch (e) {
+      console.warn("Load more error:", e);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
 
   const handleFollow = async (targetUserId) => {
     try {
@@ -287,6 +329,15 @@ const StudentSearchScreen = ({ navigation }) => {
         keyExtractor={(item) => item.id}
         renderItem={renderStudent}
         contentContainerStyle={styles.listContent}
+        onEndReached={handleLoadMore}
+        onEndReachedThreshold={0.4}
+        ListFooterComponent={
+          loadingMore ? (
+            <View style={{ paddingVertical: 16, alignItems: 'center' }}>
+              <ActivityIndicator size="small" color={colors.primary} />
+            </View>
+          ) : null
+        }
         ListEmptyComponent={
           <View style={styles.emptyState}>
             {loading ? (
