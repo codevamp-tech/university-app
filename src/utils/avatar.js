@@ -10,11 +10,11 @@
  * @param {string} rollno    - student roll number (optional) — used to resolve real ERP photo
  */
 export function getAvatarUrl(name, rollno) {
-  // If it's a real custom uploaded HTTP image URL (not pravatar or ui-avatars with digits), return it directly
+  // If it's a real custom uploaded HTTP image URL (NOT ui-avatars.com and NOT pravatar.cc), return it directly
   if (name && typeof name === 'string' && name.startsWith('http')) {
+    const isUiAvatars = name.includes('ui-avatars.com');
     const isPravatar = name.includes('pravatar.cc');
-    const isUiAvatarsWithDigits = name.includes('ui-avatars.com') && /name=\d+/.test(name);
-    if (!isPravatar && !isUiAvatarsWithDigits) {
+    if (!isUiAvatars && !isPravatar) {
       return name;
     }
   }
@@ -33,19 +33,19 @@ export function getAvatarUrl(name, rollno) {
     return `https://myportal.srms.ac.in/srMSERP/Registration/StudentDocument/11/${cleanRoll}/${cleanRoll}.jpg`;
   }
 
-  // 2. Sanitize seed name for ui-avatars initials fallback (never use digits or UUIDs)
-  let seed = name || 'Student';
+  // 2. Sanitize seed name for ui-avatars initials fallback (never use digits, UUIDs, or generic 'Student')
+  let seed = name || 'User';
   if (typeof seed === 'string') {
     if (seed.startsWith('http')) {
       const match = seed.match(/name=([^&]+)/);
       if (match && match[1]) {
         const decoded = decodeURIComponent(match[1]);
-        seed = /^\d+$/.test(decoded) ? 'Student' : decoded;
+        seed = (/^\d+$/.test(decoded) || decoded.toLowerCase() === 'student') ? 'User' : decoded;
       } else {
-        seed = 'Student';
+        seed = 'User';
       }
     } else if (/^\d+$/.test(seed.trim()) || /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(seed.trim())) {
-      seed = 'Student';
+      seed = 'User';
     }
   }
 
