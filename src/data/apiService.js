@@ -438,6 +438,19 @@ export async function getCompetencyChart(token, paperCode, phase = '1', studentI
 }
 
 /**
+ * GET /api/v1/erp/papers/:paperCode/practical
+ * Practical marks for a paper.
+ */
+export async function getPracticalMarks(token, paperCode, studentId) {
+  const url = studentId 
+    ? `/api/v1/erp/papers/${encodeURIComponent(paperCode)}/practical?student_id=${studentId}` 
+    : `/api/v1/erp/papers/${encodeURIComponent(paperCode)}/practical`;
+  const res = await apiCall(url, { headers: authHeaders(token) });
+  return unwrap(res, { obtained_marks: null, max_marks: null });
+}
+
+
+/**
  * GET /api/v1/erp/logbook
  * UG logbook activities with attempt status and faculty verification.
  */

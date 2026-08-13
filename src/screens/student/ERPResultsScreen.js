@@ -29,6 +29,7 @@ import {
   getPaperList,
   getPaperCompetencies,
   getCompetencyChart,
+  getPracticalMarks,
 } from '../../data/apiService';
 
 const { width } = Dimensions.get('window');
@@ -354,10 +355,12 @@ const SubjectDetailModal = ({ visible, subject, onClose, accessToken, student })
     }
   }, [visible, subject]);
 
-  const loadData = async (pcode) => {
+  const loadData = async (pcode, force = false) => {
     if (!accessToken || !pcode) return;
     
-    if (paperCache[pcode] && paperCache[pcode].practicalMarks !== undefined) {
+    // Only use memory cache if force is false AND cached data is not empty
+    if (!force && paperCache[pcode] && paperCache[pcode].practicalMarks !== undefined &&
+        (paperCache[pcode].chartData?.length > 0 || paperCache[pcode].competencies?.length > 0)) {
       const cached = paperCache[pcode];
       setCompetencies(cached.competencies);
       setAttempted(cached.attempted);
@@ -372,35 +375,39 @@ const SubjectDetailModal = ({ visible, subject, onClose, accessToken, student })
     setLoadingPractical(true);
 
     const cacheKey = `@erp_paper_cache_${user?.id || 'default'}`;
-    try {
-      const persistedStr = await AsyncStorage.getItem(cacheKey);
-      if (persistedStr) {
-        const persisted = JSON.parse(persistedStr);
-        if (persisted && persisted[pcode] && persisted[pcode].practicalMarks !== undefined) {
-          const cached = persisted[pcode];
-          setCompetencies(cached.competencies || []);
-          setAttempted(cached.attempted || []);
-          setChartData(cached.chartData || []);
-          setPracticalMarks(cached.practicalMarks || null);
-          
-          setPaperCache(prev => ({
-            ...prev,
-            [pcode]: cached
-          }));
-          setLoading(false);
-          setLoadingPractical(false);
-          return;
+    if (!force) {
+      try {
+        const persistedStr = await AsyncStorage.getItem(cacheKey);
+        if (persistedStr) {
+          const persisted = JSON.parse(persistedStr);
+          if (persisted && persisted[pcode] && persisted[pcode].practicalMarks !== undefined &&
+              (persisted[pcode].chartData?.length > 0 || persisted[pcode].competencies?.length > 0)) {
+            const cached = persisted[pcode];
+            setCompetencies(cached.competencies || []);
+            setAttempted(cached.attempted || []);
+            setChartData(cached.chartData || []);
+            setPracticalMarks(cached.practicalMarks || null);
+            
+            setPaperCache(prev => ({
+              ...prev,
+              [pcode]: cached
+            }));
+            setLoading(false);
+            setLoadingPractical(false);
+            return;
+          }
         }
+      } catch (e) {
+        console.warn('Failed to load persisted paper cache:', e);
       }
-    } catch (e) {
-      console.warn('Failed to load persisted paper cache:', e);
     }
 
     try {
-      const studentId = user?.rollno || user?.id || user?.username;
-      const [compData, chartResp] = await Promise.allSettled([
+      const studentId = user?.rollno || user?.username || user?.id;
+      const [compData, chartResp, pracResp] = await Promise.allSettled([
         getPaperCompetencies(accessToken, pcode, studentId),
         getCompetencyChart(accessToken, pcode, '1', studentId),
+        getPracticalMarks(accessToken, pcode, studentId),
       ]);
 
       let nextComps = [];
@@ -550,45 +557,12 @@ const SubjectDetailModal = ({ visible, subject, onClose, accessToken, student })
       setChartData(nextChart);
 
 
-      // Fetch Practical Marks from ERP
+      // Fetch Practical Marks from ERP via backend proxy
       let nextPractical = null;
-      try {
-        const rollno = String(user?.username || '');
-        if (rollno) {
-          const pracResp = await fetch('https://myportal.srms.ac.in/SRMSERP/Faculty/GetPracticalMarks', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'User-Agent': 'Mozilla/5.0'
-            },
-            body: JSON.stringify({
-              rollno: rollno,
-              papercode: String(pcode)
-            })
-          });
-          const pracData = await pracResp.json();
-          if (pracData && pracData.success && pracData.data) {
-            let obtained = null;
-            let max = null;
-            pracData.data.forEach(dept => {
-              if (dept.categories) {
-                dept.categories.forEach(cat => {
-                  if (cat.activities) {
-                    cat.activities.forEach(act => {
-                      obtained = act.obtained_marks;
-                      max = act.max_marks;
-                    });
-                  }
-                });
-              }
-            });
-            if (obtained !== null && max !== null) {
-              nextPractical = { obtained_marks: obtained, max_marks: max };
-            }
-          }
+      if (pracResp.status === 'fulfilled' && pracResp.value) {
+        if (pracResp.value.obtained_marks !== null || pracResp.value.max_marks !== null) {
+          nextPractical = pracResp.value;
         }
-      } catch (err) {
-        console.warn('[ResultsScreen] Practical marks fetch failed:', err);
       }
       setPracticalMarks(nextPractical);
 
@@ -1165,9 +1139,18 @@ const SubjectDetailModal = ({ visible, subject, onClose, accessToken, student })
           ) : (
             <>
               {/* Paper Title Banner */}
-              <View style={{ paddingHorizontal: 20, paddingVertical: 12, backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderBottomWidth: 1, borderBottomColor: colors.border }}>
-                <Text style={{ fontSize: 15, fontWeight: '900', color: colors.textPrimary }}>{selectedPaper.paper_name}</Text>
-                <Text style={{ fontSize: 11, color: colors.textSecondary, marginTop: 2 }}>Marks: {selectedPaper.obtained_marks}/{selectedPaper.total_marks} ({selectedPaper.pct}%)</Text>
+              <View style={{ paddingHorizontal: 20, paddingVertical: 12, backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderBottomWidth: 1, borderBottomColor: colors.border, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                <View style={{ flex: 1, paddingRight: 12 }}>
+                  <Text style={{ fontSize: 15, fontWeight: '900', color: colors.textPrimary }}>{selectedPaper.paper_name}</Text>
+                  <Text style={{ fontSize: 11, color: colors.textSecondary, marginTop: 2 }}>Marks: {selectedPaper.obtained_marks}/{selectedPaper.total_marks} ({selectedPaper.pct}%)</Text>
+                </View>
+                <TouchableOpacity
+                  style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.primary + '20', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12, gap: 4 }}
+                  onPress={() => loadData(selectedPaper.paper_code, true)}
+                >
+                  <Ionicons name="refresh" size={14} color={colors.primary} />
+                  <Text style={{ fontSize: 11, fontWeight: '700', color: colors.primary }}>Resync ERP</Text>
+                </TouchableOpacity>
               </View>
 
               {/* Tab Bar */}
