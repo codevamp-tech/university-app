@@ -320,7 +320,7 @@ const StudentSearchScreen = ({ navigation }) => {
       {filters.year !== 'All' && (
         <View style={styles.activeFiltersContainer}>
           <FilterPill
-            label={`Prof: ${filters.year === '1' ? '1st Prof' : filters.year === '2' ? '2nd Prof' : filters.year === '3' ? '3rd Prof' : 'Final Prof'}`}
+            label={`Batch: ${filters.year}`}
             onRemove={() => setFilters(f => ({ ...f, year: 'All' }))}
           />
         </View>
@@ -361,21 +361,21 @@ const StudentSearchScreen = ({ navigation }) => {
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
             <View style={styles.modalHeader}>
-              <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>Filter by Prof</Text>
+              <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>Filter by Batch</Text>
               <TouchableOpacity onPress={() => setShowFilterModal(false)}>
                 <Ionicons name="close" size={24} color={colors.textPrimary} />
               </TouchableOpacity>
             </View>
             
             <ScrollView style={styles.modalScroll}>
-              <Text style={[styles.filterSectionTitle, { color: colors.textSecondary }]}>Professional Year</Text>
+              <Text style={[styles.filterSectionTitle, { color: colors.textSecondary }]}>Batch Year</Text>
               <View style={styles.filterOptions}>
                 {[
-                  { id: 'All', label: 'All Profs' },
-                  { id: '1', label: '1st Prof' },
-                  { id: '2', label: '2nd Prof' },
-                  { id: '3', label: '3rd Prof' },
-                  { id: '4', label: 'Final Prof' }
+                  { id: 'All', label: 'All Batches' },
+                  { id: '2023', label: 'Batch 2023' },
+                  { id: '2024', label: 'Batch 2024' },
+                  { id: '2025', label: 'Batch 2025' },
+                  { id: '2026', label: 'Batch 2026' }
                 ].map(y => (
                   <TouchableOpacity key={y.id} onPress={() => setFilters({ year: y.id })} style={[styles.filterOption, filters.year === y.id && { backgroundColor: colors.primary, borderColor: colors.primary }]}>
                     <Text style={[styles.filterOptionText, { color: filters.year === y.id ? '#FFF' : colors.textPrimary }]}>{y.label}</Text>
