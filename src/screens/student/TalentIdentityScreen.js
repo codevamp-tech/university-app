@@ -1,6 +1,6 @@
 import React from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Dimensions,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Dimensions, TextInput,
 } from 'react-native';
 import { Ionicons, MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -130,32 +130,32 @@ const TalentIdentityScreen = ({ navigation }) => {
     };
   }, [accessToken, navigation]);
 
-  const handleGenerateBio = async () => {
-    Alert.alert(
-      'AI Bio Generator',
-      'Would you like to refine your about section with AI?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Generate with AI',
-          onPress: async () => {
-            const generated = isMed
-              ? `MBBS candidate deeply committed to clinical excellence and evidence-based patient care. Actively engaging in clinical rotations, pediatric diagnostics, and rural health screenings. Focused on medical ethics and advanced therapeutics.`
-              : `B.Tech candidate specializing in software systems and engineering logic. Experienced in full stack development, cloud services, and drone diagnostics. Passionate about building scalable applications and open-source tooling.`;
-            
-            setUserBio(generated);
-            if (accessToken) {
-              try {
-                await updateMyProfile(accessToken, { bio: generated });
-              } catch (err) {
-                console.warn("Failed to save bio on backend:", err);
-              }
-            }
-            Alert.alert('Bio Updated', 'Your bio has been generated and saved!');
-          }
-        }
-      ]
-    );
+  const [showEditBioModal, setShowEditBioModal] = React.useState(false);
+  const [editBioInput, setEditBioInput] = React.useState('');
+
+  const handleOpenEditBioModal = () => {
+    setEditBioInput(userBio);
+    setShowEditBioModal(true);
+  };
+
+  const handleSaveBio = async () => {
+    const trimmed = editBioInput.trim();
+    setUserBio(trimmed);
+    setShowEditBioModal(false);
+    if (accessToken) {
+      try {
+        await updateMyProfile(accessToken, { bio: trimmed });
+      } catch (err) {
+        console.warn("Failed to save bio on backend:", err);
+      }
+    }
+  };
+
+  const handleAiGenerateBio = () => {
+    const generated = isMed
+      ? `MBBS candidate deeply committed to clinical excellence and evidence-based patient care. Actively engaging in clinical rotations, pediatric diagnostics, and rural health screenings.`
+      : `Student specializing in university projects and academic logic. Passionate about building scalable applications, learning, and open-source tooling.`;
+    setEditBioInput(generated);
   };
 
   if (!user) return null;
@@ -335,7 +335,7 @@ const TalentIdentityScreen = ({ navigation }) => {
         <View style={[styles.aboutSection, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
           <View style={styles.aboutHeader}>
             <Text style={[styles.aboutTitle, { color: colors.textPrimary }]}>About</Text>
-            <TouchableOpacity style={[styles.editBioBtn, { backgroundColor: colors.border }]} onPress={handleGenerateBio}>
+            <TouchableOpacity style={[styles.editBioBtn, { backgroundColor: colors.border }]} onPress={handleOpenEditBioModal}>
               <MaterialIcons name="edit" size={18} color={colors.textSecondary} />
             </TouchableOpacity>
           </View>
@@ -576,6 +576,52 @@ const TalentIdentityScreen = ({ navigation }) => {
                 })}
               </ScrollView>
             )}
+          </View>
+      {/* Edit Bio Modal */}
+      <Modal visible={showEditBioModal} transparent animationType="fade" onRequestClose={() => setShowEditBioModal(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: colors.card, padding: 24, borderRadius: 24 }]}>
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>Edit About Section</Text>
+              <TouchableOpacity onPress={() => setShowEditBioModal(false)} style={styles.modalCloseBtn}>
+                <Ionicons name="close" size={24} color={colors.textPrimary} />
+              </TouchableOpacity>
+            </View>
+
+            <TextInput
+              style={[
+                styles.bioTextInput,
+                { 
+                  backgroundColor: isDark ? colors.background : '#F9FAFB', 
+                  color: colors.textPrimary,
+                  borderColor: colors.border
+                }
+              ]}
+              multiline
+              numberOfLines={4}
+              value={editBioInput}
+              onChangeText={setEditBioInput}
+              placeholder="Write your biography or about section here..."
+              placeholderTextColor={colors.textMuted || '#9CA3AF'}
+              textAlignVertical="top"
+            />
+
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 16, gap: 12 }}>
+              <TouchableOpacity 
+                style={[styles.aiGenBtn, { backgroundColor: isDark ? '#374151' : '#F3F4F6', borderColor: colors.border }]}
+                onPress={handleAiGenerateBio}
+              >
+                <MaterialCommunityIcons name="sparkles" size={18} color={colors.primary} />
+                <Text style={[styles.aiGenBtnText, { color: colors.textPrimary }]}>AI Draft</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={[styles.saveBioBtn, { backgroundColor: colors.primary }]}
+                onPress={handleSaveBio}
+              >
+                <Text style={styles.saveBioBtnText}>Save Bio</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Modal>
@@ -1143,6 +1189,40 @@ const styles = StyleSheet.create({
   removeBtnText: {
     fontSize: 12,
     fontWeight: '600',
+  },
+
+  bioTextInput: {
+    borderWidth: 1,
+    borderRadius: 16,
+    padding: 14,
+    fontSize: 15,
+    minHeight: 110,
+    marginTop: 8,
+  },
+  aiGenBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    gap: 6,
+  },
+  aiGenBtnText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  saveBioBtn: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderRadius: 14,
+  },
+  saveBioBtnText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '700',
   },
 
 });
