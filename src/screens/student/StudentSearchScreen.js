@@ -274,6 +274,7 @@ const StudentSearchScreen = ({ navigation }) => {
       </TouchableOpacity>
     </TouchableOpacity>
   );
+};
 
   const FilterPill = ({ label, onRemove }) => (
     <View style={[styles.filterPill, { backgroundColor: colors.primary + '20', borderColor: colors.primary }]}>
