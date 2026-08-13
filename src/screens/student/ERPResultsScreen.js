@@ -1443,8 +1443,14 @@ const ERPResultsScreen = ({ route, navigation }) => {
       setPhases(sorted);
       if (sorted.length > 0) setExpandedPhase(sorted[sorted.length - 1].phase);
 
+      const takenPhases = sorted.filter(p => p.combinedPct !== null);
+      const computedOverallPct = takenPhases.length > 0
+        ? Math.round(takenPhases.reduce((s, p) => s + p.combinedPct, 0) / takenPhases.length)
+        : 0;
+
       // Save to cache
-      await AsyncStorage.setItem(cacheKey, JSON.stringify({ phases: sorted }));
+      await AsyncStorage.setItem(cacheKey, JSON.stringify({ phases: sorted, overallPct: computedOverallPct }));
+      await AsyncStorage.setItem(`@erp_overall_pct_${user?.id || user?.username || user?.rollno || 'default'}`, String(computedOverallPct));
     } catch (e) {
       console.warn('[ERPResults] performFetch Error:', e);
     } finally {

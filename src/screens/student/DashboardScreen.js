@@ -289,6 +289,48 @@ const DashboardScreen = ({ navigation }) => {
   const isMed = user && (isMedicalStudent(user) || (user.course || '').toLowerCase().includes('mbbs') || (user.category || '').toLowerCase().includes('medical'));
   const [activeMood, setActiveMood] = React.useState(2);
 
+  const [medMarksPct, setMedMarksPct] = React.useState(() => {
+    if (user?.cgpa) {
+      const num = parseFloat(user.cgpa);
+      if (!isNaN(num) && num > 0) return Math.round(num > 10 ? num : num * 10);
+    }
+    return 61;
+  });
+
+  useFocusEffect(
+    React.useCallback(() => {
+      async function loadStoredPct() {
+        const stId = user?.id || user?.username || user?.rollno || 'default';
+        try {
+          const directPct = await AsyncStorage.getItem(`@erp_overall_pct_${stId}`);
+          if (directPct !== null) {
+            const val = parseInt(directPct, 10);
+            if (!isNaN(val) && val > 0) {
+              setMedMarksPct(val);
+              return;
+            }
+          }
+          const cacheStr = await AsyncStorage.getItem(`@erp_results_cache_${stId}`);
+          if (cacheStr) {
+            const parsed = JSON.parse(cacheStr);
+            if (parsed?.overallPct) {
+              setMedMarksPct(Math.round(parsed.overallPct));
+              return;
+            }
+            if (parsed?.phases && Array.isArray(parsed.phases)) {
+              const taken = parsed.phases.filter(p => p.combinedPct !== null);
+              if (taken.length > 0) {
+                setMedMarksPct(Math.round(taken.reduce((s, p) => s + p.combinedPct, 0) / taken.length));
+                return;
+              }
+            }
+          }
+        } catch (_) {}
+      }
+      loadStoredPct();
+    }, [user?.id, user?.username, user?.rollno])
+  );
+
   useFocusEffect(
     React.useCallback(() => {
       if (!accessToken) return;
@@ -914,7 +956,7 @@ const DashboardScreen = ({ navigation }) => {
                 style={[styles.statPillOrange, { borderColor: isDark ? 'rgba(234, 88, 12, 0.3)' : '#FFEDD5' }]}
               >
                 <Text style={[styles.statValueOrange, { color: isDark ? '#FB923C' : '#9A3412' }]}>
-                  {isMed ? `${Math.round((user?.cgpa ? (user.cgpa > 10 ? user.cgpa : user.cgpa * 10) : 75))}%` : (user?.cgpa || '0.0')}
+                  {isMed ? `${medMarksPct}%` : (user?.cgpa || '0.0')}
                 </Text>
                 <Text style={[styles.statLabelOrange, { color: isDark ? '#FB923C' : '#9A3412' }]}>
                   {isMed ? 'ACADEMIC MARKS' : 'ACADEMIC CGPA'}

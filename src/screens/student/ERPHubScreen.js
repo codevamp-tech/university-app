@@ -32,6 +32,46 @@ const ERPHubScreen = ({ navigation, route }) => {
 
   const [alerts, setAlerts] = useState([]);
 
+  const [medMarksPct, setMedMarksPct] = useState(() => {
+    if (student?.cgpa) {
+      const num = parseFloat(student.cgpa);
+      if (!isNaN(num) && num > 0) return Math.round(num > 10 ? num : num * 10);
+    }
+    return 61;
+  });
+
+  React.useEffect(() => {
+    async function loadStoredPct() {
+      const stId = student?.id || student?.username || student?.rollno || 'default';
+      try {
+        const directPct = await AsyncStorage.getItem(`@erp_overall_pct_${stId}`);
+        if (directPct !== null) {
+          const val = parseInt(directPct, 10);
+          if (!isNaN(val) && val > 0) {
+            setMedMarksPct(val);
+            return;
+          }
+        }
+        const cacheStr = await AsyncStorage.getItem(`@erp_results_cache_${stId}`);
+        if (cacheStr) {
+          const parsed = JSON.parse(cacheStr);
+          if (parsed?.overallPct) {
+            setMedMarksPct(Math.round(parsed.overallPct));
+            return;
+          }
+          if (parsed?.phases && Array.isArray(parsed.phases)) {
+            const taken = parsed.phases.filter(p => p.combinedPct !== null);
+            if (taken.length > 0) {
+              setMedMarksPct(Math.round(taken.reduce((s, p) => s + p.combinedPct, 0) / taken.length));
+              return;
+            }
+          }
+        }
+      } catch (_) {}
+    }
+    loadStoredPct();
+  }, [student?.id, student?.username, student?.rollno]);
+
   React.useEffect(() => {
     async function loadAlerts() {
       if (!accessToken) return;
@@ -229,7 +269,7 @@ const ERPHubScreen = ({ navigation, route }) => {
                   <View style={[styles.heroStatDivider, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.2)' }]} />
                   <View style={styles.heroStatItem}>
                     <Text style={styles.heroStatValue}>
-                      {isMedical ? `${Math.round((student?.cgpa ? (student.cgpa > 10 ? student.cgpa : student.cgpa * 10) : 75))}%` : displayCgpa}
+                      {isMedical ? `${medMarksPct}%` : displayCgpa}
                     </Text>
                     <Text style={styles.heroStatLabel}>{isMedical ? 'MARKS %' : 'CGPA'}</Text>
                   </View>
@@ -404,7 +444,7 @@ const ERPHubScreen = ({ navigation, route }) => {
               <Text style={[styles.gridCardTitle, { color: colors.textPrimary }]}>Results</Text>
               <Text style={[styles.gridCardDesc, { color: colors.textSecondary }]}>
                 {isMedical 
-                  ? `Marks: ${Math.round((student?.cgpa ? (student.cgpa > 10 ? student.cgpa : student.cgpa * 10) : 75))}%` 
+                  ? `Marks: ${medMarksPct}%` 
                   : `CGPA: ${formatCgpa(student?.cgpa)}`}
               </Text>
             </TouchableOpacity>
