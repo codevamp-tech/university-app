@@ -661,22 +661,12 @@ const AdminStudentProfileScreen = ({ navigation, route }) => {
               textAlignVertical="top"
             />
 
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 16, gap: 12 }}>
-              <TouchableOpacity 
-                style={[styles.aiGenBtn, { backgroundColor: isDark ? '#374151' : '#F3F4F6', borderColor: colors.border }]}
-                onPress={handleAiGenerateBio}
-              >
-                <MaterialCommunityIcons name="sparkles" size={18} color={colors.primary} />
-                <Text style={[styles.aiGenBtnText, { color: colors.textPrimary }]}>AI Draft</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity 
-                style={[styles.saveBioBtn, { backgroundColor: colors.primary }]}
-                onPress={handleSaveBio}
-              >
-                <Text style={styles.saveBioBtnText}>Save Bio</Text>
-              </TouchableOpacity>
-            </View>
+            <TouchableOpacity 
+              style={[styles.saveBioBtn, { backgroundColor: colors.primary, marginTop: 16 }]}
+              onPress={handleSaveBio}
+            >
+              <Text style={styles.saveBioBtnText}>Save Bio</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>
