@@ -52,12 +52,9 @@ const AdminStudentProfileScreen = ({ navigation, route }) => {
     setShowConnectionsModal(true);
     setLoadingConnections(true);
     try {
-      const data = await getConnectionList(accessToken, user?.id);
-      if (type === 'followers') {
-        setConnectionsList(data.followers || []);
-      } else {
-        setConnectionsList(data.connections || []);
-      }
+      const data = await getConnectionList(accessToken);
+      const list = Array.isArray(data) ? data : (data?.connections || []);
+      setConnectionsList(list);
     } catch (e) {
       console.warn("Error loading connection list:", e);
     } finally {

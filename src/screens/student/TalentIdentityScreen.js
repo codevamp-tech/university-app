@@ -47,7 +47,7 @@ const TalentIdentityScreen = ({ navigation }) => {
     setShowConnectionsModal(true);
     setLoadingConnections(true);
     try {
-      const data = await getConnectionList(accessToken, user?.id);
+      const data = await getConnectionList(accessToken);
       const list = Array.isArray(data) ? data : (data?.connections || []);
       setConnectionsList(list);
     } catch (e) {

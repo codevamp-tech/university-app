@@ -2689,14 +2689,15 @@ export async function getAdminGeneralNotifications() {
 
 export async function getConnectionList(token, userId = null) {
   try {
-    const url = userId 
-      ? `/api/v1/social/connections/list?user_id=${userId}`
-      : `/api/v1/social/connections/list`;
+    let url = `/api/v1/social/connections/list`;
+    if (userId && String(userId).trim() !== '' && String(userId) !== 'undefined' && String(userId) !== 'null') {
+      url += `?user_id=${encodeURIComponent(userId)}`;
+    }
     const res = await apiCall(url, {
       method: 'GET',
       headers: authHeaders(token),
     });
-    return await unwrap(res, { followers: [], following: [], connections: [] });
+    return unwrap(res, { followers: [], following: [], connections: [] });
   } catch (e) {
     console.error("getConnectionList failed:", e);
     return { followers: [], following: [], connections: [] };
