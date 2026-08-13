@@ -10,6 +10,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useSocket } from '../../hooks/useSocket';
 
 const STORY_KEY = '@unicampus_stories_v2';
 const STORY_TTL = 24 * 60 * 60 * 1000; // 24 h
@@ -89,6 +90,63 @@ const CommunityScreen = ({ navigation }) => {
   const [posting, setPosting] = useState(false);
   const [studentMap, setStudentMap] = useState({});
   const [refreshing, setRefreshing] = useState(false);
+  const lastFeedFetchRef = useRef(0); // Stale-time guard
+
+  // ── WebSocket real-time handlers ─────────────────────────────────────────
+  const handleWsPostLike = useCallback((msg) => {
+    // Update like_count for the affected post in the feed without a full reload
+    setApiFeed(prev => prev.map(p =>
+      p.id === msg.post_id
+        ? { ...p, like_count: msg.like_count }
+        : p
+    ));
+  }, []);
+
+  const handleWsPostReaction = useCallback((msg) => {
+    setApiFeed(prev => prev.map(p =>
+      p.id === msg.post_id
+        ? { ...p, like_count: msg.like_count, reaction_counts: msg.reaction_counts }
+        : p
+    ));
+  }, []);
+
+  const handleWsNewComment = useCallback((msg) => {
+    // Update comment count on feed post
+    setApiFeed(prev => prev.map(p =>
+      p.id === msg.post_id
+        ? { ...p, comment_count: (p.comment_count || 0) + 1 }
+        : p
+    ));
+    // Append to open comments modal if user is viewing this post's comments
+    setActiveCommentPostId(current => {
+      if (current === msg.post_id && msg.comment) {
+        setComments(prev => {
+          // Avoid duplicate if optimistic update already added it
+          if (prev.some(c => c.id === msg.comment.id)) return prev;
+          return [...prev, msg.comment];
+        });
+      }
+      return current;
+    });
+  }, []);
+
+  const handleWsNewPost = useCallback((msg) => {
+    if (!msg.post) return;
+    // Prepend new post to feed (only if it's not from the current user — they already see it)
+    setApiFeed(prev => {
+      if (prev.some(p => p.id === msg.post.id)) return prev; // Deduplicate
+      return [msg.post, ...prev];
+    });
+  }, []);
+
+  // Connect to WebSocket
+  const { isConnected: wsConnected } = useSocket(accessToken, {
+    onPostLike: handleWsPostLike,
+    onPostReaction: handleWsPostReaction,
+    onNewComment: handleWsNewComment,
+    onNewPost: handleWsNewPost,
+  });
+
 
   // Interaction States
   const [activeReactionPostId, setActiveReactionPostId] = useState(null);
@@ -280,18 +338,21 @@ const CommunityScreen = ({ navigation }) => {
     }
   }, [accessToken]);
 
-  const loadFeed = useCallback(async () => {
+  const loadFeed = useCallback(async (force = false) => {
     if (!accessToken) return;
+    // Stale-time guard: don't re-fetch if data was loaded less than 30s ago
+    const now = Date.now();
+    if (!force && (now - lastFeedFetchRef.current) < 30000) return;
+    lastFeedFetchRef.current = now;
+
     setLoadingFeed(true);
     try {
       const posts = await getSocialFeed(accessToken);
       if (posts) setApiFeed(posts);
 
-      const stats = await connectionStatsAPI(accessToken);
-      if (stats) setConnectionStats(stats);
-
-      const pending = await getPendingRequestsAPI(accessToken);
-      if (pending) setPendingFollowsCount(pending.length);
+      // Load stats in parallel (non-blocking — don't await together)
+      connectionStatsAPI(accessToken).then(stats => { if (stats) setConnectionStats(stats); }).catch(() => {});
+      getPendingRequestsAPI(accessToken).then(pending => { if (pending) setPendingFollowsCount(pending.length); }).catch(() => {});
 
       // Reload stories to keep in sync
       loadStories();
@@ -305,7 +366,7 @@ const CommunityScreen = ({ navigation }) => {
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
-      await loadFeed();
+      await loadFeed(true); // Force refresh bypasses stale-time guard
     } catch (e) {
       console.warn("Pull-to-refresh error:", e);
     } finally {
@@ -315,7 +376,7 @@ const CommunityScreen = ({ navigation }) => {
 
   useFocusEffect(
     React.useCallback(() => {
-      loadFeed();
+      loadFeed(); // Respects 30s stale-time — won't hammer API on every tab switch
     }, [loadFeed])
   );
 

@@ -27,6 +27,29 @@ const DEPT_ID         = APP_CONFIG.DEPT_ID;
 // User types "1234" in the login screen → app sends this internal password to the API
 const DEFAULT_PASSWORD = APP_CONFIG.DEFAULT_PASSWORD;
 
+// ─── Request Deduplication ────────────────────────────────────────────────────
+// Prevents identical in-flight requests from firing multiple times
+// (e.g., 4 parallel loadFeed calls on screen focus)
+const _pendingRequests = new Map();
+
+async function apiCallDeduped(path, options = {}) {
+  const method = options.method || 'GET';
+  // Only deduplicate read-only GET requests
+  if (method !== 'GET') return apiCall(path, options);
+  const key = `${path}|${JSON.stringify(options.headers || {})}`;
+  if (_pendingRequests.has(key)) {
+    return _pendingRequests.get(key);
+  }
+  const promise = apiCall(path, options).finally(() => _pendingRequests.delete(key));
+  _pendingRequests.set(key, promise);
+  return promise;
+}
+
+// ─── Module-level student cache ───────────────────────────────────────────────
+let _studentCache = null;
+let _studentCacheTs = 0;
+const STUDENT_CACHE_TTL = 10 * 60 * 1000; // 10 minutes
+
 
 let onUnauthorizedCallback = null;
 
@@ -589,7 +612,7 @@ export async function markAllAlertsRead(token) {
  * GET /api/v1/social/feed?skip=0&limit=20
  */
 export async function getSocialFeed(token, skip = 0, limit = 20) {
-  const res = await apiCall(`/api/v1/social/feed?skip=${skip}&limit=${limit}`, {
+  const res = await apiCallDeduped(`/api/v1/social/feed?skip=${skip}&limit=${limit}`, {
     headers: authHeaders(token),
   });
   return unwrap(res, []);
@@ -660,7 +683,18 @@ export async function commentOnPost(token, postId, content, parentId = null) {
     headers: authHeaders(token),
     body: JSON.stringify({ content, parent_id: parentId }),
   });
-  return unwrap(res);
+  return unwrap(res, null);
+}
+
+/**
+ * POST /api/v1/social/posts/:postId/like
+ * Proper toggle: tracks who liked, returns { like_count, user_liked }
+ */
+export async function toggleLikeAPI(token, postId) {
+  const res = await apiCall(`/api/v1/social/posts/${postId}/like`, {
+    method: 'POST',
+    headers: authHeaders(token),
+  });
   return unwrap(res, null);
 }
 
@@ -712,16 +746,26 @@ export async function searchUsersAPI(token, query, filters = {}) {
 }
 
 export async function getAllStudents(token, dbOnly = false) {
+  // Module-level cache: only fetch once per 10 minutes
+  const now = Date.now();
+  if (!dbOnly && _studentCache && (now - _studentCacheTs) < STUDENT_CACHE_TTL) {
+    return _studentCache;
+  }
   try {
     const url = dbOnly ? `/api/v1/users/students?db_only=true` : `/api/v1/users/students`;
     const res = await apiCall(url, {
       method: 'GET',
       headers: authHeaders(token),
     });
-    return unwrap(res, []);
+    const data = unwrap(res, []);
+    if (!dbOnly && data.length > 0) {
+      _studentCache = data;
+      _studentCacheTs = now;
+    }
+    return data;
   } catch (e) {
     console.error("getAllStudents API failed:", e);
-    return [];
+    return _studentCache || []; // Return cached data on error
   }
 }
 
