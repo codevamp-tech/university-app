@@ -10,6 +10,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
+import { useFocusEffect } from '@react-navigation/native';
 import { APP_CONFIG } from '../../config/appConfig';
 import { useUser } from '../../context/UserContext';
 import { useChatSocketContext } from '../../context/ChatSocketContext';
@@ -115,7 +116,7 @@ const ChatScreen = ({ navigation, route }) => {
   const { colors, isDark } = useTheme();
   const isSuperAdmin = user?.role === 'super_admin';
   const [selectedBatch, setSelectedBatch] = useState(user?.batch_year || user?.batch || '2025');
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(true);
   const [channels, setChannels] = useState(DEFAULT_CHANNELS);
   // Default to Campus Pulse (index 0) — NOT Official Batch Chat
   const [activeChannel, setActiveChannel] = useState(DEFAULT_CHANNELS[0]);
@@ -139,7 +140,7 @@ const ChatScreen = ({ navigation, route }) => {
     }
   }, [portalSubjects]);
 
-  const slideAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(1)).current;
 
   const {
     connected,
@@ -310,12 +311,14 @@ const ChatScreen = ({ navigation, route }) => {
   const drawerTranslateX = slideAnim.interpolate({ inputRange: [0, 1], outputRange: [-DRAWER_WIDTH, 0] });
   const overlayOpacity = slideAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 1] });
 
-  useEffect(() => {
-    if (route?.params?.openDrawer && !isDrawerOpen) {
-      setIsDrawerOpen(true);
-      Animated.timing(slideAnim, { toValue: 1, duration: 250, useNativeDriver: true }).start();
-    }
-  }, [route?.params]);
+  useFocusEffect(
+    useCallback(() => {
+      if (!route?.params?.directToChannel) {
+        setIsDrawerOpen(true);
+        Animated.timing(slideAnim, { toValue: 1, duration: 250, useNativeDriver: true }).start();
+      }
+    }, [route?.params])
+  );
 
   const flatListRef = useRef(null);
 
@@ -631,7 +634,16 @@ const ChatScreen = ({ navigation, route }) => {
         {/* Header */}
         <View style={[styles.header, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
           <View style={styles.headerLeft}>
-            <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginRight: 6 }}>
+            <TouchableOpacity 
+              onPress={() => {
+                if (isDrawerOpen) {
+                  navigation.goBack();
+                } else {
+                  toggleDrawer();
+                }
+              }} 
+              style={{ marginRight: 6 }}
+            >
               <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
             </TouchableOpacity>
             <TouchableOpacity style={styles.menuBtn} onPress={toggleDrawer}>
