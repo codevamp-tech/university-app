@@ -52,6 +52,7 @@ import ChatScreen from '../screens/student/ChatScreen';
 import StudentSearchScreen from '../screens/student/StudentSearchScreen';
 import NotificationsScreen from '../screens/student/NotificationsScreen';
 import AdminStudentProfileScreen from '../screens/student/AdminStudentProfileScreen';
+import OtherStudentProfileScreen from '../screens/student/OtherStudentProfileScreen';
 import DMConversationScreen from '../screens/student/DMConversationScreen';
 import RaiseIssueScreen from '../screens/student/RaiseIssueScreen';
 import GrievancesListScreen from '../screens/student/GrievancesListScreen';
@@ -177,7 +178,7 @@ const AppNavigator = () => {
       <Stack.Screen name="StudentSearch" component={StudentSearchScreen} options={{ animation: 'fade', presentation: 'transparentModal' }} />
       <Stack.Screen name="Notifications" component={NotificationsScreen} options={{ animation: 'slide_from_right' }} />
       {/* Global Modals / Shared Screens */}
-      <Stack.Screen name="OtherStudentProfile" component={AdminStudentProfileScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="OtherStudentProfile" component={OtherStudentProfileScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="DMConversation" component={DMConversationScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="StudentFacultyDirectory" component={StudentFacultyDirectoryScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="RaiseIssue" component={RaiseIssueScreen} options={{ animation: 'slide_from_bottom' }} />

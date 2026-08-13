@@ -196,7 +196,7 @@ const AdminStudentProfileScreen = ({ navigation, route }) => {
     }
   };
 
-  const avatarUrl = getAvatarUrl(user?.avatar_url || user?.id || user?.email || 'me');
+  const avatarUrl = getAvatarUrl(user?.avatar_url || user?.name || user?.full_name || user?.username, user?.rollNo || user?.rollno || user?.username);
 
 
   return (
