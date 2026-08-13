@@ -130,10 +130,25 @@ const AdminVentureReviewScreen = ({ navigation }) => {
     if (!url) return;
     let formattedUrl = url;
 
+    if (formattedUrl.includes('university.edu')) {
+      Alert.alert(
+        'Sample Seed Deck',
+        'This test entry uses a sample placeholder URL (university.edu). Real pitch decks uploaded by students will open their actual attached PDF file.'
+      );
+      return;
+    }
+
     if (formattedUrl.startsWith('/')) {
       formattedUrl = `${APP_CONFIG.API_BASE_URL}${formattedUrl}`;
     } else if (!formattedUrl.startsWith('http://') && !formattedUrl.startsWith('https://')) {
       formattedUrl = 'https://' + formattedUrl;
+    }
+
+    if (formattedUrl.includes('res.cloudinary.com') && formattedUrl.includes('/image/upload/')) {
+      try {
+        formattedUrl = decodeURIComponent(formattedUrl);
+      } catch {}
+      formattedUrl = formattedUrl.replace('/image/upload/', '/image/upload/fl_attachment/');
     }
 
     try {
