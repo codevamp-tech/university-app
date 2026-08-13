@@ -38,22 +38,11 @@ const ERPHubScreen = ({ navigation, route }) => {
   React.useEffect(() => {
     async function loadStoredPct() {
       const stId = student?.id || student?.username || student?.rollno || 'default';
-      const studentYear = (() => {
-        const by = parseInt(student?.batch_year || student?.batchYear || 0, 10);
-        if (by >= 2025) return 1;
-        if (by === 2024) return 2;
-        if (by === 2023) return 3;
-        if (by > 0 && by <= 2022) return 4;
-        const cy = parseInt(student?.current_year || student?.year || (student?.semester ? Math.ceil(parseInt(student.semester) / 2) : 0), 10);
-        if (cy && cy >= 1 && cy <= 4) return cy;
-        return 2;
-      })();
-
       try {
         if (accessToken) {
           const records = await getResults(accessToken, stId);
           if (records && Array.isArray(records) && records.length > 0) {
-            const computed = calculateExactMedicalPerformance(records, student);
+            const computed = calculateExactMedicalPerformance(records);
             if (computed && computed > 0) {
               setMedMarksPct(computed);
               await AsyncStorage.setItem(`@erp_overall_pct_${stId}`, String(computed));
@@ -66,7 +55,7 @@ const ERPHubScreen = ({ navigation, route }) => {
         if (cacheStr) {
           const parsed = JSON.parse(cacheStr);
           if (parsed?.phases && Array.isArray(parsed.phases)) {
-            const taken = parsed.phases.filter(p => p.combinedPct !== null && (!p.yr_fk || p.yr_fk <= studentYear));
+            const taken = parsed.phases.filter(p => p.combinedPct !== null);
             if (taken.length > 0) {
               const computed = Math.round(taken.reduce((s, p) => s + p.combinedPct, 0) / taken.length);
               setMedMarksPct(computed);
@@ -86,7 +75,7 @@ const ERPHubScreen = ({ navigation, route }) => {
       } catch (_) {}
     }
     loadStoredPct();
-  }, [accessToken, student?.id, student?.username, student?.rollno, student?.batch_year, student?.year]);
+  }, [accessToken, student?.id, student?.username, student?.rollno]);
 
   React.useEffect(() => {
     async function loadAlerts() {

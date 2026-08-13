@@ -296,22 +296,11 @@ const DashboardScreen = ({ navigation }) => {
     React.useCallback(() => {
       async function loadStoredPct() {
         const stId = user?.id || user?.username || user?.rollno || 'default';
-        const studentYear = (() => {
-          const by = parseInt(user?.batch_year || user?.batchYear || 0, 10);
-          if (by >= 2025) return 1;
-          if (by === 2024) return 2;
-          if (by === 2023) return 3;
-          if (by > 0 && by <= 2022) return 4;
-          const cy = parseInt(user?.current_year || user?.year || (user?.semester ? Math.ceil(parseInt(user.semester) / 2) : 0), 10);
-          if (cy && cy >= 1 && cy <= 4) return cy;
-          return 2;
-        })();
-
         try {
           if (accessToken) {
             const records = await getResults(accessToken, stId);
             if (records && Array.isArray(records) && records.length > 0) {
-              const computed = calculateExactMedicalPerformance(records, user);
+              const computed = calculateExactMedicalPerformance(records);
               if (computed && computed > 0) {
                 setMedMarksPct(computed);
                 await AsyncStorage.setItem(`@erp_overall_pct_${stId}`, String(computed));
@@ -324,7 +313,7 @@ const DashboardScreen = ({ navigation }) => {
           if (cacheStr) {
             const parsed = JSON.parse(cacheStr);
             if (parsed?.phases && Array.isArray(parsed.phases)) {
-              const taken = parsed.phases.filter(p => p.combinedPct !== null && (!p.yr_fk || p.yr_fk <= studentYear));
+              const taken = parsed.phases.filter(p => p.combinedPct !== null);
               if (taken.length > 0) {
                 const computed = Math.round(taken.reduce((s, p) => s + p.combinedPct, 0) / taken.length);
                 setMedMarksPct(computed);
@@ -344,7 +333,7 @@ const DashboardScreen = ({ navigation }) => {
         } catch (_) {}
       }
       loadStoredPct();
-    }, [accessToken, user?.id, user?.username, user?.rollno, user?.batch_year, user?.year])
+    }, [accessToken, user?.id, user?.username, user?.rollno])
   );
 
   useFocusEffect(

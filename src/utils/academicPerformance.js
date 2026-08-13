@@ -1,10 +1,10 @@
 /**
  * Utility helper to compute exact NMC-compliant Academic Performance percentage
  * for medical (MBBS) students across ERP Results, ERP Hub, and Dashboard.
- * 100% mirrors ERPResultsScreen aggregation logic and handles 30-mark sessional detection.
+ * Includes all phases that have taken paper results (matching ERPResultsScreen).
  */
 
-export function calculateExactMedicalPerformance(records, student = {}) {
+export function calculateExactMedicalPerformance(records) {
   if (!records || !Array.isArray(records) || records.length === 0) return null;
 
   const thirtyMarkCodes = ['30157', '30163', '30166', '30104'];
@@ -52,21 +52,9 @@ export function calculateExactMedicalPerformance(records, student = {}) {
     byPhase[phaseName].subjectsMap[subjectName].push(paperPct);
   });
 
-  const studentYear = (() => {
-    const by = parseInt(student?.batch_year || student?.batchYear || 0, 10);
-    if (by >= 2025) return 1;
-    if (by === 2024) return 2;
-    if (by === 2023) return 3;
-    if (by > 0 && by <= 2022) return 4;
-    const cy = parseInt(student?.current_year || student?.year || (student?.semester ? Math.ceil(parseInt(student.semester) / 2) : 0), 10);
-    if (cy && cy >= 1 && cy <= 4) return cy;
-    return 2;
-  })();
-
+  // Compute average across all phases that have taken paper results
   const phaseAverages = [];
   Object.values(byPhase).forEach(pInfo => {
-    if (pInfo.yr_fk > studentYear) return;
-
     const subjectAverages = [];
     Object.values(pInfo.subjectsMap).forEach(paperPcts => {
       if (paperPcts.length > 0) {
