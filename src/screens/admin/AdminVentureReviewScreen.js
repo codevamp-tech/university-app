@@ -11,19 +11,24 @@ import {
   TextInput,
   Linking,
   SafeAreaView,
+  Image,
+  ScrollView,
 } from 'react-native';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../../hooks/useTheme';
 import { useUser } from '../../context/UserContext';
 import { getPendingStartups, reviewStartup } from '../../data/apiService';
 import { APP_CONFIG } from '../../config/appConfig';
-import * as WebBrowser from 'expo-web-browser';
+import { getAvatarUrl } from '../../utils/avatar';
+
+const TABS = ['All', 'Pending', 'Approved', 'Rejected'];
 
 const AdminVentureReviewScreen = ({ navigation }) => {
   const { colors, isDark } = useTheme();
   const { accessToken } = useUser();
   const [ventures, setVentures] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('All');
 
   // Rejection Modal State
   const [rejectModalVisible, setRejectModalVisible] = useState(false);
@@ -101,26 +106,21 @@ const AdminVentureReviewScreen = ({ navigation }) => {
   };
 
   const handleOpenLink = async (url) => {
-    console.log(url, "********************************")
     if (!url) return;
     let formattedUrl = url;
 
-    // Check if it's a relative path from backend (e.g. /uploads/...)
     if (formattedUrl.startsWith('/')) {
       formattedUrl = `${APP_CONFIG.API_BASE_URL}${formattedUrl}`;
     } else if (!formattedUrl.startsWith('http://') && !formattedUrl.startsWith('https://')) {
       formattedUrl = 'https://' + formattedUrl;
     }
 
-    // Log for debugging
-    console.log('[PitchDeck] Opening URL:', formattedUrl);
-
     try {
       const supported = await Linking.canOpenURL(formattedUrl);
       if (supported) {
         await Linking.openURL(formattedUrl);
       } else {
-        Alert.alert('Cannot Open', 'Unable to open this type of link.');
+        Alert.alert('Cannot Open Link', 'The pitch deck URL format is invalid.');
       }
     } catch (e) {
       console.warn('[PitchDeck] Linking failed:', e);
@@ -128,34 +128,71 @@ const AdminVentureReviewScreen = ({ navigation }) => {
     }
   };
 
+  const filteredVentures = ventures.filter(item => {
+    const statusStr = (item.approval_status || 'pending_review').toLowerCase();
+    if (activeTab === 'Pending') return statusStr === 'pending_review' || statusStr === 'pending';
+    if (activeTab === 'Approved') return statusStr === 'approved';
+    if (activeTab === 'Rejected') return statusStr === 'rejected';
+    return true;
+  });
+
   const renderItem = ({ item }) => {
+    const statusStr = (item.approval_status || 'pending_review').toLowerCase();
+    const isApproved = statusStr === 'approved';
+    const isRejected = statusStr === 'rejected';
+    const isPending = !isApproved && !isRejected;
+
+    const founderName = item.founder_name || item.founder_username || 'Student Founder';
+    const avatarUrl = item.avatar_url || getAvatarUrl(founderName);
+
     return (
       <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-        <View style={styles.cardHeader}>
-          <View style={styles.pitchHeader}>
-            <View style={[styles.categoryBadge, { backgroundColor: colors.primaryLight }]}>
-              <Text style={[styles.categoryText, { color: colors.primary }]}>{item.category || 'Idea'}</Text>
-            </View>
-            <Text style={[styles.stageBadge, { color: colors.textSecondary }]}>Stage: {item.stage?.toUpperCase()}</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+          <Image
+            source={{ uri: avatarUrl }}
+            style={{ width: 42, height: 42, borderRadius: 21, backgroundColor: colors.border, marginRight: 10 }}
+          />
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 15, fontWeight: '700', color: colors.textPrimary }} numberOfLines={1}>
+              {founderName}
+            </Text>
+            <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 1 }}>
+              Category: {item.category || 'Idea'} • Stage: {(item.stage || 'idea').toUpperCase()}
+            </Text>
           </View>
-          <Text style={[styles.ventureName, { color: colors.textPrimary }]}>{item.name}</Text>
-          {item.tagline && <Text style={[styles.tagline, { color: colors.textSecondary }]}>{item.tagline}</Text>}
+
+          <View style={[
+            styles.statusBadge,
+            {
+              backgroundColor: isApproved ? colors.successLight : isRejected ? colors.dangerLight : colors.warningLight,
+              paddingHorizontal: 8,
+              paddingVertical: 4,
+              borderRadius: 6,
+            }
+          ]}>
+            <Text style={[
+              styles.statusText,
+              {
+                fontSize: 11,
+                fontWeight: '700',
+                color: isApproved ? colors.success : isRejected ? colors.danger : colors.warning
+              }
+            ]}>
+              {isApproved ? 'APPROVED' : isRejected ? 'REJECTED' : 'PENDING'}
+            </Text>
+          </View>
         </View>
+
+        <Text style={[styles.ventureName, { color: colors.textPrimary }]}>{item.name}</Text>
+        {item.tagline && <Text style={[styles.tagline, { color: colors.textSecondary }]}>{item.tagline}</Text>}
 
         <View style={styles.divider} />
 
         <Text style={[styles.desc, { color: colors.textPrimary }]}>{item.description || 'No description provided.'}</Text>
 
-        <View style={styles.stats}>
-          <View style={styles.statItem}>
-            <Feather name="user" size={14} color={colors.textSecondary} style={{ marginRight: 6 }} />
-            <Text style={[styles.statText, { color: colors.textSecondary }]}>Founder ID: {item.founder_id?.slice(0, 8)}...</Text>
-          </View>
-        </View>
-
         {item.pitch_deck_url && (
           <TouchableOpacity
-            style={[styles.deckLinkBtn, { borderColor: colors.border }]}
+            style={[styles.deckLinkBtn, { borderColor: colors.border, marginTop: 12 }]}
             onPress={() => handleOpenLink(item.pitch_deck_url)}
           >
             <MaterialCommunityIcons name="file-pdf-box" size={20} color={colors.danger} style={{ marginRight: 8 }} />
@@ -164,22 +201,52 @@ const AdminVentureReviewScreen = ({ navigation }) => {
           </TouchableOpacity>
         )}
 
-        <View style={styles.actions}>
-          <TouchableOpacity
-            style={[styles.actionBtn, styles.rejectBtn, { backgroundColor: colors.dangerLight }]}
-            onPress={() => openRejectModal(item.id)}
-          >
-            <Feather name="x" size={16} color={colors.danger} style={{ marginRight: 6 }} />
-            <Text style={[styles.btnText, { color: colors.danger }]}>Reject</Text>
-          </TouchableOpacity>
+        <View style={[styles.actions, { marginTop: 14 }]}>
+          {isPending ? (
+            <>
+              <TouchableOpacity
+                style={[styles.actionBtn, styles.rejectBtn, { backgroundColor: colors.dangerLight }]}
+                onPress={() => openRejectModal(item.id)}
+              >
+                <Feather name="x" size={16} color={colors.danger} style={{ marginRight: 6 }} />
+                <Text style={[styles.btnText, { color: colors.danger }]}>Reject</Text>
+              </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[styles.actionBtn, styles.approveBtn, { backgroundColor: colors.success }]}
-            onPress={() => handleApprove(item.id, item.name)}
-          >
-            <Feather name="check" size={16} color="#FFF" style={{ marginRight: 6 }} />
-            <Text style={[styles.btnText, { color: '#FFF' }]}>Approve</Text>
-          </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.actionBtn, styles.approveBtn, { backgroundColor: colors.success }]}
+                onPress={() => handleApprove(item.id, item.name)}
+              >
+                <Feather name="check" size={16} color="#FFF" style={{ marginRight: 6 }} />
+                <Text style={[styles.btnText, { color: '#FFF' }]}>Approve</Text>
+              </TouchableOpacity>
+            </>
+          ) : isApproved ? (
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flex: 1 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Feather name="check-circle" size={16} color={colors.success} />
+                <Text style={{ fontSize: 13, fontWeight: '600', color: colors.success }}>Approved & Published</Text>
+              </View>
+              <TouchableOpacity
+                style={{ paddingVertical: 6, paddingHorizontal: 12, borderRadius: 8, backgroundColor: colors.dangerLight }}
+                onPress={() => openRejectModal(item.id)}
+              >
+                <Text style={{ fontSize: 12, fontWeight: '600', color: colors.danger }}>Revoke Approval</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flex: 1 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Feather name="x-circle" size={16} color={colors.danger} />
+                <Text style={{ fontSize: 13, fontWeight: '600', color: colors.danger }}>Rejected</Text>
+              </View>
+              <TouchableOpacity
+                style={{ paddingVertical: 6, paddingHorizontal: 12, borderRadius: 8, backgroundColor: colors.successLight }}
+                onPress={() => handleApprove(item.id, item.name)}
+              >
+                <Text style={{ fontSize: 12, fontWeight: '600', color: colors.success }}>Re-Approve</Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
       </View>
     );
@@ -200,21 +267,51 @@ const AdminVentureReviewScreen = ({ navigation }) => {
         </View>
       </View>
 
+      {/* Tabs */}
+      <View style={{ paddingHorizontal: 16, marginBottom: 12 }}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+          {TABS.map((tab) => {
+            const isActive = activeTab === tab;
+            return (
+              <TouchableOpacity
+                key={tab}
+                onPress={() => setActiveTab(tab)}
+                style={{
+                  paddingHorizontal: 16,
+                  paddingVertical: 8,
+                  borderRadius: 20,
+                  backgroundColor: isActive ? colors.primary : (isDark ? '#1F2937' : '#F3F4F6'),
+                }}
+              >
+                <Text style={{ fontSize: 13, fontWeight: '600', color: isActive ? '#FFF' : colors.textSecondary }}>
+                  {tab} ({
+                    tab === 'All' ? ventures.length :
+                    tab === 'Pending' ? ventures.filter(v => (v.approval_status || 'pending_review').toLowerCase() === 'pending_review' || (v.approval_status || '').toLowerCase() === 'pending').length :
+                    tab === 'Approved' ? ventures.filter(v => (v.approval_status || '').toLowerCase() === 'approved').length :
+                    ventures.filter(v => (v.approval_status || '').toLowerCase() === 'rejected').length
+                  })
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+      </View>
+
       {/* List */}
       {loading ? (
         <View style={styles.center}>
           <ActivityIndicator size="large" color={colors.primary} />
           <Text style={[styles.loadingText, { color: colors.textSecondary, marginTop: 12 }]}>Loading pitches...</Text>
         </View>
-      ) : ventures.length === 0 ? (
+      ) : filteredVentures.length === 0 ? (
         <View style={styles.center}>
           <MaterialCommunityIcons name="rocket-outline" size={64} color={colors.textMuted} />
-          <Text style={[styles.emptyText, { color: colors.textPrimary, marginTop: 16 }]}>No pending startups</Text>
-          <Text style={[styles.emptySub, { color: colors.textSecondary, marginTop: 6 }]}>All pitches are reviewed!</Text>
+          <Text style={[styles.emptyText, { color: colors.textPrimary, marginTop: 16 }]}>No {activeTab.toLowerCase()} startups</Text>
+          <Text style={[styles.emptySub, { color: colors.textSecondary, marginTop: 6 }]}>No venture pitches found in this filter.</Text>
         </View>
       ) : (
         <FlatList
-          data={ventures}
+          data={filteredVentures}
           renderItem={renderItem}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.list}
