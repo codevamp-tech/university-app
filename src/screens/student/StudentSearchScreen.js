@@ -17,7 +17,7 @@ const StudentSearchScreen = ({ navigation }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [filters, setFilters] = useState({ year: 'All', branch: 'All', status: 'All' });
+  const [filters, setFilters] = useState({ year: 'All' });
   const [showFilterModal, setShowFilterModal] = useState(false);
 
   const [skip, setSkip] = useState(0);
@@ -317,16 +317,12 @@ const StudentSearchScreen = ({ navigation }) => {
       </View>
 
       {/* Active Filters */}
-      {(filters.year !== 'All' || filters.branch !== 'All' || filters.status !== 'All') && (
+      {filters.year !== 'All' && (
         <View style={styles.activeFiltersContainer}>
-          {filters.year !== 'All' && (
-            <FilterPill
-              label={`Prof: ${filters.year === '1' ? '1st Prof' : filters.year === '2' ? '2nd Prof' : filters.year === '3' ? '3rd Prof' : 'Final Prof'}`}
-              onRemove={() => setFilters(f => ({...f, year: 'All'}))}
-            />
-          )}
-          {filters.branch !== 'All' && <FilterPill label={`Stream: ${filters.branch}`} onRemove={() => setFilters(f => ({...f, branch: 'All'}))} />}
-          {filters.status !== 'All' && <FilterPill label={`Status: ${filters.status === 'Connect' ? 'Not Connected' : filters.status}`} onRemove={() => setFilters(f => ({...f, status: 'All'}))} />}
+          <FilterPill
+            label={`Prof: ${filters.year === '1' ? '1st Prof' : filters.year === '2' ? '2nd Prof' : filters.year === '3' ? '3rd Prof' : 'Final Prof'}`}
+            onRemove={() => setFilters(f => ({ ...f, year: 'All' }))}
+          />
         </View>
       )}
 
@@ -365,7 +361,7 @@ const StudentSearchScreen = ({ navigation }) => {
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
             <View style={styles.modalHeader}>
-              <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>Filters</Text>
+              <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>Filter by Prof</Text>
               <TouchableOpacity onPress={() => setShowFilterModal(false)}>
                 <Ionicons name="close" size={24} color={colors.textPrimary} />
               </TouchableOpacity>
@@ -381,33 +377,8 @@ const StudentSearchScreen = ({ navigation }) => {
                   { id: '3', label: '3rd Prof' },
                   { id: '4', label: 'Final Prof' }
                 ].map(y => (
-                  <TouchableOpacity key={y.id} onPress={() => setFilters(f => ({...f, year: y.id}))} style={[styles.filterOption, filters.year === y.id && { backgroundColor: colors.primary, borderColor: colors.primary }]}>
+                  <TouchableOpacity key={y.id} onPress={() => setFilters({ year: y.id })} style={[styles.filterOption, filters.year === y.id && { backgroundColor: colors.primary, borderColor: colors.primary }]}>
                     <Text style={[styles.filterOptionText, { color: filters.year === y.id ? '#FFF' : colors.textPrimary }]}>{y.label}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-
-              <Text style={[styles.filterSectionTitle, { color: colors.textSecondary, marginTop: 16 }]}>Medical Stream / Department</Text>
-              <View style={styles.filterOptions}>
-                {[
-                  { id: 'All', label: 'All Streams' },
-                  { id: 'MBBS', label: 'MBBS' },
-                  { id: 'Pre-Clinical', label: 'Pre-Clinical' },
-                  { id: 'Para-Clinical', label: 'Para-Clinical' },
-                  { id: 'Clinical', label: 'Clinical' },
-                  { id: 'Internship', label: 'Internship' }
-                ].map(b => (
-                  <TouchableOpacity key={b.id} onPress={() => setFilters(f => ({...f, branch: b.id}))} style={[styles.filterOption, filters.branch === b.id && { backgroundColor: colors.primary, borderColor: colors.primary }]}>
-                    <Text style={[styles.filterOptionText, { color: filters.branch === b.id ? '#FFF' : colors.textPrimary }]}>{b.label}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-
-              <Text style={[styles.filterSectionTitle, { color: colors.textSecondary, marginTop: 16 }]}>Connection Status</Text>
-              <View style={styles.filterOptions}>
-                {['All', 'Connect', 'Pending', 'Connected'].map(s => (
-                  <TouchableOpacity key={s} onPress={() => setFilters(f => ({...f, status: s}))} style={[styles.filterOption, filters.status === s && { backgroundColor: colors.primary, borderColor: colors.primary }]}>
-                    <Text style={[styles.filterOptionText, { color: filters.status === s ? '#FFF' : colors.textPrimary }]}>{s === 'Connect' ? 'Not Connected' : s}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
@@ -417,7 +388,7 @@ const StudentSearchScreen = ({ navigation }) => {
               style={[styles.applyButton, { backgroundColor: colors.primary }]} 
               onPress={() => setShowFilterModal(false)}
             >
-              <Text style={styles.applyButtonText}>Apply Filters</Text>
+              <Text style={styles.applyButtonText}>Apply Filter</Text>
             </TouchableOpacity>
           </View>
         </View>
