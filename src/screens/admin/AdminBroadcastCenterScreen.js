@@ -25,7 +25,7 @@ const BATCHES = [
 
 const AdminBroadcastCenterScreen = ({ navigation }) => {
   const { colors, isDark } = useTheme();
-  const { accessToken } = useUser();
+  const { accessToken, user } = useUser();
   const [title, setTitle] = useState('');
   const [message, setMessage] = useState('');
   const [recipientRole, setRecipientRole] = useState('student'); // 'student', 'faculty', 'college_admin', 'warden'
