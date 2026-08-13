@@ -548,20 +548,32 @@ const SubjectDetailModal = ({ visible, subject, onClose, accessToken, student })
       }
 
       let nextChart = [];
-      if (chartResp.status === 'fulfilled') {
-        const raw = chartResp.value?.data || chartResp.value || [];
+      if (chartResp.status === 'fulfilled' && chartResp.value) {
+        const val = chartResp.value;
+        const raw = Array.isArray(val) ? val : (val?.data || []);
         if (Array.isArray(raw) && raw.length > 0) {
-          nextChart = raw.map(d => ({ label: d.comp_code || d.label, value: d.pct || d.value || 0 }));
+          nextChart = raw.map(d => ({
+            label: d.comp_code || d.label || d.competency || 'COMP',
+            value: typeof d.pct === 'number' ? d.pct : (parseFloat(d.pct || d.value || 0) || 0)
+          }));
         }
       }
       setChartData(nextChart);
 
-
       // Fetch Practical Marks from ERP via backend proxy
       let nextPractical = null;
       if (pracResp.status === 'fulfilled' && pracResp.value) {
-        if (pracResp.value.obtained_marks !== null || pracResp.value.max_marks !== null) {
-          nextPractical = pracResp.value;
+        const pval = pracResp.value;
+        if (pval.obtained_marks !== null && pval.obtained_marks !== undefined) {
+          nextPractical = {
+            obtained_marks: pval.obtained_marks,
+            max_marks: pval.max_marks || 100
+          };
+        } else if (pval.data && pval.data.obtained_marks !== undefined) {
+          nextPractical = {
+            obtained_marks: pval.data.obtained_marks,
+            max_marks: pval.data.max_marks || 100
+          };
         }
       }
       setPracticalMarks(nextPractical);
