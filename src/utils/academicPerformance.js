@@ -1,13 +1,13 @@
 /**
  * Utility helper to compute exact NMC-compliant Academic Performance percentage
  * for medical (MBBS) students across ERP Results, ERP Hub, and Dashboard.
- * 100% mirrors ERPResultsScreen aggregation logic.
+ * 100% mirrors ERPResultsScreen aggregation logic and handles 30-mark sessional detection.
  */
 
 export function calculateExactMedicalPerformance(records, student = {}) {
   if (!records || !Array.isArray(records) || records.length === 0) return null;
 
-  const thirtyMarkCodes = [30157, 30163, 30166, 30104];
+  const thirtyMarkCodes = ['30157', '30163', '30166', '30104'];
   const byPhase = {};
 
   records.forEach(r => {
@@ -21,27 +21,27 @@ export function calculateExactMedicalPerformance(records, student = {}) {
     // Ignore un-taken papers
     if (!isTaken) return;
 
-    const pcode = String(r.paper_code || r.paperCode || '').trim();
-    const codeNum = parseInt(pcode, 10);
-    let matchTotal = parseFloat(r.total_marks ?? r.totalMarks ?? 100);
-    let rawTotal = 100;
-
-    if (matchTotal > 0 && matchTotal !== 100) {
-      rawTotal = matchTotal;
-    } else if (thirtyMarkCodes.includes(codeNum)) {
-      rawTotal = 30;
-    } else {
-      const nameLower = String(r.paper_name || r.paperName || '').toLowerCase();
-      if ((nameLower.includes('community medicine') || nameLower.includes('surgery') || nameLower.includes('general medicine')) &&
-          nameLower.includes('sessional') && !nameLower.includes('pre-uni') && !nameLower.includes('university')) {
-        rawTotal = 30;
+    const pcode = String(r.paper_code || r.paperCode || r.subject_code || '').trim();
+    const nameLower = String(r.paper_name || r.paperName || r.subject_name || '').toLowerCase();
+    
+    let rawTotal = parseFloat(r.total_marks ?? r.totalMarks ?? 0);
+    
+    // Auto-detect 30-mark sessional papers if total_marks is 100 or <= 0
+    if (rawTotal <= 0 || rawTotal === 100) {
+      if (thirtyMarkCodes.includes(pcode) ||
+          ((nameLower.includes('community medicine') || nameLower.includes('surgery') || nameLower.includes('general medicine')) &&
+           (nameLower.includes('sessional') || nameLower.includes('internal')) &&
+           !nameLower.includes('pre-uni') && !nameLower.includes('university'))) {
+        rawTotal = 30.0;
+      } else if (rawTotal <= 0) {
+        rawTotal = 100.0;
       }
     }
 
     const paperPct = Math.min(100, Math.max(0, (rawObtained / rawTotal) * 100));
-    const phaseName = r.phase || `Phase ${r.yr_fk || 1}`;
-    const subjectName = r.subject_name || r.paper_name || pcode;
     const yrFk = parseInt(r.yr_fk || r.yrFk || (r.phase ? r.phase.replace(/\D/g, '') : 1), 10);
+    const phaseName = r.phase || `Phase ${yrFk}`;
+    const subjectName = r.subject_name || r.paper_name || pcode;
 
     if (!byPhase[phaseName]) {
       byPhase[phaseName] = { yr_fk: yrFk, subjectsMap: {} };
