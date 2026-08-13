@@ -256,7 +256,7 @@ const OtherStudentProfileScreen = ({ route, navigation }) => {
           <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
             <View style={styles.modalHeader}>
               <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>
-                {connectionsModalType === 'followers' ? 'Followers' : 'Connections'} ({connectionsList.length})
+                Connections ({connectionsList.length})
               </Text>
               <TouchableOpacity onPress={() => setShowConnectionsModal(false)} style={styles.modalCloseBtn}>
                 <Ionicons name="close" size={24} color={colors.textPrimary} />
