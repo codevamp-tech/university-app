@@ -2649,15 +2649,20 @@ export async function getAdminGeneralNotifications() {
     const response = await fetch('https://myportal.srms.ac.in/SRMSERP/Home/GetAdminGNotf');
     const data = await response.json();
     if (Array.isArray(data)) {
+      const currentYear = new Date().getFullYear();
       return data.map((item, index) => {
         let rawDate = new Date();
         try {
           const dateStr = String(item.formatted_date || '').trim();
           if (dateStr) {
-            const currentYear = new Date().getFullYear();
-            const parsed = Date.parse(`${dateStr.replace(',', ' ')} ${currentYear}`);
-            if (!isNaN(parsed)) {
-              rawDate = new Date(parsed);
+            // dateStr format: "21 Jul,5:01 PM" or "06 Jul,12:30 PM"
+            const [dPart, tPart] = dateStr.split(',').map(s => s ? s.trim() : '');
+            if (dPart) {
+              const fullStr = `${dPart} ${currentYear} ${tPart || ''}`.trim();
+              const parsed = Date.parse(fullStr);
+              if (!isNaN(parsed)) {
+                rawDate = new Date(parsed);
+              }
             }
           }
         } catch {}

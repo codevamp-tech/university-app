@@ -216,11 +216,28 @@ const AlertsScreen = ({ navigation }) => {
       else if (a.type === 'marketplace') subType = 'message';
     }
 
+    const formatAlertTime = (isoString) => {
+      if (!isoString) return 'Now';
+      const d = new Date(isoString);
+      if (isNaN(d.getTime())) return 'Now';
+
+      const now = new Date();
+      const isToday = d.toDateString() === now.toDateString();
+
+      const timeStr = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+      if (isToday) {
+        return timeStr;
+      }
+
+      const dateStr = d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+      return `${dateStr}, ${timeStr}`;
+    };
+
     return {
       id: a.id,
       title: a.title || '',
       description: a.body || a.message || '',
-      time: a.created_at ? new Date(a.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : 'Now',
+      time: formatAlertTime(a.created_at),
       icon,
       color,
       isNew: !a.is_read,

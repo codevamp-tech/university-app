@@ -187,10 +187,18 @@ const TeacherAlertsScreen = ({ navigation }) => {
           ) : (
             filteredAlerts.map((alert) => {
               const isErp = String(alert.id).startsWith('erp-announcement-');
-              const isDeadline = alert.type === 'deadline' || (alert.title || '').toLowerCase().includes('deadline') || (alert.title || '').toLowerCase().includes('due');
-              const iconName = isErp ? 'megaphone-outline' : (isDeadline ? 'time-outline' : 'megaphone-outline');
-              const iconColor = isErp ? '#EA580C' : (isDeadline ? '#EF4444' : '#F59E0B');
-              const timeStr = alert.created_at ? new Date(alert.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : 'Now';
+              const formatAlertTime = (isoString) => {
+                if (!isoString) return 'Now';
+                const d = new Date(isoString);
+                if (isNaN(d.getTime())) return 'Now';
+                const now = new Date();
+                const isToday = d.toDateString() === now.toDateString();
+                const timeStr = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+                if (isToday) return timeStr;
+                const dateStr = d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+                return `${dateStr}, ${timeStr}`;
+              };
+              const timeStr = formatAlertTime(alert.created_at);
               const bodyText = alert.body || alert.description || '';
 
               return (
