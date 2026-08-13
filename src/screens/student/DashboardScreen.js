@@ -289,13 +289,7 @@ const DashboardScreen = ({ navigation }) => {
   const isMed = user && (isMedicalStudent(user) || (user.course || '').toLowerCase().includes('mbbs') || (user.category || '').toLowerCase().includes('medical'));
   const [activeMood, setActiveMood] = React.useState(2);
 
-  const [medMarksPct, setMedMarksPct] = React.useState(() => {
-    if (user?.cgpa) {
-      const num = parseFloat(user.cgpa);
-      if (!isNaN(num) && num > 0) return Math.round(num > 10 ? num : num * 10);
-    }
-    return 61;
-  });
+  const [medMarksPct, setMedMarksPct] = React.useState(61);
 
   useFocusEffect(
     React.useCallback(() => {
@@ -325,10 +319,34 @@ const DashboardScreen = ({ navigation }) => {
               }
             }
           }
+
+          if (accessToken) {
+            const records = await getResults(accessToken, stId);
+            if (records && Array.isArray(records) && records.length > 0) {
+              let totalSum = 0;
+              let paperCount = 0;
+              records.forEach(r => {
+                const rawObt = parseFloat(r.obtained_marks ?? r.obtainedMarks ?? 0);
+                const pcode = String(r.paper_code || r.paperCode || '').trim();
+                let rawTot = parseFloat(r.total_marks ?? r.totalMarks ?? 100);
+                if (rawTot <= 0 || (rawTot === 100 && ['30157', '30163', '30166', '30104'].includes(pcode))) {
+                  rawTot = 30.0;
+                }
+                totalSum += Math.min(100, Math.max(0, (rawObt / rawTot) * 100));
+                paperCount++;
+              });
+              if (paperCount > 0) {
+                const computed = Math.round(totalSum / paperCount);
+                setMedMarksPct(computed);
+                await AsyncStorage.setItem(`@erp_overall_pct_${stId}`, String(computed));
+                return;
+              }
+            }
+          }
         } catch (_) {}
       }
       loadStoredPct();
-    }, [user?.id, user?.username, user?.rollno])
+    }, [accessToken, user?.id, user?.username, user?.rollno])
   );
 
   useFocusEffect(
