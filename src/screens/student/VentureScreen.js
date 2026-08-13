@@ -242,7 +242,8 @@ const VentureScreen = ({ navigation }) => {
     try {
       const data = await getStartups(accessToken);
       if (data && data.length > 0) {
-        setStartups(data);
+        const approvedOnly = data.filter(item => (item.approval_status || 'approved').toLowerCase() === 'approved');
+        setStartups(approvedOnly);
       } else {
         setStartups(FALLBACK_STARTUPS);
       }
