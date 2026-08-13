@@ -125,8 +125,7 @@ const MarketplaceScreen = ({ navigation }) => {
                       {isPending && (
                         <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.25)', borderTopLeftRadius: 12, borderTopRightRadius: 12 }}>
                           <Ionicons name="time-outline" size={20} color="#FFFFFF" />
-                          <Text style={{ color: '#FFFFFF', fontSize: 11, fontWeight: '800', marginTop: 4, textAlign: 'center' }}>APPROVAL{'
-'}PENDING</Text>
+                          <Text style={{ color: '#FFFFFF', fontSize: 11, fontWeight: '800', marginTop: 4, textAlign: 'center' }}>APPROVAL{'\n'}PENDING</Text>
                         </View>
                       )}
                     </View>
