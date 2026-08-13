@@ -84,14 +84,16 @@ const StudentSearchScreen = ({ navigation }) => {
         }
 
         let finalUsers = Array.isArray(results) ? results : [];
-        if (filters.branch === 'All') {
-          finalUsers = finalUsers.filter(s => {
-            const cStr = String(s.course || '').toUpperCase();
-            const bStr = String(s.branch || '').toUpperCase();
-            if (cStr.includes('B.TECH') || bStr.includes('CSE') || cStr.includes('ENGINEERING')) return false;
-            return true;
-          });
-        }
+        finalUsers = finalUsers.filter(s => {
+          const cStr = String(s.course || '').toUpperCase();
+          const bStr = String(s.branch || '').toUpperCase();
+          if (cStr.includes('B.TECH') || bStr.includes('CSE') || bStr.includes('CS') || bStr.includes('EE') || cStr.includes('ENGINEERING')) return false;
+          if (filters.year && filters.year !== 'All') {
+            const sYear = String(s.year || s.batch_year || '');
+            if (sYear && sYear !== String(filters.year)) return false;
+          }
+          return true;
+        });
         if (finalUsers.length < 20) {
           setHasMore(false);
         }
@@ -102,9 +104,17 @@ const StudentSearchScreen = ({ navigation }) => {
           const studs = await getAllStudents(accessToken);
           if (Array.isArray(studs)) {
             const qLower = searchQuery.trim().toLowerCase();
-            const filtered = qLower
+            let filtered = qLower
               ? studs.filter(s => (s.full_name || s.name || '').toLowerCase().includes(qLower) || (s.username || '').toLowerCase().includes(qLower))
               : studs;
+            if (filters.year && filters.year !== 'All') {
+              filtered = filtered.filter(s => String(s.year || s.batch_year || '') === String(filters.year));
+            }
+            filtered = filtered.filter(s => {
+              const cStr = String(s.course || '').toUpperCase();
+              const bStr = String(s.branch || '').toUpperCase();
+              return !cStr.includes('B.TECH') && !bStr.includes('CSE') && !bStr.includes('CS') && !bStr.includes('EE') && !cStr.includes('ENGINEERING');
+            });
             const mapped = filtered.map(s => ({
               user_id: s.user_id || s.id,
               id: s.user_id || s.id,
@@ -142,14 +152,16 @@ const StudentSearchScreen = ({ navigation }) => {
     try {
       let nextBatch = await searchUsersAPI(accessToken, searchQuery, filters, nextSkip, 20);
       let newBatch = Array.isArray(nextBatch) ? nextBatch : [];
-      if (filters.branch === 'All') {
-        newBatch = newBatch.filter(s => {
-          const cStr = String(s.course || '').toUpperCase();
-          const bStr = String(s.branch || '').toUpperCase();
-          if (cStr.includes('B.TECH') || bStr.includes('CSE') || cStr.includes('ENGINEERING')) return false;
-          return true;
-        });
-      }
+      newBatch = newBatch.filter(s => {
+        const cStr = String(s.course || '').toUpperCase();
+        const bStr = String(s.branch || '').toUpperCase();
+        if (cStr.includes('B.TECH') || bStr.includes('CSE') || bStr.includes('CS') || bStr.includes('EE') || cStr.includes('ENGINEERING')) return false;
+        if (filters.year && filters.year !== 'All') {
+          const sYear = String(s.year || s.batch_year || '');
+          if (sYear && sYear !== String(filters.year)) return false;
+        }
+        return true;
+      });
       if (newBatch.length < 20) {
         setHasMore(false);
       }
