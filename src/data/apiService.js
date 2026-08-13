@@ -742,8 +742,7 @@ export async function searchUsersAPI(token, query, filters = {}) {
     const res = await apiCall(`/api/v1/social/users/search?${params.toString()}`, {
       method: 'GET',
       headers: authHeaders(token),
-    });
-    const results = await unwrap(res, []);
+    const results = unwrap(res, []);
     return results.map(u => ({
       user_id: u.id,
       id: u.id,

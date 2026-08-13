@@ -6,7 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useUser } from '../../context/UserContext';
-import { searchUsersAPI, followUserAPI } from '../../data/apiService';
+import { searchUsersAPI, followUserAPI, getAllStudents } from '../../data/apiService';
 import { getAvatarUrl } from '../../utils/avatar';
 import { useTheme } from '../../hooks/useTheme';
 
@@ -21,25 +21,96 @@ const StudentSearchScreen = ({ navigation }) => {
   const [showFilterModal, setShowFilterModal] = useState(false);
 
   useEffect(() => {
-    // Don't search on empty query — show prompt instead
-    if (!searchQuery.trim() && filters.year === 'All' && filters.branch === 'All' && filters.status === 'All') {
-      setUsers([]);
-      setLoading(false);
-      return;
-    }
+    const isInitialLoad = !searchQuery.trim();
+    const delay = isInitialLoad ? 0 : 300;
 
     const delayDebounceFn = setTimeout(async () => {
       setLoading(true);
       try {
-        const results = await searchUsersAPI(accessToken, searchQuery, filters);
+        let results = await searchUsersAPI(accessToken, searchQuery, filters);
+
+        // Fallback: if searchUsersAPI returned no results on initial empty search, fetch from getAllStudents
+        if ((!results || results.length === 0) && !searchQuery.trim()) {
+          const studs = await getAllStudents(accessToken);
+          if (Array.isArray(studs) && studs.length > 0) {
+            results = studs.map(s => ({
+              user_id: s.user_id || s.id,
+              id: s.user_id || s.id,
+              name: s.full_name || s.name || s.username || 'Student',
+              username: s.username,
+              avatar_url: s.avatar_url || s.avatar,
+              rollNo: s.username || s.rollno,
+              course: s.course,
+              branch: s.branch,
+              year: s.year || s.batch_year,
+              followers: s.followers || 0,
+              connections: s.connections || 0,
+              connection_status: s.connection_status || 'Connect',
+            }));
+          }
+        }
+
+        // Client-side search fallback if searchUsersAPI returns empty on a query
+        if ((!results || results.length === 0) && searchQuery.trim()) {
+          const studs = await getAllStudents(accessToken);
+          if (Array.isArray(studs) && studs.length > 0) {
+            const qLower = searchQuery.trim().toLowerCase();
+            const matched = studs.filter(s => {
+              const nameMatch = (s.full_name || s.name || '').toLowerCase().includes(qLower);
+              const userMatch = (s.username || s.rollno || '').toLowerCase().includes(qLower);
+              return nameMatch || userMatch;
+            });
+            results = matched.map(s => ({
+              user_id: s.user_id || s.id,
+              id: s.user_id || s.id,
+              name: s.full_name || s.name || s.username || 'Student',
+              username: s.username,
+              avatar_url: s.avatar_url || s.avatar,
+              rollNo: s.username || s.rollno,
+              course: s.course,
+              branch: s.branch,
+              year: s.year || s.batch_year,
+              followers: s.followers || 0,
+              connections: s.connections || 0,
+              connection_status: s.connection_status || 'Connect',
+            }));
+          }
+        }
+
         setUsers(Array.isArray(results) ? results : []);
       } catch(e) {
         console.warn("Search error:", e);
-        setUsers([]);
+        try {
+          const studs = await getAllStudents(accessToken);
+          if (Array.isArray(studs)) {
+            const qLower = searchQuery.trim().toLowerCase();
+            const filtered = qLower
+              ? studs.filter(s => (s.full_name || s.name || '').toLowerCase().includes(qLower) || (s.username || '').toLowerCase().includes(qLower))
+              : studs;
+            setUsers(filtered.map(s => ({
+              user_id: s.user_id || s.id,
+              id: s.user_id || s.id,
+              name: s.full_name || s.name || s.username || 'Student',
+              username: s.username,
+              avatar_url: s.avatar_url || s.avatar,
+              rollNo: s.username || s.rollno,
+              course: s.course,
+              branch: s.branch,
+              year: s.year || s.batch_year,
+              followers: s.followers || 0,
+              connections: s.connections || 0,
+              connection_status: s.connection_status || 'Connect',
+            })));
+          } else {
+            setUsers([]);
+          }
+        } catch (fallbackErr) {
+          setUsers([]);
+        }
       } finally {
         setLoading(false);
       }
-    }, 500);
+    }, delay);
 
     return () => clearTimeout(delayDebounceFn);
   }, [searchQuery, accessToken, filters]);
@@ -206,13 +277,7 @@ const StudentSearchScreen = ({ navigation }) => {
             {loading ? (
               <>
                 <ActivityIndicator size="large" color={colors.primary} />
-                <Text style={[styles.emptyStateText, { color: colors.textSecondary, marginTop: 12 }]}>Searching...</Text>
-              </>
-            ) : !searchQuery.trim() && filters.year === 'All' && filters.branch === 'All' && filters.status === 'All' ? (
-              <>
-                <Ionicons name="search-outline" size={48} color={colors.textMuted || "#D1D5DB"} />
-                <Text style={[styles.emptyStateText, { color: colors.textSecondary }]}>Search students by name or roll no.</Text>
-                <Text style={{ fontSize: 13, color: colors.textMuted, textAlign: 'center', paddingHorizontal: 24 }}>Use filters to browse by year or branch.</Text>
+                <Text style={[styles.emptyStateText, { color: colors.textSecondary, marginTop: 12 }]}>Loading students...</Text>
               </>
             ) : (
               <>
