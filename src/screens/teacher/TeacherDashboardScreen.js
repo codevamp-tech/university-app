@@ -1025,7 +1025,7 @@ const TeacherDashboardScreen = ({ navigation }) => {
                 </View>
               )}
               <View style={styles.menuHeaderInfo}>
-                <Text style={styles.menuName}>{facultyName}</Text>
+                <Text style={styles.menuName} numberOfLines={2} ellipsizeMode="tail">{facultyName}</Text>
                 <Text style={styles.menuSub}>{empId || 'Teacher Account'}</Text>
                 <Text style={styles.menuDept}>{department}</Text>
               </View>

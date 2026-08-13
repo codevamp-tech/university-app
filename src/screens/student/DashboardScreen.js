@@ -628,10 +628,11 @@ const DashboardScreen = ({ navigation }) => {
                 name={user?.name || 'S'}
                 style={styles.menuAvatar}
               />
-              <View>
-                <Text style={[styles.menuName, { color: colors.textPrimary }]}>{user?.name || 'Student'}</Text>
+              <View style={{ flex: 1, paddingRight: 4 }}>
+                <Text style={[styles.menuName, { color: colors.textPrimary }]} numberOfLines={2} ellipsizeMode="tail">
+                  {user?.name || 'Student'}
+                </Text>
                 <Text style={[styles.menuSub, { color: colors.textSecondary }]}>{user?.id || 'Student Account'}</Text>
-
               </View>
             </View>
 
@@ -2057,7 +2058,8 @@ const styles = StyleSheet.create({
   profileMenu: {
     position: 'absolute',
     right: 16,
-    width: 250,
+    width: 275,
+    maxWidth: width - 32,
     backgroundColor: '#FFFFFF',
     borderRadius: 24,
     padding: 12,
@@ -2085,8 +2087,9 @@ const styles = StyleSheet.create({
     borderColor: '#EA580C',
   },
   menuName: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '800',
+    lineHeight: 20,
   },
   menuSub: {
     fontSize: 12,
