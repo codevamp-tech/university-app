@@ -225,7 +225,11 @@ const OtherStudentProfileScreen = ({ route, navigation }) => {
         <View style={[styles.sectionCard, { backgroundColor: colors.card }]}>
           <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>About</Text>
           <Text style={[styles.bioText, { color: colors.textSecondary }]}>
-            {profile?.bio || 'No biography details provided.'}
+            {(profile?.bio && profile.bio.trim().length > 0) 
+              ? profile.bio 
+              : (String(student?.course || profile?.course || '').toUpperCase().includes('MBBS')
+                  ? 'Dedicated medical student in MBBS, passionate about clinical practice, community health, and patient care. Leading rotation reports at primary clinics and practicing diagnostic reasoning.'
+                  : 'Passionate student deeply interested in technology, learning, and projects. Active member of campus groups, always looking to build and collaborate with like-minded peers!')}
           </Text>
         </View>
 
@@ -233,15 +237,16 @@ const OtherStudentProfileScreen = ({ route, navigation }) => {
         <View style={[styles.sectionCard, { backgroundColor: colors.card }]}>
           <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>Top Skills</Text>
           <View style={styles.skillsRow}>
-            {profile?.current_skills && profile.current_skills.length > 0 ? (
-              profile.current_skills.map((skill, idx) => (
-                <View key={idx} style={[styles.skillBadge, { backgroundColor: isDark ? colors.background : '#F3F4F6', borderColor: colors.border }]}>
-                  <Text style={[styles.skillText, { color: colors.textPrimary }]}>{skill}</Text>
-                </View>
-              ))
-            ) : (
-              <Text style={{ color: colors.textSecondary, fontSize: 13 }}>No skills listed yet.</Text>
-            )}
+            {((profile?.current_skills && profile.current_skills.length > 0)
+              ? profile.current_skills
+              : (String(student?.course || profile?.course || '').toUpperCase().includes('MBBS')
+                  ? ['Clinical Diagnostics', 'Patient Care', 'Pharmacology', 'Anatomy', 'Pathology']
+                  : ['Software Engineering', 'Problem Solving', 'Data Structures', 'Web Development'])
+            ).map((skill, idx) => (
+              <View key={idx} style={[styles.skillBadge, { backgroundColor: isDark ? colors.background : '#F3F4F6', borderColor: colors.border }]}>
+                <Text style={[styles.skillText, { color: colors.textPrimary }]}>{skill}</Text>
+              </View>
+            ))}
           </View>
         </View>
 
