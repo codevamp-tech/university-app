@@ -361,7 +361,7 @@ const ProfileScreen = () => {
         <View style={styles.certificatesWrapper}>
           <View style={styles.certHeader}>
             <Text style={styles.certSectionTitle}>
-              Earned Digital Certificates
+              Earned Certificates
             </Text>
           </View>
           {finalCerts.length > 0 ? (

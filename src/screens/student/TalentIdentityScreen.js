@@ -486,7 +486,7 @@ const TalentIdentityScreen = ({ navigation }) => {
         {/* Certificates */}
         <View style={styles.certWrapper}>
           <View style={styles.sectionHeader}>
-            <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>Earned Digital Certificates</Text>
+            <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>Earned Certificates</Text>
             {finalCerts.length > 0 && (
               <TouchableOpacity style={styles.viewAllRow}>
                 <Text style={[styles.viewAllCertText, { color: colors.primary }]}>VIEW ALL</Text>

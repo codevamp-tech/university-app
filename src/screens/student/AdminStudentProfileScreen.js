@@ -106,6 +106,20 @@ const AdminStudentProfileScreen = ({ navigation, route }) => {
             }
           }
 
+          // Fetch startups, filter out rejected proposals
+          try {
+            const allStartups = await getStartups(accessToken, 0, 50, true);
+            if (isMounted && Array.isArray(allStartups)) {
+              const visibleStartups = allStartups.filter(s => {
+                const status = (s.approval_status || '').toLowerCase();
+                return status !== 'rejected';
+              });
+              setMyStartups(visibleStartups);
+            }
+          } catch (startupErr) {
+            console.warn('[AdminStudentProfileScreen] Could not fetch startups:', startupErr);
+          }
+
           const targetId = passedStudent?.id;
           const res = await connectionStatsAPI(accessToken, targetId);
           if (isMounted && res) setStats(res);
@@ -541,7 +555,7 @@ const AdminStudentProfileScreen = ({ navigation, route }) => {
         {/* Certificates */}
         <View style={styles.certWrapper}>
           <View style={styles.sectionHeader}>
-            <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>Earned Digital Certificates</Text>
+            <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>Earned Certificates</Text>
             {/* View All Certs Button Removed For Admin */}
           </View>
 
