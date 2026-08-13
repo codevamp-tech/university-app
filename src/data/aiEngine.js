@@ -383,24 +383,19 @@ export function computeSkillGap(student, results = [], erpCompetencyData = null)
         allowedCodes.push(...currentYrSubjects);
       }
 
-      if (allowedCodes.length > 0) {
+      if (erpGaps.length > 0) {
         erpGaps = erpGaps.filter(g => {
-          // Check subject match
-          const subjectMatch = allowedCodes.includes(g.subject) || allowedCodes.some(c => c && g.subject && g.subject.startsWith(c));
-          
-          // Check exam name match (only 1st and 2nd sessional)
-          const exam = (g.exam_name || '').toLowerCase();
-          const isSessional = exam.includes('1st') || exam.includes('2nd');
-          const isValidExam = isSessional && exam.includes('sessional');
-          
-          // If backend doesn't have exam_name yet (old cache), we pass it by default to avoid breaking,
-          // but if it does, we filter it strictly.
-          const examMatch = g.exam_name ? isValidExam : true;
+          if (!g || !g.competency) return false;
+          if (g.pct !== undefined && g.pct >= 50.0) return false;
 
-          return subjectMatch && examMatch;
+          // Filter by sessional / term / prof exam if exam_name is provided
+          if (g.exam_name) {
+            const exam = String(g.exam_name).toLowerCase();
+            const isValidExam = exam.includes('sessional') || exam.includes('1st') || exam.includes('2nd') || exam.includes('term') || exam.includes('prof') || exam.includes('exam');
+            if (!isValidExam) return false;
+          }
+          return true;
         });
-      } else {
-        erpGaps = [];
       }
 
       // Academic: Non-practical competencies (e.g. from theory marks)

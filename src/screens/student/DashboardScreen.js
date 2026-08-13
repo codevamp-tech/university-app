@@ -1530,7 +1530,7 @@ const DashboardScreen = ({ navigation }) => {
               ];
               // Only include "expected" (non-missing) items if they actually scored below 50%
               // Never show items that are performing well (GOOD tag but > 50%)
-              const allScoredItems = missingItems.slice(0, 6).map(item => {
+              const allScoredItems = missingItems.map(item => {
                 const score = gapData.skillScores?.[item.name] ?? (item.isMissing ? 0 : 90);
                 const color = score >= 75 ? '#10B981' : score >= 50 ? '#F59E0B' : '#EF4444';
                 return { ...item, score, color };
