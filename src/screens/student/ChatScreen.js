@@ -67,7 +67,7 @@ export function getPortalSubjects(user) {
 const MEDICAL_CHANNELS = [
   { id: null, name: 'Campus Pulse', slug: 'campus-pulse', icon: 'lightning-bolt', desc: 'Daily campus life, events & vibes 🎓' },
   { id: null, name: 'Clinical Rotations', slug: 'clinical-rotations', icon: 'stethoscope', desc: 'Ward rounds, case presentations & OPD 🩺' },
-  { id: null, name: 'NEET-PG & NExT Prep', slug: 'neet-pg-prep', icon: 'book-open-variant', desc: 'Clinical pearls, MCQs & exam strategy 📚' },
+  { id: null, name: 'Alumni Network & Advice', slug: 'alumni-network', icon: 'account-school', desc: 'Connect with senior medical alumni & residency advice 🎓' },
   { id: 'official-batch-chat', name: 'Official Batch Chat', slug: 'official-batch-chat', icon: 'chat-outline', desc: 'Sync of ERP Official Batch Chat 🏛️' },
 ];
 
@@ -187,7 +187,7 @@ const ChatScreen = ({ navigation, route }) => {
                 return { ...c, name: 'Clinical Rotations', icon: 'stethoscope', desc: 'Ward rounds, case presentations & OPD 🩺' };
               }
               if (c.slug === 'makers-den') {
-                return { ...c, name: 'NEET-PG & NExT Prep', icon: 'book-open-variant', desc: 'Clinical pearls, MCQs & exam strategy 📚' };
+                return { ...c, name: 'Alumni Network & Advice', icon: 'account-school', desc: 'Connect with senior medical alumni & residency advice 🎓' };
               }
               return c;
             });
