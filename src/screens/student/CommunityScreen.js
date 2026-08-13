@@ -3,7 +3,7 @@ import { getAvatarUrl } from "../../utils/avatar";
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Dimensions,
   Modal, TextInput, Alert, KeyboardAvoidingView, Platform, Share, Animated, FlatList,
-  TouchableWithoutFeedback, RefreshControl,
+  TouchableWithoutFeedback, RefreshControl, ActivityIndicator,
 } from 'react-native';
 import { Ionicons, MaterialIcons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
