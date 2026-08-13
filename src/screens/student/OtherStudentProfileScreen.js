@@ -8,7 +8,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { APP_CONFIG } from '../../config/appConfig';
 import { followUserAPI, getPublicProfile, connectionStatsAPI, getConnectionList } from '../../data/apiService';
 import { getAvatarUrl } from '../../utils/avatar';
-import { getDisplayCourse } from '../../utils/courseDisplay';
+import { getDisplayCourse, isMedicalStudent } from '../../utils/courseDisplay';
 import { useTheme } from '../../hooks/useTheme';
 import { useUser } from '../../context/UserContext';
 import { Modal } from 'react-native';
@@ -137,7 +137,9 @@ const OtherStudentProfileScreen = ({ route, navigation }) => {
     );
   }
 
-  const courseTitle = getDisplayCourse({ ...(student || {}), ...(profile || {}) });
+  const combinedUser = { ...(student || {}), ...(profile || {}) };
+  const isMed = isMedicalStudent(combinedUser);
+  const courseTitle = getDisplayCourse(combinedUser);
 
   const disableActionBtn = connectionStatus === 'Pending';
 
@@ -227,7 +229,7 @@ const OtherStudentProfileScreen = ({ route, navigation }) => {
           <Text style={[styles.bioText, { color: colors.textSecondary }]}>
             {(profile?.bio && profile.bio.trim().length > 0) 
               ? profile.bio 
-              : (String(student?.course || profile?.course || '').toUpperCase().includes('MBBS')
+              : (isMed
                   ? 'Dedicated medical student in MBBS, passionate about clinical practice, community health, and patient care. Leading rotation reports at primary clinics and practicing diagnostic reasoning.'
                   : 'Passionate student deeply interested in technology, learning, and projects. Active member of campus groups, always looking to build and collaborate with like-minded peers!')}
           </Text>
@@ -239,7 +241,7 @@ const OtherStudentProfileScreen = ({ route, navigation }) => {
           <View style={styles.skillsRow}>
             {((profile?.current_skills && profile.current_skills.length > 0)
               ? profile.current_skills
-              : (String(student?.course || profile?.course || '').toUpperCase().includes('MBBS')
+              : (isMed
                   ? ['Clinical Diagnostics', 'Patient Care', 'Pharmacology', 'Anatomy', 'Pathology']
                   : ['Software Engineering', 'Problem Solving', 'Data Structures', 'Web Development'])
             ).map((skill, idx) => (
