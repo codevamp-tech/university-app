@@ -339,6 +339,7 @@ const SubjectDetailModal = ({ visible, subject, onClose, accessToken, student })
   const [attempted, setAttempted] = useState([]);
   const [chartData, setChartData] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [syncingBackground, setSyncingBackground] = useState(false);
   const [practicalMarks, setPracticalMarks] = useState(null);
   const [loadingPractical, setLoadingPractical] = useState(false);
   const [paperCache, setPaperCache] = useState({});
@@ -372,6 +373,7 @@ const SubjectDetailModal = ({ visible, subject, onClose, accessToken, student })
       setChartData(memCache.chartData);
       setPracticalMarks(memCache.practicalMarks || null);
       setLoading(false);
+      setSyncingBackground(false);
       setLoadingPractical(false);
       return;
     }
@@ -399,10 +401,12 @@ const SubjectDetailModal = ({ visible, subject, onClose, accessToken, student })
 
             if (isPersistedComplete) {
               setLoading(false);
+              setSyncingBackground(false);
               setLoadingPractical(false);
               return; // Cache is 100% complete, no sync needed
             } else {
               loadedFromCache = true; // Incomplete cache loaded -> show instant preview, auto-sync missing parts in background
+              setSyncingBackground(true);
             }
           }
         }
@@ -586,6 +590,7 @@ const SubjectDetailModal = ({ visible, subject, onClose, accessToken, student })
       console.warn('[SubjectModal] load error:', e);
     } finally {
       setLoading(false);
+      setSyncingBackground(false);
       setLoadingPractical(false);
     }
   };
@@ -743,6 +748,9 @@ const SubjectDetailModal = ({ visible, subject, onClose, accessToken, student })
 
   // ── Tab 1: Competencies Based ──
   const renderCompetencies = () => {
+    if ((loading || syncingBackground) && (!competencies || competencies.length === 0)) {
+      return renderSkeleton();
+    }
     if (!competencies || competencies.length === 0) {
       return (
         <EmptyTabState
@@ -800,6 +808,9 @@ const SubjectDetailModal = ({ visible, subject, onClose, accessToken, student })
 
   // ── Tab 2: Attempted Paper ──
   const renderAttemptedPaper = () => {
+    if ((loading || syncingBackground) && (!attempted || attempted.length === 0)) {
+      return renderSkeleton();
+    }
     if (!attempted || attempted.length === 0) {
       return (
         <EmptyTabState
@@ -962,6 +973,9 @@ const SubjectDetailModal = ({ visible, subject, onClose, accessToken, student })
 
   // ── Tab 3: Competencies Progress Chart ──
   const renderChart = () => {
+    if ((loading || syncingBackground) && (!chartData || chartData.length === 0)) {
+      return renderSkeleton();
+    }
     if (!chartData || chartData.length === 0) {
       return (
         <EmptyTabState
