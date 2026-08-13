@@ -89,8 +89,18 @@ const AdminGrievanceInboxScreen = ({ navigation }) => {
     }
   };
 
+  const formatDateTime = (isoString) => {
+    if (!isoString) return 'Today';
+    const d = new Date(isoString);
+    if (isNaN(d.getTime())) return 'Today';
+    const dateStr = d.toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    const timeStr = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+    return `${dateStr} • ${timeStr}`;
+  };
+
   const renderItem = ({ item }) => {
-    const createdDate = item.created_at ? new Date(item.created_at).toLocaleDateString() : 'Today';
+    const studentDisplayName = item.student_name || (item.rollno ? `Roll: ${item.rollno}` : (item.student_id ? `ID: ${item.student_id.slice(0, 8)}...` : 'Student'));
+    const formattedDateTime = formatDateTime(item.created_at);
 
     return (
       <TouchableOpacity
@@ -133,11 +143,11 @@ const AdminGrievanceInboxScreen = ({ navigation }) => {
         <Text style={[styles.desc, { color: colors.textSecondary }]} numberOfLines={2}>{item.description}</Text>
 
         <View style={styles.cardFooter}>
-          <Text style={[styles.metaText, { color: colors.textMuted }]}>
-            Student ID: {item.student_id?.slice(0, 8)}...
+          <Text style={[styles.metaText, { color: colors.textMuted, fontWeight: '600' }]}>
+            {studentDisplayName}
           </Text>
           <Text style={[styles.metaText, { color: colors.textMuted }]}>
-            {createdDate}
+            {formattedDateTime}
           </Text>
         </View>
       </TouchableOpacity>
@@ -247,6 +257,9 @@ const AdminGrievanceInboxScreen = ({ navigation }) => {
               <View style={styles.modalTicketDetails}>
                 <Text style={[styles.modalSubject, { color: colors.textPrimary }]}>{selectedGrievance.subject}</Text>
                 <Text style={[styles.modalDesc, { color: colors.textSecondary }]}>{selectedGrievance.description}</Text>
+                <Text style={{ fontSize: 12, color: colors.textMuted, marginTop: 6, fontWeight: '500' }}>
+                  Submitted by: {selectedGrievance.student_name || 'Student'} • {formatDateTime(selectedGrievance.created_at)}
+                </Text>
                 {(selectedGrievance.attachment_url || (selectedGrievance.description && /(https?:\/\/[^\s]+)/i.test(selectedGrievance.description))) && (
                   <Image
                     source={{ uri: selectedGrievance.attachment_url || selectedGrievance.description.match(/(https?:\/\/[^\s]+)/i)[0] }}
