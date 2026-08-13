@@ -359,48 +359,61 @@ const SubjectDetailModal = ({ visible, subject, onClose, accessToken, student })
   const loadData = async (pcode, force = false) => {
     if (!accessToken || !pcode) return;
     
-    // Only use memory cache if force is false AND cached data is not empty
-    if (!force && paperCache[pcode] && paperCache[pcode].practicalMarks !== undefined &&
-        (paperCache[pcode].chartData?.length > 0 || paperCache[pcode].competencies?.length > 0)) {
-      const cached = paperCache[pcode];
-      setCompetencies(cached.competencies);
-      setAttempted(cached.attempted);
-      setChartData(cached.chartData);
-      setPracticalMarks(cached.practicalMarks || null);
+    // Check if memory cache is complete (competencies, attempted, chartData present)
+    const memCache = paperCache[pcode];
+    const isMemComplete = memCache &&
+      Array.isArray(memCache.competencies) && memCache.competencies.length > 0 &&
+      Array.isArray(memCache.attempted) && memCache.attempted.length > 0 &&
+      Array.isArray(memCache.chartData) && memCache.chartData.length > 0;
+
+    if (!force && isMemComplete) {
+      setCompetencies(memCache.competencies);
+      setAttempted(memCache.attempted);
+      setChartData(memCache.chartData);
+      setPracticalMarks(memCache.practicalMarks || null);
       setLoading(false);
       setLoadingPractical(false);
       return;
     }
 
-    setLoading(true);
-    setLoadingPractical(true);
-
     const cacheKey = `@erp_paper_cache_${user?.id || 'default'}`;
+    let loadedFromCache = false;
+
     if (!force) {
       try {
         const persistedStr = await AsyncStorage.getItem(cacheKey);
         if (persistedStr) {
           const persisted = JSON.parse(persistedStr);
-          if (persisted && persisted[pcode] && persisted[pcode].practicalMarks !== undefined &&
-              (persisted[pcode].chartData?.length > 0 || persisted[pcode].competencies?.length > 0)) {
+          if (persisted && persisted[pcode]) {
             const cached = persisted[pcode];
             setCompetencies(cached.competencies || []);
             setAttempted(cached.attempted || []);
             setChartData(cached.chartData || []);
             setPracticalMarks(cached.practicalMarks || null);
-            
-            setPaperCache(prev => ({
-              ...prev,
-              [pcode]: cached
-            }));
-            setLoading(false);
-            setLoadingPractical(false);
-            return;
+            setPaperCache(prev => ({ ...prev, [pcode]: cached }));
+
+            const isPersistedComplete =
+              Array.isArray(cached.competencies) && cached.competencies.length > 0 &&
+              Array.isArray(cached.attempted) && cached.attempted.length > 0 &&
+              Array.isArray(cached.chartData) && cached.chartData.length > 0;
+
+            if (isPersistedComplete) {
+              setLoading(false);
+              setLoadingPractical(false);
+              return; // Cache is 100% complete, no sync needed
+            } else {
+              loadedFromCache = true; // Incomplete cache loaded -> show instant preview, auto-sync missing parts in background
+            }
           }
         }
       } catch (e) {
         console.warn('Failed to load persisted paper cache:', e);
       }
+    }
+
+    if (!loadedFromCache) {
+      setLoading(true);
+      setLoadingPractical(true);
     }
 
     try {
