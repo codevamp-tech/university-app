@@ -591,10 +591,28 @@ const CommunityScreen = ({ navigation }) => {
           media_urls: mediaUrls,
         });
         if (result) {
+          const isCollegeAdmin = user?.username?.toLowerCase().includes('collegeadmin') || user?.role === 'admin';
+          const authorName = isCollegeAdmin ? 'College Admin' : (user?.name || user?.full_name || 'Student');
+
+          const formattedNewPost = {
+            ...result,
+            user: {
+              ...(result.user || {}),
+              full_name: authorName,
+              username: user?.username || 'collegeadmin',
+              avatar_url: user?.avatar_url || null,
+            },
+            like_count: 0,
+            comment_count: 0,
+            reaction_counts: {},
+            user_reaction: null,
+          };
+
+          setApiFeed(prev => [formattedNewPost, ...prev]);
           setNewPostContent('');
           setSelectedImages([]);
           setShowCreateModal(false);
-          loadFeed();
+          await loadFeed(true); // Force reload bypasses 30s stale time guard
           Alert.alert('Post Created', 'Your post has been successfully shared with the campus feed.');
         }
       }
@@ -902,7 +920,15 @@ const CommunityScreen = ({ navigation }) => {
       avatarUrl = targetPost.user?.avatar_url || pData.avatar || getAvatarUrl(displayName, posterUsername);
     }
 
-    if (displayName === 'Admin' || displayName === 'admin' || posterUsername === 'admin' || targetPost.user?.role === 'super_admin' || targetPost.user?.role === 'admin') {
+    const isCollegeAdminPost = posterUsername?.toLowerCase().includes('collegeadmin') || 
+                               posterUsername?.toLowerCase() === 'college_admin' || 
+                               targetPost.user?.username?.toLowerCase().includes('collegeadmin') ||
+                               displayName === 'College Admin';
+
+    if (isCollegeAdminPost) {
+      displayName = 'College Admin';
+      courseYearStr = 'College Administration';
+    } else if (displayName === 'Admin' || displayName === 'admin' || posterUsername === 'admin' || targetPost.user?.role === 'super_admin' || targetPost.user?.role === 'admin') {
       displayName = 'Super Admin (Aditya Murti)';
       courseYearStr = 'Campus Administration';
     }
@@ -918,7 +944,10 @@ const CommunityScreen = ({ navigation }) => {
       } else {
         repostAuthorName = post.user?.full_name || repUsername || 'User';
       }
-      if (repostAuthorName === 'Admin' || repostAuthorName === 'admin' || repUsername === 'admin' || post.user?.role === 'super_admin' || post.user?.role === 'admin') {
+
+      if (repUsername?.toLowerCase().includes('collegeadmin') || repostAuthorName?.toLowerCase().includes('collegeadmin')) {
+        repostAuthorName = 'College Admin';
+      } else if (repostAuthorName === 'Admin' || repostAuthorName === 'admin' || repUsername === 'admin' || post.user?.role === 'super_admin' || post.user?.role === 'admin') {
         repostAuthorName = 'Super Admin (Aditya Murti)';
       }
     }
