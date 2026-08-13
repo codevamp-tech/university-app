@@ -8,6 +8,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { APP_CONFIG } from '../../config/appConfig';
 import { followUserAPI, getPublicProfile, connectionStatsAPI, getConnectionList } from '../../data/apiService';
 import { getAvatarUrl } from '../../utils/avatar';
+import { getDisplayCourse } from '../../utils/courseDisplay';
 import { useTheme } from '../../hooks/useTheme';
 import { useUser } from '../../context/UserContext';
 import { Modal } from 'react-native';
@@ -136,9 +137,7 @@ const OtherStudentProfileScreen = ({ route, navigation }) => {
     );
   }
 
-  const courseTitle = profile?.course 
-    ? (profile.branch ? `${profile.course} ${profile.branch}` : profile.course)
-    : (student?.course || 'Student');
+  const courseTitle = getDisplayCourse({ ...(student || {}), ...(profile || {}) });
 
   const disableActionBtn = connectionStatus === 'Pending';
 
