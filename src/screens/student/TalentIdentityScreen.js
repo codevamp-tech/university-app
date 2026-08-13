@@ -109,7 +109,8 @@ const TalentIdentityScreen = ({ navigation }) => {
       getStartups(accessToken, 0, 50, true)
         .then(res => {
           if (isMounted && res) {
-            setMyStartups(res);
+            const visibleStartups = res.filter(s => (s.approval_status || '').toLowerCase() !== 'rejected');
+            setMyStartups(visibleStartups);
           }
         })
         .catch(err => console.warn('[TalentIdentityScreen] startups error:', err))
@@ -473,10 +474,6 @@ const TalentIdentityScreen = ({ navigation }) => {
               <TouchableOpacity style={[styles.vActionBtn, isMed && { backgroundColor: isDark ? '#6B21A8' : '#7C3AED' }]} onPress={() => navigation.navigate('Venture')}>
                 <Ionicons name={isMed ? "journal-outline" : "link-outline"} size={14} color="#FFFFFF" />
                 <Text style={styles.vActionText}>{isMed ? 'Case Studies' : 'Project Proofs'}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[styles.vActionBtn, isMed && { backgroundColor: isDark ? '#6B21A8' : '#7C3AED' }]} onPress={() => navigation.navigate('Venture')}>
-                <MaterialCommunityIcons name={isMed ? "clipboard-check-outline" : "rocket-launch"} size={14} color="#FFFFFF" />
-                <Text style={styles.vActionText}>{isMed ? 'Logbook ID' : 'Startup ID'}</Text>
               </TouchableOpacity>
             </View>
           </LinearGradient>
