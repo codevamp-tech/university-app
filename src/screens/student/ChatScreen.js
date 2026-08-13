@@ -27,7 +27,7 @@ import { getAvatarUrl } from '../../utils/avatar';
 import { useTheme } from '../../hooks/useTheme';
 
 const { width } = Dimensions.get('window');
-const DRAWER_WIDTH = width * 0.78;
+const DRAWER_WIDTH = width;
 
 export function getPortalSubjects(user) {
   // Returns all medical subjects across all MBBS phases so students can view group chats for any subject
@@ -849,12 +849,15 @@ const ChatScreen = ({ navigation, route }) => {
       <Animated.View
         pointerEvents={isDrawerOpen ? 'auto' : 'none'}
         style={[styles.drawer, { transform: [{ translateX: drawerTranslateX }], backgroundColor: colors.card }]}>
-        <View style={[styles.drawerHeader, { paddingTop: insets.top + 16, borderBottomColor: colors.border }]}>
+        <View style={[styles.drawerHeader, { paddingTop: insets.top + 16, borderBottomColor: colors.border, flexDirection: 'row', alignItems: 'center', gap: 12 }]}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={{ paddingRight: 4, paddingVertical: 4 }}>
+            <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
+          </TouchableOpacity>
           <LinearGradient colors={isDark ? [colors.primary, '#6D28D9'] : ['#EA580C', '#9A3412']} style={styles.drawerLogoIcon}>
-            <MaterialCommunityIcons name="school" size={24} color="#FFFFFF" />
+            <MaterialCommunityIcons name="school" size={22} color="#FFFFFF" />
           </LinearGradient>
-          <View>
-            <Text style={[styles.drawerBrand, { color: colors.textPrimary }]}>{APP_CONFIG.UNIVERSITY_SHORT_NAME}</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.drawerBrand, { color: colors.textPrimary }]}>{APP_CONFIG.UNIVERSITY_SHORT_NAME} Channels</Text>
             <Text style={styles.drawerSubBrand}>Community Hub</Text>
           </View>
         </View>
