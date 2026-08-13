@@ -30,6 +30,7 @@ import {
   getPaperCompetencies,
   getCompetencyChart,
   getPracticalMarks,
+  getAttemptedPaper,
 } from '../../data/apiService';
 
 const { width } = Dimensions.get('window');
@@ -404,10 +405,11 @@ const SubjectDetailModal = ({ visible, subject, onClose, accessToken, student })
 
     try {
       const studentId = user?.rollno || user?.username || user?.id;
-      const [compData, chartResp, pracResp] = await Promise.allSettled([
+      const [compData, chartResp, pracResp, attemptedResp] = await Promise.allSettled([
         getPaperCompetencies(accessToken, pcode, studentId),
         getCompetencyChart(accessToken, pcode, '1', studentId),
         getPracticalMarks(accessToken, pcode, studentId),
+        getAttemptedPaper(accessToken, pcode, studentId),
       ]);
 
       let nextComps = [];
@@ -427,124 +429,72 @@ const SubjectDetailModal = ({ visible, subject, onClose, accessToken, student })
       setCompetencies(nextComps);
 
       let nextAttempted = [];
-      try {
-        const rollno = String(user?.username || '');
-        if (rollno) {
-          const mainResp = await fetch('https://myportal.srms.ac.in/SRMSERP/Faculty/printdetailpaperTheoryResult', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'User-Agent': 'Mozilla/5.0'
-            },
-            body: JSON.stringify({
-              papercode: String(pcode),
-              stud_rollno: rollno
-            })
-          });
-          const mainData = await mainResp.json();
-          
-          if (Array.isArray(mainData) && mainData.length > 0) {
-            const sectionsMap = {};
-            mainData.forEach((mq, idx) => {
-              const secName = mq.section || 'General Section';
-              if (!sectionsMap[secName]) {
-                sectionsMap[secName] = { section: secName, mainQuestions: [] };
-              }
-
-              sectionsMap[secName].mainQuestions.push({
-                no: mq.mqno || String(idx + 1),
-                text: mq.Main_question || mq.ques || 'Question details',
-                quescode: mq.quescode,
-                obtained: parseFloat(mq.obtainedmarks || 0),
-                total: parseFloat(mq.totalmarks || mq.ques_wtg || 0),
-                subquestions: [],
-                loadingSubquestions: true
+      if (attemptedResp.status === 'fulfilled' && Array.isArray(attemptedResp.value) && attemptedResp.value.length > 0) {
+        // Backend proxy returned enriched attempted paper (main questions + subquestions)
+        nextAttempted = attemptedResp.value.map((item, idx) => {
+          if (item.section && item.mainQuestions) return item;
+          // If flat list returned from backend
+          return {
+            section: item.section || 'General Section',
+            mainQuestions: [{
+              no: item.mqno || String(idx + 1),
+              text: item.Main_question || item.ques || 'Question details',
+              quescode: item.quescode,
+              obtained: parseFloat(item.obtainedmarks || 0),
+              total: parseFloat(item.totalmarks || item.ques_wtg || 0),
+              subquestions: (item.subquestions || []).map(sq => ({
+                id: sq.subquesid,
+                no: sq.optno || '',
+                type: sq.QType || 'DESC',
+                text: sq.ques || '',
+                op1: sq.optionA || '',
+                op2: sq.optionB || '',
+                op3: sq.optionC || '',
+                op4: sq.optionD || '',
+                obtained: parseFloat(sq.obtainedmarks || 0),
+                total: parseFloat(sq.ques_wtg || 0),
+                correct: sq.QType === 'MCQ' ? parseFloat(sq.obtainedmarks) > 0 : undefined
+              })),
+              loadingSubquestions: false
+            }]
+          };
+        });
+        setAttempted(nextAttempted);
+      } else {
+        // Fallback: direct client fetch if proxy returns empty
+        try {
+          const rollno = String(user?.username || user?.rollno || '');
+          if (rollno) {
+            const mainResp = await fetch('https://myportal.srms.ac.in/SRMSERP/Faculty/printdetailpaperTheoryResult', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'User-Agent': 'Mozilla/5.0' },
+              body: JSON.stringify({ papercode: String(pcode), stud_rollno: rollno })
+            });
+            const mainData = await mainResp.json();
+            if (Array.isArray(mainData) && mainData.length > 0) {
+              const sectionsMap = {};
+              mainData.forEach((mq, idx) => {
+                const secName = mq.section || 'General Section';
+                if (!sectionsMap[secName]) {
+                  sectionsMap[secName] = { section: secName, mainQuestions: [] };
+                }
+                sectionsMap[secName].mainQuestions.push({
+                  no: mq.mqno || String(idx + 1),
+                  text: mq.Main_question || mq.ques || 'Question details',
+                  quescode: mq.quescode,
+                  obtained: parseFloat(mq.obtainedmarks || 0),
+                  total: parseFloat(mq.totalmarks || mq.ques_wtg || 0),
+                  subquestions: [],
+                  loadingSubquestions: true
+                });
               });
-            });
-
-            const initialAttempted = Object.values(sectionsMap);
-            setAttempted(initialAttempted);
-
-            // Fetch subquestions for each main question in the background
-            mainData.forEach(async (mq) => {
-              try {
-                const response = await fetch('https://myportal.srms.ac.in/SRMSERP/Faculty/printdetailpaperTheorySubQuestionResultcheck', {
-                  method: 'POST',
-                  headers: {
-                    'Content-Type': 'application/json',
-                    'User-Agent': 'Mozilla/5.0'
-                  },
-                  body: JSON.stringify({
-                    papercode: String(pcode),
-                    quescode: String(mq.quescode),
-                    stud_rollno: rollno
-                  })
-                });
-                const subData = await response.json();
-                const parsedSubs = (Array.isArray(subData) ? subData : []).map((sq) => {
-                  return {
-                    id: sq.subquesid,
-                    no: sq.optno || '',
-                    type: sq.QType || 'DESC',
-                    text: sq.ques || '',
-                    op1: sq.optionA || '',
-                    op2: sq.optionB || '',
-                    op3: sq.optionC || '',
-                    op4: sq.optionD || '',
-                    obtained: parseFloat(sq.obtainedmarks || 0),
-                    total: parseFloat(sq.ques_wtg || 0),
-                    correct: sq.QType === 'MCQ' ? parseFloat(sq.obtainedmarks) > 0 : undefined
-                  };
-                });
-
-                parsedSubs.sort((a, b) => {
-                  const numA = parseInt(a.no, 10);
-                  const numB = parseInt(b.no, 10);
-                  if (!isNaN(numA) && !isNaN(numB)) {
-                    return numA - numB;
-                  }
-                  return String(a.no).localeCompare(String(b.no));
-                });
-
-                setAttempted((prev) => {
-                  if (!prev) return prev;
-                  return prev.map((sec) => {
-                    const updatedMQs = sec.mainQuestions.map((item) => {
-                      if (item.quescode === mq.quescode) {
-                        return {
-                          ...item,
-                          subquestions: parsedSubs,
-                          loadingSubquestions: false
-                        };
-                      }
-                      return item;
-                    });
-                    return { ...sec, mainQuestions: updatedMQs };
-                  });
-                });
-              } catch (err) {
-                console.warn('[ResultsScreen] Failed to fetch subquestions in background:', err);
-                setAttempted((prev) => {
-                  if (!prev) return prev;
-                  return prev.map((sec) => {
-                    const updatedMQs = sec.mainQuestions.map((item) => {
-                      if (item.quescode === mq.quescode) {
-                        return {
-                          ...item,
-                          loadingSubquestions: false
-                        };
-                      }
-                      return item;
-                    });
-                    return { ...sec, mainQuestions: updatedMQs };
-                  });
-                });
-              }
-            });
+              nextAttempted = Object.values(sectionsMap);
+              setAttempted(nextAttempted);
+            }
           }
+        } catch (err) {
+          console.warn('[ResultsScreen] Direct attempted paper fetch failed:', err);
         }
-      } catch (err) {
-        console.warn('[ResultsScreen] Direct attempted paper fetch failed:', err);
       }
 
       let nextChart = [];
