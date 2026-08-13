@@ -374,22 +374,23 @@ const AdminBroadcastCenterScreen = ({ navigation }) => {
               return (
                 <View key={item.id} style={[styles.historyCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
                   <Text style={[styles.historyTitle, { color: colors.textPrimary }]}>{displayTitle}</Text>
-                <View style={styles.historyMeta}>
-                  <View style={styles.metaBadge}>
-                    <Text style={[styles.metaBadgeText, { color: colors.textSecondary }]}>
-                      Target: {
-                        item.target_type === 'teacher' ? 'FACULTY' :
-                        item.target_type === 'admin' ? 'COLLEGE ADMIN' :
-                        item.target_type?.toUpperCase()
-                      }
+                  <View style={styles.historyMeta}>
+                    <View style={styles.metaBadge}>
+                      <Text style={[styles.metaBadgeText, { color: colors.textSecondary }]}>
+                        Target: {
+                          item.target_type === 'teacher' ? 'FACULTY' :
+                          item.target_type === 'admin' ? 'COLLEGE ADMIN' :
+                          item.target_type?.toUpperCase()
+                        }
+                      </Text>
+                    </View>
+                    <Text style={[styles.metaSentText, { color: colors.textMuted }]}>
+                      Sent to: {item.sent_count} | Opened: {item.opened_count || 0}
                     </Text>
                   </View>
-                  <Text style={[styles.metaSentText, { color: colors.textMuted }]}>
-                    Sent to: {item.sent_count} | Opened: {item.opened_count || 0}
-                  </Text>
                 </View>
-              </View>
-            ))}
+              );
+            })}
           </View>
         )}
         <View style={{ height: 60 }} />
