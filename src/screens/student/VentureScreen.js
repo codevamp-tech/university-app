@@ -226,15 +226,15 @@ const VentureScreen = ({ navigation }) => {
   };
 
   const getStageLabel = (stage) => {
-    if (isMed) {
-      const s = (stage || 'IDEA').toLowerCase();
-      if (s.includes('revenue') || s.includes('trial') || s.includes('clinical')) return 'Clinical Trial';
-      if (s.includes('idea') || s.includes('hypothesis') || s.includes('concept')) return 'Hypothesis';
-      if (s.includes('mvp') || s.includes('prototype')) return 'Prototype / Study';
-      if (s.includes('scale') || s.includes('practice')) return 'Clinical Practice';
-      return 'Hypothesis';
-    }
-    return (stage || 'PRE-REVENUE').replace(/[-_]/g, ' ').toUpperCase();
+    if (!stage) return isMed ? 'Clinical Idea' : 'Idea';
+    const s = String(stage).toLowerCase().replace(/[-_]/g, ' ');
+    if (s === 'idea') return isMed ? 'Clinical Idea' : 'Idea';
+    if (s.includes('trial') || s.includes('clinical trial')) return 'Clinical Trial';
+    if (s.includes('hypothesis')) return 'Hypothesis';
+    if (s.includes('mvp') || s.includes('prototype') || s.includes('study')) return 'Prototype / Study';
+    if (s.includes('scale') || s.includes('practice')) return 'Clinical Practice';
+    if (s.includes('pre revenue')) return 'Pre-Revenue';
+    return s.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
   };
 
   const fetchAllStartups = useCallback(async () => {
