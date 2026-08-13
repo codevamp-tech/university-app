@@ -888,7 +888,7 @@ const CommunityScreen = ({ navigation }) => {
 
         <View style={styles.postHeader}>
           <TouchableOpacity
-            style={styles.postAuthor}
+            style={[styles.postAuthor, { flex: 1, marginRight: 8 }]}
             onPress={() => {
               if (isMe) {
                 navigation.navigate('Profile');
@@ -905,9 +905,9 @@ const CommunityScreen = ({ navigation }) => {
             }}
           >
             <Image source={{ uri: avatarUrl }} style={styles.authorAvatar} />
-            <View>
-              <Text style={[styles.authorName, { color: colors.textPrimary }]}>{displayName}</Text>
-              {courseYearStr ? <Text style={[styles.postMeta, { color: colors.textSecondary }]}>{courseYearStr}</Text> : null}
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.authorName, { color: colors.textPrimary }]} numberOfLines={1} ellipsizeMode="tail">{displayName}</Text>
+              {courseYearStr ? <Text style={[styles.postMeta, { color: colors.textSecondary }]} numberOfLines={1} ellipsizeMode="tail">{courseYearStr}</Text> : null}
               <Text style={[styles.postMeta, { color: colors.textSecondary }]}>
                 {timeAgo(targetPost.created_at)}
               </Text>
@@ -918,6 +918,7 @@ const CommunityScreen = ({ navigation }) => {
               onPress={() => handleDeletePost(post.id)}
               style={{
                 padding: 8,
+                flexShrink: 0,
               }}
             >
               <MaterialCommunityIcons name="delete-outline" size={22} color="#EF4444" />
@@ -941,6 +942,7 @@ const CommunityScreen = ({ navigation }) => {
                   paddingHorizontal: 12,
                   paddingVertical: 6,
                   borderRadius: 16,
+                  flexShrink: 0,
                   backgroundColor: targetPost.connection_status === 'Connected'
                     ? colors.border
                     : targetPost.connection_status === 'Pending'
@@ -1770,44 +1772,48 @@ const CommunityScreen = ({ navigation }) => {
 
       {/* ── Post Likers Modal ── */}
       <Modal visible={postLikersModalVisible} animationType="slide" transparent onRequestClose={() => setPostLikersModalVisible(false)}>
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: colors.card, maxHeight: '70%' }]}>
-            <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
-              <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>Reactions</Text>
-              <TouchableOpacity onPress={() => setPostLikersModalVisible(false)} style={styles.modalCloseBtn}>
-                <Ionicons name="close" size={24} color={colors.textPrimary} />
-              </TouchableOpacity>
-            </View>
-
-            {loadingPostLikers ? (
-              <ActivityIndicator size="large" color={colors.primary} style={{ marginVertical: 40 }} />
-            ) : postLikers.length === 0 ? (
-              <View style={{ padding: 40, alignItems: 'center' }}>
-                <Ionicons name="heart-outline" size={48} color={colors.textSecondary} />
-                <Text style={{ color: colors.textSecondary, marginTop: 12, fontSize: 14 }}>No reactions yet</Text>
+        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setPostLikersModalVisible(false)}>
+          <TouchableWithoutFeedback>
+            <View style={[styles.modalContent, { backgroundColor: colors.card, maxHeight: '75%', paddingBottom: (insets.bottom || 16) + 12 }]}>
+              <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
+                <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>Reactions</Text>
+                <TouchableOpacity onPress={() => setPostLikersModalVisible(false)} style={styles.modalCloseBtn}>
+                  <Ionicons name="close" size={24} color={colors.textPrimary} />
+                </TouchableOpacity>
               </View>
-            ) : (
-              <FlatList
-                data={postLikers}
-                keyExtractor={(item) => item.user_id}
-                renderItem={({ item }) => (
-                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.border }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                      <Image source={{ uri: getAvatarUrl(item.avatar_url || item.username) }} style={{ width: 44, height: 44, borderRadius: 22 }} />
-                      <View>
-                        <Text style={{ fontWeight: '700', fontSize: 15, color: colors.textPrimary }}>{item.full_name || item.username}</Text>
-                        <Text style={{ fontSize: 12, color: colors.textSecondary }}>@{item.username}</Text>
+
+              {loadingPostLikers ? (
+                <ActivityIndicator size="large" color={colors.primary} style={{ marginVertical: 40 }} />
+              ) : postLikers.length === 0 ? (
+                <View style={{ padding: 40, alignItems: 'center' }}>
+                  <Ionicons name="heart-outline" size={48} color={colors.textSecondary} />
+                  <Text style={{ color: colors.textSecondary, marginTop: 12, fontSize: 14 }}>No reactions yet</Text>
+                </View>
+              ) : (
+                <FlatList
+                  data={postLikers}
+                  keyExtractor={(item) => item.user_id || item.username}
+                  renderItem={({ item }) => (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.border }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1, paddingRight: 8 }}>
+                        <Image source={{ uri: getAvatarUrl(item.avatar_url || item.username) }} style={{ width: 44, height: 44, borderRadius: 22 }} />
+                        <View style={{ flex: 1 }}>
+                          <Text style={{ fontWeight: '700', fontSize: 15, color: colors.textPrimary }} numberOfLines={1} ellipsizeMode="tail">
+                            {item.full_name || item.username}
+                          </Text>
+                          <Text style={{ fontSize: 12, color: colors.textSecondary }}>@{item.username}</Text>
+                        </View>
                       </View>
+                      <Text style={{ fontSize: 20 }}>
+                        {REACTION_ICONS[item.reaction_type]?.icon || '👍'}
+                      </Text>
                     </View>
-                    <Text style={{ fontSize: 20 }}>
-                      {REACTION_ICONS[item.reaction_type]?.icon || '👍'}
-                    </Text>
-                  </View>
-                )}
-              />
-            )}
-          </View>
-        </View>
+                  )}
+                />
+              )}
+            </View>
+          </TouchableWithoutFeedback>
+        </TouchableOpacity>
       </Modal>
 
       {/* ── Story Comments Modal ── */}
@@ -2028,7 +2034,41 @@ const styles = StyleSheet.create({
   actionCount: { fontSize: 14, fontWeight: '600' },
   reactionPopover: { position: 'absolute', bottom: 50, left: 0, flexDirection: 'row', borderRadius: 30, padding: 4, borderWidth: 1, elevation: 10, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 10, shadowOffset: { height: -2, width: 0 } },
   badgeCount: { position: 'absolute', top: 4, right: 4, backgroundColor: 'red', borderRadius: 10, width: 18, height: 18, justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: '#fff' },
-  badgeText: { color: '#fff', fontSize: 10, fontWeight: 'bold' }
+  badgeText: { color: '#fff', fontSize: 10, fontWeight: 'bold' },
+  // Bottom Sheet Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    maxHeight: '75%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    elevation: 20,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingBottom: 14,
+    borderBottomWidth: 1,
+    marginBottom: 8,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    letterSpacing: -0.3,
+  },
+  modalCloseBtn: {
+    padding: 4,
+  },
 });
 
 export default CommunityScreen;
