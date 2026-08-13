@@ -1,12 +1,25 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Image, Alert } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, Image, Alert, ScrollView, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useUser } from '../../context/UserContext';
 import { useNotifications } from '../../context/NotificationContext';
-import { getPendingRequestsAPI, acceptRequestAPI, getAllStudents } from '../../data/apiService';
+import { getPendingRequestsAPI, acceptRequestAPI, getAllStudents, getAlerts } from '../../data/apiService';
 import { getAvatarUrl } from '../../utils/avatar';
 import { useTheme } from '../../hooks/useTheme';
+
+const formatNotifTime = (dateStr) => {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  if (isNaN(d)) return '';
+  const now = new Date();
+  const diffMs = now - d;
+  const diffMins = Math.floor(diffMs / 60000);
+  if (diffMins < 1) return 'Just now';
+  if (diffMins < 60) return `${diffMins}m ago`;
+  if (diffMins < 1440) return `${Math.floor(diffMins / 60)}h ago · ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+  return d.toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+};
 
 const NotificationsScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
@@ -14,14 +27,24 @@ const NotificationsScreen = ({ navigation }) => {
   const { markRequestsAsRead, refreshUnreadCounts } = useNotifications();
   const { colors, isDark } = useTheme();
   const [requests, setRequests] = useState([]);
+  const [activityNotifs, setActivityNotifs] = useState([]);
   const [studentMap, setStudentMap] = useState({});
   const [loading, setLoading] = useState(true);
 
   const fetchRequests = async () => {
     try {
       setLoading(true);
-      const data = await getPendingRequestsAPI(accessToken);
+      const [data, alertsRes] = await Promise.all([
+        getPendingRequestsAPI(accessToken),
+        getAlerts(accessToken, 0, 30),
+      ]);
       setRequests(data);
+
+      // Show only SOCIAL type alerts in this screen
+      if (alertsRes?.data) {
+        const socialAlerts = alertsRes.data.filter(a => a.type === 'social');
+        setActivityNotifs(socialAlerts);
+      }
       refreshUnreadCounts();
 
       try {
@@ -104,18 +127,57 @@ const NotificationsScreen = ({ navigation }) => {
         <View style={{ width: 40 }} />
       </View>
 
-      <FlatList
-        data={requests}
-        keyExtractor={(item) => item.id}
-        renderItem={renderRequest}
-        contentContainerStyle={styles.list}
-        ListEmptyComponent={
-          <View style={styles.empty}>
-            <Ionicons name="notifications-off-outline" size={48} color={colors.textMuted || '#D1D5DB'} />
-            <Text style={[styles.emptyText, { color: colors.textSecondary }]}>{loading ? 'Loading...' : 'No new notifications'}</Text>
-          </View>
-        }
-      />
+      {loading ? (
+        <View style={styles.empty}>
+          <ActivityIndicator size="large" color={colors.primary} />
+        </View>
+      ) : (
+        <ScrollView contentContainerStyle={styles.list}>
+          {/* Connection Requests */}
+          {requests.length > 0 && (
+            <>
+              <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>CONNECTION REQUESTS</Text>
+              {requests.map(item => (
+                <View key={item.id}>{renderRequest({ item })}</View>
+              ))}
+            </>
+          )}
+
+          {/* Social Activity Notifications */}
+          {activityNotifs.length > 0 && (
+            <>
+              <Text style={[styles.sectionLabel, { color: colors.textSecondary, marginTop: requests.length > 0 ? 16 : 0 }]}>ACTIVITY</Text>
+              {activityNotifs.map((notif, idx) => (
+                <View key={notif.id || idx} style={[styles.requestCard, { backgroundColor: isDark ? colors.card : '#FFFFFF', opacity: notif.is_read ? 0.65 : 1 }]}>
+                  <View style={[{ width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: isDark ? 'rgba(234,88,12,0.15)' : '#FFF7ED' }]}>
+                    <Ionicons
+                      name={notif.title?.includes('comment') ? 'chatbubble-outline' : notif.title?.includes('repost') ? 'repeat-outline' : 'heart-outline'}
+                      size={22}
+                      color={colors.primary}
+                    />
+                  </View>
+                  <View style={styles.info}>
+                    <Text style={[styles.username, { color: colors.textPrimary, fontWeight: notif.is_read ? '500' : '700' }]}>{notif.title || 'Social activity'}</Text>
+                    {notif.body ? (
+                      <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 2 }} numberOfLines={2}>{notif.body}</Text>
+                    ) : null}
+                    <Text style={{ fontSize: 11, color: colors.textMuted || '#9CA3AF', marginTop: 4 }}>
+                      {formatNotifTime(notif.created_at)}
+                    </Text>
+                  </View>
+                </View>
+              ))}
+            </>
+          )}
+
+          {requests.length === 0 && activityNotifs.length === 0 && (
+            <View style={styles.empty}>
+              <Ionicons name="notifications-off-outline" size={48} color={colors.textMuted || '#D1D5DB'} />
+              <Text style={[styles.emptyText, { color: colors.textSecondary }]}>No notifications yet</Text>
+            </View>
+          )}
+        </ScrollView>
+      )}
     </View>
   );
 };
@@ -144,6 +206,15 @@ const styles = StyleSheet.create({
   },
   list: {
     padding: 16,
+    flexGrow: 1,
+  },
+  sectionLabel: {
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+    marginBottom: 10,
+    marginTop: 4,
+    color: '#6B7280',
   },
   requestCard: {
     flexDirection: 'row',

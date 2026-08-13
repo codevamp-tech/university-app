@@ -899,6 +899,16 @@ export async function getShopListings(token, category = null, skip = 0, limit = 
 }
 
 /**
+ * GET /api/v1/shop/listings/mine — returns own listings including pending ones
+ */
+export async function getMyShopListings(token) {
+  const res = await apiCall(`/api/v1/shop/listings/mine`, {
+    headers: authHeaders(token),
+  });
+  return unwrap(res, []);
+}
+
+/**
  * POST /api/v1/shop/listings
  */
 export async function createShopListingAPI(token, data) {

@@ -846,21 +846,28 @@ const CommunityScreen = ({ navigation }) => {
 
     // Resolve user details
     const posterUsername = targetPost.user?.username;
-    const isMe = posterUsername === user?.id;
+    const isMe = posterUsername === user?.id || targetPost.author_id === user?.user_id;
     const isAuthor = post.user?.username === user?.id || post.author_id === user?.user_id;
-    let displayName = targetPost.user?.full_name || posterUsername || 'User';
-    let avatarUrl = targetPost.user?.avatar_url || getAvatarUrl(posterUsername || targetPost.id);
+    let displayName = targetPost.user?.full_name || targetPost.user?.name || posterUsername || 'Student';
+    // Prefer stored avatar_url; fall back to name-based DiceBear (never use UUID as seed)
+    let avatarUrl = targetPost.user?.avatar_url || null;
     let courseYearStr = '';
 
     if (isMe) {
-      displayName = user?.name || displayName;
-      avatarUrl = user?.avatar_url || getAvatarUrl(user?.id || user?.email || 'me');
+      displayName = user?.name || user?.full_name || displayName;
+      avatarUrl = user?.avatar_url || avatarUrl || getAvatarUrl(user?.name || user?.email || 'me');
       if (user?.course) courseYearStr = `${user.course} • Year ${user.year || '1'}`;
     } else if (posterUsername && studentMap[posterUsername.toLowerCase()]) {
       const pData = studentMap[posterUsername.toLowerCase()];
-      displayName = pData.name || displayName;
+      displayName = pData.name || pData.full_name || displayName;
       if (pData.course) courseYearStr = `${pData.course} • Year ${pData.year || '1'}`;
-      if (pData.avatar) avatarUrl = pData.avatar;
+      // Use stored avatar from student directory, or the one from the post itself
+      avatarUrl = avatarUrl || pData.avatar || getAvatarUrl(displayName);
+    }
+
+    // Final avatar fallback — always use display name (never UUID)
+    if (!avatarUrl) {
+      avatarUrl = getAvatarUrl(displayName !== 'Student' ? displayName : (posterUsername || 'Student'));
     }
 
     if (displayName === 'Admin' || displayName === 'admin' || posterUsername === 'admin' || targetPost.user?.role === 'super_admin' || targetPost.user?.role === 'admin') {

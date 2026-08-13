@@ -9,7 +9,7 @@ import { useTheme } from '../../hooks/useTheme';
 import { APP_CONFIG } from '../../config/appConfig';
 import { useUser } from '../../context/UserContext';
 import { useFocusEffect } from '@react-navigation/native';
-import { getShopListings, createOrder, getShopGigs, getShopRequests, getWalletBalance, processWalletPurchaseMock } from '../../data/apiService';
+import { getShopListings, createOrder, getShopGigs, getShopRequests, getWalletBalance, processWalletPurchaseMock, getMyShopListings } from '../../data/apiService';
 
 const { width } = Dimensions.get('window');
 
@@ -19,16 +19,23 @@ const MarketplaceScreen = ({ navigation }) => {
   const { user, accessToken } = useUser();
 
   const [apiListings, setApiListings] = React.useState([]);
+  const [myListings, setMyListings] = React.useState([]);
   const [walletBalance, setWalletBalance] = React.useState(0);
 
   const loadMarketplaceData = React.useCallback(async () => {
     if (!accessToken) return;
     try {
-      const data = await getShopListings(accessToken);
+      const [data, mine] = await Promise.all([
+        getShopListings(accessToken),
+        getMyShopListings(accessToken).catch(() => []),
+      ]);
       if (data) {
         setApiListings(data.filter(l => l.category !== 'gig' && l.category !== 'request'));
       } else {
         setApiListings([]);
+      }
+      if (Array.isArray(mine)) {
+        setMyListings(mine.filter(l => l.category !== 'gig' && l.category !== 'request'));
       }
     } catch (err) {
       console.warn('[MarketplaceScreen] Error fetching listings:', err);
@@ -96,6 +103,51 @@ const MarketplaceScreen = ({ navigation }) => {
             </ImageBackground>
           </View>
         </View>
+
+        {/* My Listings (student's own — includes pending) */}
+        {myListings.length > 0 && (
+          <View style={styles.sectionContainer}>
+            <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>My Listings</Text>
+            <View style={styles.bazaarGrid}>
+              {myListings.map((item) => {
+                const isPending = item.status === 'pending' || item.status === 'pending_review' || item.status === 'submitted';
+                return (
+                  <View
+                    key={item.id}
+                    style={[styles.itemCard, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1, opacity: isPending ? 0.82 : 1 }]}
+                  >
+                    <View style={styles.itemImgBox}>
+                      <Image
+                        source={{ uri: item.image_url || 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?q=80&w=2000' }}
+                        style={[styles.itemImg, isPending && { opacity: 0.4 }]}
+                        blurRadius={isPending ? 3 : 0}
+                      />
+                      {isPending && (
+                        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.25)', borderTopLeftRadius: 12, borderTopRightRadius: 12 }}>
+                          <Ionicons name="time-outline" size={20} color="#FFFFFF" />
+                          <Text style={{ color: '#FFFFFF', fontSize: 11, fontWeight: '800', marginTop: 4, textAlign: 'center' }}>APPROVAL{'
+'}PENDING</Text>
+                        </View>
+                      )}
+                    </View>
+                    <View style={styles.itemContent}>
+                      <Text style={[styles.itemTitle, { color: colors.textPrimary }]}>{item.title}</Text>
+                      <Text style={[styles.itemDesc, { color: colors.textSecondary }]} numberOfLines={2}>{item.description}</Text>
+                      <View style={styles.itemFooter}>
+                        <Text style={[styles.itemPrice, { color: colors.textPrimary }]}>₹{item.price}</Text>
+                        <View style={{ backgroundColor: isPending ? '#FEF3C7' : '#D1FAE5', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 }}>
+                          <Text style={{ fontSize: 10, fontWeight: '700', color: isPending ? '#D97706' : '#059669' }}>
+                            {isPending ? 'PENDING' : 'ACTIVE'}
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
+          </View>
+        )}
 
         {/* The Bazaar */}
         <View style={styles.sectionContainer}>
