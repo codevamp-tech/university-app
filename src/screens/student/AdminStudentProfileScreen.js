@@ -375,12 +375,21 @@ const AdminStudentProfileScreen = ({ navigation, route }) => {
                 })}
                 activeOpacity={0.7}
               >
-                <Text style={[styles.acadValue, { color: colors.primary }]}>{user?.cgpa || '0.0'} <Text style={[styles.acadMax, { color: colors.textMuted }]}>/ 10.0</Text></Text>
+                <Text style={[styles.acadValue, { color: colors.primary }]}>
+                  {isMed 
+                    ? `${Math.round((user?.cgpa ? (user.cgpa > 10 ? user.cgpa : user.cgpa * 10) : 75))}%` 
+                    : `${user?.cgpa || '0.0'}`}
+                  {!isMed && <Text style={[styles.acadMax, { color: colors.textMuted }]}> / 10.0</Text>}
+                </Text>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                  <Text style={[styles.acadLabel, { color: colors.textMuted }]}>CUMULATIVE GPA</Text>
+                  <Text style={[styles.acadLabel, { color: colors.textMuted }]}>
+                    {isMed ? 'ACADEMIC MARKS' : 'CUMULATIVE GPA'}
+                  </Text>
                   <Ionicons name="chevron-forward" size={10} color={colors.textMuted} />
                 </View>
-                <View style={[styles.pBar, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : colors.border }]}><View style={[styles.pFill, { width: `${(user?.cgpa || 0) * 10}%`, backgroundColor: colors.primary }]} /></View>
+                <View style={[styles.pBar, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : colors.border }]}>
+                  <View style={[styles.pFill, { width: `${isMed ? Math.min(100, Math.round((user?.cgpa ? (user.cgpa > 10 ? user.cgpa : user.cgpa * 10) : 75))) : ((user?.cgpa || 0) * 10)}%`, backgroundColor: colors.primary }]} />
+                </View>
               </TouchableOpacity>
 
               <TouchableOpacity

@@ -913,8 +913,12 @@ const DashboardScreen = ({ navigation }) => {
                 colors={isDark ? ['rgba(234, 88, 12, 0.2)', 'rgba(234, 88, 12, 0.1)'] : ['#FFF7ED', '#FFEDD5']}
                 style={[styles.statPillOrange, { borderColor: isDark ? 'rgba(234, 88, 12, 0.3)' : '#FFEDD5' }]}
               >
-                <Text style={[styles.statValueOrange, { color: isDark ? '#FB923C' : '#9A3412' }]}>{user?.cgpa || '0.0'}</Text>
-                <Text style={[styles.statLabelOrange, { color: isDark ? '#FB923C' : '#9A3412' }]}>ACADEMIC CGPA</Text>
+                <Text style={[styles.statValueOrange, { color: isDark ? '#FB923C' : '#9A3412' }]}>
+                  {isMed ? `${Math.round((user?.cgpa ? (user.cgpa > 10 ? user.cgpa : user.cgpa * 10) : 75))}%` : (user?.cgpa || '0.0')}
+                </Text>
+                <Text style={[styles.statLabelOrange, { color: isDark ? '#FB923C' : '#9A3412' }]}>
+                  {isMed ? 'ACADEMIC MARKS' : 'ACADEMIC CGPA'}
+                </Text>
               </LinearGradient>
               <LinearGradient
                 colors={isDark ? ['rgba(67, 56, 202, 0.2)', 'rgba(67, 56, 202, 0.1)'] : ['#EEF2FF', '#E0E7FF']}

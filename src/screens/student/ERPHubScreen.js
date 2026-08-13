@@ -228,8 +228,10 @@ const ERPHubScreen = ({ navigation, route }) => {
                   </View>
                   <View style={[styles.heroStatDivider, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.2)' }]} />
                   <View style={styles.heroStatItem}>
-                    <Text style={styles.heroStatValue}>{displayCgpa}</Text>
-                    <Text style={styles.heroStatLabel}>CGPA</Text>
+                    <Text style={styles.heroStatValue}>
+                      {isMedical ? `${Math.round((student?.cgpa ? (student.cgpa > 10 ? student.cgpa : student.cgpa * 10) : 75))}%` : displayCgpa}
+                    </Text>
+                    <Text style={styles.heroStatLabel}>{isMedical ? 'MARKS %' : 'CGPA'}</Text>
                   </View>
                   <View style={[styles.heroStatDivider, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.2)' }]} />
                   <View style={styles.heroStatItem}>
@@ -401,7 +403,9 @@ const ERPHubScreen = ({ navigation, route }) => {
               </LinearGradient>
               <Text style={[styles.gridCardTitle, { color: colors.textPrimary }]}>Results</Text>
               <Text style={[styles.gridCardDesc, { color: colors.textSecondary }]}>
-                CGPA: {formatCgpa(student?.cgpa)}
+                {isMedical 
+                  ? `Marks: ${Math.round((student?.cgpa ? (student.cgpa > 10 ? student.cgpa : student.cgpa * 10) : 75))}%` 
+                  : `CGPA: ${formatCgpa(student?.cgpa)}`}
               </Text>
             </TouchableOpacity>
 
