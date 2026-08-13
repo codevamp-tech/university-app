@@ -853,13 +853,13 @@ const CommunityScreen = ({ navigation }) => {
     Alert.alert('Delete Post', 'Are you sure you want to delete this post?', [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Delete', style: 'destructive', onPress: async () => {
-         // Optimistic UI update
-         setApiFeed(prev => prev.filter(p => p.id !== postId));
+         // Optimistic UI update: remove post and any associated repost cards
+         setApiFeed(prev => prev.filter(p => p.id !== postId && p.original_post?.id !== postId && p.original_post_id !== postId));
          try {
             await deletePostAPI(accessToken, postId);
          } catch(e) {
             console.warn('Failed to delete post', e);
-            loadFeed(); // Revert/Reload if fails
+            await loadFeed(true); // Revert/Reload if fails
          }
       }}
     ]);
