@@ -81,6 +81,8 @@ const CommunityScreen = ({ navigation }) => {
 
   const [apiFeed, setApiFeed] = useState([]);
   const [loadingFeed, setLoadingFeed] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMorePosts, setHasMorePosts] = useState(true);
   const [connectionStats, setConnectionStats] = useState({ followers: 0, following: 0, connections: 0 });
   const [pendingFollowsCount, setPendingFollowsCount] = useState(0);
   const [newPostContent, setNewPostContent] = useState('');
@@ -346,9 +348,14 @@ const CommunityScreen = ({ navigation }) => {
     lastFeedFetchRef.current = now;
 
     setLoadingFeed(true);
+    setHasMorePosts(true);
+    setLoadingMore(false);
     try {
-      const posts = await getSocialFeed(accessToken);
-      if (posts) setApiFeed(posts);
+      const posts = await getSocialFeed(accessToken, 0, 20);
+      if (posts) {
+        setApiFeed(posts);
+        if (posts.length < 20) setHasMorePosts(false);
+      }
 
       // Load stats in parallel (non-blocking — don't await together)
       connectionStatsAPI(accessToken).then(stats => { if (stats) setConnectionStats(stats); }).catch(() => {});
@@ -362,6 +369,28 @@ const CommunityScreen = ({ navigation }) => {
       setLoadingFeed(false);
     }
   }, [accessToken, loadStories]);
+
+  const loadMorePosts = useCallback(async () => {
+    if (loadingMore || !hasMorePosts || !accessToken || loadingFeed) return;
+    setLoadingMore(true);
+    try {
+      const nextPosts = await getSocialFeed(accessToken, apiFeed.length, 20);
+      if (!nextPosts || nextPosts.length === 0) {
+        setHasMorePosts(false);
+      } else {
+        setApiFeed(prev => {
+          const existingIds = new Set(prev.map(p => p.id));
+          const uniqueNext = nextPosts.filter(p => !existingIds.has(p.id));
+          if (uniqueNext.length < 20) setHasMorePosts(false);
+          return [...prev, ...uniqueNext];
+        });
+      }
+    } catch (err) {
+      console.warn("Failed to load more posts:", err);
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [accessToken, apiFeed.length, hasMorePosts, loadingMore, loadingFeed]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -1156,6 +1185,14 @@ const CommunityScreen = ({ navigation }) => {
       <ScrollView 
         contentContainerStyle={styles.scroll} 
         showsVerticalScrollIndicator={false}
+        onScroll={({ nativeEvent }) => {
+          const { layoutMeasurement, contentOffset, contentSize } = nativeEvent;
+          const isCloseToBottom = layoutMeasurement.height + contentOffset.y >= contentSize.height - 400;
+          if (isCloseToBottom && hasMorePosts && !loadingMore && !loadingFeed) {
+            loadMorePosts();
+          }
+        }}
+        scrollEventThrottle={300}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -1236,6 +1273,17 @@ const CommunityScreen = ({ navigation }) => {
           ) : (
             <View style={[styles.feedContainer, { gap: 8, paddingHorizontal: 0, backgroundColor: isDark ? '#000' : '#E9E5DF' }]}>
               {apiFeed.map(post => renderPost(post))}
+              {loadingMore && (
+                <View style={{ paddingVertical: 20, alignItems: 'center' }}>
+                  <ActivityIndicator size="small" color={colors.primary} />
+                  <Text style={{ color: colors.textSecondary, fontSize: 12, marginTop: 6 }}>Loading more posts...</Text>
+                </View>
+              )}
+              {!hasMorePosts && apiFeed.length > 0 && (
+                <View style={{ paddingVertical: 16, alignItems: 'center' }}>
+                  <Text style={{ color: colors.textSecondary, fontSize: 12, fontWeight: '600' }}>You're all caught up! 🎉</Text>
+                </View>
+              )}
             </View>
           )}
         <View style={{ height: 100 }} />
