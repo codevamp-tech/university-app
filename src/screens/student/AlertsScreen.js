@@ -119,7 +119,7 @@ const AlertsScreen = ({ navigation }) => {
       }, 300);
     }
     
-    if (String(notif.id).startsWith('erp-announcement-')) {
+    if (String(notif.id).startsWith('erp-announcement-') || notif.type === 'announcement' || notif.raw?.ref_type === 'broadcast') {
       setSelectedAnnouncement(notif);
     } else {
       navigateAlert(notif);

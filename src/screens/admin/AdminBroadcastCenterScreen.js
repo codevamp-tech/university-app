@@ -14,7 +14,7 @@ import {
 import { Feather } from '@expo/vector-icons';
 import { useTheme } from '../../hooks/useTheme';
 import { useUser } from '../../context/UserContext';
-import { createBroadcastAPI, getBroadcastStatsAPI, getDepartmentsAPI } from '../../data/apiService';
+import { createBroadcastAPI, getBroadcastStatsAPI, getDepartmentsAPI, deleteBroadcastAPI } from '../../data/apiService';
 
 const BATCHES = [
   { id: 2026, label: '1st Year (2026)' },
@@ -125,6 +125,35 @@ const AdminBroadcastCenterScreen = ({ navigation }) => {
     } finally {
       setSending(false);
     }
+  };
+
+  const handleDeleteBroadcast = (broadcastId, broadcastTitle) => {
+    Alert.alert(
+      'Delete Broadcast',
+      `Are you sure you want to delete "${broadcastTitle}"? This will remove it from all recipients.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              if (accessToken) {
+                await deleteBroadcastAPI(accessToken, broadcastId);
+                setStats(prev => ({
+                  ...prev,
+                  total_sent: Math.max(0, (prev.total_sent || 1) - 1),
+                  recent: prev.recent ? prev.recent.filter(b => b.id !== broadcastId) : [],
+                }));
+                Alert.alert('Deleted', 'Broadcast dispatch deleted successfully.');
+              }
+            } catch (err) {
+              Alert.alert('Error', err.message || 'Failed to delete broadcast.');
+            }
+          },
+        },
+      ]
+    );
   };
 
   const calculatedReach = () => {
@@ -374,7 +403,18 @@ const AdminBroadcastCenterScreen = ({ navigation }) => {
 
               return (
                 <View key={item.id} style={[styles.historyCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                  <Text style={[styles.historyTitle, { color: colors.textPrimary }]}>{displayTitle}</Text>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <Text style={[styles.historyTitle, { color: colors.textPrimary, flex: 1, marginRight: 8 }]}>
+                      {displayTitle}
+                    </Text>
+                    <TouchableOpacity
+                      onPress={() => handleDeleteBroadcast(item.id, displayTitle)}
+                      style={{ padding: 4 }}
+                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    >
+                      <Feather name="trash-2" size={16} color={colors.danger || '#EF4444'} />
+                    </TouchableOpacity>
+                  </View>
                   <View style={styles.historyMeta}>
                     <View style={styles.metaBadge}>
                       <Text style={[styles.metaBadgeText, { color: colors.textSecondary }]}>

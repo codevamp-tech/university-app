@@ -1137,16 +1137,6 @@ const AdminDashboardScreen = ({ navigation }) => {
           </View>
         </LinearGradient>
 
-        {/* Demo Locked Notice */}
-        {isAdmin && (
-          <View style={[styles.alertBox, { backgroundColor: isDark ? '#2D1B1B' : '#FEE2E2', borderColor: colors.danger }]}>
-            <Feather name="alert-triangle" size={16} color={colors.danger} style={{ marginRight: 8 }} />
-            <Text style={[styles.alertText, { color: isDark ? '#F87171' : '#B91C1C' }]}>
-              Demo Mode: Financial accounting, fees collections & student records sync is view-only.
-            </Text>
-          </View>
-        )}
-
         {/* Conditional Dashboard Sections */}
         {isWarden && renderWardenDashboard()}
         {isAdmin && renderAdminDashboard()}

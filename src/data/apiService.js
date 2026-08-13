@@ -1792,6 +1792,14 @@ export async function getBroadcastStatsAPI(token) {
   return unwrap(res, { total_sent: 0, recent: [] });
 }
 
+export async function deleteBroadcastAPI(token, broadcastId) {
+  const res = await apiCall(`/api/v1/alerts/broadcast/${broadcastId}`, {
+    method: 'DELETE',
+    headers: authHeaders(token),
+  });
+  return unwrap(res, null);
+}
+
 export async function updateGrievanceStatusAPI(token, grievanceId, status, remarks = '') {
   const res = await apiCall(`/api/v1/grievance/${grievanceId}`, {
     method: 'PATCH',
