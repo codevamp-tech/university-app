@@ -1242,7 +1242,7 @@ const CommunityScreen = ({ navigation }) => {
           >
             <View style={[styles.myStory, { borderColor: colors.primary }]}>
               <Image
-                source={{ uri: user?.avatar_url || getAvatarUrl(user?.id || user?.email || 'me') }}
+                source={{ uri: user?.avatar_url || getAvatarUrl(user?.name || user?.full_name || 'Me') }}
                 style={styles.storyImg}
               />
               <View style={[styles.addStoryBtn, { backgroundColor: colors.primary, borderColor: colors.card }]}>

@@ -10,45 +10,43 @@
  * @param {string} rollno    - student roll number (optional) — used to resolve real ERP photo
  */
 export function getAvatarUrl(name, rollno) {
-  // 1. If it's a real custom HTTP URL (not pravatar.cc and not ui-avatars.com), use it directly
+  // 1. If it's a real custom uploaded HTTP image URL (Cloudinary, S3, Firebase, Imgur, etc.), use it directly
   if (name && typeof name === 'string' && name.startsWith('http')) {
-    if (!name.includes('pravatar.cc') && !name.includes('ui-avatars.com')) {
+    if (!name.includes('pravatar.cc') && !name.includes('ui-avatars.com') && !name.includes('myportal.srms.ac.in')) {
       return name;
     }
   }
 
-  // 2. Extract clean roll number if provided or present in name
-  let cleanRoll = (rollno && typeof rollno === 'string') ? rollno.trim() : '';
-  if (!cleanRoll && name && typeof name === 'string') {
-    const trimmed = name.trim();
-    if (/^\d+$/.test(trimmed)) {
-      cleanRoll = trimmed;
+  // Helper to sanitize raw UUIDs or pure digits into valid human name seeds
+  const sanitizeSeed = (str) => {
+    if (!str || typeof str !== 'string') return '';
+    const trimmed = str.trim();
+    // Reject UUID format (e.g. 5cd4786b-f744-4a5d-95b9-cf87f50e6bc1) or pure digits
+    if (/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(trimmed) || /^\d+$/.test(trimmed)) {
+      return '';
     }
-  }
+    return trimmed;
+  };
 
-  // 3. If we have a numeric roll number, resolve the real ERP portal photo
-  if (cleanRoll && /^\d+$/.test(cleanRoll)) {
-    let fullRoll = cleanRoll;
-    if (cleanRoll.length === 7 && cleanRoll.startsWith('2')) {
-      fullRoll = '20' + cleanRoll;
-    }
-    return `https://myportal.srms.ac.in/srMSERP/Registration/StudentDocument/11/${fullRoll}/${fullRoll}.jpg`;
-  }
-
-  // 4. Fallback: ui-avatars.com initials based on name or extracted query
-  let seed = 'Student';
+  // 2. Extract clean seed name for ui-avatars initials
+  let seed = '';
   if (name && typeof name === 'string') {
     if (!name.startsWith('http')) {
-      seed = name;
+      seed = sanitizeSeed(name);
     } else {
       const match = name.match(/name=([^&]+)/);
       if (match && match[1]) {
-        seed = decodeURIComponent(match[1]);
+        seed = sanitizeSeed(decodeURIComponent(match[1]));
       }
     }
   }
-  if ((seed === 'Student' || seed === 'User') && rollno) {
-    seed = String(rollno);
+
+  if (!seed && rollno && typeof rollno === 'string') {
+    seed = sanitizeSeed(rollno);
+  }
+
+  if (!seed) {
+    seed = 'Student';
   }
 
   return `https://ui-avatars.com/api/?name=${encodeURIComponent(seed)}&background=F97316&color=fff&size=250&bold=true`;
