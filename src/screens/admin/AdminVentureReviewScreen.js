@@ -17,7 +17,7 @@ import {
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../../hooks/useTheme';
 import { useUser } from '../../context/UserContext';
-import { getPendingStartups, reviewStartup } from '../../data/apiService';
+import { getPendingStartups, reviewStartup, getAllStudents } from '../../data/apiService';
 import { APP_CONFIG } from '../../config/appConfig';
 import { getAvatarUrl } from '../../utils/avatar';
 
@@ -27,6 +27,7 @@ const AdminVentureReviewScreen = ({ navigation }) => {
   const { colors, isDark } = useTheme();
   const { accessToken } = useUser();
   const [ventures, setVentures] = useState([]);
+  const [studentMap, setStudentMap] = useState({});
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('All');
 
@@ -35,6 +36,26 @@ const AdminVentureReviewScreen = ({ navigation }) => {
   const [selectedVentureId, setSelectedVentureId] = useState(null);
   const [rejectionNotes, setRejectionNotes] = useState('');
   const [actionInProgress, setActionInProgress] = useState(false);
+
+  useEffect(() => {
+    if (accessToken) {
+      getAllStudents(accessToken)
+        .then(students => {
+          if (students && Array.isArray(students)) {
+            const map = {};
+            students.forEach(s => {
+              if (s.id) map[s.id.toLowerCase()] = s;
+              if (s.user_id) map[s.user_id.toLowerCase()] = s;
+              if (s.username) map[s.username.toLowerCase()] = s;
+              if (s.rollno) map[s.rollno.toLowerCase()] = s;
+              if (s.full_name) map[s.full_name.trim().toLowerCase()] = s;
+            });
+            setStudentMap(map);
+          }
+        })
+        .catch(err => console.warn('[VentureReview] Failed to load student directory:', err));
+    }
+  }, [accessToken]);
 
   const fetchPendingVentures = async () => {
     setLoading(true);
@@ -142,21 +163,43 @@ const AdminVentureReviewScreen = ({ navigation }) => {
     const isRejected = statusStr === 'rejected';
     const isPending = !isApproved && !isRejected;
 
-    const founderName = item.founder_name || item.founder_username || 'Student Founder';
-    const avatarUrl = item.avatar_url || getAvatarUrl(founderName);
+    const founderIdKey = (item.founder_id || '').toLowerCase();
+    const founderUserKey = (item.founder_username || '').toLowerCase();
+    const founderNameKey = (item.founder_name || '').trim().toLowerCase();
+
+    const student = studentMap[founderIdKey] || studentMap[founderUserKey] || studentMap[founderNameKey] || {};
+
+    const founderName = item.founder_name || student.full_name || student.name || item.founder_username || 'Student Founder';
+    const rollNo = student.rollno || item.founder_username || '';
+    const courseBranch = student.course || student.branch || 'M.B.B.S.';
+    const currentYear = student.current_year ? `Year ${student.current_year}` : (student.semester ? `Sem ${student.semester}` : '');
+
+    const avatarUrl = item.avatar_url || student.avatar_url || getAvatarUrl(founderName, rollNo || founderName);
 
     return (
       <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
         <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
           <Image
             source={{ uri: avatarUrl }}
-            style={{ width: 42, height: 42, borderRadius: 21, backgroundColor: colors.border, marginRight: 10 }}
+            style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: colors.border, marginRight: 10 }}
           />
           <View style={{ flex: 1 }}>
             <Text style={{ fontSize: 15, fontWeight: '700', color: colors.textPrimary }} numberOfLines={1}>
               {founderName}
             </Text>
-            <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 1 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 4, marginTop: 2 }}>
+              {rollNo ? (
+                <Text style={{ fontSize: 12, fontWeight: '600', color: colors.primary }}>
+                  Roll: {rollNo}
+                </Text>
+              ) : null}
+              {courseBranch ? (
+                <Text style={{ fontSize: 12, color: colors.textSecondary }}>
+                  • {courseBranch} {currentYear ? `(${currentYear})` : ''}
+                </Text>
+              ) : null}
+            </View>
+            <Text style={{ fontSize: 11, color: colors.textMuted, marginTop: 2 }}>
               Category: {item.category || 'Idea'} • Stage: {(item.stage || 'idea').toUpperCase()}
             </Text>
           </View>
@@ -168,6 +211,8 @@ const AdminVentureReviewScreen = ({ navigation }) => {
               paddingHorizontal: 8,
               paddingVertical: 4,
               borderRadius: 6,
+              alignSelf: 'flex-start',
+              marginTop: 2,
             }
           ]}>
             <Text style={[
