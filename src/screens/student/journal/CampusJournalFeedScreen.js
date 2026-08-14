@@ -12,6 +12,7 @@ import { useUser } from '../../../context/UserContext';
 import { APP_CONFIG } from '../../../config/appConfig';
 import { useTheme } from '../../../hooks/useTheme';
 import { getAvatarUrl } from '../../../utils/avatar';
+import { fixImageUrl } from '../../../utils/imageUrl';
 
 const { width } = Dimensions.get('window');
 const JournalSkeleton = () => {
@@ -105,25 +106,25 @@ const CampusJournalFeedScreen = ({ navigation }) => {
 
     if (images.length === 1) {
       return (
-        <Image source={{ uri: images[0] }} style={styles.largeImg} />
+        <Image source={{ uri: fixImageUrl(images[0]) }} style={styles.largeImg} />
       );
     }
     if (images.length === 2) {
       return (
         <View style={styles.masonryGrid}>
-          <Image source={{ uri: images[0] }} style={styles.masonryLarge} />
-          <Image source={{ uri: images[1] }} style={styles.masonrySmall} />
+          <Image source={{ uri: fixImageUrl(images[0]) }} style={styles.masonryLarge} />
+          <Image source={{ uri: fixImageUrl(images[1]) }} style={styles.masonrySmall} />
         </View>
       );
     }
     // 3 or more images: Bento style
     return (
       <View style={styles.bentoGrid}>
-        <Image source={{ uri: images[0] }} style={styles.bentoMainImg} />
+        <Image source={{ uri: fixImageUrl(images[0]) }} style={styles.bentoMainImg} />
         <View style={styles.bentoRightCol}>
-          <Image source={{ uri: images[1] }} style={styles.bentoSideImg} />
+          <Image source={{ uri: fixImageUrl(images[1]) }} style={styles.bentoSideImg} />
           {images[2] ? (
-            <Image source={{ uri: images[2] }} style={[styles.bentoSideImg, { marginTop: 4 }]} />
+            <Image source={{ uri: fixImageUrl(images[2]) }} style={[styles.bentoSideImg, { marginTop: 4 }]} />
           ) : null}
         </View>
       </View>

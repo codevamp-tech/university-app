@@ -2622,14 +2622,12 @@ export async function getEBooks(searchQuery = '', colg = '11') {
         }
 
         // If coverpage is missing/unspecified, extract Page 1 image thumbnail from PDF URL
-        if (!coverUrl && pdfUrl) {
           if (pdfUrl.includes('drive.google.com')) {
-            const match = pdfUrl.match(/\/d\/([a-zA-Z0-9_-]+)/);
+            const match = pdfUrl.match(/(?:id=|\/d\/)([a-zA-Z0-9_-]+)/);
             if (match && match[1]) {
-              coverUrl = `https://drive.google.com/thumbnail?id=${match[1]}&sz=w500`;
+              coverUrl = `https://lh3.googleusercontent.com/d/${match[1]}`;
             }
           }
-        }
 
         // Fallback to default covers if no coverpage or PDF page 1 preview
         if (!coverUrl) {

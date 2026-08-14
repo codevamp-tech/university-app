@@ -8,6 +8,8 @@ import { useTheme } from '../../../hooks/useTheme';
 import { Feather, MaterialIcons, Ionicons, FontAwesome } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 
+import { fixImageUrl } from '../../../utils/imageUrl';
+
 const { width, height } = Dimensions.get('window');
 
 const BookDetailScreen = ({ route, navigation }) => {
@@ -53,7 +55,7 @@ const BookDetailScreen = ({ route, navigation }) => {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <ScrollView bounces={false} showsVerticalScrollIndicator={false}>
         <View style={styles.imageContainer}>
-          <Image source={{ uri: book.cover }} style={styles.coverImage} />
+          <Image source={{ uri: fixImageUrl(book.cover) }} style={styles.coverImage} />
           <LinearGradient 
             colors={['transparent', 'rgba(0,0,0,0.8)']} 
             style={styles.gradient} 

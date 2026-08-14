@@ -9,6 +9,8 @@ import { useUser } from '../../../context/UserContext';
 import { isMedicalStudent } from '../../../utils/courseDisplay';
 import { getEBooks } from '../../../data/apiService';
 
+import { fixImageUrl } from '../../../utils/imageUrl';
+
 const { width } = Dimensions.get('window');
 
 export const booksData = [
@@ -166,7 +168,7 @@ export const booksData = [
     id: '16',
     title: 'Public Health Nutrition',
     author: 'Sheila Chander Vir',
-    cover: 'https://drive.google.com/thumbnail?id=12pesuDYq2ZzUBvN236pUsJIbjz6cFMbq&sz=w500',
+    cover: 'https://lh3.googleusercontent.com/d/12pesuDYq2ZzUBvN236pUsJIbjz6cFMbq',
     rating: 4.8,
     category: 'Medical',
     pages: 928,
@@ -177,7 +179,7 @@ export const booksData = [
     id: '17',
     title: 'Health Information Management',
     author: 'Merida L. Johns',
-    cover: 'https://drive.google.com/thumbnail?id=1Ra2O97B3FqqQfsekrrRwuTnW50E_przv&sz=w500',
+    cover: 'https://lh3.googleusercontent.com/d/1Ra2O97B3FqqQfsekrrRwuTnW50E_przv',
     rating: 4.7,
     category: 'Medical',
     pages: 480,
@@ -188,7 +190,7 @@ export const booksData = [
     id: '18',
     title: 'Textbook of Medical Physiology',
     author: 'Guyton & Hall',
-    cover: 'https://drive.google.com/thumbnail?id=1aGvTmFJ1T7dQTVWbqFeIpIzvX-Z1iTx1&sz=w500',
+    cover: 'https://lh3.googleusercontent.com/d/1aGvTmFJ1T7dQTVWbqFeIpIzvX-Z1iTx1',
     rating: 4.9,
     category: 'Physiology',
     pages: 1120,
@@ -199,7 +201,7 @@ export const booksData = [
     id: '19',
     title: "Ganong's Review of Medical Physiology",
     author: 'Kim E. Barrett',
-    cover: 'https://drive.google.com/thumbnail?id=1sclOYxeRCxTk07Gl-tDTrOx4_xdeHUBc&sz=w500',
+    cover: 'https://lh3.googleusercontent.com/d/1sclOYxeRCxTk07Gl-tDTrOx4_xdeHUBc',
     rating: 4.8,
     category: 'Physiology',
     pages: 750,
@@ -210,7 +212,7 @@ export const booksData = [
     id: '20',
     title: 'Essentials for Health Protection',
     author: 'Alistair Hunter',
-    cover: 'https://drive.google.com/thumbnail?id=1qxX7hyyHKQIRGxmsS2jye9tmRi599hdd&sz=w500',
+    cover: 'https://lh3.googleusercontent.com/d/1qxX7hyyHKQIRGxmsS2jye9tmRi599hdd',
     rating: 4.6,
     category: 'Medical',
     pages: 320,
@@ -221,7 +223,7 @@ export const booksData = [
     id: '21',
     title: 'Demystifying COVID-19',
     author: 'World Health Organization',
-    cover: 'https://drive.google.com/thumbnail?id=1S9DxvVIxPKXJNsfuXgs7n3DKr8esbGhl&sz=w500',
+    cover: 'https://lh3.googleusercontent.com/d/1S9DxvVIxPKXJNsfuXgs7n3DKr8esbGhl',
     rating: 4.7,
     category: 'Medical',
     pages: 290,
@@ -232,7 +234,7 @@ export const booksData = [
     id: '22',
     title: 'Critical Epidemiology',
     author: 'Jaime Breilh',
-    cover: 'https://drive.google.com/thumbnail?id=1UT9KIZcOXa6dmaHPx_QAVjiWdAKP1kAQ&sz=w500',
+    cover: 'https://lh3.googleusercontent.com/d/1UT9KIZcOXa6dmaHPx_QAVjiWdAKP1kAQ',
     rating: 4.6,
     category: 'Medical',
     pages: 340,
@@ -243,7 +245,7 @@ export const booksData = [
     id: '23',
     title: 'Anatomy & Physiology Vol. 2',
     author: 'OpenStax',
-    cover: 'https://drive.google.com/thumbnail?id=1v2DQHACYu9IdCCYXYmpKQGghPBi3WSam&sz=w500',
+    cover: 'https://lh3.googleusercontent.com/d/1v2DQHACYu9IdCCYXYmpKQGghPBi3WSam',
     rating: 4.8,
     category: 'Anatomy',
     pages: 680,
@@ -300,7 +302,7 @@ const LibraryMainScreen = ({ navigation }) => {
           navigation.navigate('BookDetail', { book: item });
         }}
       >
-        <Image source={{ uri: item.cover }} style={styles.bookCover} />
+        <Image source={{ uri: fixImageUrl(item.cover) }} style={styles.bookCover} />
         <View style={styles.bookInfo}>
           <Text style={[styles.bookTitle, { color: colors.textPrimary }]} numberOfLines={2}>{item.title}</Text>
           <Text style={[styles.bookAuthor, { color: colors.textSecondary }]}>{item.author}</Text>

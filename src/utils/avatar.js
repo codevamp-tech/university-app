@@ -30,7 +30,7 @@ export function getAvatarUrl(name, rollno) {
 
   // 1. If we have a numeric roll number, resolve the real ERP portal photo
   if (cleanRoll && /^\d+$/.test(cleanRoll)) {
-    return `https://myportal.srms.ac.in/srMSERP/Registration/StudentDocument/11/${cleanRoll}/${cleanRoll}.jpg`;
+    return `https://myportal.srms.ac.in/SRMSERP/Registration/StudentDocument/11/${cleanRoll}/${cleanRoll}.jpg`;
   }
 
   // 2. Sanitize seed name for ui-avatars initials fallback (never use digits, UUIDs, or generic 'Student')
