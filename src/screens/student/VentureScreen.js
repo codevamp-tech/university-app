@@ -10,6 +10,7 @@ import { APP_CONFIG } from '../../config/appConfig';
 import { useUser } from '../../context/UserContext';
 import { getStartups, createStartup, submitPitch, triggerCofounderMatch, uploadDocumentAPI, updateStartup, deleteStartup } from '../../data/apiService';
 import { getAvatarUrl } from '../../utils/avatar';
+import ProfileMenuModal from '../../components/common/ProfileMenuModal';
 import * as DocumentPicker from 'expo-document-picker';
 
 const { width } = Dimensions.get('window');
@@ -371,6 +372,7 @@ const VentureScreen = ({ navigation }) => {
     }
   };
 
+  const [showProfileModal, setShowProfileModal] = React.useState(false);
   const avatarUrl = user?.avatar_url || getAvatarUrl(user?.name, user?.rollno);
 
   return (
@@ -388,7 +390,7 @@ const VentureScreen = ({ navigation }) => {
         </View>
 
         <View style={styles.headerRight}>
-          <TouchableOpacity onPress={() => navigation.navigate('Profile')} activeOpacity={0.8}>
+          <TouchableOpacity onPress={() => setShowProfileModal(true)} activeOpacity={0.8}>
             <Image
               source={{ uri: avatarUrl }}
               style={[styles.avatarSmall, { borderColor: colors.primary }]}
@@ -863,6 +865,8 @@ const VentureScreen = ({ navigation }) => {
           </View>
         </View>
       </Modal>
+      {/* Profile Menu Modal */}
+      <ProfileMenuModal visible={showProfileModal} onClose={() => setShowProfileModal(false)} navigation={navigation} />
     </View>
   );
 };

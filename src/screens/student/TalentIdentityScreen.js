@@ -8,6 +8,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 import { uploadAvatarAPI, updateMyProfile, connectionStatsAPI, getStartups, getResults, getConnectionList, removeConnectionAPI } from '../../data/apiService';
 import { getAvatarUrl } from '../../utils/avatar';
+import ProfileMenuModal from '../../components/common/ProfileMenuModal';
 import { ActivityIndicator, Alert, Modal } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { calculateExactMedicalPerformance } from '../../utils/academicPerformance';
@@ -23,6 +24,7 @@ import { getDisplayCourse, isMedicalStudent } from '../../utils/courseDisplay';
 const { width } = Dimensions.get('window');
 
 const TalentIdentityScreen = ({ navigation }) => {
+  const [showProfileModal, setShowProfileModal] = React.useState(false);
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
   const { user, accessToken, updateAvatarUrl } = useUser();
@@ -259,10 +261,12 @@ const TalentIdentityScreen = ({ navigation }) => {
               style={styles.journalIcon}
             />
           </TouchableOpacity>
-          <Image
-            source={{ uri: avatarUrl }}
-            style={[styles.avatarSmall, { borderColor: colors.primary }]}
-          />
+          <TouchableOpacity onPress={() => setShowProfileModal(true)} activeOpacity={0.8}>
+            <Image
+              source={{ uri: avatarUrl }}
+              style={[styles.avatarSmall, { borderColor: colors.primary }]}
+            />
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -614,7 +618,8 @@ const TalentIdentityScreen = ({ navigation }) => {
             </TouchableOpacity>
           </View>
         </View>
-      </Modal>
+      {/* Profile Menu Modal */}
+      <ProfileMenuModal visible={showProfileModal} onClose={() => setShowProfileModal(false)} navigation={navigation} />
     </View>
   );
 };
