@@ -618,6 +618,7 @@ const TalentIdentityScreen = ({ navigation }) => {
             </TouchableOpacity>
           </View>
         </View>
+      </Modal>
       {/* Profile Menu Modal */}
       <ProfileMenuModal visible={showProfileModal} onClose={() => setShowProfileModal(false)} navigation={navigation} />
     </View>
