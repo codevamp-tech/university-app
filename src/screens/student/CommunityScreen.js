@@ -1478,15 +1478,15 @@ const CommunityScreen = ({ navigation }) => {
 
       {/* Comments Modal */}
       <Modal visible={activeCommentPostId !== null} animationType="slide" transparent={true} onRequestClose={closeComments}>
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
-          <View style={{ backgroundColor: colors.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, height: Dimensions.get('window').height * 0.7 }}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'padding'} style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
+          <View style={{ backgroundColor: colors.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: Dimensions.get('window').height * 0.85, flex: 1, marginTop: Dimensions.get('window').height * 0.15 }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, borderBottomWidth: 1, borderBottomColor: colors.border }}>
               <Text style={{ fontSize: 18, fontWeight: '800', color: colors.textPrimary }}>Comments</Text>
               <TouchableOpacity onPress={closeComments}>
                 <Ionicons name="close" size={24} color={colors.textSecondary} />
               </TouchableOpacity>
             </View>
-            <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
+            <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 20, paddingBottom: 20 }}>
               {renderCommentThread()}
             </ScrollView>
             
@@ -1498,7 +1498,7 @@ const CommunityScreen = ({ navigation }) => {
                  </TouchableOpacity>
                </View>
             )}
-            <View style={{ padding: 16, borderTopWidth: 1, borderTopColor: colors.border, flexDirection: 'row', alignItems: 'center', gap: 12, paddingBottom: insets.bottom || 16 }}>
+            <View style={{ padding: 16, borderTopWidth: 1, borderTopColor: colors.border, flexDirection: 'row', alignItems: 'center', gap: 12, paddingBottom: (insets.bottom || 16) + (Platform.OS === 'android' ? 8 : 0) }}>
               <TextInput
                 placeholder={replyingTo ? "Write a reply..." : "Leave a comment..."}
                 placeholderTextColor={colors.textSecondary}
