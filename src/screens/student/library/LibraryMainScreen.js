@@ -10,6 +10,7 @@ import { isMedicalStudent } from '../../../utils/courseDisplay';
 import { getEBooks } from '../../../data/apiService';
 
 import { fixImageUrl } from '../../../utils/imageUrl';
+import SkeletonImage from '../../../components/common/SkeletonImage';
 
 const { width } = Dimensions.get('window');
 
@@ -302,7 +303,7 @@ const LibraryMainScreen = ({ navigation }) => {
           navigation.navigate('BookDetail', { book: item });
         }}
       >
-        <Image source={{ uri: fixImageUrl(item.cover) }} style={styles.bookCover} />
+        <SkeletonImage source={{ uri: fixImageUrl(item.cover) }} style={styles.bookCover} />
         <View style={styles.bookInfo}>
           <Text style={[styles.bookTitle, { color: colors.textPrimary }]} numberOfLines={2}>{item.title}</Text>
           <Text style={[styles.bookAuthor, { color: colors.textSecondary }]}>{item.author}</Text>

@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { fixImageUrl } from '../../../utils/imageUrl';
+import SkeletonImage from '../../../components/common/SkeletonImage';
 
 const { width } = Dimensions.get('window');
 
@@ -69,7 +70,7 @@ const CampusJournalDetailScreen = ({ route, navigation }) => {
         {entry.images && entry.images.length > 0 && (
           <View style={styles.imagesContainer}>
             {entry.images.map((imgUri, idx) => (
-              <Image key={idx} source={{ uri: fixImageUrl(imgUri) }} style={styles.entryImage} />
+              <SkeletonImage key={idx} source={{ uri: fixImageUrl(imgUri) }} style={styles.entryImage} />
             ))}
           </View>
         )}

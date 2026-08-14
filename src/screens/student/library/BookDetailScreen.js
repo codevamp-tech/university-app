@@ -9,6 +9,7 @@ import { Feather, MaterialIcons, Ionicons, FontAwesome } from '@expo/vector-icon
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { fixImageUrl } from '../../../utils/imageUrl';
+import SkeletonImage from '../../../components/common/SkeletonImage';
 
 const { width, height } = Dimensions.get('window');
 
@@ -55,7 +56,7 @@ const BookDetailScreen = ({ route, navigation }) => {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <ScrollView bounces={false} showsVerticalScrollIndicator={false}>
         <View style={styles.imageContainer}>
-          <Image source={{ uri: fixImageUrl(book.cover) }} style={styles.coverImage} />
+          <SkeletonImage source={{ uri: fixImageUrl(book.cover) }} style={styles.coverImage} />
           <LinearGradient 
             colors={['transparent', 'rgba(0,0,0,0.8)']} 
             style={styles.gradient} 
