@@ -6,6 +6,7 @@ import { useUser } from '../../context/UserContext';
 import { useNotifications } from '../../context/NotificationContext';
 import { getPendingRequestsAPI, acceptRequestAPI, getAllStudents, getAlerts } from '../../data/apiService';
 import { getAvatarUrl } from '../../utils/avatar';
+import { fixImageUrl } from '../../utils/imageUrl';
 import { useTheme } from '../../hooks/useTheme';
 
 const formatNotifTime = (dateStr) => {
@@ -87,24 +88,44 @@ const NotificationsScreen = ({ navigation }) => {
   const renderRequest = ({ item }) => {
     const usernameLower = item.username ? item.username.toLowerCase() : '';
     const dirStudent = studentMap[usernameLower];
-    // Priority: API full_name → student directory name/full_name → generic fallback (never raw username/roll no)
+    // Priority: API full_name → student directory name/full_name → generic fallback
     const displayName = item.full_name || item.name
       || dirStudent?.full_name || dirStudent?.name
       || 'Student';
-    const avatarUrl = item.avatar_url || dirStudent?.avatar || getAvatarUrl(item.username);
+    const rawAvatar = item.avatar_url || dirStudent?.avatar || getAvatarUrl(item.username, displayName);
+    const avatarUrl = fixImageUrl(rawAvatar);
+
+    const studentId = item.follower_id || item.user_id || dirStudent?.id;
 
     return (
       <View style={[styles.requestCard, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
-        <Image source={{ uri: avatarUrl }} style={styles.avatar} />
-        <View style={styles.info}>
-          <Text style={[styles.username, { color: colors.textPrimary }]}>{displayName}</Text>
-          {item.username && item.username !== displayName && (
-            <Text style={{ fontSize: 12, color: colors.textMuted || '#9CA3AF', marginTop: 1 }}>
-              {item.username}
-            </Text>
-          )}
-          <Text style={[styles.message, { color: colors.textSecondary }]}>Wants to follow you</Text>
-        </View>
+        <TouchableOpacity
+          style={{ flexDirection: 'row', flex: 1, alignItems: 'center', marginRight: 8 }}
+          onPress={() => {
+            if (studentId) {
+              navigation.navigate('OtherStudentProfile', {
+                student: {
+                  id: studentId,
+                  user_id: studentId,
+                  name: displayName,
+                  avatar_url: avatarUrl,
+                  rollNo: item.username || dirStudent?.rollno,
+                }
+              });
+            }
+          }}
+        >
+          <Image source={{ uri: avatarUrl }} style={styles.avatar} />
+          <View style={styles.info}>
+            <Text style={[styles.username, { color: colors.textPrimary }]}>{displayName}</Text>
+            {item.username && item.username !== displayName && (
+              <Text style={{ fontSize: 12, color: colors.textMuted || '#9CA3AF', marginTop: 1 }}>
+                {item.username}
+              </Text>
+            )}
+            <Text style={[styles.message, { color: colors.textSecondary }]}>Wants to follow you</Text>
+          </View>
+        </TouchableOpacity>
         <View style={styles.actions}>
           <TouchableOpacity 
             style={[styles.acceptBtn, { backgroundColor: colors.primary }]}
@@ -147,26 +168,44 @@ const NotificationsScreen = ({ navigation }) => {
           {activityNotifs.length > 0 && (
             <>
               <Text style={[styles.sectionLabel, { color: colors.textSecondary, marginTop: requests.length > 0 ? 16 : 0 }]}>ACTIVITY</Text>
-              {activityNotifs.map((notif, idx) => (
-                <View key={notif.id || idx} style={[styles.requestCard, { backgroundColor: isDark ? colors.card : '#FFFFFF', opacity: notif.is_read ? 0.65 : 1 }]}>
-                  <View style={[{ width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: isDark ? 'rgba(234,88,12,0.15)' : '#FFF7ED' }]}>
-                    <Ionicons
-                      name={notif.title?.includes('comment') ? 'chatbubble-outline' : notif.title?.includes('repost') ? 'repeat-outline' : 'heart-outline'}
-                      size={22}
-                      color={colors.primary}
-                    />
-                  </View>
-                  <View style={styles.info}>
-                    <Text style={[styles.username, { color: colors.textPrimary, fontWeight: notif.is_read ? '500' : '700' }]}>{notif.title || 'Social activity'}</Text>
-                    {notif.body ? (
-                      <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 2 }} numberOfLines={2}>{notif.body}</Text>
-                    ) : null}
-                    <Text style={{ fontSize: 11, color: colors.textMuted || '#9CA3AF', marginTop: 4 }}>
-                      {formatNotifTime(notif.created_at)}
-                    </Text>
-                  </View>
-                </View>
-              ))}
+              {activityNotifs.map((notif, idx) => {
+                const isConnNotif = notif.ref_type === 'connection' || notif.title?.toLowerCase().includes('connection') || notif.title?.toLowerCase().includes('follow');
+                const targetStudentId = notif.ref_id || notif.sender_id;
+                return (
+                  <TouchableOpacity
+                    key={notif.id || idx}
+                    style={[styles.requestCard, { backgroundColor: isDark ? colors.card : '#FFFFFF', opacity: notif.is_read ? 0.65 : 1 }]}
+                    onPress={() => {
+                      if (isConnNotif && targetStudentId) {
+                        navigation.navigate('OtherStudentProfile', {
+                          student: {
+                            id: targetStudentId,
+                            user_id: targetStudentId,
+                            name: notif.title || 'Student Profile',
+                          }
+                        });
+                      }
+                    }}
+                  >
+                    <View style={[{ width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: isDark ? 'rgba(234,88,12,0.15)' : '#FFF7ED' }]}>
+                      <Ionicons
+                        name={notif.title?.includes('comment') ? 'chatbubble-outline' : notif.title?.includes('repost') ? 'repeat-outline' : 'heart-outline'}
+                        size={22}
+                        color={colors.primary}
+                      />
+                    </View>
+                    <View style={styles.info}>
+                      <Text style={[styles.username, { color: colors.textPrimary, fontWeight: notif.is_read ? '500' : '700' }]}>{notif.title || 'Social activity'}</Text>
+                      {notif.body ? (
+                        <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 2 }} numberOfLines={2}>{notif.body}</Text>
+                      ) : null}
+                      <Text style={{ fontSize: 11, color: colors.textMuted || '#9CA3AF', marginTop: 4 }}>
+                        {formatNotifTime(notif.created_at)}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
             </>
           )}
 

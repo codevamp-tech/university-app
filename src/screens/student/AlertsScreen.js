@@ -11,6 +11,8 @@ import { useTheme } from '../../hooks/useTheme';
 import { useUser } from '../../context/UserContext';
 import { useNotifications } from '../../context/NotificationContext';
 import { getAlerts, markAllAlertsRead, markAlertRead, getAdminGeneralNotifications } from '../../data/apiService';
+import { getAvatarUrl } from '../../utils/avatar';
+import { fixImageUrl } from '../../utils/imageUrl';
 
 const { width } = Dimensions.get('window');
 const TABS = ['All Updates', 'Social', 'Marketplace', 'Announcements'];
@@ -159,7 +161,18 @@ const AlertsScreen = ({ navigation }) => {
         }
         return;
       }
-      if (subType === 'follow' || subType === 'connection') {
+      if (subType === 'follow' || subType === 'connection' || raw.ref_type === 'connection') {
+        const targetStudentId = raw.ref_id || raw.sender_id || raw.from_user_id;
+        if (targetStudentId) {
+          navigation.navigate('OtherStudentProfile', {
+            student: {
+              id: targetStudentId,
+              user_id: targetStudentId,
+              name: raw.title || 'Student Profile',
+            }
+          });
+          return;
+        }
         navigation.navigate('Notifications');
         return;
       }
@@ -346,6 +359,9 @@ const AlertsScreen = ({ navigation }) => {
                 ? '#F97316'
                 : (notif.isNew ? colors.primary + '40' : colors.border);
 
+              const rawAvatar = notif.raw?.sender_avatar || notif.raw?.avatar_url || (notif.raw?.ref_id ? getAvatarUrl(notif.raw.ref_id) : null);
+              const avatarUri = (notif.type === 'social' && rawAvatar) ? fixImageUrl(rawAvatar) : null;
+
               return (
                 <TouchableOpacity key={notif.id} onPress={() => handleAlertTap(notif)}>
                   <LinearGradient
@@ -355,7 +371,11 @@ const AlertsScreen = ({ navigation }) => {
                     end={{ x: 0, y: 1 }}
                   >
                     <View style={[styles.notifIcon, { backgroundColor: isErp ? '#EA580C20' : notif.color + '15' }]}>
-                      <Ionicons name={isErp ? 'megaphone' : notif.icon} size={22} color={isErp ? '#EA580C' : notif.color} />
+                      {avatarUri ? (
+                        <Image source={{ uri: avatarUri }} style={{ width: 44, height: 44, borderRadius: 22 }} />
+                      ) : (
+                        <Ionicons name={isErp ? 'megaphone' : notif.icon} size={22} color={isErp ? '#EA580C' : notif.color} />
+                      )}
                       {notif.isNew && <View style={[styles.newDot, { borderColor: isErp ? '#FFF7ED' : colors.card }]} />}
                     </View>
                     <View style={styles.notifContent}>
