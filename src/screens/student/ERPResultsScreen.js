@@ -1269,7 +1269,7 @@ const ERPResultsScreen = ({ route, navigation }) => {
         getPaperList(accessToken, studentId)
       ]);
 
-      const detailed = rawResults.status === 'fulfilled' ? rawResults.value : [];
+      let detailed = rawResults.status === 'fulfilled' && Array.isArray(rawResults.value) ? rawResults.value : [];
       const paperList = paperListData.status === 'fulfilled' ? paperListData.value : [];
 
       const listData = paperList?.data || paperList || [];
@@ -1278,6 +1278,49 @@ const ERPResultsScreen = ({ route, navigation }) => {
         if (shouldSetLoading) setLoading(false);
         setRefreshing(false);
         return;
+      }
+
+      // Direct fallback to live SRMS ERP getmarks_lms if backend returned empty detailed results
+      const studentRoll = String(user?.rollno || user?.username || '');
+      if (studentRoll && (!detailed || detailed.length === 0)) {
+        try {
+          const directResp = await fetch(`https://myportal.srms.ac.in/SRMSERP/PGMBBS/getmarks_lms?roll_No=${studentRoll}`);
+          const directMarks = await directResp.json();
+          if (Array.isArray(directMarks) && directMarks.length > 0) {
+            const groupedMap = {};
+            directMarks.forEach(m => {
+              const code = m.subjectcode || 'UNKNOWN';
+              if (!groupedMap[code]) {
+                groupedMap[code] = {
+                  subject_code: code,
+                  subject_name: m.papername || code,
+                  yr_fk: String(m.Yr_FK || '1'),
+                  sessional: [],
+                  university: []
+                };
+              }
+              const pname = (m.papername || '').toLowerCase();
+              const obt = parseFloat(m.ObtainedMarks || 0);
+              const tot = parseFloat(m.TotalMarks || 100);
+              const entry = {
+                paper_code: m.papercode,
+                paper_name: m.papername,
+                obtained_marks: obt,
+                total_marks: tot,
+                pct: tot > 0 ? Math.round((obt / tot) * 100) : 0,
+                yr_fk: String(m.Yr_FK || '1')
+              };
+              if (pname.includes('university') && !pname.includes('pre')) {
+                groupedMap[code].university.push(entry);
+              } else {
+                groupedMap[code].sessional.push(entry);
+              }
+            });
+            detailed = Object.values(groupedMap);
+          }
+        } catch (err) {
+          console.warn('[ResultsScreen] Direct SRMS ERP live marks fallback failed:', err);
+        }
       }
 
       const getPhaseForPaper = (paperName, dbYrFk, defaultPhase) => {
