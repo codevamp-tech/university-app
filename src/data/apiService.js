@@ -2659,17 +2659,13 @@ export async function getEBooks(searchQuery = '', colg = '11') {
  */
 export async function getAdminGeneralNotifications() {
   try {
+    // Clear stale old timestamp cache key if present
+    try { await AsyncStorage.removeItem('erp_notification_timestamps'); } catch {}
+
     const response = await fetch('https://myportal.srms.ac.in/SRMSERP/Home/GetAdminGNotf');
     const data = await response.json();
 
     if (!Array.isArray(data)) return [];
-
-    // Load cached first-seen timestamps for ERP notifications
-    let erpTimestampCache = {};
-    try {
-      const cached = await AsyncStorage.getItem('erp_notification_timestamps');
-      if (cached) erpTimestampCache = JSON.parse(cached);
-    } catch {}
 
     const results = [];
     const now = new Date();
@@ -2677,40 +2673,33 @@ export async function getAdminGeneralNotifications() {
     for (let index = 0; index < data.length; index++) {
       const item = data[index];
 
-      // Build a stable content-based ID (independent of timestamp)
+      // Build a stable content-based ID
       const stableKey = `erp-${String(item.FacultyName || '').trim()}-${String(item.Chat_Desc || '').trim().slice(0, 40)}`;
 
-      // Look up cached first-seen time
-      let createdAt;
-      if (erpTimestampCache[stableKey]) {
-        createdAt = new Date(erpTimestampCache[stableKey]);
-      } else {
-        // First time we see this notification — try to parse ERP date
-        let rawDate = null;
-        try {
-          const dateStr = String(item.formatted_date || '').trim();
-          if (dateStr) {
-            const [dPart, tPart] = dateStr.split(',').map(s => s ? s.trim() : '');
-            if (dPart) {
-              for (const yr of [now.getFullYear(), now.getFullYear() - 1]) {
-                const fullStr = `${dPart} ${yr} ${tPart || ''}`.trim();
-                const parsed = Date.parse(fullStr);
-                if (!isNaN(parsed)) {
-                  const candidate = new Date(parsed);
-                  if (candidate.getTime() <= Date.now() + 5 * 60 * 1000) {
-                    rawDate = candidate;
-                    break;
-                  }
+      // Parse exact ERP date (format: "21 Jul,5:01 PM" or "03 Jun,4:59 PM")
+      let createdAt = null;
+      try {
+        const dateStr = String(item.formatted_date || '').trim();
+        if (dateStr) {
+          const [dPart, tPart] = dateStr.split(',').map(s => s ? s.trim() : '');
+          if (dPart) {
+            // Try current year first, then previous year if date is in future
+            for (const yr of [now.getFullYear(), now.getFullYear() - 1]) {
+              const fullStr = `${dPart} ${yr} ${tPart || ''}`.trim();
+              const parsed = Date.parse(fullStr);
+              if (!isNaN(parsed)) {
+                const candidate = new Date(parsed);
+                if (candidate.getTime() <= now.getTime() + 5 * 60 * 1000) {
+                  createdAt = candidate;
+                  break;
                 }
               }
             }
           }
-        } catch {}
-        // If ERP returned today's date+time (i.e., within last 5 min), treat as "now"
-        // Otherwise use the parsed date. Either way, cache it.
-        createdAt = rawDate || now;
-        erpTimestampCache[stableKey] = createdAt.toISOString();
-      }
+        }
+      } catch {}
+
+      if (!createdAt) createdAt = now;
 
       let attachmentUrl = null;
       const attachmentRaw = item.Attachment || item.attachment;
@@ -2738,11 +2727,6 @@ export async function getAdminGeneralNotifications() {
         batch: item.batch ? String(item.batch) : null,
       });
     }
-
-    // Persist updated cache
-    try {
-      await AsyncStorage.setItem('erp_notification_timestamps', JSON.stringify(erpTimestampCache));
-    } catch {}
 
     return results;
   } catch (err) {
