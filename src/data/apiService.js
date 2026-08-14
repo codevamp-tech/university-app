@@ -2657,6 +2657,48 @@ export async function getEBooks(searchQuery = '', colg = '11') {
 /**
  * Fetch general admin announcements shown to students from live ERP.
  */
+function parseErpDateStr(dateStr) {
+  if (!dateStr || typeof dateStr !== 'string') return null;
+  const parts = dateStr.trim().split(',');
+  if (parts.length < 2) return null;
+
+  const datePart = parts[0].trim(); // "03 Jun"
+  const timePart = parts[1].trim(); // "4:59 PM"
+
+  const dTokens = datePart.split(/\s+/);
+  if (dTokens.length < 2) return null;
+
+  const day = parseInt(dTokens[0], 10);
+  const monthStr = dTokens[1].slice(0, 3).toLowerCase();
+
+  const monthMap = {
+    jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5,
+    jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11
+  };
+  const month = monthMap[monthStr];
+  if (month === undefined || isNaN(day)) return null;
+
+  let hours = 0;
+  let minutes = 0;
+  const timeMatch = timePart.match(/(\d+):(\d+)\s*(AM|PM)/i);
+  if (timeMatch) {
+    hours = parseInt(timeMatch[1], 10);
+    minutes = parseInt(timeMatch[2], 10);
+    const ampm = timeMatch[3].toUpperCase();
+    if (ampm === 'PM' && hours < 12) hours += 12;
+    if (ampm === 'AM' && hours === 12) hours = 0;
+  }
+
+  const now = new Date();
+  for (const yr of [now.getFullYear(), now.getFullYear() - 1]) {
+    const candidate = new Date(yr, month, day, hours, minutes);
+    if (candidate.getTime() <= now.getTime() + 5 * 60 * 1000) {
+      return candidate;
+    }
+  }
+  return new Date(now.getFullYear() - 1, month, day, hours, minutes);
+}
+
 export async function getAdminGeneralNotifications() {
   try {
     // Clear stale old timestamp cache key if present
@@ -2677,29 +2719,7 @@ export async function getAdminGeneralNotifications() {
       const stableKey = `erp-${String(item.FacultyName || '').trim()}-${String(item.Chat_Desc || '').trim().slice(0, 40)}`;
 
       // Parse exact ERP date (format: "21 Jul,5:01 PM" or "03 Jun,4:59 PM")
-      let createdAt = null;
-      try {
-        const dateStr = String(item.formatted_date || '').trim();
-        if (dateStr) {
-          const [dPart, tPart] = dateStr.split(',').map(s => s ? s.trim() : '');
-          if (dPart) {
-            // Try current year first, then previous year if date is in future
-            for (const yr of [now.getFullYear(), now.getFullYear() - 1]) {
-              const fullStr = `${dPart} ${yr} ${tPart || ''}`.trim();
-              const parsed = Date.parse(fullStr);
-              if (!isNaN(parsed)) {
-                const candidate = new Date(parsed);
-                if (candidate.getTime() <= now.getTime() + 5 * 60 * 1000) {
-                  createdAt = candidate;
-                  break;
-                }
-              }
-            }
-          }
-        }
-      } catch {}
-
-      if (!createdAt) createdAt = now;
+      const createdAt = parseErpDateStr(item.formatted_date) || now;
 
       let attachmentUrl = null;
       const attachmentRaw = item.Attachment || item.attachment;
