@@ -25,7 +25,7 @@ export const APP_CONFIG = {
   // ─── UniCampus Social/Lifestyle Backend (Python/FastAPI) ─────────────────
   // Handles: Social feed, marketplace, fitness, mental health, journal,
   //          wallet, venture, chat, alerts, outpass, grievances
-  API_BASE_URL: process.env.EXPO_PUBLIC_API_BASE_URL || 'http://107.22.126.116:8000',
+  API_BASE_URL: process.env.EXPO_PUBLIC_API_BASE_URL || 'http://34.236.107.120:8000',
   TENANT_ID:    process.env.EXPO_PUBLIC_TENANT_ID    || 'd3b07384-d113-4956-a5db-e0e457e51c89',
   DEPT_ID:      process.env.EXPO_PUBLIC_DEPT_ID      || 'e0c46647-7ee9-4c12-97b7-580ea5d3bc7d',
 
