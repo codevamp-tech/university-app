@@ -27,6 +27,34 @@ const DEPT_ID         = APP_CONFIG.DEPT_ID;
 // User types "1234" in the login screen → app sends this internal password to the API
 const DEFAULT_PASSWORD = APP_CONFIG.DEFAULT_PASSWORD;
 
+// ─── Academic ERP Backend (NestJS — unicampus-new-erp) ────────────────────────
+// Separate backend for: Attendance, Timetable, Placement, Results, Fees,
+// Library, Internships, Notices, Lessons, HOD features.
+const ERP_BASE        = APP_CONFIG.ERP_API_BASE_URL;
+const ERP_TENANT_SLUG = APP_CONFIG.ERP_TENANT_SLUG;
+
+// Helper: make an authenticated request to the ERP NestJS backend.
+// Attaches Bearer token + X-Tenant-Id header automatically.
+async function erpCall(path, accessToken, options = {}) {
+  const url = `${ERP_BASE}${path}`;
+  try {
+    const response = await fetch(url, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+        'X-Tenant-Id': ERP_TENANT_SLUG,
+        ...(options.headers || {}),
+      },
+    });
+    const json = await response.json().catch(() => null);
+    return { ok: response.ok, status: response.status, json };
+  } catch (err) {
+    console.warn(`[erpCall] ❌ ${path}:`, err.message);
+    return { ok: false, status: 0, json: null };
+  }
+}
+
 
 let onUnauthorizedCallback = null;
 
@@ -3183,26 +3211,24 @@ export async function getPGStudentListForHOD(payload) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// NON-MEDICAL ERP APIs
-// These endpoints are served by the unicampus backend (non-medical-erp branch).
+// NON-MEDICAL ERP APIs  →  unicampus-new-erp NestJS backend (ERP_BASE)
+// Social/lifestyle features (social, fitness, journal, wallet etc.) continue
+// to use the unicampus Python/FastAPI backend (BASE) above this section.
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
  * Fetch live timetable for non-medical students.
- * GET /api/v1/academic-ops/timetable?semester=X&department_id=Y
- * Returns an array of timetable slots grouped by the caller.
+ * GET /timetable  (unicampus-new-erp NestJS)
+ * Returns an array of timetable slots.
  */
 export async function getTimetable(accessToken, { semester, department_id } = {}) {
   try {
     const params = new URLSearchParams();
     if (semester) params.append('semester', String(semester));
     if (department_id) params.append('department_id', department_id);
-    const url = `${BASE}/api/v1/academic-ops/timetable${params.toString() ? '?' + params.toString() : ''}`;
-    const response = await fetch(url, {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    });
-    const json = await response.json();
-    return json.success ? (json.data || []) : [];
+    const qs = params.toString() ? '?' + params.toString() : '';
+    const result = await erpCall(`/timetable${qs}`, accessToken);
+    return result.ok && result.json?.data ? result.json.data : [];
   } catch (err) {
     console.warn('[apiService] getTimetable failed:', err);
     return [];
@@ -3211,16 +3237,13 @@ export async function getTimetable(accessToken, { semester, department_id } = {}
 
 /**
  * Fetch active placement drives.
- * GET /api/v1/placement/drives?status=active
+ * GET /placement-drive  (unicampus-new-erp NestJS)
  */
 export async function getPlacementDrives(accessToken, status = null) {
   try {
-    const params = status ? `?status=${status}` : '';
-    const response = await fetch(`${BASE}/api/v1/placement/drives${params}`, {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    });
-    const json = await response.json();
-    return json.success ? (json.data || []) : [];
+    const qs = status ? `?status=${status}` : '';
+    const result = await erpCall(`/placement-drive${qs}`, accessToken);
+    return result.ok && result.json?.data ? result.json.data : [];
   } catch (err) {
     console.warn('[apiService] getPlacementDrives failed:', err);
     return [];
@@ -3229,20 +3252,15 @@ export async function getPlacementDrives(accessToken, status = null) {
 
 /**
  * Register student for a placement drive.
- * POST /api/v1/placement/registrations
+ * POST /placement-drive/register  (unicampus-new-erp NestJS)
  */
 export async function registerForDrive(accessToken, { drive_id, cgpa }) {
   try {
-    const response = await fetch(`${BASE}/api/v1/placement/registrations`, {
+    const result = await erpCall('/placement-drive/register', accessToken, {
       method: 'POST',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-      },
       body: JSON.stringify({ drive_id, cgpa }),
     });
-    const json = await response.json();
-    return json;
+    return result.json || { success: false };
   } catch (err) {
     console.warn('[apiService] registerForDrive failed:', err);
     return { success: false, error: err.message };
@@ -3251,15 +3269,12 @@ export async function registerForDrive(accessToken, { drive_id, cgpa }) {
 
 /**
  * Fetch current student's placement registrations.
- * GET /api/v1/placement/registrations
+ * GET /placement-drive/my-registrations  (unicampus-new-erp NestJS)
  */
 export async function getMyPlacementRegistrations(accessToken) {
   try {
-    const response = await fetch(`${BASE}/api/v1/placement/registrations`, {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    });
-    const json = await response.json();
-    return json.success ? (json.data || []) : [];
+    const result = await erpCall('/placement-drive/my-registrations', accessToken);
+    return result.ok && result.json?.data ? result.json.data : [];
   } catch (err) {
     console.warn('[apiService] getMyPlacementRegistrations failed:', err);
     return [];
@@ -3268,15 +3283,12 @@ export async function getMyPlacementRegistrations(accessToken) {
 
 /**
  * Fetch placement offers for the current student.
- * GET /api/v1/placement/offers
+ * GET /placement-drive/offers  (unicampus-new-erp NestJS)
  */
 export async function getPlacementOffers(accessToken) {
   try {
-    const response = await fetch(`${BASE}/api/v1/placement/offers`, {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    });
-    const json = await response.json();
-    return json.success ? (json.data || []) : [];
+    const result = await erpCall('/placement-drive/offers', accessToken);
+    return result.ok && result.json?.data ? result.json.data : [];
   } catch (err) {
     console.warn('[apiService] getPlacementOffers failed:', err);
     return [];
@@ -3285,16 +3297,13 @@ export async function getPlacementOffers(accessToken) {
 
 /**
  * Fetch HOD department summary stats.
- * GET /api/v1/faculty-hr/hod-summary?department_id=X
+ * GET /users/hod-summary  (unicampus-new-erp NestJS)
  */
 export async function getHODSummary(accessToken, department_id = null) {
   try {
-    const params = department_id ? `?department_id=${department_id}` : '';
-    const response = await fetch(`${BASE}/api/v1/faculty-hr/hod-summary${params}`, {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    });
-    const json = await response.json();
-    return json.success ? (json.data || {}) : {};
+    const qs = department_id ? `?department_id=${department_id}` : '';
+    const result = await erpCall(`/users/hod-summary${qs}`, accessToken);
+    return result.ok && result.json?.data ? result.json.data : {};
   } catch (err) {
     console.warn('[apiService] getHODSummary failed:', err);
     return {};
@@ -3303,21 +3312,15 @@ export async function getHODSummary(accessToken, department_id = null) {
 
 /**
  * HOD approves or rejects a faculty leave request.
- * PATCH /api/v1/faculty-hr/leave/{leaveId}/action
- * action: "approved" | "rejected"
+ * PATCH /users/leave/{leaveId}/action  (unicampus-new-erp NestJS)
  */
 export async function approveLeave(accessToken, leaveId, action, remarks = '') {
   try {
-    const response = await fetch(`${BASE}/api/v1/faculty-hr/leave/${leaveId}/action`, {
+    const result = await erpCall(`/users/leave/${leaveId}/action`, accessToken, {
       method: 'PATCH',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-      },
       body: JSON.stringify({ action, remarks }),
     });
-    const json = await response.json();
-    return json;
+    return result.json || { success: false };
   } catch (err) {
     console.warn('[apiService] approveLeave failed:', err);
     return { success: false, error: err.message };
@@ -3326,20 +3329,15 @@ export async function approveLeave(accessToken, leaveId, action, remarks = '') {
 
 /**
  * HOD submits a rating for a faculty appraisal.
- * PATCH /api/v1/faculty-hr/appraisal/{appraisalId}/hod-rating
+ * PATCH /users/appraisal/{appraisalId}/hod-rating  (unicampus-new-erp NestJS)
  */
 export async function submitHODAppraisalRating(accessToken, appraisalId, { rating, comments }) {
   try {
-    const response = await fetch(`${BASE}/api/v1/faculty-hr/appraisal/${appraisalId}/hod-rating`, {
+    const result = await erpCall(`/users/appraisal/${appraisalId}/hod-rating`, accessToken, {
       method: 'PATCH',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-      },
       body: JSON.stringify({ rating, comments }),
     });
-    const json = await response.json();
-    return json;
+    return result.json || { success: false };
   } catch (err) {
     console.warn('[apiService] submitHODAppraisalRating failed:', err);
     return { success: false, error: err.message };
@@ -3347,24 +3345,23 @@ export async function submitHODAppraisalRating(accessToken, appraisalId, { ratin
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// NON-MEDICAL ERP — Attendance & Results (unicampus backend only, no SRMS ERP)
+// NON-MEDICAL ERP — Attendance & Results  →  unicampus-new-erp NestJS (ERP_BASE)
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
  * Get full attendance for a non-medical student.
- * GET /api/v1/attendance/student/{studentId}?semester=X
+ * GET /attendance/student/{studentId}  (unicampus-new-erp NestJS)
  *
- * Returns { student_id, subjects: [{subject_code, subject_name, total_lectures,
+ * Returns { subjects: [{subject_code, subject_name, total_lectures,
  *   attended, percentage}], overall: {total, attended, percentage} }
  */
 export async function getNonMedicalAttendance(accessToken, studentId, semester = null) {
   try {
-    const params = semester ? `?semester=${semester}` : '';
-    const response = await fetch(`${BASE}/api/v1/attendance/student/${studentId}${params}`, {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    });
-    const json = await response.json();
-    return json.success ? (json.data || { subjects: [], overall: {} }) : { subjects: [], overall: {} };
+    const qs = semester ? `?semester=${semester}` : '';
+    const result = await erpCall(`/attendance/student/${studentId}${qs}`, accessToken);
+    return result.ok && result.json?.data
+      ? result.json.data
+      : { subjects: [], overall: {} };
   } catch (err) {
     console.warn('[apiService] getNonMedicalAttendance failed:', err);
     return { subjects: [], overall: {} };
@@ -3373,7 +3370,7 @@ export async function getNonMedicalAttendance(accessToken, studentId, semester =
 
 /**
  * Get UT (Unit Test) marks for a non-medical student.
- * GET /api/v1/examination/ut/marks?student_id=X&semester=Y
+ * GET /examination/ut-marks  (unicampus-new-erp NestJS)
  *
  * Returns array of {subject_code, subject_name, semester, ut_number,
  *   obtained_marks, max_marks, percentage}
@@ -3382,11 +3379,8 @@ export async function getNonMedicalUTMarks(accessToken, studentId, semester = nu
   try {
     const params = new URLSearchParams({ student_id: studentId });
     if (semester) params.append('semester', String(semester));
-    const response = await fetch(`${BASE}/api/v1/examination/ut/marks?${params.toString()}`, {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    });
-    const json = await response.json();
-    return json.success ? (json.data || []) : [];
+    const result = await erpCall(`/examination/ut-marks?${params.toString()}`, accessToken);
+    return result.ok && result.json?.data ? result.json.data : [];
   } catch (err) {
     console.warn('[apiService] getNonMedicalUTMarks failed:', err);
     return [];
@@ -3395,19 +3389,18 @@ export async function getNonMedicalUTMarks(accessToken, studentId, semester = nu
 
 /**
  * Get SGPA/CGPA semester results for a non-medical student.
- * GET /api/v1/examination/results/sgpa?student_id=X
+ * GET /examination/results  (unicampus-new-erp NestJS)
  *
- * Returns array of {semester, academic_year, sgpa, cgpa, total_credits,
- *   earned_credits, backlogs_count, status, is_published}
+ * Returns array of {semester, sgpa, cgpa, total_credits,
+ *   earned_credits, backlogs_count, status}
  */
 export async function getNonMedicalSGPA(accessToken, studentId) {
   try {
-    const response = await fetch(
-      `${BASE}/api/v1/examination/results/sgpa?student_id=${studentId}`,
-      { headers: { Authorization: `Bearer ${accessToken}` } }
+    const result = await erpCall(
+      `/examination/results?student_id=${studentId}`,
+      accessToken
     );
-    const json = await response.json();
-    return json.success ? (json.data || []) : [];
+    return result.ok && result.json?.data ? result.json.data : [];
   } catch (err) {
     console.warn('[apiService] getNonMedicalSGPA failed:', err);
     return [];
