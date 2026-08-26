@@ -109,20 +109,20 @@ function unwrap(result, fallback = null) {
 // ─── Auth ─────────────────────────────────────────────────────────────────────
 
 /**
- * Login with roll number.
- * Supports standard passwords, PIN 1234, roll number as PIN, or auto-registration.
+ * Login with roll number and password.
+ * Strictly validates credentials against the authentication service.
  * Returns { access_token, refresh_token } or null on failure.
  */
 export async function loginWithRollNumber(rollNumber, password) {
-  const username = rollNumber.trim();
-  const rawPassword = password ? password.trim() : '';
-  // Map common user inputs like '1234', roll number, or blank to DEFAULT_PASSWORD ('1234@Uni')
-  const passwordToSend = (rawPassword === '1234' || rawPassword === username || !rawPassword)
-    ? DEFAULT_PASSWORD
-    : rawPassword;
+  const username = rollNumber ? rollNumber.trim() : '';
+  const passwordToSend = password ? password.trim() : '';
 
-  // 1. Try login with mapped password
-  let loginRes = await apiCall('/api/v1/auth/login', {
+  if (!username || !passwordToSend) {
+    return null;
+  }
+
+  // 1. Authenticate against UniCampus Auth Service
+  const loginRes = await apiCall('/api/v1/auth/login', {
     method: 'POST',
     body: JSON.stringify({
       username,
@@ -135,62 +135,25 @@ export async function loginWithRollNumber(rollNumber, password) {
     return loginRes.json.data; // { access_token, refresh_token, ... }
   }
 
-  // 1b. If user typed custom key that differed from DEFAULT_PASSWORD, try DEFAULT_PASSWORD as fallback
-  if (passwordToSend !== DEFAULT_PASSWORD) {
-    const fallbackLogin = await apiCall('/api/v1/auth/login', {
+  // 2. Fallback check against ERP Auth Service
+  try {
+    const erpRes = await erpCall('/auth/login', '', {
       method: 'POST',
       body: JSON.stringify({
         username,
-        password: DEFAULT_PASSWORD,
-        tenant_id: TENANT_ID,
+        password: passwordToSend,
+        tenantSlug: ERP_TENANT_SLUG,
       }),
     });
-    if (fallbackLogin.ok && fallbackLogin.json?.success) {
-      return fallbackLogin.json.data;
+    if (erpRes.ok && (erpRes.json?.accessToken || erpRes.json?.data?.accessToken || erpRes.json?.data?.access_token)) {
+      const data = erpRes.json?.data || erpRes.json;
+      return {
+        access_token: data.accessToken || data.access_token,
+        refresh_token: data.refreshToken || data.refresh_token,
+        user: data.user,
+      };
     }
-  }
-
-  // 1c. Also try raw password directly if passwordToSend was mapped
-  if (rawPassword && passwordToSend !== rawPassword) {
-    const rawLogin = await apiCall('/api/v1/auth/login', {
-      method: 'POST',
-      body: JSON.stringify({
-        username,
-        password: rawPassword,
-        tenant_id: TENANT_ID,
-      }),
-    });
-    if (rawLogin.ok && rawLogin.json?.success) {
-      return rawLogin.json.data;
-    }
-  }
-
-  // 2. If login failed, auto-register student and re-login
-  const registerRes = await apiCall('/api/v1/auth/register', {
-    method: 'POST',
-    body: JSON.stringify({
-      username,
-      password: DEFAULT_PASSWORD,
-      tenant_id: TENANT_ID,
-      rollno: username,
-      department_id: DEPT_ID,
-      batch_year: new Date().getFullYear(),
-    }),
-  });
-
-  if (registerRes.ok && registerRes.json?.success) {
-    const retryRes = await apiCall('/api/v1/auth/login', {
-      method: 'POST',
-      body: JSON.stringify({
-        username,
-        password: DEFAULT_PASSWORD,
-        tenant_id: TENANT_ID,
-      }),
-    });
-    if (retryRes.ok && retryRes.json?.success) {
-      return retryRes.json.data;
-    }
-  }
+  } catch (_) {}
 
   return null;
 }
