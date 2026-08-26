@@ -109,16 +109,20 @@ function unwrap(result, fallback = null) {
 // ─── Auth ─────────────────────────────────────────────────────────────────────
 
 /**
- * Login with roll number. Uses roll_number as both username and password.
- * If user doesn't exist (404), auto-registers them first.
+ * Login with roll number.
+ * Supports standard passwords, PIN 1234, roll number as PIN, or auto-registration.
  * Returns { access_token, refresh_token } or null on failure.
  */
 export async function loginWithRollNumber(rollNumber, password) {
   const username = rollNumber.trim();
-  const passwordToSend = password || DEFAULT_PASSWORD;
+  const rawPassword = password ? password.trim() : '';
+  // Map common user inputs like '1234', roll number, or blank to DEFAULT_PASSWORD ('1234@Uni')
+  const passwordToSend = (rawPassword === '1234' || rawPassword === username || !rawPassword)
+    ? DEFAULT_PASSWORD
+    : rawPassword;
 
-  // 1. Try login
-  const loginRes = await apiCall('/api/v1/auth/login', {
+  // 1. Try login with mapped password
+  let loginRes = await apiCall('/api/v1/auth/login', {
     method: 'POST',
     body: JSON.stringify({
       username,
@@ -131,12 +135,42 @@ export async function loginWithRollNumber(rollNumber, password) {
     return loginRes.json.data; // { access_token, refresh_token, ... }
   }
 
-  // 2. If login failed, try auto-register then login
+  // 1b. If user typed custom key that differed from DEFAULT_PASSWORD, try DEFAULT_PASSWORD as fallback
+  if (passwordToSend !== DEFAULT_PASSWORD) {
+    const fallbackLogin = await apiCall('/api/v1/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({
+        username,
+        password: DEFAULT_PASSWORD,
+        tenant_id: TENANT_ID,
+      }),
+    });
+    if (fallbackLogin.ok && fallbackLogin.json?.success) {
+      return fallbackLogin.json.data;
+    }
+  }
+
+  // 1c. Also try raw password directly if passwordToSend was mapped
+  if (rawPassword && passwordToSend !== rawPassword) {
+    const rawLogin = await apiCall('/api/v1/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({
+        username,
+        password: rawPassword,
+        tenant_id: TENANT_ID,
+      }),
+    });
+    if (rawLogin.ok && rawLogin.json?.success) {
+      return rawLogin.json.data;
+    }
+  }
+
+  // 2. If login failed, auto-register student and re-login
   const registerRes = await apiCall('/api/v1/auth/register', {
     method: 'POST',
     body: JSON.stringify({
       username,
-      password: passwordToSend,
+      password: DEFAULT_PASSWORD,
       tenant_id: TENANT_ID,
       rollno: username,
       department_id: DEPT_ID,
@@ -145,12 +179,11 @@ export async function loginWithRollNumber(rollNumber, password) {
   });
 
   if (registerRes.ok && registerRes.json?.success) {
-    // Re-login after successful registration
     const retryRes = await apiCall('/api/v1/auth/login', {
       method: 'POST',
       body: JSON.stringify({
         username,
-        password: passwordToSend,
+        password: DEFAULT_PASSWORD,
         tenant_id: TENANT_ID,
       }),
     });
