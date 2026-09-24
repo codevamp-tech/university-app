@@ -9,7 +9,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useUser } from '../../context/UserContext';
 import { useNotifications } from '../../context/NotificationContext';
-import { getAlerts, markAllAlertsRead, markAlertRead, getAdminGeneralNotifications } from '../../data/apiService';
+import { getAlerts, markAllAlertsRead, markAlertRead, getAdminGeneralNotifications, getErpNotices } from '../../data/apiService';
 import { Colors } from '../../constants/colors';
 
 const { width } = Dimensions.get('window');
@@ -30,24 +30,36 @@ const TeacherAlertsScreen = ({ navigation }) => {
     if (!accessToken) { setLoading(false); setRefreshing(false); return; }
     if (!isRefresh) setLoading(true);
     try {
-      // 1. Fetch backend alerts
-      const res = await getAlerts(accessToken);
+      // 1. Fetch backend alerts & ERP notices in parallel
+      const [res, erpNotices, erpAnnouncements] = await Promise.all([
+        getAlerts(accessToken).catch(() => ({ data: [] })),
+        getErpNotices(accessToken).catch(() => []),
+        getAdminGeneralNotifications().catch(() => []),
+      ]);
       const backendAlerts = res?.data || [];
 
-      // 2. Fetch ERP general notifications (same source as student AlertsScreen)
-      const erpAnnouncements = await getAdminGeneralNotifications();
       let readErpIds = [];
       try {
         readErpIds = JSON.parse(await AsyncStorage.getItem('read_erp_announcements_teacher') || '[]');
       } catch {}
 
-      const mappedErp = erpAnnouncements.map(a => ({
+      const mappedErp = (erpAnnouncements || []).map(a => ({
         ...a,
         is_read: readErpIds.includes(a.id),
       }));
 
-      // 3. Combine and sort by date descending
-      const combined = [...backendAlerts, ...mappedErp].sort((a, b) => {
+      const mappedNotices = (erpNotices || []).map(n => ({
+        id: `erp_notice_${n.id}`,
+        title: n.title,
+        message: n.content || n.description || '',
+        category: 'announcement',
+        type: 'announcement',
+        created_at: n.created_at || n.publish_date || new Date().toISOString(),
+        is_read: readErpIds.includes(`erp_notice_${n.id}`),
+      }));
+
+      // Combine and sort by date descending
+      const combined = [...backendAlerts, ...mappedNotices, ...mappedErp].sort((a, b) => {
         const dateA = new Date(a.created_at || 0);
         const dateB = new Date(b.created_at || 0);
         return dateB - dateA;

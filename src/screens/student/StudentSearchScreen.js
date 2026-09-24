@@ -25,7 +25,12 @@ const StudentSearchScreen = ({ navigation }) => {
       setLoading(true);
       try {
         const results = await searchUsersAPI(accessToken, searchQuery, filters);
-        setUsers(results);
+        const nonMedResults = (results || []).filter(u => {
+          const course = String(u.course || '').toUpperCase();
+          const branch = String(u.branch || '').toUpperCase();
+          return !course.includes('MBBS') && !course.includes('MEDIC') && !branch.includes('MBBS') && branch !== 'MEDIC';
+        });
+        setUsers(nonMedResults);
       } catch(e) {
         console.warn("Search error:", e);
       } finally {
@@ -40,12 +45,12 @@ const StudentSearchScreen = ({ navigation }) => {
     try {
       const res = await followUserAPI(accessToken, userId);
       if (res) {
-        Alert.alert("Success", "Follow request sent!");
+        Alert.alert("Success", "Connection request sent!");
         setUsers(prev => prev.map(u => u.id === userId ? { ...u, connection_status: 'Pending' } : u));
       }
     } catch (error) {
-      console.warn("Follow error:", error);
-      Alert.alert("Error", "Failed to send follow request.");
+      console.warn("Connect error:", error);
+      Alert.alert("Error", "Failed to send connection request.");
     }
   };
 
@@ -80,36 +85,17 @@ const StudentSearchScreen = ({ navigation }) => {
       <View style={styles.studentInfo}>
         <Text style={[styles.studentName, { color: colors.textPrimary, fontSize: 16 }]}>{item.name || item.username}</Text>
         {(() => {
-          const isMed = String(item.course || '').toUpperCase().includes('MBBS') || 
-                        String(item.branch || '').toUpperCase().includes('MBBS');
-          
-          let formattedYear = '';
-          if (item.year) {
-            const y = parseInt(item.year);
-            if (y === 1) formattedYear = '1st Prof';
-            else if (y === 2) formattedYear = '2nd Prof';
-            else if (y === 3) formattedYear = '3rd Prof';
-            else if (y === 4) formattedYear = '4th Prof';
-            else formattedYear = `${item.year} Prof`;
-          }
-
-          if (isMed) {
-            return (
-              <>
-                <Text style={[styles.studentCourse, { color: colors.textSecondary, fontSize: 13, marginTop: 2 }]}>
-                  {formattedYear ? `${formattedYear} • ` : ''}MBBS
-                </Text>
-                <Text style={{ color: colors.textMuted, fontSize: 12, marginTop: 2 }}>
-                  {item.followers || 0} followers
-                </Text>
-              </>
-            );
-          }
+          let branchDisplay = item.branch || item.course || 'Student';
+          if (branchDisplay === 'CS' || branchDisplay === 'CSE') branchDisplay = 'Computer Science';
+          else if (branchDisplay === 'EE') branchDisplay = 'Electrical Engineering';
+          else if (branchDisplay === 'MANAG') branchDisplay = 'Management';
+          else if (branchDisplay === 'COMM') branchDisplay = 'Commerce';
+          else if (branchDisplay === 'ENGIN') branchDisplay = 'Engineering';
 
           return (
             <>
               <Text style={[styles.studentCourse, { color: colors.textSecondary, fontSize: 13, marginTop: 2 }]}>
-                {item.course || 'Student'} {item.branch ? `• ${item.branch}` : ''}
+                {item.course || branchDisplay} {item.branch && item.course && item.branch !== item.course ? `• ${branchDisplay}` : ''}
               </Text>
               <Text style={{ color: colors.textMuted, fontSize: 12, marginTop: 2 }}>
                 {item.year ? `Year ${item.year} ` : ''}• {item.followers || 0} followers
@@ -220,7 +206,7 @@ const StudentSearchScreen = ({ navigation }) => {
 
               <Text style={[styles.filterSectionTitle, { color: colors.textSecondary, marginTop: 16 }]}>Branch</Text>
               <View style={styles.filterOptions}>
-                {['All', 'CSE', 'EE', 'MBBS', 'Engineering', 'Management'].map(b => (
+                {['All', 'CSE', 'EE', 'Engineering', 'Management', 'Commerce'].map(b => (
                   <TouchableOpacity key={b} onPress={() => setFilters(f => ({...f, branch: b}))} style={[styles.filterOption, filters.branch === b && { backgroundColor: colors.primary, borderColor: colors.primary }]}>
                     <Text style={[styles.filterOptionText, { color: filters.branch === b ? '#FFF' : colors.textPrimary }]}>{b}</Text>
                   </TouchableOpacity>

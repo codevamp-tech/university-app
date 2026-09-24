@@ -14,7 +14,7 @@ import {
 import { Feather } from '@expo/vector-icons';
 import { useTheme } from '../../hooks/useTheme';
 import { useUser } from '../../context/UserContext';
-import { createBroadcastAPI, getBroadcastStatsAPI, getDepartmentsAPI } from '../../data/apiService';
+import { createBroadcastAPI, getBroadcastStatsAPI, getDepartmentsAPI, createErpNotice } from '../../data/apiService';
 
 const BATCHES = [
   { id: 2026, label: '1st Year (2026)' },
@@ -105,8 +105,19 @@ const AdminBroadcastCenterScreen = ({ navigation }) => {
         target_batch_years: recipientRole === 'student' && (targetType === 'batch' || targetType === 'custom') ? selectedBatches : null,
       };
 
-      const res = await createBroadcastAPI(accessToken, payload);
-      if (res) {
+      // Broadcast to Python Push Server and NestJS ERP Notices in parallel
+      const [res] = await Promise.allSettled([
+        createBroadcastAPI(accessToken, payload),
+        createErpNotice(accessToken, {
+          title: title.trim(),
+          content: message.trim(),
+          target_type: payload.target_type,
+          target_ids: payload.target_department_ids || payload.target_batch_years || [],
+          is_urgent: true,
+        }).catch(() => null),
+      ]);
+
+      if (res.status === 'fulfilled' && res.value) {
         Alert.alert('Success', 'Push notifications sent successfully.');
         setTitle('');
         setMessage('');

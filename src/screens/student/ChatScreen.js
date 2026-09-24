@@ -13,6 +13,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import { APP_CONFIG } from '../../config/appConfig';
 import { useUser } from '../../context/UserContext';
 import { useChatSocketContext } from '../../context/ChatSocketContext';
+import { isMedicalStudent } from '../../utils/courseDisplay';
 import {
   getChatChannelsAPI,
   getChannelHistoryAPI,
@@ -21,6 +22,11 @@ import {
   sendPortalChatMessage,
   uploadAvatarAPI,
   uploadDocumentAPI,
+  getErpChatGroups,
+  getErpChatMessages,
+  sendErpChatMessage,
+  markErpChatGroupRead,
+  getErpChatUnreadCount,
 } from '../../data/apiService';
 import { getAvatarUrl } from '../../utils/avatar';
 import { useTheme } from '../../hooks/useTheme';
@@ -29,7 +35,88 @@ const { width } = Dimensions.get('window');
 const DRAWER_WIDTH = width * 0.78;
 
 export function getPortalSubjects(user) {
-  // Returns all medical subjects across all MBBS phases so students can view group chats for any subject
+  const course = (user?.course || '').toUpperCase();
+  const branch = (user?.branch || '').toUpperCase();
+
+  // 1. MCA Subjects
+  if (course.includes('MCA')) {
+    return [
+      { id: 'MCA-DBMS', name: 'Database Management Systems', subcode: 'DBMS', department: 'MCA', facultyName: 'MCA Faculty' },
+      { id: 'MCA-OS', name: 'Operating Systems', subcode: 'OS', department: 'MCA', facultyName: 'MCA Faculty' },
+      { id: 'MCA-CN', name: 'Computer Networks', subcode: 'CN', department: 'MCA', facultyName: 'MCA Faculty' },
+      { id: 'MCA-SE', name: 'Software Engineering', subcode: 'SE', department: 'MCA', facultyName: 'MCA Faculty' },
+      { id: 'MCA-JAVA', name: 'Java & Web Technologies', subcode: 'JAVA', department: 'MCA', facultyName: 'MCA Faculty' },
+      { id: 'MCA-DSA', name: 'Data Structures & Algorithms', subcode: 'DSA', department: 'MCA', facultyName: 'MCA Faculty' },
+      { id: 'MCA-AI', name: 'Artificial Intelligence & ML', subcode: 'AI', department: 'MCA', facultyName: 'MCA Faculty' },
+      { id: 'MCA-CLOUD', name: 'Cloud Computing & DevOps', subcode: 'CLOUD', department: 'MCA', facultyName: 'MCA Faculty' },
+    ];
+  }
+
+  // 2. MBA Subjects
+  if (course.includes('MBA')) {
+    return [
+      { id: 'MBA-FM', name: 'Financial Management', subcode: 'FM', department: 'MBA', facultyName: 'MBA Faculty' },
+      { id: 'MBA-MM', name: 'Marketing Management', subcode: 'MM', department: 'MBA', facultyName: 'MBA Faculty' },
+      { id: 'MBA-HRM', name: 'Human Resource Management', subcode: 'HRM', department: 'MBA', facultyName: 'MBA Faculty' },
+      { id: 'MBA-OM', name: 'Operations Management', subcode: 'OM', department: 'MBA', facultyName: 'MBA Faculty' },
+      { id: 'MBA-BA', name: 'Business Analytics', subcode: 'BA', department: 'MBA', facultyName: 'MBA Faculty' },
+      { id: 'MBA-SM', name: 'Strategic Management', subcode: 'SM', department: 'MBA', facultyName: 'MBA Faculty' },
+      { id: 'MBA-OB', name: 'Organizational Behaviour', subcode: 'OB', department: 'MBA', facultyName: 'MBA Faculty' },
+    ];
+  }
+
+  // 3. BCA Subjects
+  if (course.includes('BCA')) {
+    return [
+      { id: 'BCA-PROG', name: 'Programming in C/C++', subcode: 'PROG', department: 'BCA', facultyName: 'BCA Faculty' },
+      { id: 'BCA-DSA', name: 'Data Structures', subcode: 'DSA', department: 'BCA', facultyName: 'BCA Faculty' },
+      { id: 'BCA-DBMS', name: 'Database Systems', subcode: 'DBMS', department: 'BCA', facultyName: 'BCA Faculty' },
+      { id: 'BCA-WEB', name: 'Web Technologies', subcode: 'WEB', department: 'BCA', facultyName: 'BCA Faculty' },
+      { id: 'BCA-PY', name: 'Python Programming', subcode: 'PY', department: 'BCA', facultyName: 'BCA Faculty' },
+      { id: 'BCA-MATH', name: 'Discrete Mathematics', subcode: 'MATH', department: 'BCA', facultyName: 'BCA Faculty' },
+      { id: 'BCA-SE', name: 'Software Engineering', subcode: 'SE', department: 'BCA', facultyName: 'BCA Faculty' },
+    ];
+  }
+
+  // 4. B.Pharm Subjects
+  if (course.includes('PHARM')) {
+    return [
+      { id: 'PHARM-PC', name: 'Pharmaceutical Chemistry', subcode: 'PC', department: 'PHARMACY', facultyName: 'Pharmacy Faculty' },
+      { id: 'PHARM-PT', name: 'Pharmaceutics', subcode: 'PT', department: 'PHARMACY', facultyName: 'Pharmacy Faculty' },
+      { id: 'PHARM-PCOL', name: 'Pharmacology', subcode: 'PCOL', department: 'PHARMACY', facultyName: 'Pharmacy Faculty' },
+      { id: 'PHARM-PCOG', name: 'Pharmacognosy', subcode: 'PCOG', department: 'PHARMACY', facultyName: 'Pharmacy Faculty' },
+      { id: 'PHARM-PA', name: 'Pharmaceutical Analysis', subcode: 'PA', department: 'PHARMACY', facultyName: 'Pharmacy Faculty' },
+      { id: 'PHARM-BT', name: 'Biopharmaceutics', subcode: 'BT', department: 'PHARMACY', facultyName: 'Pharmacy Faculty' },
+    ];
+  }
+
+  // 5. B.Com / BBA Subjects
+  if (course.includes('B.COM') || course.includes('BCOM') || course.includes('BBA') || course.includes('COMMERCE')) {
+    return [
+      { id: 'COM-FA', name: 'Financial Accounting', subcode: 'FA', department: 'COMMERCE', facultyName: 'Commerce Faculty' },
+      { id: 'COM-CL', name: 'Corporate Law', subcode: 'CL', department: 'COMMERCE', facultyName: 'Commerce Faculty' },
+      { id: 'COM-TAX', name: 'Direct & Indirect Taxation', subcode: 'TAX', department: 'COMMERCE', facultyName: 'Commerce Faculty' },
+      { id: 'COM-ECO', name: 'Business Economics', subcode: 'ECO', department: 'COMMERCE', facultyName: 'Commerce Faculty' },
+      { id: 'COM-AUD', name: 'Auditing & Governance', subcode: 'AUD', department: 'COMMERCE', facultyName: 'Commerce Faculty' },
+      { id: 'COM-BS', name: 'Business Statistics', subcode: 'BS', department: 'COMMERCE', facultyName: 'Commerce Faculty' },
+    ];
+  }
+
+  // 6. B.Tech (Engineering) Subjects
+  if (course.includes('TECH') || course.includes('ENG')) {
+    return [
+      { id: 'CSE-DSA', name: 'Data Structures & Algorithms', subcode: 'DSA', department: 'CSE', facultyName: 'Engineering Faculty' },
+      { id: 'CSE-DBMS', name: 'Database Management Systems', subcode: 'DBMS', department: 'CSE', facultyName: 'Engineering Faculty' },
+      { id: 'CSE-OS', name: 'Operating Systems', subcode: 'OS', department: 'CSE', facultyName: 'Engineering Faculty' },
+      { id: 'CSE-CN', name: 'Computer Networks', subcode: 'CN', department: 'CSE', facultyName: 'Engineering Faculty' },
+      { id: 'CSE-DAA', name: 'Design & Analysis of Algorithms', subcode: 'DAA', department: 'CSE', facultyName: 'Engineering Faculty' },
+      { id: 'CSE-AIML', name: 'Machine Learning & AI', subcode: 'AIML', department: 'CSE', facultyName: 'Engineering Faculty' },
+      { id: 'CSE-SE', name: 'Software Engineering', subcode: 'SE', department: 'CSE', facultyName: 'Engineering Faculty' },
+      { id: 'CSE-WEB', name: 'Web Technologies', subcode: 'WEB', department: 'CSE', facultyName: 'Engineering Faculty' },
+    ];
+  }
+
+  // 7. Default / Medical (MBBS) Subjects
   return [
     // Phase 1 (Pre-Clinical)
     { id: 'Anatomy-AnandKumar', name: 'Anatomy', subcode: 'AN', department: 'ANATOMY', facultyId: 'D/11/094', facultyName: 'ANAND KUMAR' },
@@ -64,10 +151,9 @@ export function getPortalSubjects(user) {
 
 // ── Default channels shown before API loads ──────────────────────────────────
 const DEFAULT_CHANNELS = [
-  { id: 'official-batch-chat', name: 'Official Batch Chat', slug: 'official-batch-chat', icon: 'chat-outline', desc: 'Sync of ERP Official Batch Chat 🏛️' },
-  { id: null, name: 'Campus Pulse', slug: 'campus-pulse', icon: 'lightning-bolt', desc: 'Daily campus life & vibes 🎓' },
-  { id: null, name: 'Career Launchpad', slug: 'career-launchpad', icon: 'rocket-launch', desc: 'Placements, internships & prep 🚀' },
-  { id: null, name: "Maker's Den", slug: 'makers-den', icon: 'hammer-wrench', desc: 'Hackathons & side projects 🛠️' },
+  { id: 'campus-pulse', name: 'Campus Pulse', slug: 'campus-pulse', icon: 'lightning-bolt', desc: 'Daily campus life & vibes 🎓' },
+  { id: 'career-launchpad', name: 'Career Launchpad', slug: 'career-launchpad', icon: 'rocket-launch', desc: 'Placements, internships & prep 🚀' },
+  { id: 'makers-den', name: "Maker's Den", slug: 'makers-den', icon: 'hammer-wrench', desc: 'Hackathons & side projects 🛠️' },
 ];
 
 const ChatSkeletonLoader = ({ isDark }) => {
@@ -114,10 +200,18 @@ const ChatScreen = ({ navigation, route }) => {
   const { accessToken, user } = useUser();
   const { colors, isDark } = useTheme();
   const isSuperAdmin = user?.role === 'super_admin';
+  const isMedical = isMedicalStudent(user);
   const [selectedBatch, setSelectedBatch] = useState(user?.batch_year || user?.batch || '2025');
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [channels, setChannels] = useState(DEFAULT_CHANNELS);
-  const [activeChannel, setActiveChannel] = useState(DEFAULT_CHANNELS[0]);
+  const initialChannelParam = route?.params?.initialChannel;
+  const [activeChannel, setActiveChannel] = useState(() => {
+    if (initialChannelParam === 'official-batch-chat') {
+      return { id: 'official-batch-chat', name: 'Official Batch Chat', slug: 'official-batch-chat', icon: 'chat-outline', desc: 'Sync of ERP Official Batch Chat 🏛️' };
+    }
+    return null;
+  });
+  const [searchQuery, setSearchQuery] = useState('');
   const [dmContacts, setDmContacts] = useState([]);
   const [inputText, setInputText] = useState('');
   const [portalMessages, setPortalMessages] = useState([]);
@@ -127,6 +221,8 @@ const ChatScreen = ({ navigation, route }) => {
   const portalSubjects = React.useMemo(() => getPortalSubjects(user), [user]);
   const [activePortalSubject, setActivePortalSubject] = useState(() => getPortalSubjects(user)[0]);
   const [showSubjectDropdown, setShowSubjectDropdown] = useState(false);
+  // ERP chat group (non-medical batch chat)
+  const [erpChatGroupId, setErpChatGroupId] = useState(null);
 
   useEffect(() => {
     if (portalSubjects.length > 0) {
@@ -159,18 +255,8 @@ const ChatScreen = ({ navigation, route }) => {
           getDMContactsAPI(accessToken),
         ]);
         if (chs?.length) {
-          const merged = [
-            { id: 'official-batch-chat', name: 'Official Batch Chat', slug: 'official-batch-chat', icon: 'chat-outline', desc: 'Sync of ERP Official Batch Chat 🏛️' },
-            ...chs
-          ];
-          setChannels(merged);
-          // Auto-switch activeChannel to the real channel matching the current slug
-          // (default channels have id: null, so we upgrade to the real API channel)
-          setActiveChannel(prev => {
-            if (prev?.id) return prev; // already has a real ID
-            const matchBySlug = chs.find(c => c.slug === prev?.slug);
-            return matchBySlug || chs[0];
-          });
+          const filtered = chs.filter(c => c.slug !== 'official-batch-chat' && c.id !== 'official-batch-chat');
+          setChannels(filtered.length > 0 ? filtered : DEFAULT_CHANNELS);
         }
         if (dms?.length) {
           const enrichedDms = dms.map(dm => ({
@@ -196,33 +282,59 @@ const ChatScreen = ({ navigation, route }) => {
     }).catch(() => { });
   }, [activeChannel?.id]);
 
-  // ── Load legacy portal messages ───────────────────────────────────────────
+  // ── Load portal messages (medical: SRMS portal, non-medical: ERP chat) ─────
   const loadPortalMessages = useCallback(async (clearFirst = false) => {
     if (!accessToken || activeChannel?.id !== 'official-batch-chat') {
-      console.log('[ChatScreen] loadPortalMessages skipped. activeChannel.id:', activeChannel?.id);
       return;
     }
-    if (clearFirst) {
-      setPortalMessages([]);
-    }
+    if (clearFirst) setPortalMessages([]);
     setLoadingPortal(true);
+
     try {
+      // NON-MEDICAL: use ERP /chat/groups
+      if (!isMedical) {
+        let groupId = erpChatGroupId;
+        if (!groupId) {
+          // Find the batch chat group from ERP
+          const groups = await getErpChatGroups(accessToken);
+          const batchGroup = groups.find(g =>
+            g.type === 'batch' ||
+            (g.name || '').toLowerCase().includes('batch') ||
+            (g.name || '').toLowerCase().includes('official')
+          ) || groups[0];
+          if (batchGroup) {
+            groupId = batchGroup.id;
+            setErpChatGroupId(batchGroup.id);
+          }
+        }
+        if (groupId) {
+          const msgs = await getErpChatMessages(accessToken, groupId, 50);
+          const mapped = (msgs || []).map(m => ({
+            ...m,
+            id: m.id,
+            message: m.content || m.message || '',
+            StudentName: m.sender?.name || m.sender_name || '',
+            ChatFacId: m.sender?.emp_id || '',
+            classlabel: (m.sender?.id === (user?.id || user?.user_id)) ? 'right' : 'left',
+            isMe: m.sender?.id === (user?.id || user?.user_id),
+            created_at: m.created_at,
+          }));
+          setPortalMessages(mapped.reverse());
+          // Mark as read silently
+          markErpChatGroupRead(accessToken, groupId).catch(() => {});
+        }
+        return;
+      }
+
+      // MEDICAL: original SRMS portal path (completely unchanged)
       const batchYear = isSuperAdmin ? selectedBatch : (user?.batch_year || user?.batch || '2025');
       const bStr = String(batchYear || '').trim();
       let targetPhase = '1';
       let targetSubphase = '1';
-      if (bStr.includes('2023')) {
-        targetPhase = '3';
-        targetSubphase = '1';
-      } else if (bStr.includes('2024')) {
-        targetPhase = '2';
-        targetSubphase = '2';
-      } else if (bStr.includes('2022')) {
-        targetPhase = '3';
-        targetSubphase = '2';
-      }
+      if (bStr.includes('2023')) { targetPhase = '3'; targetSubphase = '1'; }
+      else if (bStr.includes('2024')) { targetPhase = '2'; targetSubphase = '2'; }
+      else if (bStr.includes('2022')) { targetPhase = '3'; targetSubphase = '2'; }
 
-      console.log('[ChatScreen] Fetching chats for batch:', batchYear, 'phase:', targetPhase, 'subject:', activePortalSubject.name, 'facultyId:', activePortalSubject.facultyId);
       let history = await getFacultyGroupChats(
         activePortalSubject.facultyId,
         String(batchYear),
@@ -425,6 +537,55 @@ const ChatScreen = ({ navigation, route }) => {
     if (activeChannel.id === 'official-batch-chat') {
       setSendingPortalMessage(true);
       try {
+        // ── NON-MEDICAL: send via ERP NestJS Chat ──────────────────────────
+        if (!isMedical) {
+          let groupId = erpChatGroupId;
+          if (!groupId) {
+            const groups = await getErpChatGroups(accessToken);
+            const batchGroup = groups.find(g =>
+              g.type === 'batch' ||
+              (g.name || '').toLowerCase().includes('batch') ||
+              (g.name || '').toLowerCase().includes('official')
+            ) || groups[0];
+            if (batchGroup) {
+              groupId = batchGroup.id;
+              setErpChatGroupId(batchGroup.id);
+            }
+          }
+          if (!groupId) throw new Error('No batch chat group found on ERP. Please contact admin.');
+          let attachmentUrl = '';
+          if (selectedAttachment) {
+            if (selectedAttachment.type === 'image') {
+              const res = await uploadAvatarAPI(accessToken || '', selectedAttachment.uri);
+              if (res.ok && res.json?.data?.avatar_url) attachmentUrl = res.json.data.avatar_url;
+              else throw new Error(res.json?.message || 'Failed to upload image.');
+            } else if (selectedAttachment.type === 'document') {
+              const res = await uploadDocumentAPI(accessToken || '', selectedAttachment.uri, selectedAttachment.name);
+              if (res.ok && res.json?.data?.document_url) attachmentUrl = res.json.data.document_url;
+              else throw new Error(res.json?.message || 'Failed to upload document.');
+            }
+          }
+          await sendErpChatMessage(accessToken, groupId, { content: textVal, attachmentUrl });
+          setInputText('');
+          setSelectedAttachment(null);
+          // Optimistic: add message locally immediately
+          const optimistic = {
+            id: `opt-${Date.now()}`,
+            message: textVal,
+            content: textVal,
+            StudentName: user?.name || user?.full_name || 'You',
+            sender: user?.name || 'You',
+            isMe: true,
+            created_at: new Date().toISOString(),
+            text: textVal,
+          };
+          setPortalMessages(prev => [optimistic, ...prev]);
+          // Then refresh from server
+          setTimeout(() => loadPortalMessages(false), 1500);
+          return;
+        }
+
+        // ── MEDICAL: send via SRMS portal (unchanged) ──────────────────────
         let attachmentUrl = '';
         if (selectedAttachment) {
           if (selectedAttachment.type === 'image') {
@@ -457,27 +618,17 @@ const ChatScreen = ({ navigation, route }) => {
         try {
           const bNum = parseInt(batchYear);
           if (!isNaN(bNum)) {
-            if (bNum === 2023) {
-              calculatedCbme = '2024';
-            } else {
-              calculatedCbme = String(bNum - 1);
-            }
+            if (bNum === 2023) calculatedCbme = '2024';
+            else calculatedCbme = String(bNum - 1);
           }
         } catch {}
 
         let targetPhase = '1';
         let targetSubphase = '1';
         const bStr = String(batchYear || '').trim();
-        if (bStr.includes('2023')) {
-          targetPhase = '3';
-          targetSubphase = '1';
-        } else if (bStr.includes('2024')) {
-          targetPhase = '2';
-          targetSubphase = '2';
-        } else if (bStr.includes('2022')) {
-          targetPhase = '3';
-          targetSubphase = '2';
-        }
+        if (bStr.includes('2023')) { targetPhase = '3'; targetSubphase = '1'; }
+        else if (bStr.includes('2024')) { targetPhase = '2'; targetSubphase = '2'; }
+        else if (bStr.includes('2022')) { targetPhase = '3'; targetSubphase = '2'; }
 
         const payload = {
           chatid: 0,
@@ -615,6 +766,256 @@ const ChatScreen = ({ navigation, route }) => {
     );
   };
 
+  const filteredChannels = channels.filter(c =>
+    !searchQuery ||
+    (c.name && c.name.toLowerCase().includes(searchQuery.toLowerCase())) ||
+    (c.desc && c.desc.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
+
+  const filteredSocialDMs = socialDMs.filter(dm =>
+    !searchQuery ||
+    (dm.username && dm.username.toLowerCase().includes(searchQuery.toLowerCase())) ||
+    (dm.last_message && dm.last_message.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
+
+  const filteredMarketplaceDMs = marketplaceDMs.filter(dm =>
+    !searchQuery ||
+    (dm.username && dm.username.toLowerCase().includes(searchQuery.toLowerCase())) ||
+    (dm.last_message && dm.last_message.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
+
+  // ── Channels Hub View (Shown when activeChannel is null) ──────────────────
+  if (!activeChannel) {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <View style={{ paddingTop: insets.top, backgroundColor: colors.card }}>
+          {/* Header */}
+          <View style={[styles.header, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
+            <View style={styles.headerLeft}>
+              <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginRight: 6, padding: 4 }}>
+                <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
+              </TouchableOpacity>
+              <Text style={[styles.headerLogo, { color: colors.textPrimary, fontSize: 18 }]}>UniCampus Channels</Text>
+            </View>
+            <View style={styles.headerRight}>
+              <View style={[styles.connDot, { backgroundColor: connected ? '#10B981' : '#EF4444' }]} />
+              <TouchableOpacity onPress={() => navigation.navigate('StudentSearch')} style={{ padding: 4 }}>
+                <Ionicons name="search" size={22} color={colors.textMuted || "#6B7280"} />
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={{ padding: 16, paddingBottom: Math.max(insets.bottom + 20, 40) }}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          {/* Search Box */}
+          <View style={[styles.searchBox, { backgroundColor: isDark ? colors.card : '#F3F4F6', borderColor: colors.border }]}>
+            <Ionicons name="search-outline" size={18} color={colors.textMuted || '#9CA3AF'} style={{ marginRight: 8 }} />
+            <TextInput
+              placeholder="Search channels, direct messages..."
+              placeholderTextColor={colors.textMuted || '#9CA3AF'}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              style={[styles.searchInput, { color: colors.textPrimary }]}
+            />
+            {searchQuery ? (
+              <TouchableOpacity onPress={() => setSearchQuery('')}>
+                <Ionicons name="close-circle" size={18} color={colors.textMuted || '#9CA3AF'} />
+              </TouchableOpacity>
+            ) : null}
+          </View>
+
+          {/* AI Assistant Banner */}
+          <TouchableOpacity
+            activeOpacity={0.85}
+            style={[styles.aiHubBanner, { borderColor: isDark ? 'rgba(234, 88, 12, 0.4)' : '#FED7AA' }]}
+            onPress={() => navigation.navigate('CampusAIWelcome')}
+          >
+            <LinearGradient
+              colors={isDark ? ['rgba(234, 88, 12, 0.2)', 'rgba(234, 88, 12, 0.08)'] : ['#FFF7ED', '#FFEDD5']}
+              style={styles.aiHubGradient}
+            >
+              <View style={styles.aiIconWrap}>
+                <MaterialIcons name="smart-toy" size={26} color={colors.primary} />
+              </View>
+              <View style={{ flex: 1, marginLeft: 12 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Text style={[styles.aiHubTitle, { color: colors.textPrimary }]}>Campus AI Assistant</Text>
+                  <View style={[styles.newBadge, { backgroundColor: colors.primary }]}>
+                    <Text style={styles.newBadgeText}>AI 2.0</Text>
+                  </View>
+                </View>
+                <Text style={[styles.aiHubDesc, { color: colors.textSecondary }]}>
+                  Ask about academics, career paths, or timetable 🤖
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={colors.primary} />
+            </LinearGradient>
+          </TouchableOpacity>
+
+          {/* COMMUNITY CHANNELS */}
+          <View style={{ marginTop: 20, marginBottom: 8 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <Text style={[styles.sectionHeading, { color: colors.textSecondary }]}>COMMUNITY CHANNELS</Text>
+              <View style={{ backgroundColor: isDark ? 'rgba(91, 75, 255, 0.15)' : '#EEF2FF', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 }}>
+                <Text style={{ fontSize: 11, fontWeight: '700', color: colors.primary }}>
+                  {filteredChannels.length} Channels
+                </Text>
+              </View>
+            </View>
+
+            <View style={{ gap: 10 }}>
+              {filteredChannels.map((channel) => (
+                <TouchableOpacity
+                  key={channel.id || channel.slug}
+                  activeOpacity={0.75}
+                  style={[
+                    styles.channelCard,
+                    {
+                      backgroundColor: colors.card,
+                      borderColor: colors.border,
+                    }
+                  ]}
+                  onPress={() => setActiveChannel(channel)}
+                >
+                  <LinearGradient
+                    colors={
+                      channel.slug === 'campus-pulse'
+                        ? ['#F59E0B', '#D97706']
+                        : channel.slug === 'career-launchpad'
+                        ? ['#5B4BFF', '#7867FF']
+                        : ['#10B981', '#059669']
+                    }
+                    style={styles.channelIconGradient}
+                  >
+                    <MaterialCommunityIcons
+                      name={channel.icon || 'lightning-bolt'}
+                      size={22}
+                      color="#FFFFFF"
+                    />
+                  </LinearGradient>
+                  <View style={{ flex: 1, marginLeft: 12 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <Text style={[styles.channelTitle, { color: colors.textPrimary }]}>
+                        {channel.name}
+                      </Text>
+                      {channel.slug === 'campus-pulse' && onlineUsers.length > 0 && (
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                          <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#10B981' }} />
+                          <Text style={{ fontSize: 11, color: '#10B981', fontWeight: '700' }}>
+                            {onlineUsers.length} online
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+                    <Text style={[styles.channelDescription, { color: colors.textSecondary }]} numberOfLines={1}>
+                      {channel.desc || channel.description}
+                    </Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={18} color={colors.textMuted || '#9CA3AF'} style={{ marginLeft: 6 }} />
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          {/* DIRECT MESSAGES */}
+          <View style={{ marginTop: 22 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <Text style={[styles.sectionHeading, { color: colors.textSecondary }]}>DIRECT MESSAGES</Text>
+              <Text style={{ fontSize: 11, color: colors.textMuted, fontWeight: '700' }}>
+                {filteredSocialDMs.length} Chats
+              </Text>
+            </View>
+
+            {filteredSocialDMs.length === 0 ? (
+              <View style={[styles.emptyDmBox, { backgroundColor: isDark ? colors.card : '#F9FAFB', borderColor: colors.border }]}>
+                <MaterialCommunityIcons name="chat-plus-outline" size={28} color={colors.textMuted || '#9CA3AF'} />
+                <Text style={[styles.emptyDmText, { color: colors.textSecondary }]}>
+                  Connect with classmates in Campus Pulse or Student Search to start chatting!
+                </Text>
+              </View>
+            ) : (
+              <View style={{ gap: 8 }}>
+                {filteredSocialDMs.map((dm) => {
+                  const isOnline = onlineUsers.includes(dm.user_id);
+                  return (
+                    <TouchableOpacity
+                      key={dm.user_id}
+                      activeOpacity={0.75}
+                      style={[styles.dmCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+                      onPress={() => navigation.navigate('DMConversation', { contact: dm, source: 'social' })}
+                    >
+                      <View style={styles.dmAvatarWrap}>
+                        <Image source={{ uri: getAvatarUrl(dm.avatar_url || dm.user_id) }} style={styles.dmAvatar} />
+                        <View style={[styles.statusDot, { backgroundColor: isOnline ? '#10B981' : '#D1D5DB' }]} />
+                      </View>
+                      <View style={{ flex: 1, marginLeft: 12 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <Text style={[styles.dmName, { color: colors.textPrimary }]}>{dm.username || 'Student'}</Text>
+                          <Text style={{ fontSize: 10, color: isOnline ? '#10B981' : colors.textMuted, fontWeight: '700' }}>
+                            {isOnline ? 'Online' : 'Offline'}
+                          </Text>
+                        </View>
+                        <Text style={[styles.dmLastMsg, { color: colors.textSecondary }]} numberOfLines={1}>
+                          {dm.last_message || 'Start conversation 👋'}
+                        </Text>
+                      </View>
+                      <Ionicons name="chevron-forward" size={18} color={colors.textMuted || '#9CA3AF'} style={{ marginLeft: 6 }} />
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            )}
+          </View>
+
+          {/* MARKETPLACE MESSAGES */}
+          {filteredMarketplaceDMs.length > 0 && (
+            <View style={{ marginTop: 22 }}>
+              <Text style={[styles.sectionHeading, { color: colors.textSecondary, marginBottom: 12 }]}>
+                MARKETPLACE MESSAGES ({filteredMarketplaceDMs.length})
+              </Text>
+              <View style={{ gap: 8 }}>
+                {filteredMarketplaceDMs.map((dm) => {
+                  const isOnline = onlineUsers.includes(dm.user_id);
+                  return (
+                    <TouchableOpacity
+                      key={dm.user_id}
+                      activeOpacity={0.75}
+                      style={[styles.dmCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+                      onPress={() => navigation.navigate('DMConversation', { contact: dm, source: 'marketplace' })}
+                    >
+                      <View style={styles.dmAvatarWrap}>
+                        <Image source={{ uri: getAvatarUrl(dm.avatar_url || dm.user_id) }} style={styles.dmAvatar} />
+                        <View style={[styles.statusDot, { backgroundColor: isOnline ? '#10B981' : '#D1D5DB' }]} />
+                      </View>
+                      <View style={{ flex: 1, marginLeft: 12 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <Text style={[styles.dmName, { color: colors.textPrimary }]}>{dm.username || 'Student'}</Text>
+                          <View style={{ backgroundColor: '#FEF3C7', paddingHorizontal: 6, paddingVertical: 1, borderRadius: 4 }}>
+                            <Text style={{ fontSize: 9, fontWeight: '800', color: '#D97706' }}>🛒 Store</Text>
+                          </View>
+                        </View>
+                        <Text style={[styles.dmLastMsg, { color: colors.textSecondary }]} numberOfLines={1}>
+                          {dm.last_message || 'Marketplace discussion'}
+                        </Text>
+                      </View>
+                      <Ionicons name="chevron-forward" size={18} color={colors.textMuted || '#9CA3AF'} style={{ marginLeft: 6 }} />
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+          )}
+        </ScrollView>
+      </View>
+    );
+  }
+
+  // ── Single Channel Chat Room View ──────────────────────────────────────────
   return (
     <KeyboardAvoidingView
       style={[styles.container, { backgroundColor: colors.background }]}
@@ -625,13 +1026,24 @@ const ChatScreen = ({ navigation, route }) => {
         {/* Header */}
         <View style={[styles.header, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
           <View style={styles.headerLeft}>
-            <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginRight: 6 }}>
+            <TouchableOpacity
+              onPress={() => {
+                if (initialChannelParam === 'official-batch-chat') {
+                  navigation.goBack();
+                } else {
+                  setActiveChannel(null);
+                }
+              }}
+              style={{ marginRight: 6, padding: 4 }}
+            >
               <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
             </TouchableOpacity>
             <TouchableOpacity style={styles.menuBtn} onPress={toggleDrawer}>
               <Ionicons name="menu" size={28} color={colors.textPrimary} />
             </TouchableOpacity>
-            <Text style={[styles.headerLogo, { color: colors.textPrimary }]}>{APP_CONFIG.UNIVERSITY_SHORT_NAME} Channels</Text>
+            <Text style={[styles.headerLogo, { color: colors.textPrimary }]}>
+              {activeChannel?.name || `${APP_CONFIG.UNIVERSITY_SHORT_NAME} Channels`}
+            </Text>
           </View>
           <View style={styles.headerRight}>
             <View style={[styles.connDot, { backgroundColor: connected ? '#10B981' : '#EF4444' }]} />
@@ -755,9 +1167,11 @@ const ChatScreen = ({ navigation, route }) => {
       {/* Input Bar */}
       <View style={[
         styles.inputBar,
-        { backgroundColor: colors.card, borderTopColor: colors.border, paddingBottom: Math.max(insets.bottom, 12) }
+        { backgroundColor: colors.card, borderTopWidth: 1, borderTopColor: colors.border, paddingBottom: Math.max(insets.bottom, 12) }
       ]}>
-
+        <TouchableOpacity style={styles.attachTriggerBtn} onPress={handleSelectAttachment}>
+          <Ionicons name="add" size={28} color={colors.textSecondary} />
+        </TouchableOpacity>
 
         <TextInput
           style={[
@@ -766,20 +1180,15 @@ const ChatScreen = ({ navigation, route }) => {
           ]}
           value={inputText}
           onChangeText={setInputText}
-          placeholder={activeChannel?.id === 'official-batch-chat' ? `Message ${activePortalSubject.facultyName.toLowerCase().split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}...` : `Message #${activeChannel?.slug || 'campus-pulse'}`}
+          placeholder={activeChannel?.id === 'official-batch-chat' ? `Message ${activePortalSubject?.facultyName?.split(' ')[0] || 'Faculty'}...` : `Message #${activeChannel?.slug || 'chat'}`}
           placeholderTextColor={colors.textSecondary}
           multiline
           maxLength={1000}
-          returnKeyType="default"
-          blurOnSubmit={false}
-          autoCorrect={true}
-          autoCapitalize="sentences"
         />
         <TouchableOpacity
           style={[styles.sendBtn, { backgroundColor: ((inputText.trim() || selectedAttachment) && !sendingPortalMessage) ? colors.primary : (isDark ? '#374151' : '#E5E7EB') }]}
           onPress={handleSend}
           disabled={(!inputText.trim() && !selectedAttachment) || sendingPortalMessage}
-          activeOpacity={0.8}
         >
           {sendingPortalMessage ? (
             <ActivityIndicator size="small" color="#FFFFFF" />
@@ -856,11 +1265,6 @@ const ChatScreen = ({ navigation, route }) => {
 
           {/* Direct Messages */}
           <Text style={styles.drawerSectionTitle}>DIRECT MESSAGES</Text>
-          {socialDMs.length === 0 && (
-            <Text style={{ fontSize: 13, color: '#9CA3AF', paddingHorizontal: 12, paddingBottom: 8 }}>
-              Connect with students to start DMing 👋
-            </Text>
-          )}
           {socialDMs.map((dm) => {
             const isOnline = onlineUsers.includes(dm.user_id);
             return (
@@ -882,46 +1286,6 @@ const ChatScreen = ({ navigation, route }) => {
                     <Text style={styles.dmLastMsg} numberOfLines={1}>{dm.last_message}</Text>
                   )}
                 </View>
-                <Text style={{ fontSize: 10, color: isOnline ? '#10B981' : '#9CA3AF', fontWeight: '700' }}>
-                  {isOnline ? 'Online' : 'Offline'}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-
-          <View style={[styles.drawerDivider, { backgroundColor: colors.border }]} />
-
-          {/* Marketplace Messages */}
-          <Text style={styles.drawerSectionTitle}>MARKETPLACE MESSAGES</Text>
-          {marketplaceDMs.length === 0 && (
-            <Text style={{ fontSize: 13, color: '#9CA3AF', paddingHorizontal: 12, paddingBottom: 8 }}>
-              No marketplace messages yet 🛒
-            </Text>
-          )}
-          {marketplaceDMs.map((dm) => {
-            const isOnline = onlineUsers.includes(dm.user_id);
-            return (
-              <TouchableOpacity
-                key={dm.user_id}
-                style={styles.dmItem}
-                onPress={() => {
-                  toggleDrawer();
-                  navigation.navigate('DMConversation', { contact: dm, source: 'marketplace' });
-                }}
-              >
-                <View style={styles.dmAvatarWrap}>
-                  <Image source={{ uri: getAvatarUrl(dm.avatar_url || dm.user_id) }} style={styles.dmAvatar} />
-                  <View style={[styles.statusDot, { backgroundColor: isOnline ? '#10B981' : '#D1D5DB' }]} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.dmName, { color: colors.textPrimary }]}>{dm.username || 'Student'}</Text>
-                  {dm.last_message && (
-                    <Text style={styles.dmLastMsg} numberOfLines={1}>{dm.last_message}</Text>
-                  )}
-                </View>
-                <Text style={{ fontSize: 10, color: isOnline ? '#10B981' : '#9CA3AF', fontWeight: '700' }}>
-                  {isOnline ? 'Online' : 'Offline'}
-                </Text>
               </TouchableOpacity>
             );
           })}
@@ -1244,6 +1608,96 @@ const styles = StyleSheet.create({
   },
   dropdownItemText: {
     fontSize: 14,
+  },
+  // Channels Hub styles
+  searchBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: 16,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  aiHubBanner: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    borderWidth: 1,
+    marginBottom: 8,
+  },
+  aiHubGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+  },
+  aiIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: 'rgba(234, 88, 12, 0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  aiHubTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  aiHubDesc: {
+    fontSize: 12,
+    marginTop: 2,
+  },
+  sectionHeading: {
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+  },
+  channelCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  channelIconGradient: {
+    width: 42,
+    height: 42,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  channelTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  channelDescription: {
+    fontSize: 12,
+    marginTop: 2,
+  },
+  dmCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  emptyDmBox: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+    borderRadius: 14,
+    borderWidth: 1,
+    gap: 8,
+  },
+  emptyDmText: {
+    fontSize: 13,
+    textAlign: 'center',
+    lineHeight: 18,
   },
 });
 

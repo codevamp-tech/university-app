@@ -154,7 +154,8 @@ const ProfileScreen = () => {
           </TouchableOpacity>
           <SafeStudentAvatar
             uri={avatarUrl}
-            name={user?.name || 'S'}
+            rollno={user?.rollno || user?.username}
+            name={user?.name || user?.full_name || 'S'}
             style={styles.avatarTiny}
           />
         </View>
@@ -165,10 +166,11 @@ const ProfileScreen = () => {
         <View style={styles.profileSection}>
           
           <TouchableOpacity style={styles.profileImageWrap} onPress={handlePickImage} activeOpacity={0.8}>
-            <Image 
-              source={{ uri: avatarUrl }} 
-              style={styles.profileImg} 
-              resizeMode="cover"
+            <SafeStudentAvatar
+              uri={avatarUrl}
+              rollno={user?.rollno || user?.username}
+              name={user?.name || user?.full_name || 'S'}
+              style={styles.profileImg}
             />
             {isUploading && (
               <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' }]}>
@@ -216,10 +218,6 @@ const ProfileScreen = () => {
               );
             })()}
             <View style={[styles.infoCapsuleRow, { marginTop: 8 }]}>
-              <TouchableOpacity style={styles.infoCapsule} onPress={() => handleOpenConnectionsModal('followers')}>
-                <Text style={styles.infoLabel}>FOLLOWERS</Text>
-                <Text style={styles.infoValue}>{stats.followers}</Text>
-              </TouchableOpacity>
               <TouchableOpacity style={styles.infoCapsule} onPress={() => handleOpenConnectionsModal('connections')}>
                 <Text style={styles.infoLabel}>CONNECTIONS</Text>
                 <Text style={styles.infoValue}>{stats.connections}</Text>
@@ -392,7 +390,7 @@ const ProfileScreen = () => {
           <View style={[styles.modalContent, { backgroundColor: '#FFFFFF' }]}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>
-                {connectionsModalType === 'followers' ? 'Followers' : 'Connections'} ({connectionsList.length})
+                Connections ({connectionsList.length})
               </Text>
               <TouchableOpacity onPress={() => setShowConnectionsModal(false)} style={styles.modalCloseBtn}>
                 <Ionicons name="close" size={24} color="#1F2937" />

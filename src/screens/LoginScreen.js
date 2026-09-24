@@ -80,53 +80,44 @@ const LoginScreen = ({ navigation }) => {
     setLoading(true);
 
     try {
-      // Password check continues normally below
-    } catch (e) {
-      console.warn('Login preparation error:', e);
-    }
-    
-    // Auto-detect role as a fallback only for clear non-student patterns when on the student tab
-    let finalRole = role;
-    const cleanId = loginId.trim();
-    if (role === 'student' && (/[a-zA-Z]/.test(cleanId) || cleanId.includes('/'))) {
-      if (cleanId.toLowerCase() === 'warden') {
+      // Auto-detect role as a fallback only for clear non-student patterns when on the student tab
+      let finalRole = role;
+      const cleanId = loginId.trim();
+      if (role === 'student' && (/[a-zA-Z]/.test(cleanId) || cleanId.includes('/'))) {
+        if (cleanId.toLowerCase() === 'warden') {
+          finalRole = 'warden';
+        } else if (cleanId.toLowerCase() === 'admin') {
+          finalRole = 'admin';
+        } else {
+          finalRole = 'teacher';
+        }
+      } else if (role === 'admin' && cleanId.toLowerCase() === 'warden') {
         finalRole = 'warden';
-      } else if (cleanId.toLowerCase() === 'admin') {
-        finalRole = 'admin';
-      } else {
-        finalRole = 'teacher';
       }
-    } else if (role === 'admin' && cleanId.toLowerCase() === 'warden') {
-      finalRole = 'warden';
-    }
 
-    console.log("loginId>>>>", loginId);
-    console.log("securityKey>>>>", securityKey);
-    console.log("finalrole>>>>", finalRole);
-    
-    // Save correct final role for next app restart
-    try {
-      await AsyncStorage.setItem('@last_login_role', finalRole === 'warden' ? 'admin' : finalRole);
-    } catch (_) {}
+      // Save correct final role for next app restart
+      try {
+        await AsyncStorage.setItem('@last_login_role', finalRole === 'warden' ? 'admin' : finalRole);
+      } catch (_) {}
 
-    const success = await login(loginId, securityKey, finalRole);
+      const success = await login(loginId, securityKey, finalRole);
 
-    if (success) {
-      console.log("resrole>>>>", success.role);
-      const userRole = success.role;
-      if (userRole === 'teacher') {
-        console.log("role>>/>>teacher");
-        navigation.replace('TeacherMain');
-      } else if (userRole === 'admin' || userRole === 'super_admin' || userRole === 'warden') {
-        console.log("role>>/>>admin");
-        navigation.replace('AdminMain');
-      } else {
-        console.log("role>>/>>student");
-        navigation.replace('StudentMain');
+      if (success) {
+        const userRole = success.role;
+        if (userRole === 'teacher') {
+          navigation.replace('TeacherMain');
+        } else if (userRole === 'admin' || userRole === 'super_admin' || userRole === 'warden') {
+          navigation.replace('AdminMain');
+        } else {
+          navigation.replace('StudentMain');
+        }
       }
+    } catch (err) {
+      console.warn('[LoginScreen] Login execution error:', err);
+      Alert.alert('Login Error', 'An unexpected error occurred during login. Please try again.');
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
   const handleGuest = () => {

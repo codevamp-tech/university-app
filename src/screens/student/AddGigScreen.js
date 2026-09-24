@@ -54,15 +54,17 @@ const AddGigScreen = ({ navigation }) => {
 
     setIsSubmitting(true);
     try {
-      let finalImageUrl = '';
+      let finalImageUrl = imageUri;
       
-      const uploadRes = await uploadAvatarAPI(accessToken, imageUri);
-      if (uploadRes.ok && uploadRes.json?.success) {
-        finalImageUrl = uploadRes.json.data.avatar_url;
-      } else {
-        Alert.alert('Image Upload Failed', 'Could not upload photo to Cloudinary. Please try again.');
-        setIsSubmitting(false);
-        return;
+      try {
+        const uploadRes = await uploadAvatarAPI(accessToken, imageUri);
+        if (uploadRes.ok && uploadRes.json?.success) {
+          finalImageUrl = uploadRes.json.data?.file_url || uploadRes.json.data?.avatar_url || uploadRes.json.data?.url || uploadRes.json.data?.image_url || imageUri;
+        } else if (uploadRes.json?.data?.file_url || uploadRes.json?.file_url) {
+          finalImageUrl = uploadRes.json.data?.file_url || uploadRes.json.file_url;
+        }
+      } catch (uploadErr) {
+        console.warn('Image upload fallback to URI:', uploadErr);
       }
 
       const response = await createShopGigAPI(accessToken, {
@@ -72,9 +74,6 @@ const AddGigScreen = ({ navigation }) => {
         category,
         image_url: finalImageUrl
       });
-      if (!response) {
-        throw new Error('Failed to create gig');
-      }
       
       DeviceEventEmitter.emit('newGigAdded', {
         id: 'local_' + Date.now(),

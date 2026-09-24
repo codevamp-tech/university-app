@@ -9,7 +9,7 @@ import { useTheme } from '../../hooks/useTheme';
 import { APP_CONFIG } from '../../config/appConfig';
 import { useUser } from '../../context/UserContext';
 import { useFocusEffect } from '@react-navigation/native';
-import { getShopListings, createOrder, getShopGigs, getShopRequests, getWalletBalance, processWalletPurchaseMock } from '../../data/apiService';
+import { getShopListings, getMyShopListingsAPI, createOrder, getShopGigs, getShopRequests, getWalletBalance, processWalletPurchaseMock } from '../../data/apiService';
 
 const { width } = Dimensions.get('window');
 
@@ -19,16 +19,30 @@ const MarketplaceScreen = ({ navigation }) => {
   const { user, accessToken } = useUser();
 
   const [apiListings, setApiListings] = React.useState([]);
+  const [myListings, setMyListings] = React.useState([]);
   const [walletBalance, setWalletBalance] = React.useState(0);
 
   const loadMarketplaceData = React.useCallback(async () => {
     if (!accessToken) return;
     try {
-      const data = await getShopListings(accessToken);
+      const [data, myData] = await Promise.all([
+        getShopListings(accessToken),
+        getMyShopListingsAPI(accessToken).catch(err => {
+          console.warn('[MarketplaceScreen] Error fetching my listings:', err);
+          return [];
+        }),
+      ]);
+
       if (data) {
         setApiListings(data.filter(l => l.category !== 'gig' && l.category !== 'request'));
       } else {
         setApiListings([]);
+      }
+
+      if (myData && Array.isArray(myData)) {
+        setMyListings(myData.filter(l => l.category !== 'gig' && l.category !== 'request'));
+      } else {
+        setMyListings([]);
       }
     } catch (err) {
       console.warn('[MarketplaceScreen] Error fetching listings:', err);
@@ -96,6 +110,89 @@ const MarketplaceScreen = ({ navigation }) => {
             </ImageBackground>
           </View>
         </View>
+
+        {/* My Listed Products (Under Review / Live) */}
+        {myListings.length > 0 && (
+          <View style={styles.sectionContainer}>
+            <View style={styles.sectionHeaderRow}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>My Listed Products</Text>
+                <View style={[styles.countBadge, { backgroundColor: isDark ? 'rgba(234,88,12,0.2)' : '#FFEDD5' }]}>
+                  <Text style={[styles.countBadgeText, { color: colors.primary }]}>{myListings.length}</Text>
+                </View>
+              </View>
+              <TouchableOpacity onPress={() => navigation.navigate('CreateListing')}>
+                <Text style={[styles.seeAllText, { color: colors.primary }]}>+ Add New</Text>
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.myListingsScroll}>
+              {myListings.map((item) => {
+                const st = (item.status || item.approval_status || 'pending').toLowerCase();
+                const isUnderReview = st === 'pending' || st === 'under_review';
+                const isApproved = st === 'active' || st === 'approved' || st === 'live';
+                const isRejected = st === 'rejected';
+                const isSold = st === 'sold';
+
+                return (
+                  <TouchableOpacity
+                    key={item.id}
+                    style={[styles.myListingCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+                    onPress={() => navigation.navigate('ProductDetail', { product: item })}
+                    activeOpacity={0.85}
+                  >
+                    <View style={styles.myListingImgBox}>
+                      <Image 
+                        source={{ uri: item.image_url || 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?q=80&w=600' }} 
+                        style={styles.myListingImg} 
+                      />
+                      
+                      {/* Status Tag Badge */}
+                      <View style={styles.statusBadgeWrapper}>
+                        {isUnderReview && (
+                          <View style={[styles.statusBadge, { backgroundColor: isDark ? 'rgba(245, 158, 11, 0.25)' : '#FEF3C7', borderColor: '#F59E0B' }]}>
+                            <Text style={[styles.statusBadgeText, { color: isDark ? '#FBBF24' : '#B45309' }]}>⏳ UNDER REVIEW</Text>
+                          </View>
+                        )}
+                        {isApproved && (
+                          <View style={[styles.statusBadge, { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.25)' : '#DCFCE7', borderColor: '#10B981' }]}>
+                            <Text style={[styles.statusBadgeText, { color: isDark ? '#34D399' : '#15803D' }]}>✓ LIVE</Text>
+                          </View>
+                        )}
+                        {isRejected && (
+                          <View style={[styles.statusBadge, { backgroundColor: isDark ? 'rgba(239, 68, 68, 0.25)' : '#FEE2E2', borderColor: '#EF4444' }]}>
+                            <Text style={[styles.statusBadgeText, { color: isDark ? '#F87171' : '#DC2626' }]}>✕ REJECTED</Text>
+                          </View>
+                        )}
+                        {isSold && (
+                          <View style={[styles.statusBadge, { backgroundColor: isDark ? 'rgba(156, 163, 175, 0.25)' : '#F3F4F6', borderColor: '#9CA3AF' }]}>
+                            <Text style={[styles.statusBadgeText, { color: '#6B7280' }]}>🏷 SOLD</Text>
+                          </View>
+                        )}
+                      </View>
+
+                      {item.category && (
+                        <View style={[styles.itemCategoryBadge, { backgroundColor: 'rgba(0,0,0,0.6)' }]}>
+                          <Text style={styles.itemCategoryText}>{(item.category || '').toUpperCase()}</Text>
+                        </View>
+                      )}
+                    </View>
+
+                    <View style={styles.myListingContent}>
+                      <Text style={[styles.myListingTitle, { color: colors.textPrimary }]} numberOfLines={1}>
+                        {item.title}
+                      </Text>
+                      <Text style={[styles.myListingPrice, { color: colors.primary }]}>₹{item.price}</Text>
+                      <Text style={[styles.myListingDesc, { color: colors.textSecondary }]} numberOfLines={2}>
+                        {item.description}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
+        )}
 
         {/* The Bazaar */}
         <View style={styles.sectionContainer}>
@@ -562,7 +659,97 @@ const styles = StyleSheet.create({
   modalCancelText: {
     fontSize: 16,
     fontWeight: '700',
-  }
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  countBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 12,
+  },
+  countBadgeText: {
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  seeAllText: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  myListingsScroll: {
+    gap: 14,
+    paddingVertical: 4,
+    paddingRight: 16,
+  },
+  myListingCard: {
+    width: 200,
+    borderRadius: 20,
+    overflow: 'hidden',
+    borderWidth: 1,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+  },
+  myListingImgBox: {
+    width: '100%',
+    height: 120,
+    position: 'relative',
+  },
+  myListingImg: {
+    width: '100%',
+    height: '100%',
+  },
+  statusBadgeWrapper: {
+    position: 'absolute',
+    top: 8,
+    left: 8,
+  },
+  statusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    borderWidth: 1,
+  },
+  statusBadgeText: {
+    fontSize: 9.5,
+    fontWeight: '900',
+    letterSpacing: 0.3,
+  },
+  itemCategoryBadge: {
+    position: 'absolute',
+    bottom: 6,
+    right: 8,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  itemCategoryText: {
+    color: '#FFFFFF',
+    fontSize: 8.5,
+    fontWeight: '800',
+  },
+  myListingContent: {
+    padding: 12,
+  },
+  myListingTitle: {
+    fontSize: 13.5,
+    fontWeight: '800',
+  },
+  myListingPrice: {
+    fontSize: 14,
+    fontWeight: '900',
+    marginTop: 3,
+  },
+  myListingDesc: {
+    fontSize: 11,
+    lineHeight: 15,
+    marginTop: 4,
+  },
 });
 
 export default MarketplaceScreen;

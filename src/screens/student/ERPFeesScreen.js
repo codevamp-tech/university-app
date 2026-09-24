@@ -2,7 +2,7 @@ import React from 'react';
 import { useTheme } from '../../hooks/useTheme';
 import { APP_CONFIG } from '../../config/appConfig';
 import { useUser } from '../../context/UserContext';
-import { getFees, payFee, getTransactions, getExtraFeeAmount } from '../../data/apiService';
+import { getFees, payFee, getTransactions, getExtraFeeAmount, getErpFees, getErpFeeStructure } from '../../data/apiService';
 
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
@@ -24,6 +24,8 @@ const ERPFeesScreen = ({ navigation, route }) => {
   const [transactions, setTransactions] = React.useState([]);
   const [fallbackPaid, setFallbackPaid] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
+  const [erpFeesData, setErpFeesData] = React.useState(null); // ERP NestJS fee data
+  const [erpFeeStructure, setErpFeeStructure] = React.useState(null);
 
   const [extraFeeAmt, setExtraFeeAmt] = React.useState(0);
   const [loadingExtra, setLoadingExtra] = React.useState(true);
@@ -73,28 +75,53 @@ const ERPFeesScreen = ({ navigation, route }) => {
   React.useEffect(() => {
     async function loadFees() {
       setLoading(true);
+      const rollNo = student?.rollno || student?.username;
+      const colgCd = student?.colg_cd || '11';
+
+      // Fetch all sources in parallel
+      const [extraFeeRes, txData, erpFees] = await Promise.allSettled([
+        getExtraFeeAmount(rollNo, colgCd).catch(() => []),
+        getTransactions(accessToken).catch(() => null),
+        !isMedical && accessToken ? getErpFees(accessToken, rollNo) : Promise.resolve(null),
+      ]);
+
+      // Extra fee (SRMS)
       try {
-        const rollNo = student?.rollno || student?.username;
-        const colgCd = student?.colg_cd || '11';
-        const extraFeeRes = await getExtraFeeAmount(rollNo, colgCd);
-        if (extraFeeRes && extraFeeRes.length > 0) {
-          const remAmt = extraFeeRes[0].REM_AMT ?? 0;
-          setExtraFeeAmt(remAmt);
+        const extraResult = extraFeeRes.status === 'fulfilled' ? extraFeeRes.value : [];
+        if (extraResult && extraResult.length > 0) {
+          setExtraFeeAmt(extraResult[0].REM_AMT ?? 0);
         }
       } catch (err) {
         console.warn('[FeesScreen] Error loading extra fees:', err);
       } finally {
         setLoadingExtra(false);
-        setLoading(false);
       }
+
+      // Transactions
       try {
-        const txData = await getTransactions(accessToken);
-        if (txData) {
-          setTransactions(txData);
-        }
+        const txResult = txData.status === 'fulfilled' ? txData.value : null;
+        if (txResult) setTransactions(txResult);
       } catch (err) {
         console.warn('[FeesScreen] Error loading transactions:', err);
       }
+
+      // ERP NestJS fees (non-medical)
+      try {
+        const erpResult = erpFees.status === 'fulfilled' ? erpFees.value : null;
+        if (erpResult) {
+          setErpFeesData(erpResult);
+          // If ERP has a batch_id, fetch the fee structure
+          if (erpResult.batch_id && accessToken) {
+            getErpFeeStructure(accessToken, erpResult.batch_id)
+              .then(s => setErpFeeStructure(s))
+              .catch(() => {});
+          }
+        }
+      } catch (err) {
+        console.warn('[FeesScreen] ERP fees error:', err);
+      }
+
+      setLoading(false);
     }
     loadFees();
   }, [accessToken, student]);

@@ -10,6 +10,7 @@ import { useUser } from '../../context/UserContext';
 import { useNotifications, NotificationBadge } from '../../context/NotificationContext';
 import { getAllStudents } from '../../data/apiService';
 import { LeaderboardPageSkeleton } from '../../components/SkeletonLoader';
+import { SafeStudentAvatar } from '../../components/SafeStudentAvatar';
 import { getAvatarUrl } from '../../utils/avatar';
 import { getDisplayCourse, isMedicalStudent, getMBBSProfLabel } from '../../utils/courseDisplay';
 
@@ -38,8 +39,10 @@ const TheHustleScreen = ({ navigation }) => {
 
   const [allStudents, setAllStudents] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [filterType, setFilterType] = useState(isStudentUser ? 'MyPhase' : 'Medical'); // 'MyPhase', 'Medical', 'All'
+  const [filterType, setFilterType] = useState('All'); // 'All', 'MyCourse', 'MyYear', or specific course
   const [viewFullRankings, setViewFullRankings] = useState(false);
+
+  const userCourse = (user?.course || (userIsMed ? 'MBBS' : 'MCA')).trim();
 
   useFocusEffect(
     React.useCallback(() => {
@@ -52,7 +55,7 @@ const TheHustleScreen = ({ navigation }) => {
               const mapped = list.map(s => ({
                 id: s.rollno || s.username || s.id,
                 name: s.full_name || s.username || 'Student',
-                course: s.course,
+                course: s.course || (isMedicalStudent(s) ? 'MBBS' : 'MCA'),
                 branch: s.branch,
                 category: s.category,
                 year: s.year || s.current_year,
@@ -61,13 +64,60 @@ const TheHustleScreen = ({ navigation }) => {
                 batch: s.batch_year || s.batch,
                 cgpa: s.cgpa || 0,
                 attendance: s.attendance || 0,
-                certsDone: s.certificates_done || [],
-                certsInProgress: s.certificates_in_progress || [],
+                certsDone: s.certificates_done || s.certsDone || [],
+                certsInProgress: s.certificates_in_progress || s.certsInProgress || [],
                 leadership: s.leadership || [],
                 extracurricular: s.extracurricular || [],
+                current_skills: s.current_skills || s.skills || [],
                 gender: 'M',
                 avatar_url: s.avatar_url,
               }));
+
+              // Ensure the current user is in the list with full active session user properties
+              const meMatchIndex = mapped.findIndex(s =>
+                (user?.rollno && s.id && String(s.id).trim() === String(user.rollno).trim()) ||
+                (user?.username && s.id && String(s.id).trim() === String(user.username).trim()) ||
+                (user?.id && s.id && String(s.id).trim() === String(user.id).trim()) ||
+                (user?.name && s.name && String(s.name).trim().toLowerCase() === String(user.name).trim().toLowerCase())
+              );
+
+              if (meMatchIndex >= 0) {
+                mapped[meMatchIndex] = {
+                  ...mapped[meMatchIndex],
+                  name: user.name || user.full_name || mapped[meMatchIndex].name,
+                  course: user.course || mapped[meMatchIndex].course,
+                  branch: user.branch || mapped[meMatchIndex].branch,
+                  cgpa: user.cgpa !== undefined ? user.cgpa : mapped[meMatchIndex].cgpa,
+                  attendance: user.attendance !== undefined ? user.attendance : mapped[meMatchIndex].attendance,
+                  certsDone: (user.certsDone && user.certsDone.length > 0) ? user.certsDone : (user.certificates_done || mapped[meMatchIndex].certsDone),
+                  leadership: (user.leadership && user.leadership.length > 0) ? user.leadership : mapped[meMatchIndex].leadership,
+                  extracurricular: (user.extracurricular && user.extracurricular.length > 0) ? user.extracurricular : mapped[meMatchIndex].extracurricular,
+                  current_skills: (user.current_skills && user.current_skills.length > 0) ? user.current_skills : (user.skills || mapped[meMatchIndex].current_skills),
+                  avatar_url: user.avatar_url || mapped[meMatchIndex].avatar_url,
+                };
+              } else if (user) {
+                mapped.unshift({
+                  id: user.rollno || user.username || user.id,
+                  name: user.name || user.full_name || 'Student',
+                  course: user.course || (userIsMed ? 'MBBS' : 'BCA'),
+                  branch: user.branch || (userIsMed ? 'Clinical Medicine' : 'Computer Applications'),
+                  category: user.category || 'tech',
+                  year: user.year || user.current_year || 1,
+                  current_year: user.current_year || user.year || 1,
+                  semester: user.semester || 1,
+                  batch: user.admission_year || 2025,
+                  cgpa: user.cgpa || 8.0,
+                  attendance: user.attendance || 80.0,
+                  certsDone: user.certsDone || user.certificates_done || [],
+                  certsInProgress: user.certsInProgress || [],
+                  leadership: user.leadership || [],
+                  extracurricular: user.extracurricular || [],
+                  current_skills: user.current_skills || user.skills || [],
+                  gender: 'M',
+                  avatar_url: user.avatar_url,
+                });
+              }
+
               setAllStudents(mapped);
             }
           }
@@ -81,68 +131,91 @@ const TheHustleScreen = ({ navigation }) => {
       };
       loadData();
       return () => { active = false; };
-    }, [accessToken])
+    }, [accessToken, user, userIsMed])
   );
 
-  // Filter students based on selection
-  const filteredStudents = allStudents.filter(s => {
-    if (filterType === 'MyPhase') {
-      const studentYr = getStudentYearNum(s);
-      if (userIsMed) {
-        return isMedicalStudent(s) && studentYr === userYearNum;
-      } else {
-        const myCourse = (user?.course || '').toLowerCase().trim();
-        const studentCourse = (s.course || '').toLowerCase().trim();
-        return studentYr === userYearNum && (myCourse ? studentCourse.includes(myCourse) || myCourse.includes(studentCourse) : true);
+  // Extract distinct course names from the student body
+  const availableCourses = React.useMemo(() => {
+    const set = new Set();
+    allStudents.forEach(s => {
+      if (s.course) {
+        const c = s.course.trim();
+        if (c && !c.toLowerCase().includes('undefined') && !c.toLowerCase().includes('null')) {
+          set.add(c);
+        }
       }
+    });
+    return Array.from(set).sort();
+  }, [allStudents]);
+
+  // Filter students based on selection (Course-wise / Year / All)
+  const filteredStudents = allStudents.filter(s => {
+    if (filterType === 'All') return true;
+    if (filterType === 'MyYear') {
+      const studentYr = getStudentYearNum(s);
+      return studentYr === userYearNum;
     }
-    if (filterType === 'Medical') {
-      return isMedicalStudent(s);
+    if (filterType === 'MyCourse') {
+      const myC = userCourse.toLowerCase();
+      const studentC = (s.course || '').toLowerCase().trim();
+      return studentC.includes(myC) || myC.includes(studentC);
     }
-    return true; // 'All'
+    // Specific course selection
+    const targetC = filterType.toLowerCase().trim();
+    const studentC = (s.course || '').toLowerCase().trim();
+    return studentC.includes(targetC) || targetC.includes(studentC);
   });
 
-  // Compute leaderboard scores
+  // Compute leaderboard scores dynamically based on all student KPIs
   const computedLeaderboard = filteredStudents.map(s => {
     // 1. Certificates done: 500 pts each
     const certCount = (s.certsDone || []).filter(c => {
-      const cl = c.toLowerCase();
+      const cl = (c || '').toLowerCase();
       return cl !== 'yes' && cl !== 'no' && cl !== 'na' && cl !== 'n/a' && cl !== 'none' && cl !== '';
     }).length;
 
     // 2. Leadership positions: 1000 pts each
-    const leadCount = (s.leadership || []).filter(c => c && c.toLowerCase() !== 'no' && c.toLowerCase() !== 'na' && c.toLowerCase() !== 'n/a' && c.toLowerCase() !== 'none').length;
+    const leadCount = (s.leadership || []).filter(c => {
+      const cl = (c || '').toLowerCase();
+      return cl !== 'yes' && cl !== 'no' && cl !== 'na' && cl !== 'n/a' && cl !== 'none' && cl !== '';
+    }).length;
 
     // 3. Extracurricular activities: 500 pts each
-    const extraCount = (s.extracurricular || []).filter(c => c && c.toLowerCase() !== 'no' && c.toLowerCase() !== 'na' && c.toLowerCase() !== 'n/a' && c.toLowerCase() !== 'none').length;
+    const extraCount = (s.extracurricular || []).filter(c => {
+      const cl = (c || '').toLowerCase();
+      return cl !== 'yes' && cl !== 'no' && cl !== 'na' && cl !== 'n/a' && cl !== 'none' && cl !== '';
+    }).length;
 
-    // 4. CGPA & Attendance: CGPA * 200 + Attendance * 5
-    // Scale down any CGPA entered as a percentage (>10) and cap at 10.0
-    const cgpaVal = Math.min(s.cgpa > 10 ? s.cgpa / 10 : s.cgpa, 10.0);
-    const academicScore = Math.round(cgpaVal * 200) + Math.round((s.attendance || 0) * 5);
+    // 4. Skills & Competencies: 250 pts each
+    const rawSkills = s.current_skills || s.skills || [];
+    const skillCount = Array.isArray(rawSkills) ? rawSkills.filter(Boolean).length : 0;
 
-    // 5. Special Google Student Ambassador bonus (5000 points)
+    // 5. Academic & Attendance: CGPA * 200 + Attendance * 10
+    const cgpaVal = Math.min(s.cgpa > 10 ? s.cgpa / 10 : (s.cgpa || 0), 10.0);
+    const attendanceVal = Number(s.attendance || 0);
+    const academicScore = Math.round(cgpaVal * 200) + Math.round(attendanceVal * 10);
+
+    // 6. Special Google Student Ambassador bonus (5000 points)
     const hasAmbassador = (s.leadership || []).some(l => l && (l.toLowerCase().includes('ambassador') || l.toLowerCase().includes('ambassasor')));
     const ambassadorBonus = hasAmbassador ? 5000 : 0;
 
-    const totalScore = (certCount * 500) + (extraCount * 500) + (leadCount * 1000) + academicScore + ambassadorBonus;
+    const totalScore = (certCount * 500) + (extraCount * 500) + (leadCount * 1000) + (skillCount * 250) + academicScore + ambassadorBonus;
 
     // Robust check if this student record matches the logged-in user
     const isMe = !!(user && (
-      (s.id && user.id && s.id.toString().trim().toLowerCase() === user.id.toString().trim().toLowerCase()) ||
-      (s.id && user.username && s.id.toString().trim().toLowerCase() === user.username.toString().trim().toLowerCase()) ||
-      (s.id && user.rollno && s.id.toString().trim().toLowerCase() === user.rollno.toString().trim().toLowerCase()) ||
+      (s.id && user.id && String(s.id).trim().toLowerCase() === String(user.id).trim().toLowerCase()) ||
+      (s.id && user.username && String(s.id).trim().toLowerCase() === String(user.username).trim().toLowerCase()) ||
+      (s.id && user.rollno && String(s.id).trim().toLowerCase() === String(user.rollno).trim().toLowerCase()) ||
       (s.email && user.email && s.email.trim().toLowerCase() === user.email.trim().toLowerCase()) ||
       (s.name && user.name && s.name.trim().toLowerCase() === user.name.trim().toLowerCase())
     ));
 
-    // Determine avatar
     let avatar = s.avatar_url;
     if (!avatar) {
       if (isMe && user.avatar_url) {
         avatar = user.avatar_url;
       } else {
-        avatar = getAvatarUrl(s.name);
+        avatar = getAvatarUrl(s.name, s.id);
       }
     }
 
@@ -153,6 +226,10 @@ const TheHustleScreen = ({ navigation }) => {
       certCount,
       leadCount,
       extraCount,
+      skillCount,
+      cgpa: cgpaVal,
+      attendance: attendanceVal,
+      academicScore,
       isMe,
       avatar,
       course: s.course,
@@ -172,31 +249,26 @@ const TheHustleScreen = ({ navigation }) => {
     item.rank = index + 1;
   });
 
-  // Get my record
-  const myRecord = computedLeaderboard.find(item => item.isMe) || (user ? {
-    id: user.id,
-    name: user.name,
+  // Get my record dynamically
+  const myRecord = computedLeaderboard.find(item => item.isMe) || {
+    id: user?.id || 'me',
+    name: user?.name || 'Student',
     score: 8450,
-    rank: 12,
-    leadCount: 1,
-    extraCount: 2,
-    certCount: 2,
-    avatar: getAvatarUrl(user.avatar_url || user.name),
-  } : {
-    id: 'mock',
-    name: 'Student',
-    score: 8450,
-    rank: 12,
-    leadCount: 1,
-    extraCount: 2,
-    certCount: 2,
-    avatar: getAvatarUrl('Student'),
-  });
+    rank: 1,
+    leadCount: (user?.leadership || []).length || 1,
+    extraCount: (user?.extracurricular || []).length || 2,
+    certCount: (user?.certsDone || user?.certificates_done || []).length || 2,
+    skillCount: (user?.current_skills || user?.skills || []).length || 6,
+    cgpa: user?.cgpa || 7.8,
+    attendance: user?.attendance || 76.81,
+    academicScore: Math.round((user?.cgpa || 7.8) * 200) + Math.round((user?.attendance || 76.81) * 10),
+    avatar: getAvatarUrl(user?.avatar_url || user?.name),
+  };
 
-  const myRank = myRecord.rank;
+  const myRank = myRecord.rank || 1;
   const myScore = myRecord.score;
   const isTop10 = myRank <= 10;
-  const ptsToNext = isTop10 ? 0 : (computedLeaderboard[9]?.score || 10000) - myScore;
+  const ptsToNext = isTop10 ? 0 : Math.max(0, (computedLeaderboard[9]?.score || 10000) - myScore);
   const topScore = computedLeaderboard[0]?.score || 20000;
   const progressPercent = Math.min(Math.round((myScore / topScore) * 100), 100);
 
@@ -207,7 +279,6 @@ const TheHustleScreen = ({ navigation }) => {
   if (loading) {
     return (
       <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
-        {/* Header still shows so the screen feels alive */}
         <View style={[styles.header, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
             <TouchableOpacity onPress={() => navigation.goBack()} style={[styles.headerIconBtn, { marginRight: 8 }]}>
@@ -224,11 +295,8 @@ const TheHustleScreen = ({ navigation }) => {
     );
   }
 
-  console.log(computedLeaderboard, ' Computed leaderboard', myRecord, " myRecord");
   return (
     <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
-
-
       {/* Header */}
       <View style={[styles.header, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -246,16 +314,17 @@ const TheHustleScreen = ({ navigation }) => {
             <MaterialIcons name="notifications-none" size={26} color={colors.textSecondary} />
             <NotificationBadge count={totalUnreadCount} />
           </TouchableOpacity>
-          <Image
-            source={{ uri: myRecord.avatar }}
-            style={[styles.avatarTiny, { borderColor: colors.primary }]}
+          <SafeStudentAvatar
+            uri={user?.avatar_url || myRecord.avatar}
+            rollno={user?.rollno}
+            name={user?.name || user?.full_name || myRecord.name}
+            style={[styles.avatarTiny, { borderColor: colors.primary, borderWidth: 2 }]}
+            primaryColor={colors.primary}
           />
         </View>
       </View>
 
-
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-
         {/* Main Pulse Points Card */}
         <View style={styles.sectionContainer}>
           <View style={[styles.pulseCard, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
@@ -278,82 +347,71 @@ const TheHustleScreen = ({ navigation }) => {
             </View>
 
             <Text style={[styles.pulseDesc, { backgroundColor: isDark ? colors.background : '#F9FAFB', color: colors.textSecondary }]}>
-              You are ranked #{myRank} overall. {isTop10 ? 'You are in the Top 10! Keep maintaining your lead for early access to premium internships.' : `You need ${ptsToNext.toLocaleString()} more points to enter the Top 10 for early access to premium internships.`}
+              You are ranked #{myRank} in this view. {isTop10 ? 'You are in the Top 10! Keep maintaining your lead for early access to premium internships.' : `You need ${ptsToNext.toLocaleString()} more points to enter the Top 10 for early access to premium internships.`}
             </Text>
           </View>
         </View>
 
-
-        {/* The Hustle Grid */}
+        {/* The Hustle Grid (4 Dynamic KPI Pillars) */}
         <View style={styles.sectionContainer}>
           <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>The Hustle Grid</Text>
 
           <View style={styles.gridContainer}>
-            {/* Certifications Card */}
+            {/* 1. Certifications Card */}
             <View style={[styles.gridCard, { backgroundColor: isDark ? colors.card : '#FFF7ED', borderColor: colors.border }]}>
               <View style={[styles.gridIconBox, { backgroundColor: isDark ? colors.background : '#FFEDD5' }]}>
-                <MaterialCommunityIcons name="trophy-outline" size={28} color={colors.primary} />
+                <MaterialCommunityIcons name="trophy-outline" size={26} color={colors.primary} />
               </View>
               <Text style={[styles.gridTitle, { color: colors.textPrimary }]}>Certifications</Text>
-              <Text style={[styles.gridSub, { color: colors.textSecondary }]}>{myRecord.certCount || 0} Earned Credentials</Text>
+              <Text style={[styles.gridSub, { color: colors.textSecondary }]}>{myRecord.certCount || 0} Credentials</Text>
               <Text style={[styles.gridPoints, { color: colors.primary }]}>+{((myRecord.certCount || 0) * 500).toLocaleString()} pts</Text>
             </View>
 
-            {/* Social & Leadership Card */}
+            {/* 2. Social & Leadership Card */}
             <View style={[styles.gridCard, { backgroundColor: isDark ? '#0C0A09' : '#F0F9FF', borderColor: isDark ? '#292524' : '#E0F2FE' }]}>
               <View style={[styles.gridIconBox, { backgroundColor: isDark ? 'rgba(2, 132, 199, 0.15)' : '#E0F2FE' }]}>
-                <MaterialCommunityIcons name="account-group-outline" size={28} color="#0284C7" />
+                <MaterialCommunityIcons name="account-group-outline" size={26} color="#0284C7" />
               </View>
               <Text style={[styles.gridTitle, { color: colors.textPrimary }]}>Hustle Activity</Text>
               <Text style={[styles.gridSub, { color: colors.textSecondary }]}>{myRecord.leadCount || 0} Roles • {myRecord.extraCount || 0} Clubs</Text>
               <Text style={[styles.gridPoints, { color: '#0284C7' }]}>+{(((myRecord.leadCount || 0) * 1000) + ((myRecord.extraCount || 0) * 500)).toLocaleString()} pts</Text>
             </View>
+
+            {/* 3. Verified Skills Card */}
+            <View style={[styles.gridCard, { backgroundColor: isDark ? colors.card : '#F5F3FF', borderColor: isDark ? '#312E81' : '#EDE9FE' }]}>
+              <View style={[styles.gridIconBox, { backgroundColor: isDark ? colors.background : '#EDE9FE' }]}>
+                <MaterialCommunityIcons name="lightning-bolt" size={26} color="#7C3AED" />
+              </View>
+              <Text style={[styles.gridTitle, { color: colors.textPrimary }]}>Core Skills</Text>
+              <Text style={[styles.gridSub, { color: colors.textSecondary }]}>{myRecord.skillCount || 0} Competencies</Text>
+              <Text style={[styles.gridPoints, { color: '#7C3AED' }]}>+{((myRecord.skillCount || 0) * 250).toLocaleString()} pts</Text>
+            </View>
+
+            {/* 4. Academic & Attendance Card */}
+            <View style={[styles.gridCard, { backgroundColor: isDark ? colors.card : '#ECFDF5', borderColor: isDark ? '#064E3B' : '#D1FAE5' }]}>
+              <View style={[styles.gridIconBox, { backgroundColor: isDark ? colors.background : '#D1FAE5' }]}>
+                <MaterialIcons name="trending-up" size={26} color="#059669" />
+              </View>
+              <Text style={[styles.gridTitle, { color: colors.textPrimary }]}>Academics</Text>
+              <Text style={[styles.gridSub, { color: colors.textSecondary }]}>{myRecord.cgpa ? myRecord.cgpa.toFixed(1) : '0.0'} GPA • {myRecord.attendance || 0}% Att.</Text>
+              <Text style={[styles.gridPoints, { color: '#059669' }]}>+{(myRecord.academicScore || 0).toLocaleString()} pts</Text>
+            </View>
           </View>
         </View>
-
 
         {/* Monthly Leaderboard */}
         <View style={styles.sectionContainer}>
           <Text style={[styles.sectionTitle, { color: colors.textPrimary, marginBottom: 12 }]}>Monthly Leaderboard</Text>
 
-          {/* Filter Pills Bar */}
+          {/* Course-Wise & Standing Filter Pills Bar */}
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingBottom: 12 }}>
-            {isStudentUser && (
-              <TouchableOpacity
-                style={[
-                  styles.filterPill,
-                  filterType === 'MyPhase'
-                    ? { backgroundColor: colors.primary }
-                    : { backgroundColor: colors.border }
-                ]}
-                onPress={() => setFilterType('MyPhase')}
-              >
-                <Text style={[styles.filterPillText, filterType === 'MyPhase' ? { color: '#FFFFFF' } : { color: colors.textSecondary }]}>
-                  {userIsMed ? `My Phase (${getMBBSProfLabel(userYearNum)})` : `My Year (${userYearNum}${userYearNum === 1 ? 'st' : userYearNum === 2 ? 'nd' : userYearNum === 3 ? 'rd' : 'th'} Yr)`}
-                </Text>
-              </TouchableOpacity>
-            )}
-
-            <TouchableOpacity
-              style={[
-                styles.filterPill,
-                filterType === 'Medical'
-                  ? { backgroundColor: colors.primary }
-                  : { backgroundColor: colors.border }
-              ]}
-              onPress={() => setFilterType('Medical')}
-            >
-              <Text style={[styles.filterPillText, filterType === 'Medical' ? { color: '#FFFFFF' } : { color: colors.textSecondary }]}>
-                Medical Students
-              </Text>
-            </TouchableOpacity>
-
+            {/* 1. All Students */}
             <TouchableOpacity
               style={[
                 styles.filterPill,
                 filterType === 'All'
                   ? { backgroundColor: colors.primary }
-                  : { backgroundColor: colors.border }
+                  : { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : colors.border }
               ]}
               onPress={() => setFilterType('All')}
             >
@@ -361,35 +419,103 @@ const TheHustleScreen = ({ navigation }) => {
                 All Students
               </Text>
             </TouchableOpacity>
+
+            {/* 2. My Course */}
+            {isStudentUser && (
+              <TouchableOpacity
+                style={[
+                  styles.filterPill,
+                  filterType === 'MyCourse'
+                    ? { backgroundColor: colors.primary }
+                    : { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : colors.border }
+                ]}
+                onPress={() => setFilterType('MyCourse')}
+              >
+                <Text style={[styles.filterPillText, filterType === 'MyCourse' ? { color: '#FFFFFF' } : { color: colors.textSecondary }]}>
+                  My Course ({userCourse})
+                </Text>
+              </TouchableOpacity>
+            )}
+
+            {/* 3. My Year */}
+            {isStudentUser && (
+              <TouchableOpacity
+                style={[
+                  styles.filterPill,
+                  filterType === 'MyYear'
+                    ? { backgroundColor: colors.primary }
+                    : { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : colors.border }
+                ]}
+                onPress={() => setFilterType('MyYear')}
+              >
+                <Text style={[styles.filterPillText, filterType === 'MyYear' ? { color: '#FFFFFF' } : { color: colors.textSecondary }]}>
+                  {userIsMed ? `My Prof (${getMBBSProfLabel(userYearNum)})` : `My Year (${userYearNum}${userYearNum === 1 ? 'st' : userYearNum === 2 ? 'nd' : userYearNum === 3 ? 'rd' : 'th'} Yr)`}
+                </Text>
+              </TouchableOpacity>
+            )}
+
+            {/* 4. Dynamic Course Tabs */}
+            {availableCourses.map((cName, cIdx) => {
+              if (isStudentUser && cName.toLowerCase() === userCourse.toLowerCase()) return null;
+              const isSelected = filterType === cName;
+              return (
+                <TouchableOpacity
+                  key={cIdx}
+                  style={[
+                    styles.filterPill,
+                    isSelected
+                      ? { backgroundColor: colors.primary }
+                      : { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : colors.border }
+                  ]}
+                  onPress={() => setFilterType(cName)}
+                >
+                  <Text style={[styles.filterPillText, isSelected ? { color: '#FFFFFF' } : { color: colors.textSecondary }]}>
+                    {cName}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
           </ScrollView>
 
           <View style={[styles.leaderboardCard, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
-            {displayLeaderboard.map((item, index) => (
-              <View key={item.id} style={[
-                styles.boardItem,
-                item.isMe && [styles.boardItemActive, { backgroundColor: isDark ? 'rgba(234, 88, 12, 0.2)' : '#FFF7ED' }],
-                index === displayLeaderboard.length - 1 && !showMeAtBottom && { borderBottomWidth: 0 },
-                { borderBottomColor: colors.border }
-              ]}>
-                <View style={[styles.boardItemLeft, { flex: 1, marginRight: 8 }]}>
-                  <Text style={[styles.boardRank, { color: colors.textMuted }, item.rank <= 3 && { color: colors.primary }]}>{item.rank}</Text>
-                  <Image source={{ uri: item.avatar }} style={styles.boardAvatar} />
-                  <View style={{ flex: 1 }}>
-                    <Text style={[styles.boardName, { color: colors.textPrimary }, item.isMe && { color: colors.primary }]} numberOfLines={1}>
-                      {item.name} {item.isMe && '(You)'}
-                    </Text>
-                    <Text style={{ fontSize: 10, color: colors.textSecondary || '#6B7280' }} numberOfLines={1}>
-                      {getDisplayCourse(item) || ''}
+            {displayLeaderboard.length === 0 ? (
+              <View style={{ padding: 24, alignItems: 'center' }}>
+                <Text style={{ color: colors.textSecondary, fontWeight: '600' }}>No students found in this filter.</Text>
+              </View>
+            ) : (
+              displayLeaderboard.map((item, index) => (
+                <View key={item.id} style={[
+                  styles.boardItem,
+                  item.isMe && [styles.boardItemActive, { backgroundColor: isDark ? 'rgba(234, 88, 12, 0.2)' : '#FFF7ED' }],
+                  index === displayLeaderboard.length - 1 && !showMeAtBottom && { borderBottomWidth: 0 },
+                  { borderBottomColor: colors.border }
+                ]}>
+                  <View style={[styles.boardItemLeft, { flex: 1, marginRight: 8 }]}>
+                    <Text style={[styles.boardRank, { color: colors.textMuted }, item.rank <= 3 && { color: colors.primary }]}>{item.rank}</Text>
+                    <SafeStudentAvatar
+                      uri={item.isMe ? (user?.avatar_url || item.avatar) : item.avatar}
+                      rollno={item.isMe ? user?.rollno : item.id}
+                      name={item.name}
+                      style={styles.boardAvatar}
+                      primaryColor={colors.primary}
+                    />
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.boardName, { color: colors.textPrimary }, item.isMe && { color: colors.primary }]} numberOfLines={1}>
+                        {item.name} {item.isMe && '(You)'}
+                      </Text>
+                      <Text style={{ fontSize: 10, color: colors.textSecondary || '#6B7280' }} numberOfLines={1}>
+                        {getDisplayCourse(item) || ''}
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={[styles.scorePill, { backgroundColor: colors.border }, item.isMe && { backgroundColor: colors.primary }]}>
+                    <Text style={[styles.scorePillText, { color: colors.textSecondary }, item.isMe && { color: '#FFFFFF' }]}>
+                      {item.score.toLocaleString()} pts
                     </Text>
                   </View>
                 </View>
-                <View style={[styles.scorePill, { backgroundColor: colors.border }, item.isMe && { backgroundColor: colors.primary }]}>
-                  <Text style={[styles.scorePillText, { color: colors.textSecondary }, item.isMe && { color: '#FFFFFF' }]}>
-                    {item.score.toLocaleString()} pts
-                  </Text>
-                </View>
-              </View>
-            ))}
+              ))
+            )}
 
             {showMeAtBottom && (
               <>
@@ -401,7 +527,13 @@ const TheHustleScreen = ({ navigation }) => {
                 ]}>
                   <View style={[styles.boardItemLeft, { flex: 1, marginRight: 8 }]}>
                     <Text style={[styles.boardRank, { color: colors.primary }]}>{myRecord.rank}</Text>
-                    <Image source={{ uri: myRecord.avatar }} style={styles.boardAvatar} />
+                    <SafeStudentAvatar
+                      uri={user?.avatar_url || myRecord.avatar}
+                      rollno={user?.rollno}
+                      name={user?.name || user?.full_name || myRecord.name}
+                      style={styles.boardAvatar}
+                      primaryColor={colors.primary}
+                    />
                     <View style={{ flex: 1 }}>
                       <Text style={[styles.boardName, { color: colors.primary }]} numberOfLines={1}>
                         {myRecord.name} (You)
@@ -430,7 +562,6 @@ const TheHustleScreen = ({ navigation }) => {
             </Text>
           </TouchableOpacity>
         </View>
-
 
         <View style={{ height: 100 }} />
       </ScrollView>
@@ -572,13 +703,15 @@ const styles = StyleSheet.create({
   },
   gridContainer: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     justifyContent: 'space-between',
+    rowGap: 12,
   },
   gridCard: {
     width: '48%',
     backgroundColor: '#FFF7ED',
     borderRadius: 24,
-    padding: 20,
+    padding: 16,
     borderWidth: 1,
     borderColor: '#FFEDD5',
   },

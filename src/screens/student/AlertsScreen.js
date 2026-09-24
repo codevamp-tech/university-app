@@ -10,7 +10,12 @@ import { APP_CONFIG } from '../../config/appConfig';
 import { useTheme } from '../../hooks/useTheme';
 import { useUser } from '../../context/UserContext';
 import { useNotifications } from '../../context/NotificationContext';
-import { getAlerts, markAllAlertsRead, markAlertRead, getAdminGeneralNotifications } from '../../data/apiService';
+import {
+  getAlerts, markAllAlertsRead, markAlertRead,
+  getErpNotices, getErpNotifications,
+  markErpNoticeRead, acknowledgeErpNotice, markErpNotificationsRead,
+  getErpNoticesUnreadCount,
+} from '../../data/apiService';
 
 const { width } = Dimensions.get('window');
 const TABS = ['All Updates', 'Social', 'Marketplace', 'Announcements'];
@@ -32,34 +37,44 @@ const AlertsScreen = ({ navigation }) => {
     if (isRefresh) setRefreshing(true);
     else setLoading(true);
     try {
-      // 1. Fetch backend alerts
+      // 1. Fetch backend alerts (social/marketplace notifications)
       const res = await getAlerts(accessToken);
-      const backendAlerts = res?.data || [];
+      const backendAlerts = (res?.data || []).map(a => ({ ...a, _source: 'social' }));
 
-      // 2. Fetch ERP general notifications
-      const erpAnnouncements = await getAdminGeneralNotifications();
-      let readErpIds = [];
-      try {
-        readErpIds = JSON.parse(await AsyncStorage.getItem('read_erp_announcements') || '[]');
-      } catch {}
+      // 2. Fetch ERP NestJS Notices (batch/course/role targeted)
+      const erpNotices = await getErpNotices(accessToken);
+      const mappedNotices = erpNotices.map(n => ({
+        id: `erp-notice-${n.id}`,
+        _erpId: n.id,
+        _source: 'erp-notice',
+        title: n.title,
+        message: n.content || n.message,
+        is_read: n.is_read || false,
+        is_acknowledged: n.is_acknowledged || false,
+        is_urgent: n.is_urgent || false,
+        isNew: !(n.is_read),
+        type: 'announcement',
+        created_at: n.created_at,
+        raw: n,
+      }));
 
-      const studentBatch = String(user?.batch_year || user?.batch || '').trim();
+      // 3. Fetch ERP NestJS Notifications (system events)
+      const erpNotifs = await getErpNotifications(accessToken);
+      const mappedNotifs = erpNotifs.map(n => ({
+        id: `erp-notif-${n.id}`,
+        _erpId: n.id,
+        _source: 'erp-notification',
+        title: n.title || n.type,
+        message: n.message || n.body,
+        is_read: n.is_read || false,
+        isNew: !(n.is_read),
+        type: n.type || 'system',
+        created_at: n.created_at,
+        raw: n,
+      }));
 
-      const mappedErp = erpAnnouncements
-        .filter(a => {
-          const targetBatch = String(a.batch || '').trim();
-          if (!targetBatch || targetBatch === '0' || targetBatch.toLowerCase() === 'null') {
-            return true;
-          }
-          return studentBatch ? (targetBatch === studentBatch) : true;
-        })
-        .map(a => ({
-          ...a,
-          is_read: readErpIds.includes(a.id)
-        }));
-
-      // 3. Combine and sort by date descending
-      const combined = [...backendAlerts, ...mappedErp].sort((a, b) => {
+      // 4. Combine and sort descending
+      const combined = [...mappedNotices, ...mappedNotifs, ...backendAlerts].sort((a, b) => {
         const dateA = new Date(a.created_at || 0);
         const dateB = new Date(b.created_at || 0);
         return dateB - dateA;
@@ -85,44 +100,47 @@ const AlertsScreen = ({ navigation }) => {
 
   const handleMarkAllRead = async () => {
     try {
-      if (accessToken) await markAllAlertsRead(accessToken);
-      const erpIds = apiAlerts.filter(a => a.id.startsWith('erp-announcement-')).map(a => a.id);
-      const readIds = JSON.parse(await AsyncStorage.getItem('read_erp_announcements') || '[]');
-      const newReadIds = Array.from(new Set([...readIds, ...erpIds]));
-      await AsyncStorage.setItem('read_erp_announcements', JSON.stringify(newReadIds));
+      if (accessToken) {
+        // Mark all ERP notices as read
+        await markErpNotificationsRead(accessToken);
+        // Mark all backend social alerts as read
+        await markAllAlertsRead(accessToken);
+      }
     } catch {}
-    setApiAlerts(prev => prev.map(a => ({ ...a, is_read: true })));
-    markAlertsAsRead(0); // clear all unread alert counts
-    setTimeout(() => {
-      refreshUnreadCounts();
-    }, 300);
+    setApiAlerts(prev => prev.map(a => ({ ...a, is_read: true, isNew: false })));
+    markAlertsAsRead(0);
+    setTimeout(() => refreshUnreadCounts(), 300);
   };
 
   const handleAlertTap = async (notif) => {
     // Mark as read optimistically
     if (notif.isNew) {
-      if (String(notif.id).startsWith('erp-announcement-')) {
-        try {
-          const readIds = JSON.parse(await AsyncStorage.getItem('read_erp_announcements') || '[]');
-          if (!readIds.includes(notif.id)) {
-            readIds.push(notif.id);
-            await AsyncStorage.setItem('read_erp_announcements', JSON.stringify(readIds));
-          }
-        } catch {}
+      if (notif._source === 'erp-notice' && notif._erpId && accessToken) {
+        markErpNoticeRead(accessToken, notif._erpId).catch(() => {});
+      } else if (notif._source === 'erp-notification') {
+        // bulk mark via markErpNotificationsRead is handled globally
       } else if (accessToken) {
         markAlertRead(accessToken, notif.id).catch(() => {});
       }
-      setApiAlerts(prev => prev.map(a => a.id === notif.id ? { ...a, is_read: true } : a));
-      markAlertsAsRead(1); // decrement by 1
-      setTimeout(() => {
-        refreshUnreadCounts();
-      }, 300);
+      setApiAlerts(prev => prev.map(a => a.id === notif.id ? { ...a, is_read: true, isNew: false } : a));
+      markAlertsAsRead(1);
+      setTimeout(() => refreshUnreadCounts(), 300);
     }
-    
-    if (String(notif.id).startsWith('erp-announcement-')) {
+
+    if (notif._source === 'erp-notice') {
+      setSelectedAnnouncement(notif);
+    } else if (notif._source === 'erp-notification') {
       setSelectedAnnouncement(notif);
     } else {
       navigateAlert(notif);
+    }
+  };
+
+  const handleAcknowledgeNotice = async (notif) => {
+    if (notif._source === 'erp-notice' && notif._erpId && accessToken) {
+      await acknowledgeErpNotice(accessToken, notif._erpId).catch(() => {});
+      setApiAlerts(prev => prev.map(a => a.id === notif.id ? { ...a, is_acknowledged: true } : a));
+      setSelectedAnnouncement(prev => prev ? { ...prev, is_acknowledged: true } : null);
     }
   };
 
@@ -163,20 +181,19 @@ const AlertsScreen = ({ navigation }) => {
         navigation.navigate('Notifications');
         return;
       }
-      // Generic social (follow, mention, etc.) → Community tab
+      // Generic social
       navigation.navigate('Community');
       return;
     }
 
     if (type === 'marketplace') {
-      // Marketplace enquiry / message → DMConversation with marketplace source
       if (raw.ref_type === 'marketplace_dm' && raw.ref_id) {
         navigation.navigate('Chat');
         setTimeout(() => {
           navigation.navigate('DMConversation', {
             contact: {
               user_id: raw.ref_id,
-              username: 'Student', // Will be fetched inside DMConversationScreen
+              username: 'Student',
               is_marketplace: true,
             },
             source: 'marketplace',
@@ -188,7 +205,9 @@ const AlertsScreen = ({ navigation }) => {
       return;
     }
 
-    // Announcements, grade, deadline → no deep-link action needed
+    // All other types (broadcast, announcement, placement, opportunity, grade, deadline)
+    // → open the detail modal so the user can read the full content
+    setSelectedAnnouncement(notif);
   };
 
   // Dynamic mapping — infer sub-type from title/body for smart routing
@@ -201,6 +220,7 @@ const AlertsScreen = ({ navigation }) => {
     if (a.type === 'announcement') { icon = 'megaphone-outline'; color = '#F59E0B'; }
     if (a.type === 'grade') { icon = 'school-outline'; color = colors.primary; }
     if (a.type === 'deadline') { icon = 'time-outline'; color = '#EF4444'; }
+    if (a.type === 'placement' || a.type === 'opportunity') { icon = 'rocket-outline'; color = '#7C3AED'; }
 
     // Infer sub-type if the API doesn't provide one
     const titleLower = (a.title || '').toLowerCase();
@@ -357,7 +377,7 @@ const AlertsScreen = ({ navigation }) => {
                         </View>
                       )}
 
-                      {/* Tap hint for actionable alerts */}
+                      {/* Tap hint for actionable social/marketplace alerts */}
                       {!isErp && (notif.type === 'social' || notif.type === 'marketplace') && (
                         <View style={styles.tapHint}>
                           <Ionicons
@@ -375,6 +395,13 @@ const AlertsScreen = ({ navigation }) => {
                              (notif.subType === 'dm' || notif.subType === 'message') ? 'Open message →' :
                              'View →'}
                           </Text>
+                        </View>
+                      )}
+                      {/* Tap hint for broadcast/announcement alerts */}
+                      {!isErp && notif.type !== 'social' && notif.type !== 'marketplace' && (
+                        <View style={styles.tapHint}>
+                          <Ionicons name="eye-outline" size={11} color={notif.color} />
+                          <Text style={[styles.tapHintText, { color: notif.color }]}>Tap to read →</Text>
                         </View>
                       )}
                     </View>

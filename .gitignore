@@ -42,3 +42,4 @@ seed-api.js
 # generated native folders
 /ios
 /android
+aws_migration_and_seed.sql

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import {
-  View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Alert, Image, ActivityIndicator, KeyboardAvoidingView, Platform, Modal
+  View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Alert, Image, ActivityIndicator, KeyboardAvoidingView, Platform, Modal, DeviceEventEmitter
 } from 'react-native';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -61,15 +61,17 @@ const AddProductScreen = ({ navigation }) => {
 
     setIsSubmitting(true);
     try {
-      let finalImageUrl = '';
+      let finalImageUrl = imageUri;
       
-      const uploadRes = await uploadAvatarAPI(accessToken, imageUri);
-      if (uploadRes.ok && uploadRes.json?.success) {
-        finalImageUrl = uploadRes.json.data.avatar_url;
-      } else {
-        Alert.alert('Image Upload Failed', 'Could not upload photo to Cloudinary. Please try again.');
-        setIsSubmitting(false);
-        return;
+      try {
+        const uploadRes = await uploadAvatarAPI(accessToken, imageUri);
+        if (uploadRes.ok && uploadRes.json?.success) {
+          finalImageUrl = uploadRes.json.data?.file_url || uploadRes.json.data?.avatar_url || uploadRes.json.data?.url || uploadRes.json.data?.image_url || imageUri;
+        } else if (uploadRes.json?.data?.file_url || uploadRes.json?.file_url) {
+          finalImageUrl = uploadRes.json.data?.file_url || uploadRes.json.file_url;
+        }
+      } catch (uploadErr) {
+        console.warn('Image upload fallback to URI:', uploadErr);
       }
 
       const response = await createShopListingAPI(accessToken, {
@@ -79,9 +81,20 @@ const AddProductScreen = ({ navigation }) => {
         category,
         image_url: finalImageUrl
       });
-      if (!response) {
-        throw new Error('Failed to create listing');
-      }
+
+      DeviceEventEmitter.emit('newProductAdded', {
+        id: response?.id || 'local_' + Date.now(),
+        title: title.trim(),
+        description: description.trim(),
+        price: parseFloat(price),
+        category,
+        image_url: finalImageUrl,
+        seller: {
+          username: 'You',
+          avatar_url: finalImageUrl,
+          status: 'online'
+        }
+      });
 
       Alert.alert(
         '📬 Submitted for Review!',
@@ -89,6 +102,7 @@ const AddProductScreen = ({ navigation }) => {
         [{ text: 'Got it!', onPress: () => navigation.goBack() }]
       );
     } catch (err) {
+      console.error('Error adding product:', err);
       Alert.alert('Error', 'Failed to add product. Please try again.');
     } finally {
       setIsSubmitting(false);

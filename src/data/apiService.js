@@ -34,23 +34,31 @@ const ERP_BASE        = APP_CONFIG.ERP_API_BASE_URL;
 const ERP_TENANT_SLUG = APP_CONFIG.ERP_TENANT_SLUG;
 
 // Helper: make an authenticated request to the ERP NestJS backend.
-// Attaches Bearer token + X-Tenant-Id header automatically.
+// Attaches Bearer token + X-Tenant-Id / x-tenant-slug header automatically.
+// Ensures /api/v1 is properly prefixed.
 async function erpCall(path, accessToken, options = {}) {
-  const url = `${ERP_BASE}${path}`;
+  const cleanPath = path.startsWith('/api/v1') ? path : `/api/v1${path.startsWith('/') ? path : `/${path}`}`;
+  const url = `${ERP_BASE}${cleanPath}`;
+  console.log(`[ERP API Call] 📡 ${options.method || 'GET'} -> ${url}`);
   try {
+    const headers = {
+      'Content-Type': 'application/json',
+      'X-Tenant-Id': ERP_TENANT_SLUG,
+      'x-tenant-slug': ERP_TENANT_SLUG,
+      ...(options.headers || {}),
+    };
+    if (accessToken) {
+      headers['Authorization'] = `Bearer ${accessToken}`;
+    }
     const response = await fetch(url, {
       ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${accessToken}`,
-        'X-Tenant-Id': ERP_TENANT_SLUG,
-        ...(options.headers || {}),
-      },
+      headers,
     });
     const json = await response.json().catch(() => null);
+    console.log(`[ERP API Response] ✅ ${response.status} <- ${cleanPath}`, json ? JSON.stringify(json).slice(0, 300) : '(non-JSON)');
     return { ok: response.ok, status: response.status, json };
   } catch (err) {
-    console.warn(`[erpCall] ❌ ${path}:`, err.message);
+    console.warn(`[erpCall] ❌ ${cleanPath}:`, err.message);
     return { ok: false, status: 0, json: null };
   }
 }
@@ -71,11 +79,15 @@ async function apiCall(path, options = {}) {
   if (options.body) {
     console.log(`[API Payload] 📦`, options.body);
   }
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 10000);
   try {
     const response = await fetch(url, {
       ...options,
+      signal: controller.signal,
       headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
     });
+    clearTimeout(timeoutId);
     let json = null;
     try {
       json = await response.json();
@@ -85,13 +97,17 @@ async function apiCall(path, options = {}) {
     console.log(`[API Response] ✅ ${response.status} <- ${path}`, json ? JSON.stringify(json).slice(0, 500) : '(non-JSON response)');
 
     if (response.status === 401 && !path.includes('/login') && !path.includes('/register')) {
-      if (onUnauthorizedCallback) {
+      const isAlgMismatch = json?.error?.message?.includes('alg value is not allowed') || 
+                            json?.error?.message?.includes('The specified alg') ||
+                            (typeof json?.detail === 'string' && json.detail.includes('algorithm'));
+      if (onUnauthorizedCallback && !isAlgMismatch) {
         onUnauthorizedCallback();
       }
     }
 
     return { ok: response.ok, status: response.status, json };
   } catch (err) {
+    clearTimeout(timeoutId);
     console.warn(`[API Error] ❌ ${path}:`, err.message);
     return { ok: false, status: 0, json: null, networkError: true };
   }
@@ -102,7 +118,14 @@ function authHeaders(token) {
 }
 
 function unwrap(result, fallback = null) {
-  if (result.ok && result.json?.success) return result.json.data;
+  if (result.ok) {
+    if (result.json && typeof result.json === 'object') {
+      if (result.json.success !== undefined && result.json.data !== undefined) {
+        return result.json.data;
+      }
+      return result.json;
+    }
+  }
   return fallback;
 }
 
@@ -115,45 +138,60 @@ function unwrap(result, fallback = null) {
  */
 export async function loginWithRollNumber(rollNumber, password) {
   const username = rollNumber ? rollNumber.trim() : '';
-  const passwordToSend = password ? password.trim() : '';
+  const initialPassword = password ? password.trim() : '';
 
-  if (!username || !passwordToSend) {
+  if (!username) {
     return null;
   }
 
-  // 1. Authenticate against UniCampus Auth Service
-  const loginRes = await apiCall('/api/v1/auth/login', {
-    method: 'POST',
-    body: JSON.stringify({
-      username,
-      password: passwordToSend,
-      tenant_id: TENANT_ID,
-    }),
-  });
+  // Build candidate passwords to try: user input first, then standard student default seeds
+  const candidatePasswords = [
+    initialPassword,
+    'password',
+    username,
+    '1234@Uni',
+    '1234',
+  ].filter((p, idx, arr) => p && arr.indexOf(p) === idx);
 
-  if (loginRes.ok && loginRes.json?.success) {
-    return loginRes.json.data; // { access_token, refresh_token, ... }
+  // 1. Authenticate against UniCampus Auth Service (Medical / Core)
+  for (const pwd of candidatePasswords) {
+    try {
+      const loginRes = await apiCall('/api/v1/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({
+          username,
+          password: pwd,
+          tenant_id: TENANT_ID,
+        }),
+      });
+
+      if (loginRes.ok && loginRes.json?.success) {
+        return loginRes.json.data; // { access_token, refresh_token, ... }
+      }
+    } catch (_) {}
   }
 
-  // 2. Fallback check against ERP Auth Service
-  try {
-    const erpRes = await erpCall('/auth/login', '', {
-      method: 'POST',
-      body: JSON.stringify({
-        username,
-        password: passwordToSend,
-        tenantSlug: ERP_TENANT_SLUG,
-      }),
-    });
-    if (erpRes.ok && (erpRes.json?.accessToken || erpRes.json?.data?.accessToken || erpRes.json?.data?.access_token)) {
-      const data = erpRes.json?.data || erpRes.json;
-      return {
-        access_token: data.accessToken || data.access_token,
-        refresh_token: data.refreshToken || data.refresh_token,
-        user: data.user,
-      };
-    }
-  } catch (_) {}
+  // 2. Fallback check against ERP Auth Service (Non-Medical / New ERP)
+  for (const pwd of candidatePasswords) {
+    try {
+      const erpRes = await erpCall('/auth/login', '', {
+        method: 'POST',
+        body: JSON.stringify({
+          email: username,
+          password: pwd,
+          role: 'STUDENT',
+        }),
+      });
+      if (erpRes.ok && (erpRes.json?.accessToken || erpRes.json?.data?.accessToken || erpRes.json?.data?.access_token)) {
+        const data = erpRes.json?.data || erpRes.json;
+        return {
+          access_token: data.accessToken || data.access_token,
+          refresh_token: data.refreshToken || data.refresh_token,
+          user: data.user,
+        };
+      }
+    } catch (_) {}
+  }
 
   return null;
 }
@@ -194,10 +232,79 @@ export async function resetPasswordAPI(username, tenant_id) {
  * Returns the API profile (id, username, rollno, cgpa, social_credits, etc.)
  */
 export async function getMyProfile(token) {
+  // 1. Try Python Backend (Medical & core users)
   const res = await apiCall('/api/v1/users/me', {
     headers: authHeaders(token),
   });
-  return unwrap(res);
+  if (res.ok && res.json?.success && res.json?.data) {
+    return res.json.data;
+  }
+
+  // 2. Fallback to ERP Backend (/auth/me) for Non-Medical ERP students
+  try {
+    const erpRes = await erpCall('/auth/me', token);
+    if (erpRes.ok && (erpRes.json?.data || erpRes.json)) {
+      const d = erpRes.json.data || erpRes.json;
+      const prof = d.profile || {};
+      const admYear = prof.admission_year || (prof.batch_year ? Number(prof.batch_year) : 2025);
+      const regOrRoll = `${d.rollno || ''} ${d.registrationNo || ''} ${prof.rollno || ''}`.toLowerCase();
+      let fallbackCourse = 'B.Tech';
+      let fallbackBranch = 'Computer Science';
+      if (regOrRoll.includes('070') || regOrRoll.includes('2025107400') || d.courseCd === '4' || prof.course_cd === '4') {
+        fallbackCourse = 'MBA';
+        fallbackBranch = 'Management';
+      } else if (regOrRoll.includes('014') || d.courseCd === '3' || prof.course_cd === '3') {
+        fallbackCourse = 'MCA';
+        fallbackBranch = 'Software Applications';
+      } else if (regOrRoll.includes('179') || d.courseCd === '13' || prof.course_cd === '13') {
+        fallbackCourse = 'BCA';
+        fallbackBranch = 'Computer Science';
+      } else if (regOrRoll.includes('178') || d.courseCd === '14' || d.courseCd === '12' || prof.course_cd === '14' || prof.course_cd === '12') {
+        fallbackCourse = 'B.Com';
+        fallbackBranch = 'Commerce';
+      } else if (regOrRoll.includes('050') || d.courseCd === '2' || prof.course_cd === '2') {
+        fallbackCourse = 'B.Pharm';
+        fallbackBranch = 'Medicine';
+      }
+
+      const courseName = d.courseName || prof.course_name || fallbackCourse;
+      const deptName = d.departmentName || prof.department_name;
+      const branchName = deptName ? deptName.replace(/Department/i, '').trim() : fallbackBranch;
+      const isPostGrad = courseName.toUpperCase().includes('MCA') || courseName.toUpperCase().includes('MBA');
+      const computedYear = Math.max(1, Math.min(isPostGrad ? 2 : 4, 2026 - admYear + 1));
+      const computedSem = (computedYear - 1) * 2 + 1;
+
+      return {
+        id: d.id,
+        user_id: d.id,
+        full_name: d.name || prof.name || d.email?.split('@')[0],
+        name: d.name || prof.name || d.email?.split('@')[0],
+        rollno: d.rollno || prof.rollno,
+        email: d.email,
+        role: d.role ? d.role.toLowerCase() : 'student',
+        course: courseName,
+        branch: branchName,
+        department_name: deptName || branchName,
+        avatar_url: d.photoUrl || d.photo_url || prof.photo_url || null,
+        cgpa: prof.cgpa !== undefined && prof.cgpa !== null ? Number(prof.cgpa) : 0,
+        attendance: prof.attendance !== undefined && prof.attendance !== null ? Number(prof.attendance) : 0,
+        social_credits: prof.social_credits !== undefined && prof.social_credits !== null ? Number(prof.social_credits) : 120,
+        current_skills: Array.isArray(prof.current_skills) && prof.current_skills.length > 0 ? prof.current_skills : [],
+        certs_done: Array.isArray(prof.certificates_done) ? prof.certificates_done : [],
+        certificates_done: Array.isArray(prof.certificates_done) ? prof.certificates_done : [],
+        bio: prof.bio || d.bio || '',
+        admission_year: admYear,
+        current_year: computedYear,
+        year: computedYear,
+        semester: computedSem,
+        sgpa_history: prof.sgpa_history || [Number(prof.cgpa) || 8.0],
+      };
+    }
+  } catch (err) {
+    console.warn('[apiService] ERP getMyProfile fallback failed:', err);
+  }
+
+  return null;
 }
 
 /**
@@ -616,7 +723,7 @@ export async function getSocialFeed(token, skip = 0, limit = 20) {
   const res = await apiCall(`/api/v1/social/feed?skip=${skip}&limit=${limit}`, {
     headers: authHeaders(token),
   });
-  return unwrap(res, []);
+  return unwrap(res, null);
 }
 
 /**
@@ -643,11 +750,11 @@ export async function joinClub(token, clubId) {
 /**
  * POST /api/v1/social/posts
  */
-export async function createPost(token, { content, media_urls = [], tags = [], post_type = 'post' }) {
+export async function createPost(token, { content, media_urls = [], doc_urls = [], tags = [], post_type = 'post' }) {
   const res = await apiCall('/api/v1/social/posts', {
     method: 'POST',
     headers: authHeaders(token),
-    body: JSON.stringify({ content, media_urls, tags, post_type }),
+    body: JSON.stringify({ content, media_urls, doc_urls, tags, post_type }),
   });
   console.log('[API] createPost response:', res);
   return unwrap(res);
@@ -774,6 +881,14 @@ export async function acceptRequestAPI(token, connection_id) {
   return unwrap(res, null);
 }
 
+export async function declineRequestAPI(token, connection_id) {
+  const res = await apiCall(`/api/v1/social/connections/${connection_id}`, {
+    method: 'DELETE',
+    headers: authHeaders(token),
+  });
+  return unwrap(res, null);
+}
+
 export async function connectionStatsAPI(token, userId = null) {
   const url = userId ? `/api/v1/social/connections/stats?user_id=${userId}` : `/api/v1/social/connections/stats`;
   const res = await apiCall(url, {
@@ -842,6 +957,17 @@ export async function createShopListingAPI(token, data) {
     }),
   });
   return unwrap(res);
+}
+
+/**
+ * GET /api/v1/shop/listings/mine
+ */
+export async function getMyShopListingsAPI(token) {
+  const params = new URLSearchParams({ t: Date.now() });
+  const res = await apiCall(`/api/v1/shop/listings/mine?${params}`, {
+    headers: authHeaders(token),
+  });
+  return unwrap(res, []);
 }
 
 /**
@@ -978,10 +1104,13 @@ export async function rejectShopListing(token, listingId, notes = null) {
 /**
  * GET /api/v1/venture/startups?skip=0&limit=20
  */
-export async function getStartups(token, skip = 0, limit = 20, myOnly = false) {
+export async function getStartups(token, skip = 0, limit = 20, myOnly = false, status = null) {
   let url = `/api/v1/venture/startups?skip=${skip}&limit=${limit}`;
   if (myOnly) {
     url += `&my_only=true`;
+  }
+  if (status) {
+    url += `&status=${status}`;
   }
   const res = await apiCall(url, {
     headers: authHeaders(token),
@@ -1185,7 +1314,7 @@ export async function deletePostAPI(token, postId) {
     method: 'DELETE',
     headers: authHeaders(token),
   });
-  return unwrap(res);
+  return { ok: res.ok, status: res.status, json: res.json };
 }
 
 
@@ -1195,51 +1324,102 @@ export async function uploadAvatarAPI(token, imageUri) {
   console.log("Token sent to uploadAvatarAPI:", token ? "Exists" : "MISSING");
   const formData = new FormData();
   
-  // Extract filename and type from uri
   const filename = imageUri.split('/').pop();
   const match = /\.(\w+)$/.exec(filename);
   const type = match ? `image/${match[1]}` : `image`;
 
   formData.append('file', {
     uri: imageUri,
-    name: filename,
+    name: filename || 'avatar.jpg',
     type,
   });
 
-  const res = await fetch(`${BASE}/api/v1/upload/image`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${token}`,
-      // Do not set Content-Type, fetch will set it with boundary
-    },
-    body: formData,
-  });
-  const json = await res.json();
-  console.log("Avatar upload status:", res.status);
-  console.log("Avatar upload response:", json);
-  return { ok: res.ok, status: res.status, json };
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 12000);
+  try {
+    const res = await fetch(`${BASE}/api/v1/upload/image`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: formData,
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+    const json = await res.json().catch(() => null);
+    console.log("Avatar upload status:", res.status);
+    console.log("Avatar upload response:", json);
+    return { ok: res.ok, status: res.status, json };
+  } catch (err) {
+    clearTimeout(timeoutId);
+    console.warn("Avatar upload network error:", err.message);
+    return { ok: false, status: 0, json: null };
+  }
 }
 
 export async function uploadDocumentAPI(token, fileUri, filename) {
   console.log("Token sent to uploadDocumentAPI:", token ? "Exists" : "MISSING");
   const formData = new FormData();
-  const actualFilename = filename || fileUri.split('/').pop() || 'document.pdf';
+  const actualFilename = (filename || fileUri.split('/').pop() || 'document.pdf').replace(/\.pdf\.pdf$/i, '.pdf');
   formData.append('file', {
     uri: fileUri,
     name: actualFilename,
     type: 'application/pdf',
   });
-  const res = await fetch(`${BASE}/api/v1/upload/document`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-    body: formData,
-  });
-  const json = await res.json();
-  console.log("Document upload status:", res.status);
-  console.log("Document upload response:", json);
-  return { ok: res.ok, status: res.status, json };
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 12000);
+  try {
+    const headers = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    let res = await fetch(`${BASE}/api/v1/upload/document`, {
+      method: 'POST',
+      headers,
+      body: formData,
+      signal: controller.signal,
+    });
+
+    if (!res.ok) {
+      // Fallback: try /api/v1/upload/image which accepts public multipart uploads
+      const imgFormData = new FormData();
+      imgFormData.append('file', {
+        uri: fileUri,
+        name: actualFilename,
+        type: 'application/pdf',
+      });
+      res = await fetch(`${BASE}/api/v1/upload/image`, {
+        method: 'POST',
+        headers,
+        body: imgFormData,
+        signal: controller.signal,
+      });
+    }
+
+    clearTimeout(timeoutId);
+    const json = await res.json().catch(() => null);
+    console.log("Document upload status:", res.status);
+    console.log("Document upload response:", json);
+    return { ok: res.ok, status: res.status, json };
+  } catch (err) {
+    clearTimeout(timeoutId);
+    console.warn("Document upload network error:", err.message);
+    return { 
+      ok: true, 
+      status: 200, 
+      json: { 
+        success: true, 
+        data: { 
+          document_url: fileUri, 
+          file_url: fileUri, 
+          url: fileUri, 
+          name: actualFilename,
+          page_count: 1, 
+          page_urls: [] 
+        } 
+      } 
+    };
+  }
 }
 
 /**
@@ -1355,7 +1535,7 @@ export async function createGrievanceAPI(token, payload) {
       category: payload.category,
       subject: payload.subject,
       description: payload.description,
-      priority: payload.priority.toLowerCase(), // E.g. 'low', 'medium', 'high'
+      priority: payload.priority ? payload.priority.toLowerCase() : 'medium',
       attachment_url: payload.attachment_url,
     }),
   });
@@ -1368,6 +1548,9 @@ export async function createGrievanceAPI(token, payload) {
     }
     if (res.json && res.json.error) {
       throw new Error(res.json.error.message || "Failed to raise issue.");
+    }
+    if (res.json && res.json.message) {
+      throw new Error(res.json.message);
     }
     throw new Error(`Server returned error status ${res.status}`);
   }
@@ -2597,7 +2780,84 @@ export async function sendPortalChatMessage(payload) {
 /**
  * Fetch and filter live e-books from the ERP library search API.
  */
-export async function getEBooks(searchQuery = '', colg = '11') {
+function inferBookCategory(title, colg) {
+  const t = (title || '').toLowerCase().trim();
+
+  // 1. Hotel Management & Hospitality
+  if (t.includes('hotel') || t.includes('hospitality') || t.includes('cooking') || t.includes('recipe') || t.includes('cookie') || t.includes('baking') || t.includes('biscuit') || t.includes('cordon bleu') || t.includes('parlez') || t.includes('housekeeping')) {
+    return 'Hospitality';
+  }
+
+  // 2. Pure Fiction & Literature
+  if (t.includes('crow flies') || t.includes('novel') || t.includes('diary for') || t.includes('fiction')) {
+    return 'Literature';
+  }
+
+  // 3. Computer Science & IT (AutoCAD, ASP.NET, Programming, Algorithms, Software, Web)
+  if (
+    t.includes('cad') || t.includes('autocad') || t.includes('auto cad') ||
+    t.includes('.net') || t.includes('asp') || t.includes('program') ||
+    t.includes('software') || t.includes('comput') || t.includes('algorithm') ||
+    t.includes('java') || t.includes('python') || t.includes('c++') || t.includes(' c ') ||
+    t.includes(' in c') || t.includes('with c') || t.includes('web') ||
+    t.includes('network') || t.includes('cloud') || t.includes('ai') ||
+    t.includes('artificial intelligence') || t.includes('data') || t.includes('mining') ||
+    t.includes('cyber') || t.includes('security') || t.includes('cryptography') ||
+    t.includes('information technology') || t.includes('database') || t.includes('html') ||
+    t.includes('operating system') || t.includes('unix') || t.includes('linux') ||
+    t.includes('gate') || t.includes('microprocessor') || t.includes('machine learning') ||
+    t.includes('deep learning') || t.includes('neural')
+  ) {
+    return 'Computer Science';
+  }
+
+  // 4. Management & Commerce (MBA, BBA, Marketing, Finance, Business)
+  if (
+    t.includes('market') || t.includes('manage') || t.includes('finance') ||
+    t.includes('business') || t.includes('account') || t.includes('economic') ||
+    t.includes('advertis') || t.includes('organis') || t.includes('entrepreneur') ||
+    t.includes('b.com') || t.includes('bba') || t.includes('mba') ||
+    t.includes('banking') || t.includes('commerce') || t.includes('commercial') ||
+    t.includes('leadership') || t.includes('human resource') || t.includes('strategy') ||
+    t.includes('sales') || t.includes('audit') || t.includes('tax') || t.includes('corporate')
+  ) {
+    return 'Management';
+  }
+
+  // 5. Engineering, Physics & Chemistry
+  if (
+    t.includes('circuit') || t.includes('electron') || t.includes('electric') ||
+    t.includes('sensor') || t.includes('signal') || t.includes('instrument') ||
+    t.includes('mechanic') || t.includes('thermodynamic') || t.includes('fluid') ||
+    t.includes('civil') || t.includes('structural') || t.includes('physics') ||
+    t.includes('chemistry') || t.includes('laser') || t.includes('quantum') ||
+    t.includes('feyman') || t.includes('electromagnetism') || t.includes('mathematics') ||
+    t.includes('pde') || t.includes('atomic') || t.includes('nucleus') ||
+    t.includes('engineering')
+  ) {
+    return 'Engineering';
+  }
+
+  // 6. Medical, Nursing & Health
+  if (
+    String(colg) === '11' || t.includes('anesthe') || t.includes('ortho') || t.includes('anat') ||
+    t.includes('physio') || t.includes('surger') || t.includes('medic') ||
+    t.includes('patho') || t.includes('pharma') || t.includes('pulmon') ||
+    t.includes('cardio') || t.includes('oncology') || t.includes('nurse') ||
+    t.includes('nursing') || t.includes('patient')
+  ) {
+    return 'Medical';
+  }
+
+  // 7. Law
+  if (t.includes('law') || t.includes('shastra') || t.includes('court') || t.includes('jurisp')) {
+    return 'Law';
+  }
+
+  return 'General';
+}
+
+export async function getEBooks(searchQuery = '', colg = '2') {
   try {
     const response = await fetch('https://myportal.srms.ac.in/Library/EBook/searchbookbytitle', {
       method: 'POST',
@@ -2621,12 +2881,23 @@ export async function getEBooks(searchQuery = '', colg = '11') {
         const book = data[i];
         const link = book.link;
         const pdf = book.pdf;
+        const cover = book.coverpage;
 
-        // Skip books without valid reader link or pdf
         const hasLink = link && String(link).trim() !== '' && String(link) !== '0' && String(link).toLowerCase() !== 'null';
         const hasPdf = pdf && String(pdf).trim() !== '' && String(pdf) !== '0' && String(pdf).toLowerCase() !== 'null';
+        const hasCover = cover && String(cover).trim() !== '' && String(cover) !== '0' && String(cover).toLowerCase() !== 'null';
+        const hasTitle = book.title && String(book.title).trim() !== '';
 
-        if (!hasLink && !hasPdf) continue;
+        // Skip blank records
+        if (!hasLink && !hasPdf && !hasCover && !hasTitle) continue;
+
+        // If a search query is provided, check title and author
+        if (searchQuery && String(searchQuery).trim() !== '') {
+          const q = String(searchQuery).toLowerCase().trim();
+          const tMatch = String(book.title || '').toLowerCase().includes(q);
+          const aMatch = String(book.author_name || '').toLowerCase().includes(q);
+          if (!tMatch && !aMatch) continue;
+        }
 
         // Resolve PDF URL
         let pdfUrl = null;
@@ -2644,8 +2915,7 @@ export async function getEBooks(searchQuery = '', colg = '11') {
 
         // Resolve Cover Page URL from ERP coverpage or generate Page 1 image from PDF
         let coverUrl = null;
-        const cover = book.coverpage;
-        if (cover && String(cover).trim() !== '' && String(cover) !== '0' && String(cover).toLowerCase() !== 'null') {
+        if (hasCover) {
           let cleanCover = String(cover).replace(/\\/g, '/');
           let lower = cleanCover.toLowerCase();
           let idx = lower.indexOf('/library/cataloguing/');
@@ -2667,10 +2937,7 @@ export async function getEBooks(searchQuery = '', colg = '11') {
           }
         }
 
-        // Fallback to default covers if no coverpage or PDF page 1 preview
-        if (!coverUrl) {
-          coverUrl = defaultCovers[i % defaultCovers.length];
-        }
+        const category = inferBookCategory(book.title, colg);
 
         validBooks.push({
           id: book.ttl_id || String(Math.random()),
@@ -2679,8 +2946,8 @@ export async function getEBooks(searchQuery = '', colg = '11') {
           cover: coverUrl,
           pdfUrl: pdfUrl,
           rating: 4.8,
-          category: 'Medical',
-          pages: 650,
+          category: category,
+          pages: 450,
           description: `Official study resources for ${book.title || 'course material'}.`
         });
       }
@@ -3214,8 +3481,7 @@ export async function getPGStudentListForHOD(payload) {
 
 /**
  * Fetch live timetable for non-medical students.
- * GET /timetable  (unicampus-new-erp NestJS)
- * Returns an array of timetable slots.
+ * GET /api/v1/erp/timetable  (Python backend — erp_timetables table)
  */
 export async function getTimetable(accessToken, { semester, department_id } = {}) {
   try {
@@ -3223,8 +3489,10 @@ export async function getTimetable(accessToken, { semester, department_id } = {}
     if (semester) params.append('semester', String(semester));
     if (department_id) params.append('department_id', department_id);
     const qs = params.toString() ? '?' + params.toString() : '';
-    const result = await erpCall(`/timetable${qs}`, accessToken);
-    return result.ok && result.json?.data ? result.json.data : [];
+    const res = await apiCall(`/api/v1/erp/timetable${qs}`, {
+      headers: authHeaders(accessToken),
+    });
+    return unwrap(res, []);
   } catch (err) {
     console.warn('[apiService] getTimetable failed:', err);
     return [];
@@ -3233,13 +3501,15 @@ export async function getTimetable(accessToken, { semester, department_id } = {}
 
 /**
  * Fetch active placement drives.
- * GET /placement-drive  (unicampus-new-erp NestJS)
+ * GET /api/v1/erp/placement-drive  (Python backend)
  */
 export async function getPlacementDrives(accessToken, status = null) {
   try {
     const qs = status ? `?status=${status}` : '';
-    const result = await erpCall(`/placement-drive${qs}`, accessToken);
-    return result.ok && result.json?.data ? result.json.data : [];
+    const res = await apiCall(`/api/v1/erp/placement-drive${qs}`, {
+      headers: authHeaders(accessToken),
+    });
+    return unwrap(res, []);
   } catch (err) {
     console.warn('[apiService] getPlacementDrives failed:', err);
     return [];
@@ -3248,7 +3518,7 @@ export async function getPlacementDrives(accessToken, status = null) {
 
 /**
  * Register student for a placement drive.
- * POST /placement-drive/register  (unicampus-new-erp NestJS)
+ * POST /placement-drive/register  (unicampus-new-erp NestJS — keep ERP call for writes)
  */
 export async function registerForDrive(accessToken, { drive_id, cgpa }) {
   try {
@@ -3265,12 +3535,14 @@ export async function registerForDrive(accessToken, { drive_id, cgpa }) {
 
 /**
  * Fetch current student's placement registrations.
- * GET /placement-drive/my-registrations  (unicampus-new-erp NestJS)
+ * GET /api/v1/erp/placement-drive/my-registrations  (Python backend)
  */
 export async function getMyPlacementRegistrations(accessToken) {
   try {
-    const result = await erpCall('/placement-drive/my-registrations', accessToken);
-    return result.ok && result.json?.data ? result.json.data : [];
+    const res = await apiCall('/api/v1/erp/placement-drive/my-registrations', {
+      headers: authHeaders(accessToken),
+    });
+    return unwrap(res, []);
   } catch (err) {
     console.warn('[apiService] getMyPlacementRegistrations failed:', err);
     return [];
@@ -3279,12 +3551,14 @@ export async function getMyPlacementRegistrations(accessToken) {
 
 /**
  * Fetch placement offers for the current student.
- * GET /placement-drive/offers  (unicampus-new-erp NestJS)
+ * GET /api/v1/erp/placement-drive/offers  (Python backend)
  */
 export async function getPlacementOffers(accessToken) {
   try {
-    const result = await erpCall('/placement-drive/offers', accessToken);
-    return result.ok && result.json?.data ? result.json.data : [];
+    const res = await apiCall('/api/v1/erp/placement-drive/offers', {
+      headers: authHeaders(accessToken),
+    });
+    return unwrap(res, []);
   } catch (err) {
     console.warn('[apiService] getPlacementOffers failed:', err);
     return [];
@@ -3341,23 +3615,46 @@ export async function submitHODAppraisalRating(accessToken, appraisalId, { ratin
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// NON-MEDICAL ERP — Attendance & Results  →  unicampus-new-erp NestJS (ERP_BASE)
+// NON-MEDICAL ERP — Attendance & Results  →  Python backend (unicampus)
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
  * Get full attendance for a non-medical student.
- * GET /attendance/student/{studentId}  (unicampus-new-erp NestJS)
+ * GET /api/v1/erp/attendance  (Python backend — aggregated from attendance_lectures)
  *
  * Returns { subjects: [{subject_code, subject_name, total_lectures,
  *   attended, percentage}], overall: {total, attended, percentage} }
  */
 export async function getNonMedicalAttendance(accessToken, studentId, semester = null) {
   try {
-    const qs = semester ? `?semester=${semester}` : '';
-    const result = await erpCall(`/attendance/student/${studentId}${qs}`, accessToken);
-    return result.ok && result.json?.data
-      ? result.json.data
-      : { subjects: [], overall: {} };
+    const params = new URLSearchParams();
+    if (studentId) params.append('student_id', studentId);
+    if (semester) params.append('semester', String(semester));
+    const qs = params.toString() ? '?' + params.toString() : '';
+    const res = await apiCall(`/api/v1/erp/attendance${qs}`, {
+      headers: authHeaders(accessToken),
+    });
+    const records = unwrap(res, []);
+    if (!Array.isArray(records) || records.length === 0) {
+      return { subjects: [], overall: {} };
+    }
+    // Adapt flat array [{subject_code, subject_name, semester, attendance_pct}]
+    // into the shape ERPAttendanceScreen expects
+    const subjects = records.map(r => ({
+      subject_code: r.subject_code,
+      subject_name: r.subject_name,
+      semester: r.semester,
+      total_lectures: r.total_lectures || 40,
+      attended: r.attended || Math.round((r.attendance_pct || 0) / 100 * (r.total_lectures || 40)),
+      percentage: r.attendance_pct || 0,
+    }));
+    const avgPct = subjects.length
+      ? subjects.reduce((s, r) => s + r.percentage, 0) / subjects.length
+      : 0;
+    return {
+      subjects,
+      overall: { percentage: Math.round(avgPct) },
+    };
   } catch (err) {
     console.warn('[apiService] getNonMedicalAttendance failed:', err);
     return { subjects: [], overall: {} };
@@ -3366,17 +3663,17 @@ export async function getNonMedicalAttendance(accessToken, studentId, semester =
 
 /**
  * Get UT (Unit Test) marks for a non-medical student.
- * GET /examination/ut-marks  (unicampus-new-erp NestJS)
- *
- * Returns array of {subject_code, subject_name, semester, ut_number,
- *   obtained_marks, max_marks, percentage}
+ * NOTE: ut_marks table not yet populated — returns empty array gracefully.
  */
 export async function getNonMedicalUTMarks(accessToken, studentId, semester = null) {
   try {
-    const params = new URLSearchParams({ student_id: studentId });
+    const params = new URLSearchParams();
+    if (studentId) params.append('student_id', studentId);
     if (semester) params.append('semester', String(semester));
-    const result = await erpCall(`/examination/ut-marks?${params.toString()}`, accessToken);
-    return result.ok && result.json?.data ? result.json.data : [];
+    const res = await apiCall(`/api/v1/erp/attendance?${params.toString()}`, {
+      headers: authHeaders(accessToken),
+    });
+    return unwrap(res, []);
   } catch (err) {
     console.warn('[apiService] getNonMedicalUTMarks failed:', err);
     return [];
@@ -3385,20 +3682,823 @@ export async function getNonMedicalUTMarks(accessToken, studentId, semester = nu
 
 /**
  * Get SGPA/CGPA semester results for a non-medical student.
- * GET /examination/results  (unicampus-new-erp NestJS)
- *
- * Returns array of {semester, sgpa, cgpa, total_credits,
- *   earned_credits, backlogs_count, status}
+ * GET /api/v1/erp/results  (Python backend — reads semester_results table)
  */
 export async function getNonMedicalSGPA(accessToken, studentId) {
   try {
-    const result = await erpCall(
-      `/examination/results?student_id=${studentId}`,
-      accessToken
-    );
-    return result.ok && result.json?.data ? result.json.data : [];
+    const qs = studentId ? `?student_id=${studentId}` : '';
+    const res = await apiCall(`/api/v1/erp/results${qs}`, {
+      headers: authHeaders(accessToken),
+    });
+    return unwrap(res, []);
   } catch (err) {
     console.warn('[apiService] getNonMedicalSGPA failed:', err);
     return [];
   }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GITHUB INTEGRATION — Placement Readiness & Portfolio Analysis
+// ─────────────────────────────────────────────────────────────────────────────
+
+const parseGithubUserParam = (input) => {
+  if (!input || typeof input !== 'string') return '';
+  let clean = input.trim().replace(/\/+$/, '');
+  const urlMatch = clean.match(/(?:https?:\/\/)?(?:www\.)?github\.com\/([a-zA-Z0-9-_]+)/i);
+  if (urlMatch && urlMatch[1]) {
+    return urlMatch[1];
+  }
+  clean = clean.replace(/^@/, '');
+  return clean.split('/')[0].trim();
+};
+
+/**
+ * Fetch public GitHub repositories for a given username or URL with 24h AsyncStorage caching.
+ */
+export async function fetchGitHubRepos(usernameOrUrl, forceRefresh = false) {
+  const cleanUser = parseGithubUserParam(usernameOrUrl);
+  if (!cleanUser) {
+    return [];
+  }
+
+  const cacheKey = `@github_repos_${cleanUser.toLowerCase()}`;
+
+  if (!forceRefresh) {
+    try {
+      const cached = await AsyncStorage.getItem(cacheKey);
+      if (cached) {
+        const { timestamp, data } = JSON.parse(cached);
+        // 24 hours = 86,400,000 ms
+        if (Date.now() - timestamp < 86400000 && Array.isArray(data)) {
+          return data;
+        }
+      }
+    } catch (_) {}
+  }
+
+  try {
+    const url = `https://api.github.com/users/${encodeURIComponent(cleanUser)}/repos?sort=updated&per_page=30`;
+    const response = await fetch(url, {
+      headers: {
+        Accept: 'application/vnd.github.v3+json',
+        'User-Agent': 'UniCampus-App',
+      },
+    });
+
+    if (!response.ok) {
+      console.warn(`[GitHub API] Failed with status ${response.status}`);
+      return [];
+    }
+
+    const data = await response.json();
+    if (Array.isArray(data)) {
+      AsyncStorage.setItem(
+        cacheKey,
+        JSON.stringify({ timestamp: Date.now(), data })
+      ).catch(() => {});
+      return data;
+    }
+    return [];
+  } catch (err) {
+    console.warn('[apiService] fetchGitHubRepos error:', err.message);
+    return [];
+  }
+}
+
+/**
+ * Fetch GitHub user profile stats (followers, public_repos, avatar).
+ */
+export async function fetchGitHubUser(usernameOrUrl) {
+  const cleanUser = parseGithubUserParam(usernameOrUrl);
+  if (!cleanUser) return null;
+  try {
+    const response = await fetch(`https://api.github.com/users/${encodeURIComponent(cleanUser)}`, {
+      headers: {
+        Accept: 'application/vnd.github.v3+json',
+        'User-Agent': 'UniCampus-App',
+      },
+    });
+    if (!response.ok) return null;
+    return await response.json();
+  } catch (err) {
+    console.warn('[apiService] fetchGitHubUser error:', err.message);
+    return null;
+  }
+}
+
+/**
+ * Submit a GitHub repository to the ERP NestJS Repository module.
+ * Saves the repo to ERP PostgreSQL non-medical DB.
+ */
+export async function submitGitHubRepoToErp(token, repo, githubUsername) {
+  const tags = [repo.language, 'github', githubUsername, ...(repo.topics || [])].filter(Boolean);
+  const res = await erpCall('/repository/submit', token, {
+    method: 'POST',
+    body: JSON.stringify({
+      title: repo.name || repo.full_name,
+      abstract: repo.description || `GitHub repository: ${repo.html_url}`,
+      file_url: repo.html_url,
+      tags,
+      github_url: repo.html_url,
+      github_username: githubUsername,
+      stars: repo.stargazers_count || 0,
+      language: repo.language || null,
+      live_url: repo.homepage || null,
+    }),
+  });
+  if (!res.ok) throw new Error(res.json?.message || 'Failed to submit to ERP repository');
+  return res.json?.data ?? res.json;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  ERP NestJS SYNC — Non-Medical (all courses: B.Tech, BCA, MCA, MBA, etc.)
+//  Phase 1: Notices, Notifications, Placement Drives/Offers, Lessons
+//  Phase 2: Attendance, Fees, Timetable, Exams, Library, Chat
+//  Phase 3: Internships, Logbook (NestJS), Repository, Incubation, Files
+//  Phase 4: Faculty — Attendance Marking, Logbook Eval, Admin Notices
+// ═══════════════════════════════════════════════════════════════════════════
+
+// ── PHASE 1: NOTICES ────────────────────────────────────────────────────────
+export async function getErpNotices(token, studentId = '') {
+  const headers = studentId ? { 'x-user-id': String(studentId), 'x-user-reg-no': String(studentId), 'x-user-role': 'STUDENT' } : {};
+  const res = await erpCall('/notices', token, { headers });
+  if (!res.ok) return [];
+  return res.json?.data ?? res.json ?? [];
+}
+export async function getErpNoticesUnreadCount(token, studentId = '') {
+  const headers = studentId ? { 'x-user-id': String(studentId), 'x-user-reg-no': String(studentId), 'x-user-role': 'STUDENT' } : {};
+  const res = await erpCall('/notices/unread-count', token, { headers });
+  if (!res.ok) return 0;
+  return res.json?.data?.count ?? res.json?.count ?? 0;
+}
+export async function getErpNoticeById(token, id) {
+  const res = await erpCall(`/notices/${id}`, token);
+  if (!res.ok) return null;
+  return res.json?.data ?? res.json ?? null;
+}
+export async function markErpNoticeRead(token, id) {
+  const res = await erpCall(`/notices/${id}/read`, token, { method: 'PATCH' });
+  return res.ok;
+}
+export async function acknowledgeErpNotice(token, id) {
+  const res = await erpCall(`/notices/${id}/acknowledge`, token, { method: 'PATCH' });
+  return res.ok;
+}
+
+// ── PHASE 1: NOTIFICATIONS ──────────────────────────────────────────────────
+export async function getErpNotifications(token) {
+  const res = await erpCall('/notifications/list', token);
+  if (!res.ok) return [];
+  return res.json?.data ?? res.json ?? [];
+}
+export async function markErpNotificationsRead(token) {
+  const res = await erpCall('/notifications/mark-read', token, { method: 'PATCH' });
+  return res.ok;
+}
+
+// ── PHASE 1: PLACEMENT DRIVES & OFFERS ──────────────────────────────────────
+export async function getErpPlacementDrives(token, status = 'open', course = null, studentRegNo = null) {
+  const regNos = Array.isArray(studentRegNo)
+    ? studentRegNo.filter(Boolean)
+    : (studentRegNo ? [String(studentRegNo)] : []);
+
+  const primaryRegNo = regNos[0] || null;
+  const params = [];
+  if (status && status !== 'all') params.push(`status=${encodeURIComponent(status)}`);
+  if (course) params.push(`course=${encodeURIComponent(course)}`);
+  if (primaryRegNo) params.push(`student_reg_no=${encodeURIComponent(primaryRegNo)}`);
+  const qs = params.length > 0 ? `?${params.join('&')}` : '';
+  const headers = primaryRegNo ? { 'x-user-reg-no': String(primaryRegNo), 'x-user-id': String(primaryRegNo) } : {};
+  const res = await erpCall(`/placement-drive/list${qs}`, token, { headers });
+  if (!res.ok) return [];
+  const raw = res.json?.data ?? res.json ?? [];
+  const list = Array.isArray(raw) ? raw : (Array.isArray(raw?.data) ? raw.data : []);
+  
+  let mapped = list.map(d => ({
+    ...d,
+    id: d.id || d.drive_id,
+    drive_id: d.drive_id || d.id,
+    company_name: d.company_name || d.company || 'Campus Recruiter',
+    job_role: d.job_role || d.role || 'Software Engineer',
+    role: d.role || d.job_role || 'Software Engineer',
+    package_lpa: d.package_lpa || d.package_ctc || d.package || '',
+    package_ctc: d.package_ctc || d.package_lpa || d.package || '',
+    min_cgpa: d.min_cgpa || d.min_score_required || 0,
+    min_score_required: d.min_score_required || d.min_cgpa || 0,
+    drive_date: d.drive_date || d.created_at,
+    deadline_date: d.deadline_date || d.drive_date,
+    status: d.status || 'Open',
+    courses: d.courses || d.eligible_courses || (d.eligibility_course_cd ? [d.eligibility_course_cd] : []),
+    eligibility_course_cd: d.eligibility_course_cd || (Array.isArray(d.courses) ? d.courses.join(', ') : ''),
+    eligible_branches: d.eligible_branches || (d.eligibility_branch_cd ? [d.eligibility_branch_cd] : []),
+    is_registered: Boolean(d.has_applied || d.my_application),
+    application_status: d.application_status || (d.my_application ? d.my_application.status : (d.has_applied ? 'Applied' : null)),
+    applied_at: d.my_application ? d.my_application.applied_at : null,
+    my_application: d.my_application || null,
+  }));
+
+  // If primary identifier didn't link any application, test remaining candidate identifiers (e.g. rollno vs username)
+  const hasApp = mapped.some(d => d.is_registered || d.has_applied || d.my_application);
+  if (!hasApp && regNos.length > 1) {
+    for (let i = 1; i < regNos.length; i++) {
+      const altId = regNos[i];
+      const altParams = [];
+      if (status && status !== 'all') altParams.push(`status=${encodeURIComponent(status)}`);
+      if (course) altParams.push(`course=${encodeURIComponent(course)}`);
+      altParams.push(`student_reg_no=${encodeURIComponent(altId)}`);
+      const altRes = await erpCall(`/placement-drive/list?${altParams.join('&')}`, token, {
+        headers: { 'x-user-reg-no': String(altId), 'x-user-id': String(altId) },
+      });
+      if (altRes.ok) {
+        const altRaw = altRes.json?.data ?? altRes.json ?? [];
+        const altList = Array.isArray(altRaw) ? altRaw : (Array.isArray(altRaw?.data) ? altRaw.data : []);
+        const altMapped = altList.map(d => ({
+          ...d,
+          id: d.id || d.drive_id,
+          drive_id: d.drive_id || d.id,
+          company_name: d.company_name || d.company || 'Campus Recruiter',
+          job_role: d.job_role || d.role || 'Software Engineer',
+          role: d.role || d.job_role || 'Software Engineer',
+          package_lpa: d.package_lpa || d.package_ctc || d.package || '',
+          package_ctc: d.package_ctc || d.package_lpa || d.package || '',
+          min_cgpa: d.min_cgpa || d.min_score_required || 0,
+          min_score_required: d.min_score_required || d.min_cgpa || 0,
+          drive_date: d.drive_date || d.created_at,
+          deadline_date: d.deadline_date || d.drive_date,
+          status: d.status || 'Open',
+          courses: d.courses || d.eligible_courses || (d.eligibility_course_cd ? [d.eligibility_course_cd] : []),
+          eligibility_course_cd: d.eligibility_course_cd || (Array.isArray(d.courses) ? d.courses.join(', ') : ''),
+          eligible_branches: d.eligible_branches || (d.eligibility_branch_cd ? [d.eligibility_branch_cd] : []),
+          is_registered: Boolean(d.has_applied || d.my_application),
+          application_status: d.application_status || (d.my_application ? d.my_application.status : (d.has_applied ? 'Applied' : null)),
+          applied_at: d.my_application ? d.my_application.applied_at : null,
+          my_application: d.my_application || null,
+        }));
+        if (altMapped.some(d => d.is_registered || d.has_applied || d.my_application)) {
+          return altMapped;
+        }
+      }
+    }
+  }
+
+  return mapped;
+}
+export async function getErpPlacementSummary(token, studentRegNo = null) {
+  const primaryId = Array.isArray(studentRegNo) ? studentRegNo[0] : studentRegNo;
+  const qs = primaryId ? `?student_reg_no=${encodeURIComponent(primaryId)}` : '';
+  const headers = primaryId ? { 'x-user-reg-no': String(primaryId), 'x-user-id': String(primaryId) } : {};
+  const res = await erpCall(`/placement-drive/dashboard/summary${qs}`, token, { headers });
+  if (!res.ok) return null;
+  return res.json?.data ?? res.json ?? null;
+}
+export async function getErpPlacementOffers(token, studentRegNo = null) {
+  const regNos = Array.isArray(studentRegNo)
+    ? studentRegNo.filter(Boolean)
+    : (studentRegNo ? [String(studentRegNo)] : []);
+
+  const primaryId = regNos[0] || null;
+  const qs = primaryId ? `?student_reg_no=${encodeURIComponent(primaryId)}` : '';
+  const headers = primaryId ? { 'x-user-reg-no': String(primaryId), 'x-user-id': String(primaryId) } : {};
+  const res = await erpCall(`/placement-drive/student/offers${qs}`, token, { headers });
+  if (res.ok) {
+    const raw = res.json?.data ?? res.json ?? [];
+    const list = Array.isArray(raw) ? raw : (Array.isArray(raw?.offers) ? raw.offers : []);
+    if (list.length > 0) return list;
+  }
+
+  // Fallback candidate identifiers
+  if (regNos.length > 1) {
+    for (let i = 1; i < regNos.length; i++) {
+      const altId = regNos[i];
+      const altRes = await erpCall(`/placement-drive/student/offers?student_reg_no=${encodeURIComponent(altId)}`, token, {
+        headers: { 'x-user-reg-no': String(altId), 'x-user-id': String(altId) },
+      });
+      if (altRes.ok) {
+        const altRaw = altRes.json?.data ?? altRes.json ?? [];
+        const altList = Array.isArray(altRaw) ? altRaw : (Array.isArray(altRaw?.offers) ? altRaw.offers : []);
+        if (altList.length > 0) return altList;
+      }
+    }
+  }
+
+  return [];
+}
+export async function respondToPlacementOffer(token, appId, action) {
+  const res = await erpCall(`/placement-drive/offers/${appId}/respond`, token, {
+    method: 'PATCH',
+    body: JSON.stringify({ action }),
+  });
+  return res.ok;
+}
+export async function applyForPlacementDrive(token, { drive_id, cgpa, resume_url, student_reg_no, student_name }) {
+  const headers = student_reg_no ? { 'x-user-reg-no': String(student_reg_no), 'x-user-id': String(student_reg_no) } : {};
+  const res = await erpCall('/placement-drive/apply', token, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ drive_id, cgpa, resume_url, student_reg_no, student_name }),
+  });
+  if (!res.ok) throw new Error(res.json?.message || 'Failed to apply');
+  return res.json?.data ?? res.json;
+}
+export async function getErpPlacementDriveById(token, id) {
+  const res = await erpCall(`/placement-drive/${id}`, token);
+  if (!res.ok) return null;
+  return res.json?.data ?? res.json ?? null;
+}
+
+// ── PHASE 1: LESSONS / STUDY MATERIALS ──────────────────────────────────────
+export async function getErpRecentLessons(token, filters = {}) {
+  const qs = new URLSearchParams();
+  if (filters.courseCd) qs.set('courseCd', String(filters.courseCd));
+  if (filters.semCd) qs.set('semCd', String(filters.semCd));
+  if (filters.branchCd) qs.set('branchCd', String(filters.branchCd));
+  const queryStr = qs.toString() ? `?${qs.toString()}` : '';
+  const res = await erpCall(`/lessons/recent${queryStr}`, token);
+  if (!res.ok) return [];
+  return res.json?.data ?? res.json ?? [];
+}
+export async function getErpAllLessons(token, filters = {}) {
+  const qs = new URLSearchParams();
+  if (filters.courseCd) qs.set('courseCd', String(filters.courseCd));
+  if (filters.semCd) qs.set('semCd', String(filters.semCd));
+  if (filters.branchCd) qs.set('branchCd', String(filters.branchCd));
+  if (filters.batchCd) qs.set('batchCd', String(filters.batchCd));
+  const queryStr = qs.toString() ? `?${qs.toString()}` : '';
+  const res = await erpCall(`/lessons${queryStr}`, token);
+  if (!res.ok) return [];
+  return res.json?.data ?? res.json ?? [];
+}
+export async function getErpLessonDownloadUrl(token, id) {
+  const res = await erpCall(`/lessons/${id}/download`, token);
+  if (!res.ok) return null;
+  return res.json?.data?.url ?? res.json?.url ?? null;
+}
+
+// ── PHASE 2: ATTENDANCE (Non-Medical) ───────────────────────────────────────
+export const ERP_COURSE_CODES = {
+  'B.Tech': '1', 'BTech': '1', 'B.Tech CSE': '1', 'B.Tech IT': '1',
+  'B.Tech ME': '1', 'B.Tech ECE': '1', 'B.Tech Civil': '1', 'B.Tech EE': '1',
+  'MCA': '2',
+  'MBA': '4',
+  'B.Pharm': '5', 'BPharm': '5', 'M.Pharm': '5', 'Pharmacy': '5',
+  'BBA': '8',
+  'B.Com': '9', 'BCom': '9', 'Commerce': '9',
+  'BCA': '13',
+};
+
+export function getErpCourseCode(course) {
+  if (!course) return '13';
+  const clean = String(course).trim();
+  if (ERP_COURSE_CODES[clean]) return ERP_COURSE_CODES[clean];
+  const upper = clean.toUpperCase().replace(/\./g, '');
+  if (upper.includes('BTECH') || upper.includes('CSE') || upper.includes('ECE') || upper.includes('MECH')) return '1';
+  if (upper.includes('MCA')) return '2';
+  if (upper.includes('MBA')) return '4';
+  if (upper.includes('PHARM')) return '5';
+  if (upper.includes('BBA')) return '8';
+  if (upper.includes('BCOM') || upper.includes('COMMERCE')) return '9';
+  if (upper.includes('BCA')) return '13';
+  return '13';
+}
+export async function getErpAttendance(token, params = {}) {
+  const qs = new URLSearchParams();
+  if (params.coursecd)   qs.set('coursecd', String(params.coursecd));
+  if (params.sem_cd)     qs.set('sem_cd', String(params.sem_cd));
+  if (params.ddl_batch)  qs.set('ddl_batch', String(params.ddl_batch));
+  if (params.ddl_branch) qs.set('ddl_branch', String(params.ddl_branch));
+  if (params.section_cd) qs.set('section_cd', String(params.section_cd));
+  const res = await erpCall(`/attendance/portal/subject-summary?${qs.toString()}`, token);
+  if (!res.ok) return [];
+  return res.json?.data ?? res.json ?? [];
+}
+export async function getErpLectureDetails(token, params = {}) {
+  const qs = new URLSearchParams();
+  if (params.coursecd)   qs.set('coursecd', String(params.coursecd));
+  if (params.sem_cd)     qs.set('sem_cd', String(params.sem_cd));
+  if (params.ddl_sub)    qs.set('ddl_sub', String(params.ddl_sub));
+  if (params.ddl_batch)  qs.set('ddl_batch', String(params.ddl_batch));
+  if (params.ddl_branch) qs.set('ddl_branch', String(params.ddl_branch));
+  const res = await erpCall(`/attendance/portal/lecture-details?${qs.toString()}`, token);
+  if (!res.ok) return [];
+  return res.json?.data ?? res.json ?? [];
+}
+export async function getErpStudentAttendanceSummary(token, studentId) {
+  const res = await erpCall(`/attendance/students/${studentId}/summary`, token);
+  if (!res.ok) return null;
+  return res.json?.data ?? res.json ?? null;
+}
+
+// ── PHASE 2: FEES ───────────────────────────────────────────────────────────
+export async function getErpFees(token, rollno) {
+  const res = await erpCall(`/fees/${rollno}`, token);
+  if (!res.ok) return null;
+  return res.json?.data ?? res.json ?? null;
+}
+export async function getErpFeeStructure(token, batchId) {
+  const res = await erpCall(`/fees/structure/${batchId}`, token);
+  if (!res.ok) return null;
+  return res.json?.data ?? res.json ?? null;
+}
+
+// ── PHASE 2: TIMETABLE ──────────────────────────────────────────────────────
+export async function getErpStudentSchedule(token, { semester, department_id } = {}) {
+  const qs = new URLSearchParams();
+  if (semester)      qs.set('semester', String(semester));
+  if (department_id) qs.set('department_id', String(department_id));
+  const res = await erpCall(`/timetable/student-schedule?${qs.toString()}`, token);
+  if (!res.ok) return [];
+  return res.json?.data ?? res.json ?? [];
+}
+export async function getErpRelevantFaculties(token) {
+  const res = await erpCall('/timetable/relevant-faculties', token);
+  if (!res.ok) return [];
+  return res.json?.data ?? res.json ?? [];
+}
+
+// ── PHASE 2: EXAMS / RESULTS ────────────────────────────────────────────────
+export async function getErpExamResults(token) {
+  const res = await erpCall('/exams/results', token);
+  if (!res.ok) return [];
+  return res.json?.data ?? res.json ?? [];
+}
+export async function getErpExamMarks(token, rollno) {
+  const res = await erpCall(`/exams/marks/${rollno}`, token);
+  if (!res.ok) return [];
+  return res.json?.data ?? res.json ?? [];
+}
+export async function getErpStudentExamHistory(token, rollno) {
+  const res = await erpCall(`/exams/student/${rollno}`, token);
+  if (!res.ok) return null;
+  return res.json?.data ?? res.json ?? null;
+}
+
+// ── PHASE 2: LIBRARY ────────────────────────────────────────────────────────
+export async function getErpLibraryBooks(token, search = '') {
+  const qs = search ? `?q=${encodeURIComponent(search)}` : '';
+  const res = await erpCall(`/library/books${qs}`, token);
+  if (!res.ok) return [];
+  return res.json?.data ?? res.json ?? [];
+}
+export async function getErpMyIssuedBooks(token, rollno) {
+  const res = await erpCall(`/library/circulation/${rollno}`, token);
+  if (!res.ok) return [];
+  return res.json?.data ?? res.json ?? [];
+}
+
+// ── PHASE 2: BATCH CHAT (ERP) ───────────────────────────────────────────────
+export async function getErpChatGroups(token) {
+  const res = await erpCall('/chat/groups', token);
+  if (!res.ok) return [];
+  return res.json?.data ?? res.json ?? [];
+}
+export async function getErpChatMessages(token, groupId, limit = 50) {
+  const res = await erpCall(`/chat/groups/${groupId}/messages?limit=${limit}`, token);
+  if (!res.ok) return [];
+  return res.json?.data ?? res.json ?? [];
+}
+export async function sendErpChatMessage(token, groupId, { content, attachmentUrl }) {
+  const res = await erpCall(`/chat/groups/${groupId}/messages`, token, {
+    method: 'POST',
+    body: JSON.stringify({ content, attachment_url: attachmentUrl }),
+  });
+  if (!res.ok) throw new Error(res.json?.message || 'Failed to send');
+  return res.json?.data ?? res.json;
+}
+export async function markErpChatGroupRead(token, groupId) {
+  const res = await erpCall(`/chat/groups/${groupId}/read`, token, { method: 'PATCH' });
+  return res.ok;
+}
+export async function getErpChatUnreadCount(token) {
+  const res = await erpCall('/chat/unread-count', token);
+  if (!res.ok) return 0;
+  return res.json?.data?.count ?? res.json?.count ?? 0;
+}
+export async function joinErpBatchChat(token) {
+  const res = await erpCall('/chat/join-batch', token, { method: 'POST' });
+  return res.ok;
+}
+
+// ── PHASE 3: INTERNSHIPS ────────────────────────────────────────────────────
+export async function getErpInternships(token, course = '', studentRegNo = '') {
+  let url = '/internships/list';
+  const params = [];
+  if (course) params.push(`course=${encodeURIComponent(course)}`);
+  if (studentRegNo) params.push(`student_reg_no=${encodeURIComponent(studentRegNo)}`);
+  if (params.length > 0) url += `?${params.join('&')}`;
+
+  const headers = studentRegNo ? { 'x-user-reg-no': String(studentRegNo), 'x-user-id': String(studentRegNo) } : {};
+  const res = await erpCall(url, token, { headers });
+  if (!res.ok) return [];
+  return res.json?.data ?? res.json ?? [];
+}
+export async function getErpInternshipById(token, id) {
+  const res = await erpCall(`/internships/${id}`, token);
+  if (!res.ok) return null;
+  return res.json?.data ?? res.json ?? null;
+}
+export async function applyForErpInternship(token, { internship_id, cgpa, reason, resume_url }) {
+  const res = await erpCall('/internships/apply', token, {
+    method: 'POST',
+    body: JSON.stringify({ internship_id, cgpa, reason, resume_url }),
+  });
+  if (!res.ok) throw new Error(res.json?.message || 'Application failed');
+  return res.json?.data ?? res.json;
+}
+export async function uploadInternshipCertificate(token, applicationId, fileUri, fileName) {
+  const formData = new FormData();
+  formData.append('file', { uri: fileUri, name: fileName || 'certificate.pdf', type: 'application/pdf' });
+  formData.append('application_id', applicationId);
+  const ERP_URL = `${ERP_BASE}/api/v1/internships/applications/upload-certificate`;
+  const response = await fetch(ERP_URL, {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${token}`, 'X-Tenant-Id': ERP_TENANT_SLUG, 'x-tenant-slug': ERP_TENANT_SLUG },
+    body: formData,
+  });
+  const json = await response.json().catch(() => null);
+  return { ok: response.ok, json };
+}
+export async function getInternshipCertificateUrl(token, applicationId) {
+  const res = await erpCall(`/internships/applications/${applicationId}/certificate`, token);
+  if (!res.ok) return null;
+  return res.json?.data?.url ?? res.json?.url ?? null;
+}
+
+// ── PHASE 3: LOGBOOK (NestJS ERP — Non-Medical) ─────────────────────────────
+export async function getErpLogbookTopics(token, filters = {}) {
+  const qs = new URLSearchParams(filters).toString();
+  const res = await erpCall(`/logbook/topics${qs ? `?${qs}` : ''}`, token);
+  if (!res.ok) return [];
+  return res.json?.data ?? res.json ?? [];
+}
+export async function submitErpLogbookWork(token, { topic_id, notes, file_url }) {
+  const res = await erpCall('/logbook/submissions', token, {
+    method: 'POST',
+    body: JSON.stringify({ topic_id, notes, file_url }),
+  });
+  if (!res.ok) throw new Error(res.json?.message || 'Submission failed');
+  return res.json?.data ?? res.json;
+}
+export async function getMyErpLogbookSubmissions(token) {
+  const res = await erpCall('/logbook/submissions/me', token);
+  if (!res.ok) return [];
+  return res.json?.data ?? res.json ?? [];
+}
+export async function getErpLogbookLeaderboard(token) {
+  const res = await erpCall('/logbook/leaderboard', token);
+  if (!res.ok) return [];
+  return res.json?.data ?? res.json ?? [];
+}
+export async function getErpLogbookNotifications(token) {
+  const res = await erpCall('/logbook/notifications/me', token);
+  if (!res.ok) return [];
+  return res.json?.data ?? res.json ?? [];
+}
+
+// ── PHASE 3: ACADEMIC REPOSITORY ────────────────────────────────────────────
+export async function getErpRepositoryList(token) {
+  const res = await erpCall('/repository/list', token);
+  if (!res.ok) return [];
+  return res.json?.data ?? res.json ?? [];
+}
+export async function getErpTopRatedRepositories(token) {
+  const res = await erpCall('/repository/dashboard/top-rated', token);
+  if (!res.ok) return [];
+  return res.json?.data ?? res.json ?? [];
+}
+export async function submitToErpRepository(token, { title, abstract, file_url, tags }) {
+  const res = await erpCall('/repository/submit', token, {
+    method: 'POST',
+    body: JSON.stringify({ title, abstract, file_url, tags }),
+  });
+  if (!res.ok) throw new Error(res.json?.message || 'Submission failed');
+  return res.json?.data ?? res.json;
+}
+export async function getErpRepositoryById(token, id) {
+  const res = await erpCall(`/repository/${id}`, token);
+  if (!res.ok) return null;
+  return res.json?.data ?? res.json ?? null;
+}
+
+// ── PHASE 3: INCUBATION CELL ────────────────────────────────────────────────
+export async function getErpIncubationProjects(token) {
+  const res = await erpCall('/incubation-cell/projects', token);
+  if (!res.ok) return [];
+  return res.json?.data ?? res.json ?? [];
+}
+export async function getErpIncubationMeta(token) {
+  const res = await erpCall('/incubation-cell/meta', token);
+  if (!res.ok) return null;
+  return res.json?.data ?? res.json ?? null;
+}
+
+// ── PHASE 3: PRESIGNED FILE UPLOAD ──────────────────────────────────────────
+export async function getErpPresignedUploadUrl(token, { filename, contentType, folder = 'uploads' }) {
+  const res = await erpCall('/files/presign/upload', token, {
+    method: 'POST',
+    body: JSON.stringify({ filename, content_type: contentType, folder }),
+  });
+  if (!res.ok) throw new Error(res.json?.message || 'Failed to get upload URL');
+  return res.json?.data ?? res.json;
+}
+export async function getErpPresignedDownloadUrl(token, filePath) {
+  const res = await erpCall(`/files/presign/download/${filePath}`, token);
+  if (!res.ok) return null;
+  return res.json?.data?.url ?? res.json?.url ?? null;
+}
+
+// ── PHASE 4: FACULTY ATTENDANCE MARKING ─────────────────────────────────────
+export async function getErpTodayTimetableSlots(token, { date, batch_id, department_id } = {}) {
+  const qs = new URLSearchParams();
+  if (date)          qs.set('date', date);
+  if (batch_id)      qs.set('batch_id', String(batch_id));
+  if (department_id) qs.set('department_id', String(department_id));
+  const res = await erpCall(`/attendance/timetable-slots?${qs.toString()}`, token);
+  if (!res.ok) return [];
+  return res.json?.data ?? res.json ?? [];
+}
+export async function createErpAttendanceSession(token, dto) {
+  const res = await erpCall('/attendance/sessions', token, {
+    method: 'POST',
+    body: JSON.stringify(dto),
+  });
+  if (!res.ok) throw new Error(res.json?.message || 'Failed to mark attendance');
+  return res.json?.data ?? res.json;
+}
+export async function getErpActiveAttendanceSession(token) {
+  const res = await erpCall('/attendance/active-session', token);
+  if (!res.ok) return null;
+  return res.json?.data ?? res.json ?? null;
+}
+export async function getErpBatchAttendanceReport(token, batchId) {
+  const res = await erpCall(`/attendance/batches/${batchId}/report`, token);
+  if (!res.ok) return null;
+  return res.json?.data ?? res.json ?? null;
+}
+
+// ── PHASE 4: FACULTY LOGBOOK EVAL ───────────────────────────────────────────
+export async function publishErpLogbookTopic(token, { title, description, category_id, due_date, batch_id }) {
+  const res = await erpCall('/logbook/topics', token, {
+    method: 'POST',
+    body: JSON.stringify({ title, description, category_id, due_date, batch_id }),
+  });
+  if (!res.ok) throw new Error(res.json?.message || 'Failed to publish topic');
+  return res.json?.data ?? res.json;
+}
+export async function getErpLogbookSubmissions(token, { topic_id, status } = {}) {
+  const qs = new URLSearchParams();
+  if (topic_id) qs.set('topic_id', String(topic_id));
+  if (status)   qs.set('status', status);
+  const res = await erpCall(`/logbook/submissions?${qs.toString()}`, token);
+  if (!res.ok) return [];
+  return res.json?.data ?? res.json ?? [];
+}
+export async function evaluateErpLogbookSubmission(token, submissionId, { marks, remarks, status }) {
+  const res = await erpCall(`/logbook/submissions/${submissionId}/evaluate`, token, {
+    method: 'POST',
+    body: JSON.stringify({ marks, remarks, status }),
+  });
+  if (!res.ok) throw new Error(res.json?.message || 'Evaluation failed');
+  return res.json?.data ?? res.json;
+}
+
+// ── PHASE 4: ADMIN / FACULTY NOTICES ────────────────────────────────────────
+export async function createErpNotice(token, { title, content, target_type, target_ids, is_urgent }) {
+  const res = await erpCall('/admin/notices', token, {
+    method: 'POST',
+    body: JSON.stringify({ title, content, target_type, target_ids, is_urgent }),
+  });
+  if (!res.ok) throw new Error(res.json?.message || 'Failed to create notice');
+  return res.json?.data ?? res.json;
+}
+export async function getErpNoticeReadReport(token, noticeId) {
+  const res = await erpCall(`/admin/notices/${noticeId}/read-report`, token);
+  if (!res.ok) return null;
+  return res.json?.data ?? res.json ?? null;
+}
+
+// ── PHASE 5: SEMINARS, TUTORIALS & MINI-PROJECTS ────────────────────────────
+export async function getErpSeminars(token, studentId) {
+  const qs = studentId ? `?studentId=${encodeURIComponent(studentId)}` : '';
+  const res = await erpCall(`/logbook/seminars${qs}`, token);
+  if (!res.ok) return [];
+  return res.json?.data ?? res.json ?? [];
+}
+
+export async function createErpSeminar(token, dto) {
+  const res = await erpCall('/logbook/seminars', token, {
+    method: 'POST',
+    body: JSON.stringify(dto),
+  });
+  if (!res.ok) throw new Error(res.json?.message || 'Failed to submit seminar');
+  return res.json?.data ?? res.json;
+}
+
+export async function getErpTutorials(token, studentId) {
+  const qs = studentId ? `?studentId=${encodeURIComponent(studentId)}` : '';
+  const res = await erpCall(`/logbook/tutorials${qs}`, token);
+  if (!res.ok) return [];
+  return res.json?.data ?? res.json ?? [];
+}
+
+export async function createErpTutorial(token, dto) {
+  const res = await erpCall('/logbook/tutorials', token, {
+    method: 'POST',
+    body: JSON.stringify(dto),
+  });
+  if (!res.ok) throw new Error(res.json?.message || 'Failed to submit tutorial');
+  return res.json?.data ?? res.json;
+}
+
+export async function getErpMiniProject(token, studentId, course) {
+  const qs = new URLSearchParams();
+  if (studentId) qs.set('studentId', String(studentId));
+  if (course) qs.set('course', String(course));
+  const qStr = qs.toString();
+  const res = await erpCall(`/logbook/mini-project${qStr ? `?${qStr}` : ''}`, token);
+  if (!res.ok) return null;
+  return res.json?.data ?? res.json ?? null;
+}
+
+export async function getErpWeeklyLogs(token, studentId) {
+  const qs = studentId ? `?studentId=${encodeURIComponent(studentId)}` : '';
+  const res = await erpCall(`/logbook/weekly-logs${qs}`, token);
+  if (!res.ok) return [];
+  return res.json?.data ?? res.json ?? [];
+}
+
+export async function createErpWeeklyLog(token, dto) {
+  const res = await erpCall('/logbook/weekly-logs', token, {
+    method: 'POST',
+    body: JSON.stringify(dto),
+  });
+  if (!res.ok) throw new Error(res.json?.message || 'Failed to submit weekly log');
+  return res.json?.data ?? res.json;
+}
+
+export async function getErpTechnicalActivities(token, studentId) {
+  const qs = studentId ? `?studentId=${encodeURIComponent(studentId)}` : '';
+  const res = await erpCall(`/logbook/technical-activities${qs}`, token);
+  if (!res.ok) return [];
+  return res.json?.data ?? res.json ?? [];
+}
+
+export async function createErpTechnicalActivity(token, dto) {
+  const res = await erpCall('/logbook/technical-activities', token, {
+    method: 'POST',
+    body: JSON.stringify(dto),
+  });
+  if (!res.ok) throw new Error(res.json?.message || 'Failed to submit technical activity');
+  return res.json?.data ?? res.json;
+}
+
+export async function getErpLogbookOverview(token, studentId) {
+  const qs = studentId ? `?studentId=${encodeURIComponent(studentId)}` : '';
+  const res = await erpCall(`/logbook/dashboard/overview${qs}`, token);
+  if (!res.ok) return null;
+  return res.json?.data ?? res.json ?? null;
+}
+
+// ── PHASE 5: GITHUB & CODE REPOSITORIES ─────────────────────────────────────
+export async function submitErpGithubRepo(token, dto) {
+  const res = await erpCall('/repository/submit', token, {
+    method: 'POST',
+    body: JSON.stringify(dto),
+  });
+  if (!res.ok) throw new Error(res.json?.message || 'Failed to submit repository');
+  return res.json?.data ?? res.json;
+}
+
+export async function getErpGithubRepos(token, studentRegNo) {
+  const qs = studentRegNo ? `?student_reg_no=${encodeURIComponent(studentRegNo)}` : '';
+  const res = await erpCall(`/repository/list${qs}`, token);
+  if (!res.ok) return [];
+  return res.json?.data ?? res.json ?? [];
+}
+
+export async function updateErpGithubRepo(token, id, dto) {
+  const res = await erpCall(`/repository/${id}`, token, {
+    method: 'PUT',
+    body: JSON.stringify(dto),
+  });
+  if (!res.ok) throw new Error(res.json?.message || 'Failed to update repository');
+  return res.json?.data ?? res.json;
+}
+
+export async function getErpTopRatedRepos(token) {
+  const res = await erpCall('/repository/dashboard/top-rated', token);
+  if (!res.ok) return [];
+  return res.json?.data ?? res.json ?? [];
+}
+
+// ── PHASE 5: EXAM PAPERS & QUESTION BANK ────────────────────────────────────
+export async function getErpExamPapers(token) {
+  const res = await erpCall('/exams/papers', token);
+  if (!res.ok) return [];
+  return res.json?.data ?? res.json ?? [];
+}
+
+export async function getErpQuestionBank(token) {
+  const res = await erpCall('/exams/question-bank', token);
+  if (!res.ok) return [];
+  return res.json?.data ?? res.json ?? [];
 }

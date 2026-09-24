@@ -16,7 +16,7 @@ const OtherStudentProfileScreen = ({ route, navigation }) => {
   const { student } = route.params || {};
   const { accessToken } = useUser();
   const { colors, isDark } = useTheme();
-  const [connectionStatus, setConnectionStatus] = useState('Follow'); // 'Follow', 'Pending', 'Following', 'Follow Back', 'Connected'
+  const [connectionStatus, setConnectionStatus] = useState('Connect'); // 'Connect', 'Pending', 'Connected'
 
   const [profile, setProfile] = useState(null);
   const [stats, setStats] = useState({ followers: 0, following: 0, connections: 0 });
@@ -77,14 +77,14 @@ const OtherStudentProfileScreen = ({ route, navigation }) => {
   }, [student?.id, accessToken]);
 
   const handleConnect = async () => {
-    if ((connectionStatus === 'Follow' || connectionStatus === 'Follow Back') && student?.id) {
+    if ((connectionStatus === 'Connect' || connectionStatus === 'Follow' || connectionStatus === 'Follow Back') && student?.id) {
       const prevStatus = connectionStatus;
       setConnectionStatus('Pending');
       try {
         await followUserAPI(accessToken, student.id);
       } catch(e) {
         setConnectionStatus(prevStatus);
-        console.warn('Follow error', e);
+        console.warn('Connect error', e);
       }
     }
   };
@@ -146,10 +146,6 @@ const OtherStudentProfileScreen = ({ route, navigation }) => {
           <Text style={[styles.batchSubText, { color: colors.textSecondary }]}>Batch of {profile?.batch_year || '2025'} • {profile?.rollno || student.rollNo}</Text>
           
           <View style={styles.capsuleRow}>
-            <TouchableOpacity style={[styles.capsule, { backgroundColor: colors.card, borderColor: colors.border }]} onPress={() => handleOpenConnectionsModal('followers')}>
-              <Text style={styles.capsuleLabel}>FOLLOWERS</Text>
-              <Text style={[styles.capsuleValue, { color: colors.textPrimary }]}>{stats.followers}</Text>
-            </TouchableOpacity>
             <TouchableOpacity style={[styles.capsule, { backgroundColor: colors.card, borderColor: colors.border }]} onPress={() => handleOpenConnectionsModal('connections')}>
               <Text style={styles.capsuleLabel}>CONNECTIONS</Text>
               <Text style={[styles.capsuleValue, { color: colors.textPrimary }]}>{stats.connections}</Text>
@@ -176,7 +172,7 @@ const OtherStudentProfileScreen = ({ route, navigation }) => {
                 styles.actionBtnTextPrimary,
                 disableActionBtn && { color: colors.textSecondary }
               ]}>
-                {connectionStatus}
+                {connectionStatus === 'Following' || connectionStatus === 'Connected' ? 'Connected' : connectionStatus === 'Pending' ? 'Pending' : 'Connect'}
               </Text>
             </TouchableOpacity>
 
@@ -223,7 +219,7 @@ const OtherStudentProfileScreen = ({ route, navigation }) => {
           <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
             <View style={styles.modalHeader}>
               <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>
-                {connectionsModalType === 'followers' ? 'Followers' : 'Connections'} ({connectionsList.length})
+                Connections ({connectionsList.length})
               </Text>
               <TouchableOpacity onPress={() => setShowConnectionsModal(false)} style={styles.modalCloseBtn}>
                 <Ionicons name="close" size={24} color={colors.textPrimary} />

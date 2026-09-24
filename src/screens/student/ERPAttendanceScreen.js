@@ -12,7 +12,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { APP_CONFIG } from '../../config/appConfig';
 
-import { getAttendance, getNonMedicalAttendance } from '../../data/apiService';
+import { getAttendance, getNonMedicalAttendance, getErpAttendance, getErpLectureDetails, ERP_COURSE_CODES, getErpCourseCode } from '../../data/apiService';
 import { isMedicalStudent } from '../../utils/courseDisplay';
 
 const { width } = Dimensions.get('window');
@@ -606,43 +606,63 @@ const ERPAttendanceScreen = ({ route, navigation }) => {
     try {
       const studentId = user?.user_id || user?.id || user?.rollno || user?.username;
 
-      // ── NON-MEDICAL: fetch from unicampus backend only (no SRMS ERP) ──────────
+      // ── NON-MEDICAL: fetch from NestJS ERP backend (authoritative multi-tenant data) ──
       if (!isMedical) {
-        const attData = await getNonMedicalAttendance(
-          accessToken,
-          studentId,
-          user?.semester ? parseInt(user.semester, 10) : null
-        );
-        const subjects = (attData.subjects || []).map(s => {
-          const pct = Math.round(s.percentage || 0);
+        // Derive ERP course code from user profile dynamically
+        const courseCode = user?.course_cd || getErpCourseCode(user?.course);
+        const semCd = user?.semester ? String(parseInt(user.semester, 10)) : '1';
+        const ddlBatch = user?.batch_cd || user?.batch || '2';
+        const ddlBranch = user?.branch_cd || user?.branch_id || '1';
+
+        let erpSubjects = [];
+        try {
+          erpSubjects = await getErpAttendance(accessToken, {
+            coursecd: courseCode,
+            sem_cd: semCd,
+            ddl_batch: ddlBatch,
+            ddl_branch: ddlBranch,
+          });
+        } catch (erpErr) {
+          console.warn('[AttendanceScreen] ERP attendance fetch failed, falling back to Python:', erpErr);
+          // Fallback to old Python endpoint if ERP fails
+          const attData = await getNonMedicalAttendance(accessToken, studentId, user?.semester ? parseInt(user.semester, 10) : null);
+          erpSubjects = (attData.subjects || []).map(s => ({
+            subject_name: s.subject_name,
+            subject_code: s.subject_code,
+            attendance_pct: s.percentage,
+            total_lectures: s.total_lectures || 0,
+            attended_lectures: s.attended_lectures || 0,
+          }));
+        }
+
+        const subjects = erpSubjects.map(s => {
+          const pct = Math.round(s.attendance_pct ?? s.percentage ?? 0);
           const isPractical = (s.subject_name || '').toUpperCase().includes('LAB') ||
             (s.subject_name || '').toUpperCase().includes('PRACTICAL');
           const requiredPct = isPractical ? 80 : 75;
           const status = pct >= requiredPct ? 'safe' : pct >= (requiredPct - 5) ? 'warning' : 'danger';
           return {
-            code: s.subject_code,
+            code: s.subject_code || s.code,
             name: s.subject_name || s.subject_code,
             percentage: pct,
-            hasData: s.total_lectures > 0,
+            hasData: (s.total_lectures || 0) > 0 || pct > 0,
             status,
             isPractical,
             requiredPct,
+            totalClasses: s.total_lectures || 0,
+            presentClasses: s.attended_lectures || 0,
             semester: user?.semester ? parseInt(user.semester, 10) : 1,
           };
         });
 
-        const overall = attData.overall?.percentage
-          ? Math.round(attData.overall.percentage)
-          : subjects.length > 0
-            ? Math.round(subjects.reduce((sum, s) => sum + s.percentage, 0) / subjects.length)
-            : 0;
+        const overall = subjects.length > 0
+          ? Math.round(subjects.reduce((sum, s) => sum + s.percentage, 0) / subjects.length)
+          : Math.round(user?.attendance || 0);
 
-        setApiAttendance({
-          overall,
-          totalClasses: attData.overall?.total || subjects.length * 30,
-          attendedClasses: attData.overall?.attended || Math.round(overall * 0.01 * (subjects.length * 30)),
-          subjects,
-        });
+        const totalClasses = subjects.reduce((sum, s) => sum + (s.totalClasses || 0), 0) || subjects.length * 30;
+        const attendedClasses = subjects.reduce((sum, s) => sum + (s.presentClasses || 0), 0) || Math.round(overall * 0.01 * totalClasses);
+
+        setApiAttendance({ overall, totalClasses, attendedClasses, subjects });
         setLoading(false);
         setRefreshing(false);
         return;

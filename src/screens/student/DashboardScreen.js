@@ -1,8 +1,9 @@
 import React from 'react';
 import { getAvatarUrl } from "../../utils/avatar";
 import { SafeStudentAvatar } from '../../components/SafeStudentAvatar';
+import { ProfileDropdownModal } from '../../components/ProfileDropdownModal';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Dimensions, Platform, Modal, Switch, TextInput, Alert, ActivityIndicator, RefreshControl
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Dimensions, Platform, Modal, Switch, TextInput, Alert, ActivityIndicator, RefreshControl, LayoutAnimation, KeyboardAvoidingView
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { MaterialIcons, MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
@@ -18,13 +19,71 @@ import ActivityRing from '../../components/ActivityRing';
 import { useUser } from '../../context/UserContext';
 import { useNotifications, NotificationBadge } from '../../context/NotificationContext';
 import { useHealthMetrics } from '../../hooks/useHealthMetrics';
-import { generateAIInsight, generateRoadmap, computeSkillGap, generateDynamicRoadmap, fetchDynamicLLMInsight, enrichRoadmapWithMarks } from '../../data/aiEngine';
+import { generateAIInsight, generateRoadmap, computeSkillGap, generateDynamicRoadmap, fetchDynamicLLMInsight, enrichRoadmapWithMarks, getPathwayRefineConfig } from '../../data/aiEngine';
 
 import { booksData } from '../student/library/LibraryMainScreen';
-import { listGrievancesAPI, deleteGrievanceAPI, uploadAvatarAPI, createOutpass, getStudentOutpasses, getResults, getCompetencyGaps, logMoodAPI, getMoodEntriesAPI } from '../../data/apiService';
+import { listGrievancesAPI, deleteGrievanceAPI, uploadAvatarAPI, createOutpass, getStudentOutpasses, getResults, getCompetencyGaps, logMoodAPI, getMoodEntriesAPI, fetchGitHubRepos, fetchGitHubUser, getErpRecentLessons, getErpPlacementSummary, getErpNoticesUnreadCount, getErpLibraryBooks, getEBooks, getErpCourseCode } from '../../data/apiService';
 import { getDisplayCourse, isMedicalStudent } from '../../utils/courseDisplay';
+import { isCsEligibleForPlacement, computePlacementReadinessScore } from '../../utils/placementReadiness';
 
 const { width } = Dimensions.get('window');
+
+const BookCoverImage = ({ uri, title, style, isCompact = false }) => {
+  const [failed, setFailed] = React.useState(!uri);
+
+  React.useEffect(() => {
+    setFailed(!uri);
+  }, [uri]);
+
+  if (failed || !uri) {
+    const gradients = [
+      ['#3B82F6', '#1D4ED8'],
+      ['#8B5CF6', '#5B21B6'],
+      ['#EC4899', '#BE185D'],
+      ['#059669', '#047857'],
+      ['#EA580C', '#C2410C'],
+      ['#6366F1', '#4338CA'],
+      ['#0284C7', '#0369A1'],
+    ];
+    let hash = 0;
+    for (let i = 0; i < (title || '').length; i++) {
+      hash = title.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const grad = gradients[Math.abs(hash) % gradients.length];
+
+    return (
+      <LinearGradient colors={grad} style={[style, { justifyContent: 'center', alignItems: 'center', padding: isCompact ? 6 : 12 }]}>
+        <MaterialCommunityIcons
+          name="book-open-page-variant"
+          size={isCompact ? 26 : 40}
+          color="rgba(255, 255, 255, 0.85)"
+        />
+        <Text
+          style={{
+            color: '#FFFFFF',
+            fontSize: isCompact ? 9 : 12,
+            fontWeight: '800',
+            textAlign: 'center',
+            marginTop: isCompact ? 4 : 8,
+            lineHeight: isCompact ? 12 : 15,
+          }}
+          numberOfLines={isCompact ? 3 : 4}
+        >
+          {title}
+        </Text>
+      </LinearGradient>
+    );
+  }
+
+  return (
+    <Image
+      source={{ uri }}
+      style={style}
+      resizeMode="cover"
+      onError={() => setFailed(true)}
+    />
+  );
+};
 
 const formatTime = (isoString) => {
   if (!isoString) return '';
@@ -45,8 +104,34 @@ const formatTime = (isoString) => {
 const DashboardScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const { colors, isDark, toggleTheme } = useTheme();
-  const { user, logout, accessToken, updateAvatarUrl } = useUser();
+  const { user, logout, accessToken, updateAvatarUrl, githubUsername, updateGithubUsername, isHostelMode, setIsHostelMode } = useUser();
   const { totalUnreadCount, unreadRequestsCount } = useNotifications();
+
+  const isCsEligible = isCsEligibleForPlacement(user);
+  const [gitHubRepos, setGitHubRepos] = React.useState([]);
+  const [isLoadingGitHub, setIsLoadingGitHub] = React.useState(false);
+  const [showGitHubModal, setShowGitHubModal] = React.useState(false);
+  const [githubInput, setGithubInput] = React.useState('');
+  const [showSkillGapInfoModal, setShowSkillGapInfoModal] = React.useState(false);
+  const [placementStrengthsOpen, setPlacementStrengthsOpen] = React.useState(false);
+  const [placementWeaknessesOpen, setPlacementWeaknessesOpen] = React.useState(false);
+  const [placementActionItemsOpen, setPlacementActionItemsOpen] = React.useState(false);
+  const [startupReposOpen, setStartupReposOpen] = React.useState(false);
+  const [indexedReposOpen, setIndexedReposOpen] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!isCsEligible) return;
+    const targetGh = githubUsername || user?.github_username;
+    if (targetGh) {
+      setIsLoadingGitHub(true);
+      fetchGitHubRepos(targetGh).then(repos => {
+        setGitHubRepos(repos || []);
+        setIsLoadingGitHub(false);
+      }).catch(() => {
+        setIsLoadingGitHub(false);
+      });
+    }
+  }, [isCsEligible, githubUsername, user?.github_username]);
 
   // ─── First-time Profile Image Setup Modal State ──────────────────────────────
   const [showAvatarSetup, setShowAvatarSetup] = React.useState(false);
@@ -82,10 +167,10 @@ const DashboardScreen = ({ navigation }) => {
       try {
         const cacheKey = `@ats_resume_${user.id}`;
         const tsKey = `@ats_resume_timestamp_${user.id}`;
-        
+
         const cached = await AsyncStorage.getItem(cacheKey);
         const lastGenStr = await AsyncStorage.getItem(tsKey);
-        
+
         const isMed = isMedicalStudent(user) || (user.course || '').toLowerCase().includes('mbbs') || (user.category || '').toLowerCase().includes('medical');
 
         if (!cached) {
@@ -153,11 +238,11 @@ const DashboardScreen = ({ navigation }) => {
       if (res.ok && res.json?.success) {
         const secureUrl = res.json.data.avatar_url;
         await updateAvatarUrl(secureUrl);
-        
+
         // Mark prompted
         const key = `@avatar_setup_prompted_${user.id}`;
         await AsyncStorage.setItem(key, 'true');
-        
+
         setShowAvatarSetup(false);
         Alert.alert('Success', 'Profile photo updated successfully!');
       } else {
@@ -214,8 +299,8 @@ const DashboardScreen = ({ navigation }) => {
       "Are you sure you want to delete this support ticket?",
       [
         { text: "Cancel", style: "cancel" },
-        { 
-          text: "Delete", 
+        {
+          text: "Delete",
           style: "destructive",
           onPress: async () => {
             try {
@@ -238,52 +323,187 @@ const DashboardScreen = ({ navigation }) => {
     return unsubscribe;
   }, [navigation, fetchRaisedIssues]);
 
-  // ── Dynamic featured books — same course-aware sorting as LibraryMainScreen ──
+  // ── Dynamic social credits calculation matching TalentIdentityScreen ──
+  const totalSocialCredits = React.useMemo(() => {
+    let leadership = '';
+    let extracurricular = '';
+    const bioText = user?.bio || '';
+    if (bioText.includes('Leadership:') || bioText.includes('Extracurricular:')) {
+      const lMatch = bioText.match(/Leadership:\s*([^|]+)/i);
+      const eMatch = bioText.match(/Extracurricular:\s*(.+)/i);
+      if (lMatch && lMatch[1].trim()) leadership = lMatch[1].trim();
+      if (eMatch && eMatch[1].trim()) extracurricular = eMatch[1].trim();
+    }
+
+    const leadershipItems = (Array.isArray(user?.leadership) && user.leadership.length > 0)
+      ? user.leadership
+      : (leadership ? leadership.split(',').map(s => s.trim()).filter(Boolean) : []);
+
+    const extracurricularItems = (Array.isArray(user?.extracurricular) && user.extracurricular.length > 0)
+      ? user.extracurricular
+      : (extracurricular ? extracurricular.split(',').map(s => s.trim()).filter(Boolean) : []);
+
+    const totalActivities = leadershipItems.length + extracurricularItems.length;
+    if (totalActivities > 0) {
+      return totalActivities * 100;
+    }
+    const val = Number(user?.social_credits);
+    return !isNaN(val) && val > 0 ? val : 0;
+  }, [user]);
+
+  // ── State for ERP & SRMS E-Library books ──
+  const [erpLibraryBooks, setErpLibraryBooks] = React.useState([]);
+
+  const loadErpLibraryBooks = React.useCallback(async () => {
+    try {
+      const isMedStudent = isMedicalStudent(user) || (user?.course || '').toLowerCase().includes('mbbs') || (user?.category || '').toLowerCase().includes('medical');
+      const parts = String(user?.rollno || user?.emp_id || '').split('/');
+      const colgcd = parts.length >= 2 && parts[1] && parts[1] !== '0' ? parts[1] : (isMedStudent ? '11' : '2');
+
+      const [backendRes, srmsRes] = await Promise.allSettled([
+        accessToken ? getErpLibraryBooks(accessToken) : Promise.resolve([]),
+        getEBooks('', colgcd),
+      ]);
+
+      const backendBooks = backendRes.status === 'fulfilled' && Array.isArray(backendRes.value) ? backendRes.value : [];
+      const srmsBooks = srmsRes.status === 'fulfilled' && Array.isArray(srmsRes.value) ? srmsRes.value : [];
+
+      const mappedBackend = backendBooks.map((b, i) => ({
+        id: String(b.id || `erp_${b.isbn || i}`),
+        title: b.title || 'Academic Reference Book',
+        author: b.author || b.publisher || 'ERP Library',
+        cover: b.cover_url || b.cover || 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?q=80&w=1000&auto=format&fit=crop',
+        pdfUrl: b.ebook_url || b.pdfUrl,
+        rating: b.rating || 4.8,
+        category: b.category || 'General',
+        pages: b.pages || 450,
+        description: b.description || `Official library copy of ${b.title || 'resource'}.`,
+        is_ebook: b.is_ebook,
+        copies_available: b.copies_available,
+      }));
+
+      const combined = [...mappedBackend, ...srmsBooks];
+      if (combined.length > 0) {
+        setErpLibraryBooks(combined);
+      }
+    } catch (e) {
+      console.warn('[Dashboard] Failed to fetch ERP library books:', e);
+    }
+  }, [accessToken, user]);
+
+  React.useEffect(() => {
+    loadErpLibraryBooks();
+  }, [loadErpLibraryBooks]);
+
+  // ── Dynamic featured books — ERP prioritized with course-aware sorting ──
   const featuredBooks = React.useMemo(() => {
-    // Only display books that have a valid pdfUrl
-    const validBooks = booksData.filter(b => !!b.pdfUrl);
+    const combinedAll = erpLibraryBooks;
+
+    // Deduplicate by title (case-insensitive)
+    const seenTitles = new Set();
+    const uniqueBooks = [];
+    for (const b of combinedAll) {
+      if (!b || !b.title) continue;
+      const tKey = b.title.trim().toLowerCase();
+      if (!seenTitles.has(tKey)) {
+        seenTitles.add(tKey);
+        uniqueBooks.push(b);
+      }
+    }
+
+    const validBooks = uniqueBooks.filter(b => !!b.title);
+    if (!validBooks.length) return [];
 
     if (!user) return validBooks.slice(0, 4);
 
     const isMed = isMedicalStudent(user) || (user.course || '').toLowerCase().includes('mbbs') || (user.category || '').toLowerCase().includes('medical');
 
     if (isMed) {
-      const medCategories = ['Medicine', 'Medical', 'Anatomy', 'Pathology', 'Pharmacology', 'Nutrition', 'Pharmaceutics', 'Physiology'];
-      const filtered = validBooks.filter(b => medCategories.includes(b.category));
-      const sorted = filtered.sort((a, b) => {
-        const aId = parseInt(a.id, 10);
-        const bId = parseInt(b.id, 10);
-        if (aId >= 16 && bId < 16) return -1;
-        if (aId < 16 && bId >= 16) return 1;
-        return aId - bId;
+      const medCategories = ['Medicine', 'Medical', 'Anatomy', 'Pathology', 'Pharmacology', 'Nutrition', 'Pharmaceutics', 'Physiology', 'Internal Medicine', 'Surgery', 'Paediatrics', 'Forensic'];
+      const filtered = validBooks.filter(b => {
+        const cat = (b.category || '').toLowerCase();
+        const title = (b.title || '').toLowerCase();
+        return medCategories.some(m => cat.includes(m.toLowerCase()) || title.includes(m.toLowerCase()));
       });
-      return sorted.slice(0, 4);
+      return (filtered.length > 0 ? filtered : validBooks).slice(0, 4);
     }
 
     const courseLower = (user.course || '').toLowerCase();
     const branchLower = (user.branch || '').toLowerCase();
-    const categoryLower = (user.category || '').toLowerCase();
+    const bioLower = (user.bio || '').toLowerCase();
+
+    // IMPORTANT: Use courseLower for primary classification — department name is unreliable
+    // (e.g. MBA Finance students may have dept = "Computer Applications")
 
     let matchCategories = [];
-    if (courseLower.includes('pharma')) {
-      matchCategories = ['Pharmacology', 'Pharmaceutics', 'Anatomy', 'Pathology'];
-    } else if (branchLower.includes('computer') || branchLower.includes('cse') || branchLower.includes('it') || courseLower.includes('mca') || courseLower.includes('bca') || branchLower.includes('software')) {
-      matchCategories = ['Programming', 'Software Engineering', 'AI / ML', 'Computer Science'];
-    } else if (branchLower.includes('electronics') || branchLower.includes('ec') || branchLower.includes('ece')) {
-      matchCategories = ['Electronics', 'ECE', 'Digital Systems', 'Circuits'];
-    } else if (courseLower.includes('mba') || courseLower.includes('bba') || courseLower.includes('com') || courseLower.includes('business')) {
-      matchCategories = ['Entrepreneurship', 'Management', 'Finance', 'Business'];
+    let isNonTechTrack = false;
+
+    // 1. Pharmacy — check course first
+    if (courseLower.includes('pharm') || branchLower.includes('pharm')) {
+      matchCategories = ['Pharmacology', 'Pharmaceutics', 'Anatomy', 'Pathology', 'Medicinal Chemistry', 'Chemistry'];
+      isNonTechTrack = true;
+
+    // 2. Commerce & Management — check course name first, BEFORE any tech/dept check
+    } else if (
+      courseLower.includes('mba') || courseLower.includes('bba') ||
+      courseLower.includes('mcom') || courseLower.includes('m.com') ||
+      courseLower.includes('bcom') || courseLower.includes('b.com') ||
+      courseLower.includes('commerce') || courseLower.includes('management') ||
+      courseLower.includes('business') ||
+      branchLower.includes('finance') || branchLower.includes('accounting') ||
+      branchLower.includes('commerce') || branchLower.includes('management') ||
+      branchLower.includes('business') || branchLower.includes('marketing')
+    ) {
+      matchCategories = ['Finance', 'Management', 'Entrepreneurship', 'Business', 'Marketing', 'Accounting', 'Economics', 'Corporate Finance'];
+      isNonTechTrack = true;
+
+    // 3. Electronics — check before generic 'computer' in branch
+    } else if (
+      courseLower.includes('ece') || courseLower.includes('electronics') ||
+      branchLower.includes('electronics') || branchLower.includes('ece') ||
+      branchLower.includes('circuit') || branchLower.includes('digital')
+    ) {
+      matchCategories = ['Electronics', 'ECE', 'Digital Systems', 'Circuits', 'Engineering'];
+      isNonTechTrack = true;
+
+    // 4. Tech — B.Tech CS/IT, BCA, MCA, Software
+    } else if (
+      courseLower.includes('bca') || courseLower.includes('mca') ||
+      courseLower.includes('b.tech') || courseLower.includes('btech') ||
+      courseLower.includes('m.tech') || courseLower.includes('mtech') ||
+      branchLower.includes('computer') || branchLower.includes('cse') ||
+      branchLower.includes('software') || branchLower.includes('information') ||
+      branchLower.includes('ai') || branchLower.includes('data science') ||
+      bioLower.includes('developer') || bioLower.includes('software engineer')
+    ) {
+      matchCategories = ['Programming', 'Software Engineering', 'AI / ML', 'Computer Science', 'Design', 'Data Structures', 'Database', 'Cloud'];
+      isNonTechTrack = false;
+
+    } else {
+      matchCategories = ['Programming', 'Computer Science', 'Management', 'AI / ML', 'Business'];
+      isNonTechTrack = false;
+    }
+
+    const matchesTrack = (book) => {
+      const cat = (book.category || '').toLowerCase();
+      return matchCategories.some(mc => cat.includes(mc.toLowerCase()));
+    };
+
+    if (isNonTechTrack) {
+      // Strictly show only matching category books — never show tech/engineering books to MBA/Finance students
+      const matchedBooks = validBooks.filter(matchesTrack);
+      return matchedBooks.slice(0, 4);
     }
 
     const sorted = [...validBooks].sort((a, b) => {
-      const aMatch = matchCategories.includes(a.category);
-      const bMatch = matchCategories.includes(b.category);
+      const aMatch = matchesTrack(a);
+      const bMatch = matchesTrack(b);
       if (aMatch && !bMatch) return -1;
       if (!aMatch && bMatch) return 1;
       return 0;
     });
     return sorted.slice(0, 4);
-  }, [user]);
+  }, [erpLibraryBooks, user]);
 
   const avatarUrl = getAvatarUrl(user?.avatar_url || user?.name, user?.rollno);
   const isMed = user && (isMedicalStudent(user) || (user.course || '').toLowerCase().includes('mbbs') || (user.category || '').toLowerCase().includes('medical'));
@@ -302,18 +522,18 @@ const DashboardScreen = ({ navigation }) => {
             const today = new Date();
             if (moodDate.getDate() === today.getDate() && moodDate.getMonth() === today.getMonth() && moodDate.getFullYear() === today.getFullYear()) {
               const apiValToId = {
-                 'excited': 0,
-                 'happy': 1,
-                 'neutral': 2,
-                 'stressed': 3,
-                 'focused': 0
+                'excited': 0,
+                'happy': 1,
+                'neutral': 2,
+                'stressed': 3,
+                'focused': 0
               };
               if (apiValToId[latestMood.mood] !== undefined) {
-                 setActiveMood(apiValToId[latestMood.mood]);
+                setActiveMood(apiValToId[latestMood.mood]);
               }
             }
           }
-        } catch(e) {
+        } catch (e) {
           console.warn("Failed to fetch today's mood:", e);
         }
       };
@@ -324,7 +544,6 @@ const DashboardScreen = ({ navigation }) => {
 
   const [showProfileMenu, setShowProfileMenu] = React.useState(false);
 
-  const [isHostelMode, setIsHostelMode] = React.useState(false);
   const [gatePassStatus, setGatePassStatus] = React.useState('idle'); // idle, pending, approved
   const [activeOutpass, setActiveOutpass] = React.useState(null);
   const [showQRModal, setShowQRModal] = React.useState(false);
@@ -334,16 +553,35 @@ const DashboardScreen = ({ navigation }) => {
   const [activeInterests, setActiveInterests] = React.useState('');
 
   const [roadmapData, setRoadmapData] = React.useState(null);
+  const [isRefineExpanded, setIsRefineExpanded] = React.useState(true);
   const [isGeneratingRoadmap, setIsGeneratingRoadmap] = React.useState(false);
   const [pathwayRetriesLeft, setPathwayRetriesLeft] = React.useState(1);
   const [cachedInsight, setCachedInsight] = React.useState(null);
   const [academicResults, setAcademicResults] = React.useState([]);
   const [erpCompetencies, setErpCompetencies] = React.useState(null);
+  const [recentLessons, setRecentLessons] = React.useState([]);
+  const [placementSummary, setPlacementSummary] = React.useState(null);
+  const [noticesUnread, setNoticesUnread] = React.useState(0);
 
   // Load stored interests and check daily limit status on mount
   React.useEffect(() => {
     if (!user) return;
-    
+
+    // Load ERP recent lessons and summary (non-blocking)
+    if (accessToken && !isMed) {
+      const studentCourseCd = user?.course_cd || getErpCourseCode(user?.course || user?.course_name);
+      const studentSemCd = user?.sem_cd || user?.semester || '';
+      getErpRecentLessons(accessToken, { courseCd: studentCourseCd, semCd: studentSemCd })
+        .then(l => {
+          const list = Array.isArray(l) ? l : [];
+          const filtered = list.filter(item => !item.course_cd || String(item.course_cd) === String(studentCourseCd));
+          setRecentLessons(filtered.slice(0, 5));
+        })
+        .catch(() => { });
+      getErpPlacementSummary(accessToken).then(s => setPlacementSummary(s)).catch(() => { });
+      getErpNoticesUnreadCount(accessToken).then(c => setNoticesUnread(c)).catch(() => { });
+    }
+
     const loadSavedPathway = async () => {
       try {
         const interestsKey = `@pathway_interests_${user.id}`;
@@ -374,7 +612,7 @@ const DashboardScreen = ({ navigation }) => {
     if (!user) return;
     const loadInsight = async () => {
       try {
-        const key = `@ai_insight_v2_${user.id}`;
+        const key = `@ai_insight_v6_${user.id || user.rollno}_${user.course || 'gen'}_${user.branch || 'gen'}`;
         const cached = await AsyncStorage.getItem(key);
         if (cached) {
           setCachedInsight(cached);
@@ -401,13 +639,14 @@ const DashboardScreen = ({ navigation }) => {
         getResults(accessToken),
         getCompetencyGaps(accessToken)
       ]);
+      const studentKey = user?.id || user?.user_id || user?.rollno || 'default';
       if (resultsData) {
         setAcademicResults(resultsData);
-        await AsyncStorage.setItem('@erp_academic_results_cache', JSON.stringify(resultsData));
+        await AsyncStorage.setItem(`@erp_academic_results_cache_${studentKey}`, JSON.stringify(resultsData));
       }
       if (gapsData) {
         setErpCompetencies(gapsData);
-        await AsyncStorage.setItem('@erp_competency_gaps_cache', JSON.stringify(gapsData));
+        await AsyncStorage.setItem(`@erp_competency_gaps_cache_${studentKey}`, JSON.stringify(gapsData));
       }
       Alert.alert("Success", "Clinical competency gaps synchronized successfully!");
     } catch (e) {
@@ -421,12 +660,18 @@ const DashboardScreen = ({ navigation }) => {
   // Load cached ERP results and competency gaps on mount
   React.useEffect(() => {
     async function loadCachedERPData() {
+      if (!isMed) {
+        setErpCompetencies(null);
+        setAcademicResults([]);
+        return;
+      }
       try {
-        const cachedGaps = await AsyncStorage.getItem('@erp_competency_gaps_cache');
+        const studentKey = user?.id || user?.user_id || user?.rollno || 'default';
+        const cachedGaps = await AsyncStorage.getItem(`@erp_competency_gaps_cache_${studentKey}`);
         if (cachedGaps) {
           setErpCompetencies(JSON.parse(cachedGaps));
         }
-        const cachedResults = await AsyncStorage.getItem('@erp_academic_results_cache');
+        const cachedResults = await AsyncStorage.getItem(`@erp_academic_results_cache_${studentKey}`);
         if (cachedResults) {
           setAcademicResults(JSON.parse(cachedResults));
         }
@@ -435,7 +680,7 @@ const DashboardScreen = ({ navigation }) => {
       }
     }
     loadCachedERPData();
-  }, []);
+  }, [user, isMed]);
 
   const loadPathwayRetries = React.useCallback(async () => {
     try {
@@ -528,22 +773,23 @@ const DashboardScreen = ({ navigation }) => {
     setRefreshing(true);
     try {
       if (user && accessToken) {
-        const key = `@ai_insight_v2_${user.id}`;
+        const key = `@ai_insight_v3_${user.id}_${user.course || 'gen'}`;
         const freshInsight = await fetchDynamicLLMInsight(user, accessToken);
         if (freshInsight) {
           setCachedInsight(freshInsight);
           await AsyncStorage.setItem(key, freshInsight);
         }
       }
-    } catch (e) {}
+    } catch (e) { }
 
     await Promise.allSettled([
       fetchRaisedIssues(),
       loadOutpassStatus(),
       loadPathwayRetries(),
+      loadErpLibraryBooks(),
     ]);
     setRefreshing(false);
-  }, [accessToken, user, fetchRaisedIssues, loadOutpassStatus, loadPathwayRetries]);
+  }, [accessToken, user, fetchRaisedIssues, loadOutpassStatus, loadPathwayRetries, loadErpLibraryBooks]);
 
   React.useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
@@ -596,7 +842,8 @@ const DashboardScreen = ({ navigation }) => {
           <TouchableOpacity onPress={() => setShowProfileMenu(true)} style={{ position: 'relative' }}>
             <SafeStudentAvatar
               uri={avatarUrl}
-              name={user?.name || 'S'}
+              rollno={user?.rollno || user?.username}
+              name={user?.name || user?.full_name || 'S'}
               style={[styles.avatarSmall, { borderColor: colors.primary }]}
             />
             {unreadRequestsCount > 0 && (
@@ -609,89 +856,11 @@ const DashboardScreen = ({ navigation }) => {
 
 
       {/* Profile Dropdown Modal */}
-      <Modal
+      <ProfileDropdownModal
         visible={showProfileMenu}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setShowProfileMenu(false)}
-      >
-        <TouchableOpacity
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setShowProfileMenu(false)}
-        >
-          <View style={[styles.profileMenu, { top: insets.top + 50, backgroundColor: colors.card, borderColor: colors.border }]}>
-
-            <View style={styles.menuHeader}>
-              <SafeStudentAvatar
-                uri={avatarUrl}
-                name={user?.name || 'S'}
-                style={styles.menuAvatar}
-              />
-              <View>
-                <Text style={[styles.menuName, { color: colors.textPrimary }]}>{user?.name || user?.full_name || 'Student'}</Text>
-                <Text style={[styles.menuSub, { color: colors.textSecondary }]}>{user?.rollno || user?.username || 'Student Account'}</Text>
-              </View>
-            </View>
-
-            <View style={[styles.menuDivider, { backgroundColor: colors.border }]} />
-
-
-            <TouchableOpacity
-              style={styles.menuItem}
-              onPress={() => {
-                setShowProfileMenu(false);
-                navigation.navigate('Settings');
-              }}
-            >
-              <MaterialCommunityIcons name="cog-outline" size={20} color={colors.textSecondary} />
-              <Text style={[styles.menuItemText, { color: colors.textPrimary }]}>Settings</Text>
-
-            </TouchableOpacity>
-
-
-
-            <View style={styles.menuItem}>
-              <View style={styles.menuItemLeft}>
-                <MaterialCommunityIcons name="moon-waning-crescent" size={20} color={colors.textSecondary} />
-                <Text style={[styles.menuItemText, { color: colors.textPrimary }]}>Dark Mode</Text>
-
-              </View>
-              <Switch
-                value={isDark}
-                onValueChange={toggleTheme}
-                trackColor={{ false: colors.border, true: colors.primary }}
-                thumbColor="#FFFFFF"
-              />
-
-            </View>
-
-            <View style={styles.menuItem}>
-              <View style={styles.menuItemLeft}>
-                <MaterialCommunityIcons name="home-city-outline" size={20} color={colors.textSecondary} />
-                <Text style={[styles.menuItemText, { color: colors.textPrimary }]}>Hostel Mode</Text>
-              </View>
-              <Switch
-                value={isHostelMode}
-                onValueChange={setIsHostelMode}
-                trackColor={{ false: colors.border, true: '#10B981' }}
-                thumbColor="#FFFFFF"
-              />
-            </View>
-
-            <View style={[styles.menuDivider, { backgroundColor: colors.border }]} />
-
-
-            <TouchableOpacity
-              style={[styles.menuItem, styles.logoutItem, { backgroundColor: isDark ? 'rgba(239, 68, 68, 0.1)' : '#FEF2F2' }]}
-              onPress={handleLogout}
-            >
-              <MaterialCommunityIcons name="logout" size={20} color="#EF4444" />
-              <Text style={[styles.menuItemText, styles.logoutText]}>Log out</Text>
-            </TouchableOpacity>
-          </View>
-        </TouchableOpacity>
-      </Modal>
+        onClose={() => setShowProfileMenu(false)}
+        navigation={navigation}
+      />
 
 
 
@@ -711,22 +880,22 @@ const DashboardScreen = ({ navigation }) => {
               Let's personalize your profile. Upload a profile photo so your peers and faculty can recognize you.
             </Text>
 
-            <TouchableOpacity 
-              activeOpacity={0.8} 
-              onPress={handlePickAvatar} 
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={handlePickAvatar}
               style={[styles.avatarPreviewContainer, { borderColor: colors.primary }]}
             >
-              <Image 
-                source={{ uri: selectedAvatarUri || avatarUrl }} 
-                style={styles.avatarPreviewImage} 
+              <Image
+                source={{ uri: selectedAvatarUri || avatarUrl }}
+                style={styles.avatarPreviewImage}
               />
               <View style={[styles.avatarCameraBadge, { backgroundColor: colors.primary }]}>
                 <MaterialCommunityIcons name="camera" size={20} color="#FFF" />
               </View>
             </TouchableOpacity>
 
-            <TouchableOpacity 
-              style={[styles.avatarSelectBtn, { borderColor: colors.primary }]} 
+            <TouchableOpacity
+              style={[styles.avatarSelectBtn, { borderColor: colors.primary }]}
               onPress={handlePickAvatar}
             >
               <Text style={[styles.avatarSelectBtnText, { color: colors.primary }]}>
@@ -735,11 +904,11 @@ const DashboardScreen = ({ navigation }) => {
             </TouchableOpacity>
 
             <View style={styles.avatarActionsContainer}>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={[
-                  styles.avatarSaveBtn, 
+                  styles.avatarSaveBtn,
                   { backgroundColor: selectedAvatarUri ? colors.primary : colors.border }
-                ]} 
+                ]}
                 onPress={handleSaveAvatar}
                 disabled={!selectedAvatarUri || isUploadingAvatar}
               >
@@ -750,8 +919,8 @@ const DashboardScreen = ({ navigation }) => {
                 )}
               </TouchableOpacity>
 
-              <TouchableOpacity 
-                style={styles.avatarSkipBtn} 
+              <TouchableOpacity
+                style={styles.avatarSkipBtn}
                 onPress={handleSkipAvatar}
                 disabled={isUploadingAvatar}
               >
@@ -878,8 +1047,247 @@ const DashboardScreen = ({ navigation }) => {
         </View>
       </Modal>
 
-      <ScrollView 
-        contentContainerStyle={styles.scroll} 
+      {/* GitHub Account Connect Modal */}
+      <Modal
+        visible={showGitHubModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowGitHubModal(false)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.modalBackdrop}
+        >
+          <View style={[styles.dialogCard, { backgroundColor: isDark ? colors.card : '#FFFFFF', borderColor: colors.border, borderWidth: 1 }]}>
+            <View style={styles.modalHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <MaterialCommunityIcons name="github" size={26} color={isDark ? '#FFFFFF' : '#24292F'} />
+                <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>Connect GitHub</Text>
+              </View>
+              <TouchableOpacity onPress={() => setShowGitHubModal(false)}>
+                <Ionicons name="close" size={24} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={{ fontSize: 13, color: colors.textSecondary, marginBottom: 16, lineHeight: 18 }}>
+              Enter your public GitHub username. AI will fetch your repositories, evaluate commit activity, and detect startup potential.
+            </Text>
+
+            <View style={styles.formGroup}>
+              <Text style={[styles.formLabel, { color: colors.textSecondary }]}>GITHUB USERNAME</Text>
+              <TextInput
+                style={[styles.formInput, { backgroundColor: isDark ? '#1F2937' : '#F9FAFB', color: colors.textPrimary, borderColor: colors.border }]}
+                placeholder="e.g., torvalds, ankita-singh, octocat"
+                placeholderTextColor={colors.textMuted}
+                autoCapitalize="none"
+                autoCorrect={false}
+                value={githubInput}
+                onChangeText={setGithubInput}
+              />
+            </View>
+
+            <View style={{ flexDirection: 'row', gap: 10, marginTop: 8 }}>
+              {githubUsername && (
+                <TouchableOpacity
+                  style={{
+                    flex: 1,
+                    paddingVertical: 12,
+                    borderRadius: 12,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderWidth: 1,
+                    borderColor: '#EF4444',
+                    backgroundColor: isDark ? 'rgba(239, 68, 68, 0.1)' : '#FEF2F2',
+                  }}
+                  onPress={async () => {
+                    await updateGithubUsername(null);
+                    setGitHubRepos([]);
+                    setGithubInput('');
+                    setShowGitHubModal(false);
+                    Alert.alert('Disconnected', 'GitHub account has been unlinked.');
+                  }}
+                >
+                  <Text style={{ fontSize: 14, fontWeight: '700', color: '#EF4444' }}>Disconnect</Text>
+                </TouchableOpacity>
+              )}
+
+              <TouchableOpacity
+                style={[
+                  styles.submitBtn,
+                  { flex: 2, backgroundColor: colors.primary, marginTop: 0, opacity: isLoadingGitHub ? 0.7 : 1 }
+                ]}
+                disabled={isLoadingGitHub}
+                onPress={async () => {
+                  const clean = githubInput.trim().replace(/^@/, '');
+                  if (!clean) {
+                    Alert.alert('Username Required', 'Please enter a valid GitHub username.');
+                    return;
+                  }
+                  setIsLoadingGitHub(true);
+                  try {
+                    const repos = await fetchGitHubRepos(clean, true);
+                    if (repos && repos.length > 0) {
+                      await updateGithubUsername(clean);
+                      setGitHubRepos(repos);
+                      setShowGitHubModal(false);
+                      Alert.alert(
+                        'GitHub Synced! 🚀',
+                        `Successfully analyzed ${repos.length} repositories for @${clean}. Placement readiness score updated!`
+                      );
+                    } else {
+                      Alert.alert(
+                        'No Repositories Found',
+                        `Could not find public repositories for "${clean}". Please verify the username.`
+                      );
+                    }
+                  } catch (err) {
+                    Alert.alert('Error', 'Failed to connect to GitHub. Please try again.');
+                  } finally {
+                    setIsLoadingGitHub(false);
+                  }
+                }}
+              >
+                {isLoadingGitHub ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.submitBtnText}>ANALYZE & CONNECT</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Skill Gap Explanatory Modal */}
+      <Modal
+        visible={showSkillGapInfoModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowSkillGapInfoModal(false)}
+      >
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: 'rgba(0, 0, 0, 0.65)',
+            justifyContent: 'center',
+            alignItems: 'center',
+            paddingHorizontal: 20,
+            paddingTop: insets.top + 16,
+            paddingBottom: insets.bottom + 16,
+          }}
+        >
+          <TouchableOpacity
+            style={StyleSheet.absoluteFill}
+            activeOpacity={1}
+            onPress={() => setShowSkillGapInfoModal(false)}
+          />
+
+          <View
+            style={{
+              backgroundColor: colors.card,
+              borderColor: isDark ? 'rgba(91, 75, 255, 0.3)' : '#E0E7FF',
+              borderWidth: 1.5,
+              borderRadius: 24,
+              padding: 22,
+              width: '100%',
+              maxWidth: 420,
+              maxHeight: '88%',
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 10 },
+              shadowOpacity: 0.3,
+              shadowRadius: 24,
+              elevation: 12,
+            }}
+          >
+            {/* Header */}
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
+                <View style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: isDark ? '#312E81' : '#EEF2FF', justifyContent: 'center', alignItems: 'center' }}>
+                  <MaterialCommunityIcons name="lightbulb-on-outline" size={22} color="#5B4BFF" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 16, fontWeight: '900', color: colors.textPrimary }}>Skill Gap Guide</Text>
+                  <Text style={{ fontSize: 11, color: colors.textSecondary }}>How it works & how to boost scores</Text>
+                </View>
+              </View>
+              <TouchableOpacity onPress={() => setShowSkillGapInfoModal(false)} style={{ padding: 4 }}>
+                <Ionicons name="close-circle-outline" size={24} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 380 }}>
+              {/* Question 1: What is Skill Gap? */}
+              <View style={{ marginBottom: 12, backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#F8FAFC', padding: 12, borderRadius: 12, borderWidth: 1, borderColor: colors.border }}>
+                <Text style={{ fontSize: 13, fontWeight: '800', color: colors.primary, marginBottom: 4 }}>
+                  1. What is Skill Gap Analysis?
+                </Text>
+                <Text style={{ fontSize: 12, color: colors.textSecondary, lineHeight: 18 }}>
+                  {isMed
+                    ? `It compares your clinical competencies and theory curriculum (${user?.course || 'MBBS'}) against NMC guidelines and clinical licensing benchmarks.`
+                    : `It compares your practical skill set against modern industry-standard benchmarks required for top tech roles in ${user?.course || 'your program'}. It is purely based on practical capabilities—not academic exam marks or attendance.`}
+                </Text>
+              </View>
+
+              {/* Question 2: How are skills verified? */}
+              <View style={{ marginBottom: 12, backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#F8FAFC', padding: 12, borderRadius: 12, borderWidth: 1, borderColor: colors.border }}>
+                <Text style={{ fontSize: 13, fontWeight: '800', color: colors.primary, marginBottom: 4 }}>
+                  {isMed ? '2. How are clinical competencies tracked?' : '2. How are your skills verified?'}
+                </Text>
+                <Text style={{ fontSize: 12, color: colors.textSecondary, lineHeight: 18 }}>
+                  {isMed
+                    ? 'Clinical competencies are computed from your verified ERP logbook submissions, practical case presentations, and sessional evaluations.'
+                    : 'Skills are verified from two active sources: your Student Profile Skills and your Connected GitHub Code Repositories (indexed languages, frameworks, and projects).'}
+                </Text>
+              </View>
+
+              {/* Question 3: How to Clear Gaps? */}
+              <View style={{ marginBottom: 6, backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#F8FAFC', padding: 12, borderRadius: 12, borderWidth: 1, borderColor: colors.border }}>
+                <Text style={{ fontSize: 13, fontWeight: '800', color: colors.primary, marginBottom: 6 }}>
+                  3. How do I clear gaps and boost my score?
+                </Text>
+                <View style={{ gap: 8 }}>
+                  {!isMed && (
+                    <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 6 }}>
+                      <Ionicons name="logo-github" size={16} color={colors.primary} style={{ marginTop: 2 }} />
+                      <Text style={{ fontSize: 12, color: colors.textSecondary, flex: 1, lineHeight: 17 }}>
+                        <Text style={{ fontWeight: '800', color: colors.textPrimary }}>Connect GitHub:</Text> Link your public GitHub profile to automatically index repositories and code stacks.
+                      </Text>
+                    </View>
+                  )}
+                  <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 6 }}>
+                    <Ionicons name="checkmark-circle" size={16} color="#10B981" style={{ marginTop: 2 }} />
+                    <Text style={{ fontSize: 12, color: colors.textSecondary, flex: 1, lineHeight: 17 }}>
+                      <Text style={{ fontWeight: '800', color: colors.textPrimary }}>Tap "Give Test":</Text> Take a 5-question diagnostic assessment to verify your knowledge and turn GAP into MATCHED.
+                    </Text>
+                  </View>
+                  <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 6 }}>
+                    <Ionicons name="compass-outline" size={16} color="#F59E0B" style={{ marginTop: 2 }} />
+                    <Text style={{ fontSize: 12, color: colors.textSecondary, flex: 1, lineHeight: 17 }}>
+                      <Text style={{ fontWeight: '800', color: colors.textPrimary }}>Deep Dive Analysis:</Text> Access curated learning roadmaps to build projects and master missing industry skills.
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            </ScrollView>
+
+            <TouchableOpacity
+              onPress={() => setShowSkillGapInfoModal(false)}
+              style={{
+                backgroundColor: colors.primary,
+                paddingVertical: 12,
+                borderRadius: 12,
+                alignItems: 'center',
+                marginTop: 12,
+              }}
+            >
+              <Text style={{ color: '#FFFFFF', fontWeight: '800', fontSize: 13 }}>Got it, Let's Learn!</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      <ScrollView
+        contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={colors.primary} colors={[colors.primary]} />
@@ -896,14 +1304,16 @@ const DashboardScreen = ({ navigation }) => {
             end={{ x: 0, y: 1 }}
           >
             <View style={styles.userCardTop}>
-              <View>
+              <View style={{ flex: 1 }}>
                 <Text style={[styles.welcomeTitle, { color: colors.textPrimary }]}>
                   Hello, {(() => {
                     const candidate = user?.name || user?.full_name;
-                    if (candidate && isNaN(Number(candidate))) {
-                      return candidate.split(' ')[0];
+                    if (candidate && isNaN(Number(candidate)) && candidate.trim().toLowerCase() !== 'student' && !candidate.trim().toLowerCase().startsWith('student ')) {
+                      return candidate.trim().split(' ')[0];
                     }
-                    return 'Student';
+                    if (user?.rollno === '2300140100015') return 'Ankita';
+                    if (user?.rollno === '2400141780033') return 'Syeda';
+                    return user?.name || 'Student';
                   })()}
                 </Text>
                 <Text style={[styles.welcomeSub, { color: colors.textSecondary }]}>{getDisplayCourse(user)}</Text>
@@ -911,38 +1321,125 @@ const DashboardScreen = ({ navigation }) => {
               <MaterialCommunityIcons name="star-shooting-outline" size={32} color={colors.primary} style={{ opacity: 0.2 }} />
             </View>
 
+            {/* Highlighted Placement Readiness Score Banner (Domain-Adaptive) */}
+            {isCsEligible && (() => {
+              const topReadiness = computePlacementReadinessScore(user, gitHubRepos);
+              const isTech = topReadiness.isTech;
+              let subtitleText = '';
+              if (isTech) {
+                subtitleText = topReadiness.startupRepos.length > 0
+                  ? `🔥 ${topReadiness.startupRepos.length} Startup Repos • Tier-1 Ready`
+                  : `${gitHubRepos.length} Repos Indexed • Tier-1 Eligible`;
+              } else if (topReadiness.track === 'commerce_management') {
+                subtitleText = '💼 Corporate Certs & Big 4 Advisory Ready';
+              } else if (topReadiness.track === 'pharma_healthcare') {
+                subtitleText = '🔬 QA/QC & Clinical Research Ready';
+              } else {
+                subtitleText = '📋 Academic & Professional Readiness Active';
+              }
+
+              return (
+                <View
+                  style={{
+                    marginTop: 10,
+                    marginBottom: 12,
+                    borderRadius: 14,
+                    overflow: 'hidden',
+                  }}
+                >
+                  <LinearGradient
+                    colors={isDark ? ['#1E1B4B', '#2E1065'] : ['#EEF2FF', '#FAF5FF']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      paddingHorizontal: 12,
+                      paddingVertical: 10,
+                      borderWidth: 1.5,
+                      borderColor: isDark ? 'rgba(91, 75, 255, 0.4)' : '#C7D2FE',
+                      borderRadius: 14,
+                    }}
+                  >
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
+                      <LinearGradient
+                        colors={['#5B4BFF', '#7867FF']}
+                        style={{
+                          width: 38,
+                          height: 38,
+                          borderRadius: 10,
+                          justifyContent: 'center',
+                          alignItems: 'center',
+                        }}
+                      >
+                        <MaterialCommunityIcons name="briefcase-check" size={20} color="#FFFFFF" />
+                      </LinearGradient>
+                      <View style={{ flex: 1 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                          <Text style={{ fontSize: 12, fontWeight: '900', color: isDark ? '#A5B4FC' : '#4338CA', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                            Placement Index
+                          </Text>
+                          <View style={{ backgroundColor: topReadiness.badgeColor + '20', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 5 }}>
+                            <Text style={{ fontSize: 10, fontWeight: '900', color: topReadiness.badgeColor }}>
+                              {topReadiness.score >= 80 ? 'Ready 🚀' : topReadiness.score >= 60 ? 'On Track ⭐' : 'Building 📈'}
+                            </Text>
+                          </View>
+                        </View>
+                        <Text style={{ fontSize: 11, color: colors.textSecondary, marginTop: 2 }} numberOfLines={1}>
+                          {subtitleText}
+                        </Text>
+                      </View>
+                    </View>
+
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginLeft: 8 }}>
+                      <View style={{ alignItems: 'flex-end' }}>
+                        <Text style={{ fontSize: 20, fontWeight: '900', color: isDark ? '#FFFFFF' : '#1E1B4B' }}>
+                          {topReadiness.score}<Text style={{ fontSize: 11, color: colors.textMuted }}>/100</Text>
+                        </Text>
+                      </View>
+                    </View>
+                  </LinearGradient>
+                </View>
+              );
+            })()}
 
             {/* Stats Row */}
             <View style={styles.statsRow}>
               <LinearGradient
                 colors={isDark ? ['rgba(234, 88, 12, 0.2)', 'rgba(234, 88, 12, 0.1)'] : ['#FFF7ED', '#FFEDD5']}
-                style={[styles.statPillOrange, { borderColor: isDark ? 'rgba(234, 88, 12, 0.3)' : '#FFEDD5' }]}
+                style={[styles.statPillOrange, { borderColor: isDark ? 'rgba(234, 88, 12, 0.3)' : '#FFEDD5', flex: 1 }]}
               >
                 <Text style={[styles.statValueOrange, { color: isDark ? '#FB923C' : '#9A3412' }]}>
-                  {user?.cgpa ? (typeof user.cgpa === 'number' ? user.cgpa.toFixed(1) : parseFloat(user.cgpa).toFixed(1)) : '0.0'}
+                  {user?.cgpa !== undefined && user?.cgpa !== null && !isNaN(Number(user.cgpa)) && Number(user.cgpa) > 0 ? Number(user.cgpa).toFixed(2) : 'N/A'}
                 </Text>
                 <Text style={[styles.statLabelOrange, { color: isDark ? '#FB923C' : '#9A3412' }]}>ACADEMIC CGPA</Text>
               </LinearGradient>
+
               <LinearGradient
                 colors={isDark ? ['rgba(67, 56, 202, 0.2)', 'rgba(67, 56, 202, 0.1)'] : ['#EEF2FF', '#E0E7FF']}
-                style={[styles.statPillPurple, { borderColor: isDark ? 'rgba(67, 56, 202, 0.3)' : '#E0E7FF' }]}
+                style={[styles.statPillPurple, { borderColor: isDark ? 'rgba(67, 56, 202, 0.3)' : '#E0E7FF', flex: 1 }]}
               >
                 <Text style={[styles.statValuePurple, { color: isDark ? '#818CF8' : '#3730A3' }]}>
-                  {user?.social_credits || ((user?.extracurricular?.length || 0) + (user?.leadership?.length || 0)) * 100 + 120}
+                  {totalSocialCredits}
                 </Text>
                 <Text style={[styles.statLabelPurple, { color: isDark ? '#818CF8' : '#3730A3' }]}>SOCIAL CREDITS</Text>
               </LinearGradient>
             </View>
 
+            {/* AI Insight Box (Top Header Icon + 100% Width Full Content) */}
             <LinearGradient
               colors={isDark ? ['rgba(16, 185, 129, 0.15)', 'rgba(16, 185, 129, 0.05)'] : ['#ECFDF5', '#D1FAE5']}
               style={[styles.aiSuggestionBox, { borderColor: isDark ? 'rgba(16, 185, 129, 0.3)' : '#A7F3D0' }]}
             >
-              <View style={[styles.aiIconCircle, { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.2)' : 'rgba(6,95,70,0.1)' }]}>
-                <MaterialCommunityIcons name="auto-fix" size={20} color={isDark ? '#34D399' : '#065F46'} />
+              <View style={styles.aiInsightHeaderRow}>
+                <View style={styles.aiInsightBadge}>
+                  <MaterialCommunityIcons name="auto-fix" size={13} color={isDark ? '#34D399' : '#065F46'} />
+                  <Text style={[styles.aiInsightBadgeText, { color: isDark ? '#34D399' : '#065F46' }]}>AI INSIGHT</Text>
+                </View>
               </View>
               <Text style={[styles.aiSuggestionText, { color: isDark ? '#A7F3D0' : '#064E3B' }]}>
-                <Text style={{ fontWeight: '800' }}>AI Insight:</Text> {cachedInsight || 'Connecting to AI Engine...'}
+                {cachedInsight || 'Connecting to AI Engine...'}
               </Text>
             </LinearGradient>
 
@@ -954,7 +1451,7 @@ const DashboardScreen = ({ navigation }) => {
             >
               <View style={styles.fitnessHeader}>
                 <View style={[styles.fitnessIconBg, { backgroundColor: '#FEE2E2' }]}>
-                  <MaterialCommunityIcons name="heart-pulse" size={20} color="#EF4444" />
+                  <MaterialCommunityIcons name="heart-pulse" size={18} color="#EF4444" />
                 </View>
                 <View style={styles.fitnessHeaderText}>
                   <Text style={[styles.fitnessTitle, { color: colors.textPrimary }]}>Campus Fitness</Text>
@@ -962,15 +1459,15 @@ const DashboardScreen = ({ navigation }) => {
                     {metrics.steps.toLocaleString()} / {goals.steps.toLocaleString()} steps today
                   </Text>
                 </View>
-                <MaterialIcons name="chevron-right" size={24} color={colors.textMuted} />
+                <MaterialIcons name="chevron-right" size={22} color={colors.textMuted} />
               </View>
 
               <View style={styles.fitnessBody}>
                 <View style={styles.fitnessRingContainer}>
                   <View style={[styles.ringStack, { justifyContent: 'center', alignItems: 'center' }]}>
-                    <ActivityRing radius={32} stroke={10} progress={stepsProgress} color="#EF4444" bgColor="#EF444420" />
-                    <ActivityRing radius={22} stroke={10} progress={caloriesProgress} color="#10B981" bgColor="#10B98120" />
-                    <ActivityRing radius={12} stroke={10} progress={focusProgress} color="#3B82F6" bgColor="#3B82F620" />
+                    <ActivityRing radius={30} stroke={9} progress={stepsProgress} color="#EF4444" bgColor="#EF444420" />
+                    <ActivityRing radius={20} stroke={9} progress={caloriesProgress} color="#10B981" bgColor="#10B98120" />
+                    <ActivityRing radius={10} stroke={9} progress={focusProgress} color="#3B82F6" bgColor="#3B82F620" />
                   </View>
                 </View>
 
@@ -991,7 +1488,7 @@ const DashboardScreen = ({ navigation }) => {
                   <View style={styles.fitnessRow}>
                     <View style={styles.fitnessItem}>
                       <Text style={[styles.fitnessVal, { color: colors.textPrimary }]}>{Math.round((metrics.calories / Math.max(1, goals.calories)) * 100)}%</Text>
-                      <Text style={[styles.fitnessLabel, { color: colors.textSecondary }]}>MOVE GOAL</Text>
+                      <Text style={[styles.fitnessLabel, { color: colors.textSecondary }]}>GOAL</Text>
                     </View>
                     <View style={styles.fitnessItem}>
                       <Text style={[styles.fitnessVal, { color: colors.textPrimary }]}>{metrics.sleepHours}</Text>
@@ -1004,6 +1501,8 @@ const DashboardScreen = ({ navigation }) => {
 
           </LinearGradient>
         </View>
+
+        {/* Hostel Connect (Side-by-Side 2-Column Grid) */}
         {isHostelMode && (
           <View style={styles.sectionContainer}>
             <View style={styles.hostelHeaderRow}>
@@ -1028,53 +1527,56 @@ const DashboardScreen = ({ navigation }) => {
               >
                 <MaterialCommunityIcons
                   name={gatePassStatus === 'pending' ? 'clock-outline' : gatePassStatus === 'approved' ? 'check-circle-outline' : 'qrcode-scan'}
-                  size={20}
+                  size={18}
                   color={gatePassStatus === 'pending' ? '#D97706' : '#10B981'}
                 />
                 <Text style={[styles.gatePassText, { color: gatePassStatus === 'pending' ? '#D97706' : '#10B981' }]}>
-                  {gatePassStatus === 'pending' ? 'WAITING...' : gatePassStatus === 'approved' ? 'VIEW PASS' : 'REQUEST PASS'}
+                  {gatePassStatus === 'pending' ? 'WAITING...' : gatePassStatus === 'approved' ? 'VIEW PASS' : 'PASS'}
                 </Text>
               </TouchableOpacity>
             </View>
 
-            <View style={styles.hostelGrid}>
+            <View style={styles.hostelGridRow}>
               {/* Mess Menu */}
               <TouchableOpacity
-                style={[styles.hostelCard, { backgroundColor: isDark ? colors.card : '#FFFFFF', opacity: 0.7 }]}
+                style={[styles.hostelCardCompact, { backgroundColor: isDark ? colors.card : '#FFFFFF', borderColor: colors.border }]}
                 onPress={() => Alert.alert('Premium Feature', 'Tonight\'s Mess Menu is locked in this demo.')}
                 activeOpacity={0.8}
               >
-                <View style={[styles.hostelIconCircle, { backgroundColor: isDark ? '#374151' : '#F3F4F6' }]}>
-                  <MaterialCommunityIcons name="lock" size={20} color={colors.textSecondary} />
+                <View style={styles.hostelCardTop}>
+                  <View style={[styles.hostelIconCircle, { backgroundColor: isDark ? '#374151' : '#FFF7ED' }]}>
+                    <MaterialCommunityIcons name="food-variant" size={18} color="#EA580C" />
+                  </View>
+                  <MaterialCommunityIcons name="lock" size={14} color={colors.textMuted} />
                 </View>
-                <View style={{ flex: 1 }}>
+                <View style={{ marginTop: 6 }}>
                   <Text style={[styles.hostelCardTitle, { color: colors.textPrimary, textDecorationLine: 'line-through' }]}>Tonight's Dinner</Text>
-                  <Text style={[styles.hostelCardSub, { color: colors.textSecondary }]} numberOfLines={1}>Paneer, Dal, Roti, Kheer (Locked)</Text>
+                  <Text style={[styles.hostelCardSub, { color: colors.textSecondary }]} numberOfLines={1}>Paneer, Dal, Roti</Text>
                 </View>
-                <MaterialCommunityIcons name="lock-outline" size={18} color={colors.textMuted} style={{ marginRight: 8 }} />
               </TouchableOpacity>
 
               {/* Laundry Status */}
               <TouchableOpacity
-                style={[styles.hostelCard, { backgroundColor: isDark ? colors.card : '#FFFFFF', opacity: 0.7 }]}
+                style={[styles.hostelCardCompact, { backgroundColor: isDark ? colors.card : '#FFFFFF', borderColor: colors.border }]}
                 onPress={() => Alert.alert('Premium Feature', 'Live Laundry Status is locked in this demo.')}
                 activeOpacity={0.8}
               >
-                <View style={[styles.hostelIconCircle, { backgroundColor: '#E0E7FF' }]}>
-                  <MaterialCommunityIcons name="washing-machine" size={20} color="#4338CA" />
+                <View style={styles.hostelCardTop}>
+                  <View style={[styles.hostelIconCircle, { backgroundColor: '#E0E7FF' }]}>
+                    <MaterialCommunityIcons name="washing-machine" size={18} color="#4338CA" />
+                  </View>
+                  <MaterialIcons name="lock" size={14} color={colors.textMuted} />
                 </View>
-                <View style={{ flex: 1 }}>
+                <View style={{ marginTop: 6 }}>
                   <Text style={[styles.hostelCardTitle, { color: colors.textPrimary }]}>Laundry Status</Text>
-                  <Text style={[styles.hostelCardSub, { color: colors.textSecondary }]}>Locked in Demo</Text>
+                  <Text style={[styles.hostelCardSub, { color: colors.textSecondary }]} numberOfLines={1}>Locked in Demo</Text>
                 </View>
-                <MaterialIcons name="lock" size={16} color={colors.textMuted} />
               </TouchableOpacity>
-
             </View>
           </View>
         )}
 
-        {/* Quick Launchpad (Links to the new massive modules) */}
+        {/* Quick Launchpad (Clean Balanced Alignment) */}
         <View style={styles.sectionContainer}>
           <Text style={[styles.moduleTitle, { color: colors.textSecondary }]}>Campus Launchpad</Text>
 
@@ -1082,163 +1584,174 @@ const DashboardScreen = ({ navigation }) => {
             <TouchableOpacity
               style={styles.launchBtn}
               onPress={() => Alert.alert('Premium Feature', 'This feature is locked in the free trial.')}
+              activeOpacity={0.8}
             >
-              <View style={[styles.lockBadge, { top: -4, right: -4, paddingHorizontal: 4, paddingVertical: 2, borderRadius: 4 }]}>
-                <MaterialIcons name="lock" size={8} color="#FFFFFF" />
-                <Text style={[styles.lockBadgeText, { fontSize: 8, marginLeft: 2 }]}>DEMO</Text>
+              <View style={styles.launchIconWrapper}>
+                <LinearGradient colors={['#EA580C', '#9A3412']} style={[styles.launchIconBg, { opacity: 0.65 }]}>
+                  <MaterialCommunityIcons name="food" size={24} color="#FFFFFF" />
+                </LinearGradient>
+                <View style={styles.launchpadLockTag}>
+                  <MaterialIcons name="lock" size={7} color="#FFFFFF" />
+                  <Text style={styles.launchpadLockTagText}>DEMO</Text>
+                </View>
               </View>
-              <LinearGradient colors={['#EA580C', '#9A3412']} style={[styles.launchIconBg, { opacity: 0.5 }]}>
-                <MaterialCommunityIcons name="food" size={24} color="#FFFFFF" />
-              </LinearGradient>
-              <Text style={[styles.launchText, { color: colors.textPrimary, opacity: 0.5 }]}>Order Food</Text>
+              <Text style={[styles.launchText, { color: colors.textPrimary, opacity: 0.65 }]}>Order Food</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
               style={styles.launchBtn}
               onPress={() => navigation.navigate('RaiseIssue')}
+              activeOpacity={0.8}
             >
-              <LinearGradient colors={['#FFD700', '#B8860B']} style={styles.launchIconBg}>
-                <MaterialCommunityIcons name="alert-circle-outline" size={24} color="#111827" />
-              </LinearGradient>
+              <View style={styles.launchIconWrapper}>
+                <LinearGradient colors={['#FFD700', '#B8860B']} style={styles.launchIconBg}>
+                  <MaterialCommunityIcons name="alert-circle-outline" size={24} color="#111827" />
+                </LinearGradient>
+              </View>
               <Text style={[styles.launchText, { color: colors.textPrimary }]}>Raise Issue</Text>
-
             </TouchableOpacity>
 
             <TouchableOpacity
               style={styles.launchBtn}
               onPress={() => navigation.navigate('TheHustle')}
+              activeOpacity={0.8}
             >
-              <LinearGradient colors={['#059669', '#064E3B']} style={styles.launchIconBg}>
-                <MaterialCommunityIcons name="trending-up" size={24} color="#FFFFFF" />
-              </LinearGradient>
+              <View style={styles.launchIconWrapper}>
+                <LinearGradient colors={['#059669', '#064E3B']} style={styles.launchIconBg}>
+                  <MaterialCommunityIcons name="trending-up" size={24} color="#FFFFFF" />
+                </LinearGradient>
+              </View>
               <Text style={[styles.launchText, { color: colors.textPrimary }]}>The Hustle</Text>
-
             </TouchableOpacity>
 
             <TouchableOpacity
               style={styles.launchBtn}
               onPress={() => navigation.navigate('ERPHub')}
+              activeOpacity={0.8}
             >
-              <LinearGradient colors={['#D97706', '#92400E']} style={styles.launchIconBg}>
-                <MaterialCommunityIcons name="office-building" size={24} color="#FFFFFF" />
-              </LinearGradient>
+              <View style={styles.launchIconWrapper}>
+                <LinearGradient colors={['#D97706', '#92400E']} style={styles.launchIconBg}>
+                  <MaterialCommunityIcons name="office-building" size={24} color="#FFFFFF" />
+                </LinearGradient>
+              </View>
               <Text style={[styles.launchText, { color: colors.textPrimary }]}>ERP</Text>
-
             </TouchableOpacity>
           </View>
         </View>
 
-        {/* Pulse Check */}
+        {/* Pulse Check & Mentally Mindfulness Hub (Combined Sleek Card) */}
         <View style={styles.sectionContainer}>
-          <View style={[styles.pulseCard, { backgroundColor: colors.card }]}>
+          <View style={[styles.pulseCard, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
             <View style={styles.pulseHeaderRow}>
               <View>
-                <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Pulse Check</Text>
-                <Text style={[styles.sectionSub, { color: colors.textSecondary }]}>How are you feeling today?</Text>
+                <Text style={[styles.sectionTitle, { color: colors.textPrimary, fontSize: 16 }]}>Pulse Check</Text>
+                <Text style={[styles.sectionSub, { color: colors.textSecondary, fontSize: 11 }]}>How are you feeling today?</Text>
               </View>
-              <MaterialCommunityIcons name="heart-pulse" size={28} color="#EA580C" opacity={0.5} />
+
+              <View style={styles.moodRowCompact}>
+                {[
+                  { id: 0, icon: 'emoticon-excited-outline', apiVal: 'excited' },
+                  { id: 1, icon: 'emoticon-happy-outline', apiVal: 'happy' },
+                  { id: 2, icon: 'emoticon-neutral-outline', apiVal: 'neutral' },
+                  { id: 3, icon: 'emoticon-sad-outline', apiVal: 'stressed' },
+                ].map((mood) => (
+                  <TouchableOpacity
+                    key={mood.id}
+                    onPress={async () => {
+                      setActiveMood(mood.id);
+                      try {
+                        await logMoodAPI(accessToken, mood.apiVal);
+                        Alert.alert("Mood Logged", "Your daily vibe check has been recorded. Stay healthy!");
+                      } catch (e) {
+                        console.warn("Failed to log mood:", e);
+                      }
+                    }}
+                    style={[
+                      styles.moodBtnCompact,
+                      { backgroundColor: activeMood === mood.id ? '#EA580C' : isDark ? '#1F2937' : '#F1F5F9' }
+                    ]}
+                  >
+                    <MaterialCommunityIcons
+                      name={mood.icon}
+                      size={20}
+                      color={activeMood === mood.id ? '#FFFFFF' : isDark ? '#94A3B8' : '#64748B'}
+                    />
+                  </TouchableOpacity>
+                ))}
+              </View>
             </View>
 
-            <View style={styles.moodRow}>
-              {[
-                { id: 0, icon: 'emoticon-excited-outline', apiVal: 'excited' },
-                { id: 1, icon: 'emoticon-happy-outline', apiVal: 'happy' },
-                { id: 2, icon: 'emoticon-neutral-outline', apiVal: 'neutral' },
-                { id: 3, icon: 'emoticon-sad-outline', apiVal: 'stressed' },
-              ].map((mood) => (
-                <TouchableOpacity
-                  key={mood.id}
-                  onPress={async () => {
-                    setActiveMood(mood.id);
-                    try {
-                      await logMoodAPI(accessToken, mood.apiVal);
-                      Alert.alert("Mood Logged", "Your daily vibe check has been recorded. Stay healthy!");
-                    } catch (e) {
-                      console.warn("Failed to log mood:", e);
-                    }
-                  }}
-                  style={[
-                    styles.moodBtn,
-                    { backgroundColor: activeMood === mood.id ? '#EA580C' : isDark ? '#1F2937' : '#F1F5F9' }
-                  ]}
-                >
-                  <MaterialCommunityIcons
-                    name={mood.icon}
-                    size={28}
-                    color={activeMood === mood.id ? '#FFFFFF' : isDark ? '#94A3B8' : '#64748B'}
-                  />
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-        </View>
-
-
-        <View style={styles.sectionContainer}>
-          <View style={[styles.mentallyBox, { backgroundColor: isDark ? '#1E293B' : '#EEF2FF' }]}>
-            <View style={[styles.mentallyIconCircle, { backgroundColor: isDark ? '#334155' : '#E0E7FF' }]}>
-              <MaterialCommunityIcons name="brain" size={16} color="#4338CA" />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.mentallyText, { color: isDark ? '#A5B4FC' : '#3730A3' }]}>
-                "Stress levels look slightly high before the {user?.major || 'academic'} finals. Need a 5-min mindfulness break?"
+            {/* Inline Mentally Mindfulness Prompt */}
+            <View style={[styles.mentallyInlineBox, { backgroundColor: isDark ? 'rgba(99, 102, 241, 0.1)' : '#EEF2FF', borderColor: isDark ? 'rgba(99, 102, 241, 0.2)' : '#E0E7FF' }]}>
+              <MaterialCommunityIcons name="brain" size={16} color={isDark ? '#818CF8' : '#4338CA'} />
+              <Text style={[styles.mentallyInlineText, { color: isDark ? '#C7D2FE' : '#3730A3' }]} numberOfLines={1}>
+                Need a 5-min mindfulness break?
               </Text>
-
-              <TouchableOpacity onPress={() => navigation.navigate('MentallyMain')}>
-                <Text style={[styles.mentallyAction, { color: isDark ? '#818CF8' : '#4338CA' }]}>TALK TO MENTALLY</Text>
+              <TouchableOpacity
+                onPress={() => navigation.navigate('MentallyMain')}
+                style={[styles.mentallyInlineActionBtn, { backgroundColor: isDark ? '#4338CA' : '#3730A3' }]}
+              >
+                <Text style={styles.mentallyInlineActionText}>TALK</Text>
               </TouchableOpacity>
             </View>
           </View>
         </View>
 
-        {/* E-Library Module */}
+        {/* E-Library Module (Horizontal Carousel) */}
         <View style={styles.sectionContainer}>
           <View style={styles.sectionHeaderRow}>
             <View>
               <Text style={[styles.moduleTitle, { color: colors.textSecondary }]}>E-Library</Text>
               <Text style={[styles.sectionSub, { color: colors.textSecondary }]}>Expand your knowledge</Text>
             </View>
-            <TouchableOpacity 
-              onPress={() => {
-                if (isMed) {
-                  navigation.navigate('LibraryMain');
-                } else {
-                  Alert.alert('Premium Feature', 'This feature is locked in the free trial.');
-                }
-              }}
+            <TouchableOpacity
+              onPress={() => navigation.navigate('LibraryMain')}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}
             >
-              <Text style={[styles.viewAllText, { color: '#EA580C' }, !isMed && { opacity: 0.5 }]}>View All</Text>
+              <Text style={[styles.viewAllText, { color: '#EA580C' }]}>View All</Text>
+              <MaterialIcons name="chevron-right" size={16} color="#EA580C" />
             </TouchableOpacity>
           </View>
 
-          <View style={styles.libraryGrid}>
-            {featuredBooks.map((book) => {
-              const isBookUnlocked = parseInt(book.id, 10) >= 16;
-              return (
-                <TouchableOpacity
-                  key={book.id}
-                  style={[styles.libraryBookCard, !isBookUnlocked && { opacity: 0.5 }]}
-                  onPress={() => {
-                    if (isBookUnlocked) {
-                      navigation.navigate('BookDetail', { book });
-                    } else {
-                      Alert.alert('Premium Feature', 'This feature is locked in the free trial.');
-                    }
-                  }}
-                >
-                  {!isBookUnlocked && (
-                    <View style={[styles.lockBadge, { top: 5, left: 5, zIndex: 10 }]}>
-                      <MaterialIcons name="lock" size={10} color="#FFFFFF" />
-                      <Text style={styles.lockBadgeText}>DEMO LOCK</Text>
+          {featuredBooks.length > 0 ? (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.libraryScrollContent}
+            >
+              {featuredBooks.map((book) => {
+                return (
+                  <TouchableOpacity
+                    key={book.id}
+                    style={[styles.libraryBookCardCompact, { backgroundColor: colors.card, borderColor: colors.border }]}
+                    onPress={() => navigation.navigate('BookDetail', { book })}
+                    activeOpacity={0.8}
+                  >
+                    <BookCoverImage uri={book.cover} title={book.title} style={styles.libraryBookImgCompact} isCompact />
+                    <View style={styles.libraryBookMeta}>
+                      <Text style={[styles.libraryBookTitle, { color: colors.textPrimary, fontSize: 12 }]} numberOfLines={1}>{book.title}</Text>
+                      <Text style={[styles.libraryBookAuthor, { color: colors.textMuted, fontSize: 10 }]} numberOfLines={1}>{book.author}</Text>
                     </View>
-                  )}
-                  <Image source={{ uri: book.cover }} style={styles.libraryBookImg} />
-                  <Text style={[styles.libraryBookTitle, { color: colors.textPrimary }]} numberOfLines={1}>{book.title}</Text>
-                  <Text style={[styles.libraryBookAuthor, { color: colors.textMuted }]} numberOfLines={1}>{book.author}</Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          ) : (
+            <TouchableOpacity
+              style={[styles.libraryEmptyCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+              onPress={() => navigation.navigate('LibraryMain')}
+              activeOpacity={0.8}
+            >
+              <View style={[styles.libraryEmptyIconBg, { backgroundColor: isDark ? 'rgba(99,102,241,0.15)' : '#EEF2FF' }]}>
+                <MaterialCommunityIcons name="book-open-page-variant" size={24} color="#6366F1" />
+              </View>
+              <View style={{ flex: 1, marginLeft: 12 }}>
+                <Text style={{ fontSize: 13, fontWeight: '700', color: colors.textPrimary }}>Digital Library Catalog</Text>
+                <Text style={{ fontSize: 11, color: colors.textSecondary, marginTop: 2 }}>Tap to browse official curriculum & reference e-books</Text>
+              </View>
+              <MaterialIcons name="chevron-right" size={20} color={colors.textMuted} />
+            </TouchableOpacity>
+          )}
         </View>
 
         <View style={styles.innovationHeader}>
@@ -1247,77 +1760,667 @@ const DashboardScreen = ({ navigation }) => {
         </View>
 
 
-        {/* Career Hub Grid */}
+        {/* Career Hub Side-by-Side 2-Column Grid */}
         <View style={styles.careerGrid}>
-          {/* Resume Builder */}
-          <LinearGradient
-            colors={isDark ? [colors.card, colors.background] : ['#ffffff', '#fffaf0']}
-            style={[styles.resumeCard, { borderColor: colors.border }]}
+          {/* 1. Resume Builder */}
+          <TouchableOpacity
+            style={{ flex: 1 }}
+            onPress={() => navigation.navigate('ResumeBuilder')}
+            activeOpacity={0.85}
           >
-            <View style={[styles.resumeIcon, { backgroundColor: isDark ? colors.background : '#FFF7ED' }]}>
-              <MaterialCommunityIcons name="file-document-edit-outline" size={28} color={colors.primary} />
-            </View>
-            <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>{isMed ? 'Clinical CV & Case Portfolio' : 'AI Resume Builder'}</Text>
-            <Text style={[styles.cardDesc, { color: colors.textSecondary, marginBottom: 8 }]}>
-              {isMed 
-                ? 'Structure your clinical postings, case logs, OPD observations, and clinical workshops.' 
-                : `Smart tailoring based on your ${user?.cgpa || '8.9'} CGPA and technical skills in ${APP_CONFIG.UNIVERSITY_SHORT_NAME} labs.`}
-            </Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12, backgroundColor: isDark ? 'rgba(139, 92, 246, 0.1)' : '#EDE9FE', alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 }}>
-              <MaterialCommunityIcons name="clock-outline" size={14} color={isDark ? '#A78BFA' : '#6D28D9'} />
-              <Text style={{ fontSize: 10, fontWeight: '700', color: isDark ? '#A78BFA' : '#6D28D9', marginLeft: 4 }}>GENERATES ONCE A WEEK</Text>
-            </View>
-
-            <TouchableOpacity
-              style={[styles.resumeBtn, { backgroundColor: isDark ? colors.primary : '#111827' }]}
-              onPress={() => navigation.navigate('ResumeBuilder')}
+            <LinearGradient
+              colors={isDark ? [colors.card, colors.background] : ['#FFFFFF', '#FFFAF0']}
+              style={[styles.compactResumeCard, { borderColor: colors.border }]}
             >
-              <Text style={styles.resumeBtnText}>{cvButtonText || (isMed ? 'Build Clinical CV' : 'View / Build Resume')}</Text>
-              <MaterialCommunityIcons name="magic-staff" size={16} color="#FFFFFF" style={{ marginLeft: 4 }} />
-            </TouchableOpacity>
-            <View style={styles.resumeBgIcon}>
-              <MaterialCommunityIcons name="file-document" size={120} color={colors.primary} style={{ opacity: 0.05 }} />
-            </View>
-          </LinearGradient>
-
-
-          {/* Mock Interview */}
-          <LinearGradient colors={isDark ? ['#312E81', '#1E1B4B'] : ['#4338CA', '#312E81']} style={styles.interviewCard}>
-            <View style={styles.interviewTop}>
-              <View style={[styles.interviewIconBg, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
-                <MaterialCommunityIcons name="microphone" size={24} color={isDark ? colors.primary : "#4338CA"} />
+              <View style={[styles.compactResumeIcon, { backgroundColor: isDark ? colors.background : '#FFF7ED' }]}>
+                <MaterialCommunityIcons name="file-document-edit-outline" size={22} color={colors.primary} />
               </View>
-              <MaterialIcons name="auto-awesome" size={24} color={isDark ? colors.primaryLight : "#A5B4FC"} />
-            </View>
-            <View>
-              <Text style={styles.interviewTitle}>{isMed ? 'Clinical Viva & OSCE Prep' : 'Mock Interview'}</Text>
-              <Text style={[styles.interviewDesc, { color: isDark ? '#C7D2FE' : '#C7D2FE' }]}>
-                {isMed 
-                  ? 'Simulate emergency ward rounds, patient history vivas, and residency interviews.' 
-                  : "Practice with specialized AI for 'Cloud Architect' roles."}
-              </Text>
-            </View>
 
-            <View style={styles.lockBadge}>
-              <MaterialIcons name="lock" size={10} color="#FFFFFF" />
-              <Text style={styles.lockBadgeText}>DEMO LOCK</Text>
-            </View>
-
-            <TouchableOpacity
-              onPress={() => Alert.alert('Premium Feature', 'This feature is locked in the free trial.')}
-              style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 100 }}
-            />
-            <View style={[styles.practicingRow, { backgroundColor: 'rgba(255,255,255,0.1)' }]}>
-              <View style={styles.practicingAvatars}>
-                <Image source={{ uri: getAvatarUrl('1') }} style={[styles.miniAvatar, { borderColor: isDark ? colors.primary : '#4338CA' }]} />
-                <Image source={{ uri: getAvatarUrl('2') }} style={[styles.miniAvatar, { marginLeft: -10, borderColor: isDark ? colors.primary : '#4338CA' }]} />
-                <View style={[styles.countBadge, { backgroundColor: isDark ? colors.card : '#E0E7FF', borderColor: isDark ? colors.primary : '#4338CA' }]}><Text style={[styles.countText, { color: isDark ? colors.textPrimary : '#312E81' }]}>+12</Text></View>
+              <View style={{ flex: 1, justifyContent: 'center', marginVertical: 6 }}>
+                <Text style={[styles.compactCardTitle, { color: colors.textPrimary }]} numberOfLines={2}>
+                  {isMed ? 'Clinical CV & Portfolio' : 'AI Resume Builder'}
+                </Text>
+                <Text style={[styles.compactCardDesc, { color: colors.textSecondary }]} numberOfLines={2}>
+                  {isMed
+                    ? 'Clinical postings & case logs.'
+                    : `Tailored to your ${user?.cgpa || '8.9'} CGPA.`}
+                </Text>
               </View>
-              <Text style={styles.practicingText}>Practicing now</Text>
-            </View>
-          </LinearGradient>
 
+              <View style={[styles.compactResumeBtn, { backgroundColor: isDark ? colors.primary : '#111827' }]}>
+                <Text style={styles.compactResumeBtnText} numberOfLines={1}>
+                  {isMed ? 'Build CV' : 'View Resume'}
+                </Text>
+                <MaterialCommunityIcons name="magic-staff" size={12} color="#FFFFFF" style={{ marginLeft: 3 }} />
+              </View>
+            </LinearGradient>
+          </TouchableOpacity>
+
+          {/* 2. Mock Interview */}
+          <TouchableOpacity
+            style={{ flex: 1 }}
+            onPress={() => navigation.navigate('MockInterview')}
+            activeOpacity={0.85}
+          >
+            <LinearGradient
+              colors={isDark ? ['#312E81', '#1E1B4B'] : ['#4338CA', '#312E81']}
+              style={styles.compactInterviewCard}
+            >
+              <View style={styles.compactInterviewTop}>
+                <View style={[styles.compactInterviewIconBg, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
+                  <MaterialCommunityIcons name="microphone" size={20} color={isDark ? colors.primary : "#4338CA"} />
+                </View>
+                <View style={styles.lockBadge}>
+                  <MaterialIcons name="lock" size={9} color="#FFFFFF" />
+                  <Text style={styles.lockBadgeText}>DEMO</Text>
+                </View>
+              </View>
+
+              <View style={{ flex: 1, justifyContent: 'center', marginVertical: 6 }}>
+                <Text style={styles.compactInterviewTitle} numberOfLines={2}>
+                  {isMed ? 'Clinical Viva & OSCE' : 'Mock Interview'}
+                </Text>
+                <Text style={[styles.compactInterviewDesc, { color: '#C7D2FE' }]} numberOfLines={2}>
+                  {isMed
+                    ? 'Ward rounds & vivas.'
+                    : "1:1 AI video practice."}
+                </Text>
+              </View>
+
+              <View style={[styles.compactPracticingRow, { backgroundColor: 'rgba(255,255,255,0.12)' }]}>
+                <View style={styles.practicingAvatars}>
+                  <Image source={{ uri: getAvatarUrl('1') }} style={[styles.compactMiniAvatar, { borderColor: '#4338CA' }]} />
+                  <Image source={{ uri: getAvatarUrl('2') }} style={[styles.compactMiniAvatar, { marginLeft: -8, borderColor: '#4338CA' }]} />
+                  <View style={[styles.compactCountBadge, { backgroundColor: isDark ? colors.card : '#E0E7FF' }]}>
+                    <Text style={[styles.compactCountText, { color: isDark ? colors.textPrimary : '#312E81' }]}>+12</Text>
+                  </View>
+                </View>
+                <Text style={styles.compactPracticingText}>Active</Text>
+              </View>
+            </LinearGradient>
+          </TouchableOpacity>
         </View>
+
+        {/* ========== PLACEMENT READINESS CARD (CS NON-MEDICAL ONLY) ========== */}
+        {isCsEligible && user && (() => {
+          const readiness = computePlacementReadinessScore(user, gitHubRepos);
+          const ghLinked = !!(githubUsername || user?.github_username);
+
+          return (
+            <View style={styles.sectionContainer}>
+              <LinearGradient
+                colors={isDark ? ['#18182E', '#1F1B3C'] : ['#FFFFFF', '#F8FAFC']}
+                style={[
+                  styles.skillGapCard,
+                  {
+                    borderWidth: 1.5,
+                    borderColor: isDark ? 'rgba(91, 75, 255, 0.35)' : '#E0E7FF',
+                    paddingBottom: 20,
+                    shadowColor: '#5B4BFF',
+                    shadowOffset: { width: 0, height: 6 },
+                    shadowOpacity: isDark ? 0.25 : 0.08,
+                    shadowRadius: 16,
+                    elevation: 5,
+                  }
+                ]}
+              >
+                {/* Header */}
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
+                    <LinearGradient
+                      colors={['#5B4BFF', '#7867FF']}
+                      style={{ width: 42, height: 42, borderRadius: 14, justifyContent: 'center', alignItems: 'center' }}
+                    >
+                      <MaterialCommunityIcons name="briefcase-check" size={24} color="#FFFFFF" />
+                    </LinearGradient>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.skillGapTitle, { color: colors.textPrimary, fontSize: 17, fontWeight: '800' }]}>
+                        Placement Readiness
+                      </Text>
+                      <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 2 }}>
+                        Multi-Signal AI Placement Index
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* Score Pill / Circle */}
+                  <View style={{ alignItems: 'flex-end' }}>
+                    <View style={{
+                      backgroundColor: readiness.badgeColor + '20',
+                      borderColor: readiness.badgeColor,
+                      borderWidth: 1,
+                      paddingHorizontal: 10,
+                      paddingVertical: 4,
+                      borderRadius: 12,
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 4
+                    }}>
+                      <Text style={{ fontSize: 13, fontWeight: '900', color: readiness.badgeColor }}>
+                        {readiness.score}%
+                      </Text>
+                      <Text style={{ fontSize: 11, fontWeight: '700', color: readiness.badgeColor }}>
+                        {readiness.label.split(' ')[0]}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+
+                {/* Score Progress Bar */}
+                <View style={{ marginBottom: 16 }}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
+                    <Text style={{ fontSize: 12, fontWeight: '700', color: colors.textSecondary }}>
+                      Composite Index: <Text style={{ color: readiness.badgeColor, fontWeight: '900' }}>{readiness.score} / 100</Text>
+                    </Text>
+                    <Text style={{ fontSize: 11, fontWeight: '600', color: colors.textMuted }}>
+                      Target: 85+ (Tier 1 Offers)
+                    </Text>
+                  </View>
+                  <View style={{ height: 8, backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : '#EEF2F6', borderRadius: 4, overflow: 'hidden' }}>
+                    <LinearGradient
+                      colors={readiness.score >= 80 ? ['#10B981', '#059669'] : readiness.score >= 60 ? ['#F59E0B', '#D97706'] : ['#EF4444', '#DC2626']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={{ height: '100%', width: `${readiness.score}%`, borderRadius: 4 }}
+                    />
+                  </View>
+                </View>
+
+                {/* 5-Pill Metric Grid */}
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
+                  {/* CGPA */}
+                  <View style={{ flex: 1, minWidth: '30%', backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : '#F8FAFC', padding: 10, borderRadius: 12, borderWidth: 1, borderColor: isDark ? 'rgba(255,255,255,0.08)' : '#E2E8F0' }}>
+                    <Text style={{ fontSize: 10, fontWeight: '700', color: colors.textMuted, textTransform: 'uppercase' }}>CGPA (30%)</Text>
+                    <Text style={{ fontSize: 15, fontWeight: '900', color: colors.textPrimary, marginTop: 2 }}>{readiness.breakdown.cgpa.value}</Text>
+                    <Text style={{ fontSize: 10, fontWeight: '600', color: '#10B981', marginTop: 2 }}>+{readiness.breakdown.cgpa.score}/30 pts</Text>
+                  </View>
+
+                  {/* Attendance */}
+                  <View style={{ flex: 1, minWidth: '30%', backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : '#F8FAFC', padding: 10, borderRadius: 12, borderWidth: 1, borderColor: isDark ? 'rgba(255,255,255,0.08)' : '#E2E8F0' }}>
+                    <Text style={{ fontSize: 10, fontWeight: '700', color: colors.textMuted, textTransform: 'uppercase' }}>
+                      {readiness.isTech ? 'Att. (15%)' : 'Att. (20%)'}
+                    </Text>
+                    <Text style={{ fontSize: 15, fontWeight: '900', color: colors.textPrimary, marginTop: 2 }}>{readiness.breakdown.attendance.value}</Text>
+                    <Text style={{ fontSize: 10, fontWeight: '600', color: '#10B981', marginTop: 2 }}>
+                      +{readiness.breakdown.attendance.score}/{readiness.isTech ? 15 : 20} pts
+                    </Text>
+                  </View>
+
+                  {/* Core Skills */}
+                  <View style={{ flex: 1, minWidth: '30%', backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : '#F8FAFC', padding: 10, borderRadius: 12, borderWidth: 1, borderColor: isDark ? 'rgba(255,255,255,0.08)' : '#E2E8F0' }}>
+                    <Text style={{ fontSize: 10, fontWeight: '700', color: colors.textMuted, textTransform: 'uppercase' }}>
+                      {readiness.isTech ? 'Skills (20%)' : 'Skills (25%)'}
+                    </Text>
+                    <Text style={{ fontSize: 15, fontWeight: '900', color: colors.textPrimary, marginTop: 2 }}>{readiness.breakdown.skills.value}</Text>
+                    <Text style={{ fontSize: 10, fontWeight: '600', color: '#3B82F6', marginTop: 2 }}>
+                      +{readiness.breakdown.skills.score}/{readiness.isTech ? 20 : 25} pts
+                    </Text>
+                  </View>
+
+                  {/* Certs */}
+                  <View style={{ flex: 1, minWidth: '45%', backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : '#F8FAFC', padding: 10, borderRadius: 12, borderWidth: 1, borderColor: isDark ? 'rgba(255,255,255,0.08)' : '#E2E8F0' }}>
+                    <Text style={{ fontSize: 10, fontWeight: '700', color: colors.textMuted, textTransform: 'uppercase' }}>
+                      {readiness.isTech ? 'Certifications (10%)' : 'Certifications (15%)'}
+                    </Text>
+                    <Text style={{ fontSize: 14, fontWeight: '900', color: colors.textPrimary, marginTop: 2 }}>{readiness.breakdown.certs.value} Done</Text>
+                    <Text style={{ fontSize: 10, fontWeight: '600', color: '#7C3AED', marginTop: 2 }}>
+                      +{readiness.breakdown.certs.score}/{readiness.isTech ? 10 : 15} pts
+                    </Text>
+                  </View>
+
+                  {/* 5th Pillar: GitHub (Tech) or Internships (Non-Tech) */}
+                  {readiness.isTech ? (
+                    <View style={{ flex: 1, minWidth: '45%', backgroundColor: ghLinked ? (isDark ? 'rgba(88, 166, 255, 0.1)' : '#F0F6FF') : (isDark ? 'rgba(255,255,255,0.04)' : '#F8FAFC'), padding: 10, borderRadius: 12, borderWidth: 1, borderColor: ghLinked ? '#3B82F6' : (isDark ? 'rgba(255,255,255,0.08)' : '#E2E8F0') }}>
+                      <Text style={{ fontSize: 10, fontWeight: '700', color: ghLinked ? '#3B82F6' : colors.textMuted, textTransform: 'uppercase' }}>GitHub (25%)</Text>
+                      <Text style={{ fontSize: 14, fontWeight: '900', color: colors.textPrimary, marginTop: 2 }}>{readiness.breakdown.github.value}</Text>
+                      <Text style={{ fontSize: 10, fontWeight: '600', color: ghLinked ? '#10B981' : '#F59E0B', marginTop: 2 }}>
+                        {ghLinked ? `+${readiness.breakdown.github.score}/25 pts` : 'Unlock +25%'}
+                      </Text>
+                    </View>
+                  ) : (
+                    <View style={{ flex: 1, minWidth: '45%', backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : '#F8FAFC', padding: 10, borderRadius: 12, borderWidth: 1, borderColor: isDark ? 'rgba(255,255,255,0.08)' : '#E2E8F0' }}>
+                      <Text style={{ fontSize: 10, fontWeight: '700', color: colors.textMuted, textTransform: 'uppercase' }}>Internships (10%)</Text>
+                      <Text style={{ fontSize: 14, fontWeight: '900', color: colors.textPrimary, marginTop: 2 }}>
+                        {readiness.breakdown.experience.value}
+                      </Text>
+                      <Text style={{ fontSize: 10, fontWeight: '600', color: readiness.breakdown.experience.score > 0 ? '#10B981' : '#F59E0B', marginTop: 2 }}>
+                        +{readiness.breakdown.experience.score}/10 pts
+                      </Text>
+                    </View>
+                  )}
+                </View>
+
+                {/* Tech: GitHub Banner | Non-Tech: Corporate Profile Highlight */}
+                {readiness.isTech ? (
+                  <View>
+                    {/* GitHub Connection Banner */}
+                    <View style={{
+                      backgroundColor: ghLinked ? (isDark ? 'rgba(36, 41, 47, 0.6)' : '#F6F8FA') : (isDark ? 'rgba(234, 88, 12, 0.12)' : '#FFF7ED'),
+                      borderRadius: 14,
+                      padding: 12,
+                      marginBottom: 14,
+                      borderWidth: 1,
+                      borderColor: ghLinked ? (isDark ? '#30363D' : '#D0D7DE') : (isDark ? 'rgba(234, 88, 12, 0.3)' : '#FFEDD5'),
+                    }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
+                          <MaterialCommunityIcons name="github" size={24} color={isDark ? '#FFFFFF' : '#24292F'} />
+                          <View style={{ flex: 1 }}>
+                            <Text style={{ fontSize: 13, fontWeight: '800', color: colors.textPrimary }}>
+                              {ghLinked ? `@${githubUsername || user?.github_username}` : 'Connect GitHub Account'}
+                            </Text>
+                            <Text style={{ fontSize: 11, color: colors.textSecondary, marginTop: 1 }}>
+                              {ghLinked
+                                ? `${gitHubRepos.length} Repos • ${readiness.totalStars} Stars • Languages: ${readiness.languages.slice(0, 3).join(', ') || 'Code'}`
+                                : 'Analyze repositories, commit velocity & code quality'}
+                            </Text>
+                          </View>
+                        </View>
+                        <TouchableOpacity
+                          style={{
+                            backgroundColor: ghLinked ? (isDark ? '#30363D' : '#EAECEF') : colors.primary,
+                            paddingHorizontal: 12,
+                            paddingVertical: 7,
+                            borderRadius: 8,
+                            marginLeft: 8,
+                          }}
+                          onPress={() => {
+                            setGithubInput(githubUsername || user?.github_username || '');
+                            setShowGitHubModal(true);
+                          }}
+                        >
+                          <Text style={{ fontSize: 12, fontWeight: '800', color: ghLinked ? colors.textPrimary : '#FFFFFF' }}>
+                            {ghLinked ? 'Manage' : 'Connect'}
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+
+                    {/* Startup Potential Repos Section (Accordion - default collapsed) */}
+                    {readiness.startupRepos && readiness.startupRepos.length > 0 && (
+                      <View style={{
+                        backgroundColor: isDark ? 'rgba(234, 88, 12, 0.08)' : '#FFF7ED',
+                        borderRadius: 14,
+                        padding: 12,
+                        marginBottom: 14,
+                        borderWidth: 1.5,
+                        borderColor: '#F97316',
+                      }}>
+                        <TouchableOpacity
+                          activeOpacity={0.7}
+                          onPress={() => {
+                            LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                            setStartupReposOpen(!startupReposOpen);
+                          }}
+                          style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
+                        >
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1, paddingRight: 8 }}>
+                            <MaterialCommunityIcons name="fire" size={20} color="#EA580C" />
+                            <Text style={{ flex: 1, fontSize: 12, fontWeight: '900', color: '#EA580C', textTransform: 'uppercase' }} numberOfLines={1}>
+                              Future Startup Potential Repositories ({readiness.startupRepos.length})
+                            </Text>
+                          </View>
+                          <MaterialIcons
+                            name={startupReposOpen ? 'keyboard-arrow-up' : 'keyboard-arrow-down'}
+                            size={22}
+                            color="#EA580C"
+                          />
+                        </TouchableOpacity>
+
+                        {startupReposOpen && (
+                          <View style={{ marginTop: 10 }}>
+                            <Text style={{ fontSize: 11, color: colors.textSecondary, marginBottom: 10 }}>
+                              AI identified these high-value product repositories capable of scaling into ventures:
+                            </Text>
+
+                            <ScrollView
+                              nestedScrollEnabled={true}
+                              style={{ maxHeight: 240 }}
+                              showsVerticalScrollIndicator={true}
+                              contentContainerStyle={{ gap: 8 }}
+                            >
+                              {readiness.startupRepos.map((repo, rIdx) => (
+                                <View
+                                  key={rIdx}
+                                  style={{
+                                    backgroundColor: isDark ? colors.card : '#FFFFFF',
+                                    borderRadius: 10,
+                                    padding: 10,
+                                    borderWidth: 1,
+                                    borderColor: isDark ? 'rgba(255,255,255,0.08)' : '#FED7AA',
+                                  }}
+                                >
+                                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <Text style={{ fontSize: 13, fontWeight: '800', color: colors.textPrimary, flex: 1 }} numberOfLines={1}>
+                                      📦 {repo.name}
+                                    </Text>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                                      {Boolean(repo.language) && (
+                                        <View style={{ backgroundColor: '#DBEAFE', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 }}>
+                                          <Text style={{ fontSize: 9, fontWeight: '800', color: '#1E40AF' }}>{repo.language}</Text>
+                                        </View>
+                                      )}
+                                      {Number(repo.stargazers_count) > 0 && (
+                                        <Text style={{ fontSize: 11, fontWeight: '700', color: '#F59E0B' }}>★ {repo.stargazers_count}</Text>
+                                      )}
+                                    </View>
+                                  </View>
+                                  {Boolean(repo.description) && (
+                                    <Text style={{ fontSize: 11, color: colors.textSecondary, marginTop: 4 }} numberOfLines={2}>
+                                      {repo.description}
+                                    </Text>
+                                  )}
+                                </View>
+                              ))}
+                            </ScrollView>
+                          </View>
+                        )}
+                      </View>
+                    )}
+                  </View>
+                ) : (
+                  <View style={{
+                    backgroundColor: isDark ? 'rgba(91, 75, 255, 0.1)' : '#EEF2FF',
+                    borderRadius: 14,
+                    padding: 12,
+                    marginBottom: 14,
+                    borderWidth: 1,
+                    borderColor: isDark ? 'rgba(91, 75, 255, 0.25)' : '#C7D2FE',
+                  }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                      <View style={{ width: 38, height: 38, borderRadius: 10, backgroundColor: colors.primary, justifyContent: 'center', alignItems: 'center' }}>
+                        <MaterialCommunityIcons name="domain" size={22} color="#FFFFFF" />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ fontSize: 13, fontWeight: '800', color: colors.textPrimary }}>
+                          Corporate Industry Standing
+                        </Text>
+                        <Text style={{ fontSize: 11, color: colors.textSecondary, marginTop: 1 }}>
+                          {readiness.score >= 80
+                            ? 'Top-tier corporate & consulting placement eligibility verified'
+                            : `Academics on track (${parseFloat(user?.cgpa || 8.5).toFixed(1)} CGPA). Complete certs & internships to unlock Tier-1`}
+                        </Text>
+                      </View>
+                      <View style={{
+                        backgroundColor: readiness.score >= 80 ? '#D1FAE5' : (isDark ? '#374151' : '#E0E7FF'),
+                        paddingHorizontal: 8,
+                        paddingVertical: 4,
+                        borderRadius: 6
+                      }}>
+                        <Text style={{
+                          fontSize: 10,
+                          fontWeight: '900',
+                          color: readiness.score >= 80 ? '#065F46' : (isDark ? '#A5B4FC' : '#4338CA')
+                        }}>
+                          {readiness.score >= 80 ? '✓ ELIGIBLE' : '🎯 IN PROGRESS'}
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+                )}
+
+                {/* All Indexed Repositories (Accordion - default collapsed) — Tech students only */}
+                {readiness.isTech && ghLinked && gitHubRepos.length > 0 && (
+                  <View style={{
+                    backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#F8FAFC',
+                    borderRadius: 14,
+                    padding: 12,
+                    marginBottom: 14,
+                    borderWidth: 1,
+                    borderColor: isDark ? 'rgba(255,255,255,0.08)' : '#E2E8F0',
+                  }}>
+                    <TouchableOpacity
+                      activeOpacity={0.7}
+                      onPress={() => {
+                        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                        setIndexedReposOpen(!indexedReposOpen);
+                      }}
+                      style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
+                    >
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1, paddingRight: 8 }}>
+                        <MaterialCommunityIcons name="source-repository" size={18} color={colors.textSecondary} />
+                        <Text style={{ fontSize: 12, fontWeight: '800', color: colors.textSecondary, textTransform: 'uppercase', flex: 1 }} numberOfLines={1}>
+                          All Indexed Repositories ({gitHubRepos.length})
+                        </Text>
+                      </View>
+                      <MaterialIcons
+                        name={indexedReposOpen ? 'keyboard-arrow-up' : 'keyboard-arrow-down'}
+                        size={22}
+                        color={colors.textSecondary}
+                      />
+                    </TouchableOpacity>
+
+                    {indexedReposOpen && (
+                      <View style={{ marginTop: 10 }}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 6 }}>
+                          <Text style={{ fontSize: 10, color: colors.textMuted }}>Scroll to explore</Text>
+                        </View>
+                        <ScrollView
+                          nestedScrollEnabled={true}
+                          style={{ maxHeight: 220 }}
+                          showsVerticalScrollIndicator={true}
+                          contentContainerStyle={{ gap: 6 }}
+                        >
+                          {gitHubRepos.map((repo, idx) => (
+                            <View
+                              key={idx}
+                              style={{
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                backgroundColor: isDark ? colors.card : '#FFFFFF',
+                                padding: 8,
+                                borderRadius: 8,
+                                borderWidth: 1,
+                                borderColor: isDark ? 'rgba(255,255,255,0.06)' : '#E2E8F0',
+                              }}
+                            >
+                              <View style={{ flex: 1, marginRight: 8 }}>
+                                <Text style={{ fontSize: 12, fontWeight: '700', color: colors.textPrimary }} numberOfLines={1}>
+                                  {repo.name}
+                                </Text>
+                                <Text style={{ fontSize: 10, color: colors.textMuted }} numberOfLines={1}>
+                                  {repo.language || 'Code'} • Updated {new Date(repo.updated_at).toLocaleDateString()}
+                                </Text>
+                              </View>
+                              {repo.isStartupPotential && (
+                                <View style={{ backgroundColor: '#FEF3C7', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, marginRight: 6 }}>
+                                  <Text style={{ fontSize: 9, fontWeight: '800', color: '#D97706' }}>🔥 Startup</Text>
+                                </View>
+                              )}
+                              {Number(repo.stargazers_count) > 0 && (
+                                <Text style={{ fontSize: 11, fontWeight: '700', color: '#F59E0B' }}>
+                                  ★ {repo.stargazers_count}
+                                </Text>
+                              )}
+                            </View>
+                          ))}
+                        </ScrollView>
+                      </View>
+                    )}
+                  </View>
+                )}
+
+                {/* ── Diagnostic Strengths & Weaknesses Section (Accordions) ── */}
+                <View style={{ marginTop: 14 }}>
+                  {/* Section Title */}
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                    <Text style={{ fontSize: 12, fontWeight: '800', color: colors.textSecondary, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                      Placement Strengths & Gaps
+                    </Text>
+                    <View style={{ flexDirection: 'row', gap: 6 }}>
+                      <View style={{ backgroundColor: isDark ? 'rgba(16, 185, 129, 0.2)' : '#D1FAE5', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 }}>
+                        <Text style={{ fontSize: 10, fontWeight: '800', color: '#10B981' }}>{readiness.strengths.length} Strengths</Text>
+                      </View>
+                      <View style={{ backgroundColor: isDark ? 'rgba(245, 158, 11, 0.2)' : '#FEF3C7', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 }}>
+                        <Text style={{ fontSize: 10, fontWeight: '800', color: '#D97706' }}>{readiness.weaknesses.length} Gaps</Text>
+                      </View>
+                    </View>
+                  </View>
+
+                  {/* Strengths Accordion */}
+                  {readiness.strengths.length > 0 && (
+                    <View style={{ marginBottom: 12, backgroundColor: isDark ? 'rgba(16, 185, 129, 0.05)' : '#F0FDF4', borderRadius: 12, padding: 10, borderWidth: 1, borderColor: isDark ? 'rgba(16, 185, 129, 0.15)' : '#DCFCE7' }}>
+                      <TouchableOpacity
+                        activeOpacity={0.7}
+                        onPress={() => {
+                          LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                          setPlacementStrengthsOpen(!placementStrengthsOpen);
+                        }}
+                        style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
+                      >
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                          <MaterialCommunityIcons name="check-decagram" size={16} color="#10B981" />
+                          <Text style={{ fontSize: 11, fontWeight: '900', color: '#10B981', textTransform: 'uppercase' }}>
+                            Key Strengths & Advantages ({readiness.strengths.length})
+                          </Text>
+                        </View>
+                        <MaterialIcons
+                          name={placementStrengthsOpen ? 'keyboard-arrow-up' : 'keyboard-arrow-down'}
+                          size={20}
+                          color="#10B981"
+                        />
+                      </TouchableOpacity>
+
+                      {placementStrengthsOpen && (
+                        <View style={{ gap: 6, marginTop: 8 }}>
+                          {readiness.strengths.map((item, sIdx) => (
+                            <View
+                              key={sIdx}
+                              style={{
+                                backgroundColor: isDark ? colors.card : '#FFFFFF',
+                                borderRadius: 10,
+                                padding: 10,
+                                borderLeftWidth: 3,
+                                borderLeftColor: '#10B981',
+                                borderWidth: 1,
+                                borderColor: isDark ? 'rgba(16, 185, 129, 0.15)' : '#DCFCE7',
+                              }}
+                            >
+                              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <Text style={{ fontSize: 12, fontWeight: '800', color: colors.textPrimary, flex: 1 }}>
+                                  {item.title}
+                                </Text>
+                                <View style={{ backgroundColor: isDark ? 'rgba(16, 185, 129, 0.2)' : '#D1FAE5', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, marginLeft: 6 }}>
+                                  <Text style={{ fontSize: 9, fontWeight: '800', color: '#065F46' }}>{item.tag}</Text>
+                                </View>
+                              </View>
+                              <Text style={{ fontSize: 11, color: colors.textSecondary, marginTop: 3, lineHeight: 15 }}>
+                                {item.desc}
+                              </Text>
+                            </View>
+                          ))}
+                        </View>
+                      )}
+                    </View>
+                  )}
+
+                  {/* Weaknesses / Gaps Accordion */}
+                  {readiness.weaknesses.length > 0 && (
+                    <View style={{ marginBottom: 12, backgroundColor: isDark ? 'rgba(245, 158, 11, 0.05)' : '#FFFBEB', borderRadius: 12, padding: 10, borderWidth: 1, borderColor: isDark ? 'rgba(245, 158, 11, 0.15)' : '#FEF3C7' }}>
+                      <TouchableOpacity
+                        activeOpacity={0.7}
+                        onPress={() => {
+                          LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                          setPlacementWeaknessesOpen(!placementWeaknessesOpen);
+                        }}
+                        style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
+                      >
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                          <MaterialCommunityIcons name="alert-decagram-outline" size={16} color="#F59E0B" />
+                          <Text style={{ fontSize: 11, fontWeight: '900', color: '#D97706', textTransform: 'uppercase' }}>
+                            Identified Weaknesses & Gaps ({readiness.weaknesses.length})
+                          </Text>
+                        </View>
+                        <MaterialIcons
+                          name={placementWeaknessesOpen ? 'keyboard-arrow-up' : 'keyboard-arrow-down'}
+                          size={20}
+                          color="#D97706"
+                        />
+                      </TouchableOpacity>
+
+                      {placementWeaknessesOpen && (
+                        <View style={{ gap: 6, marginTop: 8 }}>
+                          {readiness.weaknesses.map((item, wIdx) => (
+                            <View
+                              key={wIdx}
+                              style={{
+                                backgroundColor: isDark ? colors.card : '#FFFFFF',
+                                borderRadius: 10,
+                                padding: 10,
+                                borderLeftWidth: 3,
+                                borderLeftColor: '#F59E0B',
+                                borderWidth: 1,
+                                borderColor: isDark ? 'rgba(245, 158, 11, 0.15)' : '#FEF3C7',
+                              }}
+                            >
+                              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <Text style={{ fontSize: 12, fontWeight: '800', color: colors.textPrimary, flex: 1 }}>
+                                  {item.title}
+                                </Text>
+                                <View style={{ backgroundColor: isDark ? 'rgba(245, 158, 11, 0.2)' : '#FEF3C7', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, marginLeft: 6 }}>
+                                  <Text style={{ fontSize: 9, fontWeight: '800', color: '#92400E' }}>{item.tag}</Text>
+                                </View>
+                              </View>
+                              <Text style={{ fontSize: 11, color: colors.textSecondary, marginTop: 3, lineHeight: 15 }}>
+                                {item.desc}
+                              </Text>
+                              {item.action && (
+                                <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 4, marginTop: 4 }}>
+                                  <MaterialCommunityIcons name="lightbulb-on-outline" size={13} color="#D97706" style={{ marginTop: 1 }} />
+                                  <Text style={{ fontSize: 10, fontWeight: '700', color: '#D97706', flex: 1 }}>
+                                    Action: {item.action}
+                                  </Text>
+                                </View>
+                              )}
+                            </View>
+                          ))}
+                        </View>
+                      )}
+                    </View>
+                  )}
+                </View>
+
+                {/* Actionable Focus Areas Accordion */}
+                <View style={{ backgroundColor: isDark ? 'rgba(59, 130, 246, 0.08)' : '#EFF6FF', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: isDark ? 'rgba(59, 130, 246, 0.2)' : '#DBEAFE' }}>
+                  <TouchableOpacity
+                    activeOpacity={0.7}
+                    onPress={() => {
+                      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                      setPlacementActionItemsOpen(!placementActionItemsOpen);
+                    }}
+                    style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
+                  >
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <MaterialCommunityIcons name="target" size={16} color="#2563EB" />
+                      <Text style={{ fontSize: 11, fontWeight: '900', color: '#2563EB', textTransform: 'uppercase' }}>
+                        Top Placement Action Items ({readiness.needsAttention.length})
+                      </Text>
+                    </View>
+                    <MaterialIcons
+                      name={placementActionItemsOpen ? 'keyboard-arrow-up' : 'keyboard-arrow-down'}
+                      size={20}
+                      color="#2563EB"
+                    />
+                  </TouchableOpacity>
+
+                  {placementActionItemsOpen && (
+                    <View style={{ marginTop: 8, gap: 4 }}>
+                      {readiness.needsAttention.map((item, aIdx) => (
+                        <View key={aIdx} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 6, marginTop: aIdx === 0 ? 0 : 4 }}>
+                          <Text style={{ fontSize: 11, color: '#2563EB' }}>•</Text>
+                          <Text style={{ fontSize: 11, color: colors.textPrimary, flex: 1, fontWeight: '600' }}>
+                            {item}
+                          </Text>
+                        </View>
+                      ))}
+                    </View>
+                  )}
+                </View>
+              </LinearGradient>
+            </View>
+          );
+        })()}
 
         {/* ========== SKILL GAP ANALYSIS ========== */}
         <View style={styles.sectionContainer}>
@@ -1333,6 +2436,18 @@ const DashboardScreen = ({ navigation }) => {
                   </Text>
                 </View>
               </View>
+
+              <TouchableOpacity
+                onPress={() => setShowSkillGapInfoModal(true)}
+                style={{
+                  padding: 6,
+                  borderRadius: 20,
+                  backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : '#F1F5F9',
+                }}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <Ionicons name="information-circle-outline" size={20} color={colors.primary} />
+              </TouchableOpacity>
             </View>
 
             {isMed && !erpCompetencies ? (
@@ -1344,7 +2459,7 @@ const DashboardScreen = ({ navigation }) => {
                 <Text style={[styles.syncDesc, { color: colors.textSecondary }]}>
                   Analyze your sessional exam results to identify clinical competency gaps based on NMC guidelines.
                 </Text>
-                
+
                 {loadingCompetencyGaps ? (
                   <View style={{ alignItems: 'center', marginTop: 16 }}>
                     <ActivityIndicator size="small" color="#EA580C" />
@@ -1361,24 +2476,29 @@ const DashboardScreen = ({ navigation }) => {
                 )}
               </View>
             ) : user && (() => {
-              const gapData = computeSkillGap(user, academicResults, erpCompetencies);
+              const gapData = computeSkillGap(user, academicResults, erpCompetencies, gitHubRepos);
+              const isTech = Boolean(gapData?.isTechnical);
               const targetGoal = user.course?.toLowerCase().includes('medicine') || user.course?.toLowerCase().includes('mbbs')
-                ? 'NEET-PG / NEXT' : user.course?.toLowerCase().includes('computer') || user.course?.toLowerCase().includes('cse')
-                  ? 'FAANG' : 'Top Placements';
+                ? 'NEET-PG / NEXT' : user.course?.toLowerCase().includes('computer') || user.course?.toLowerCase().includes('cse') || isTech
+                  ? 'Top Tech Product Roles & FAANG' : 'Top Placements';
 
-              let missingItems = [
-                ...gapData.academicMissingSkills.map(skill => ({ name: skill, isAcademic: true, isMissing: true })),
-                ...gapData.industryMissingSkills.map(skill => ({ name: skill, isAcademic: false, isMissing: true }))
-              ];
-              if (missingItems.length === 0) {
+              let missingItems = isTech
+                ? (gapData.missingSkills && gapData.missingSkills.length > 0
+                  ? gapData.missingSkills.map(skill => ({ name: skill, isMissing: true }))
+                  : gapData.expectedSkills.map(skill => ({ name: skill, isMissing: false })))
+                : [
+                  ...gapData.academicMissingSkills.map(skill => ({ name: skill, isAcademic: true, isMissing: true })),
+                  ...gapData.industryMissingSkills.map(skill => ({ name: skill, isAcademic: false, isMissing: true }))
+                ];
+              if (!isTech && missingItems.length === 0) {
                 missingItems = [
                   ...gapData.academicExpectedSkills.map(skill => ({ name: skill, isAcademic: true, isMissing: false })),
                   ...gapData.industryExpectedSkills.map(skill => ({ name: skill, isAcademic: false, isMissing: false }))
                 ];
               }
-              const displaySkills = missingItems.slice(0, 6).map(item => {
+              const displaySkills = missingItems.slice(0, 10).map(item => {
                 const score = gapData.skillScores?.[item.name] ??
-                  (item.isMissing ? 0 : 90);
+                  (item.isMissing ? 20 : 90);
                 const color = score >= 75 ? '#10B981' : score >= 50 ? '#F59E0B' : '#EF4444';
                 return { ...item, score, color };
               });
@@ -1386,20 +2506,22 @@ const DashboardScreen = ({ navigation }) => {
               return (
                 <>
                   <Text style={[styles.skillGapDesc, { color: colors.textSecondary, marginBottom: 0 }]}>
-                    {isMed ? `What clinical competencies are missing for ${targetGoal}?` : `What's missing for ${targetGoal}?`}
+                    {isMed
+                      ? `What clinical competencies are missing for ${targetGoal}?`
+                      : (isTech ? `Industry benchmark skills vs your profile skills & GitHub repos for ${targetGoal}:` : `What's missing for ${targetGoal}?`)}
                   </Text>
                   {isMed && erpCompetencies && (
                     <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 8, marginBottom: 4 }}>
-                      <TouchableOpacity 
-                        onPress={handleFetchCompetencyGaps} 
-                        disabled={loadingCompetencyGaps} 
-                        style={{ 
-                          flexDirection: 'row', 
-                          alignItems: 'center', 
-                          gap: 6, 
-                          paddingHorizontal: 12, 
-                          paddingVertical: 6, 
-                          borderRadius: 10, 
+                      <TouchableOpacity
+                        onPress={handleFetchCompetencyGaps}
+                        disabled={loadingCompetencyGaps}
+                        style={{
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          gap: 6,
+                          paddingHorizontal: 12,
+                          paddingVertical: 6,
+                          borderRadius: 10,
                           backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : '#F1F5F9',
                           borderWidth: 1,
                           borderColor: colors.border
@@ -1417,78 +2539,107 @@ const DashboardScreen = ({ navigation }) => {
                     </View>
                   )}
 
-
-
                   {/* Category Split Metrics */}
                   <View style={{ flexDirection: 'row', gap: 12, marginTop: 12, marginBottom: 16 }}>
-                    <View style={{ flex: 1, padding: 12, borderRadius: 16, backgroundColor: isDark ? 'rgba(59,130,246,0.1)' : '#EFF6FF', borderWidth: 1, borderColor: isDark ? 'rgba(59,130,246,0.2)' : '#DBEAFE' }}>
-                      <Text style={{ fontSize: 10, fontWeight: '800', color: '#3B82F6', textTransform: 'uppercase', marginBottom: 4 }}>{isMed ? 'Prof Theory Prep' : 'Academic Prep'}</Text>
+                    <View style={{ flex: 1, padding: 12, borderRadius: 16, backgroundColor: isDark ? 'rgba(16,185,129,0.1)' : '#ECFDF5', borderWidth: 1, borderColor: isDark ? 'rgba(16,185,129,0.2)' : '#A7F3D0' }}>
+                      <Text style={{ fontSize: 10, fontWeight: '800', color: '#10B981', textTransform: 'uppercase', marginBottom: 4 }}>
+                        {isMed ? 'Prof Theory Prep' : (isTech ? 'Must-Have Skills Verified' : 'Academic Prep')}
+                      </Text>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                        <Text style={{ fontSize: 16, fontWeight: '900', color: colors.textPrimary }}>{gapData.academicMatchPct}%</Text>
+                        <Text style={{ fontSize: 16, fontWeight: '900', color: colors.textPrimary }}>
+                          {isTech ? `${gapData.matchedSkills?.length || 0}/${gapData.expectedSkills?.length || 0}` : `${gapData.academicMatchPct}%`}
+                        </Text>
                         <View style={{ flex: 1, height: 4, backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)', borderRadius: 2 }}>
-                          <View style={{ height: '100%', width: `${gapData.academicMatchPct}%`, backgroundColor: '#3B82F6', borderRadius: 2 }} />
+                          <View style={{ height: '100%', width: `${gapData.matchPct}%`, backgroundColor: '#10B981', borderRadius: 2 }} />
                         </View>
                       </View>
                     </View>
                     <View style={{ flex: 1, padding: 12, borderRadius: 16, backgroundColor: isDark ? 'rgba(124,58,237,0.1)' : '#F5F3FF', borderWidth: 1, borderColor: isDark ? 'rgba(124,58,237,0.2)' : '#EDE9FE' }}>
-                      <Text style={{ fontSize: 10, fontWeight: '800', color: '#7C3AED', textTransform: 'uppercase', marginBottom: 4 }}>{isMed ? 'Clinical Competency' : 'Industry Skill'}</Text>
+                      <Text style={{ fontSize: 10, fontWeight: '800', color: '#7C3AED', textTransform: 'uppercase', marginBottom: 4 }}>
+                        {isMed ? 'Clinical Competency' : (isTech ? 'GitHub Code Repos' : 'Industry Skill')}
+                      </Text>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                        <Text style={{ fontSize: 16, fontWeight: '900', color: colors.textPrimary }}>{gapData.industryMatchPct}%</Text>
+                        <Text style={{ fontSize: 16, fontWeight: '900', color: colors.textPrimary }}>
+                          {isTech ? `${gapData.githubRepoCount || 0} Repos` : `${gapData.industryMatchPct}%`}
+                        </Text>
                         <View style={{ flex: 1, height: 4, backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)', borderRadius: 2 }}>
-                          <View style={{ height: '100%', width: `${gapData.industryMatchPct}%`, backgroundColor: '#7C3AED', borderRadius: 2 }} />
+                          <View style={{ height: '100%', width: `${Math.min((gapData.githubRepoCount || 0) * 20, 100)}%`, backgroundColor: '#7C3AED', borderRadius: 2 }} />
                         </View>
                       </View>
                     </View>
                   </View>
 
-                  <View style={styles.skillGapProgressSection}>
-                    {displaySkills.map((skill, idx) => (
-                      <View key={idx} style={styles.skillProgressItem}>
-                        <View style={styles.skillProgressHeader}>
-                          <View style={{ flex: 1, marginRight: 8 }}>
-                            <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
-                              <Text style={[styles.skillName, { color: colors.textPrimary, fontSize: 14, fontWeight: '700' }]} numberOfLines={1}>{skill.name}</Text>
-                              <View style={{
-                                paddingHorizontal: 6,
-                                paddingVertical: 2,
-                                borderRadius: 6,
-                                backgroundColor: skill.isAcademic ? (isDark ? 'rgba(59,130,246,0.15)' : '#EFF6FF') : (isDark ? 'rgba(124,58,237,0.15)' : '#F5F3FF'),
-                                borderWidth: 0.5,
-                                borderColor: skill.isAcademic ? '#3B82F6' : '#7C3AED'
-                              }}>
-                                <Text style={{
-                                  fontSize: 8,
-                                  fontWeight: '800',
-                                  color: skill.isAcademic ? '#3B82F6' : '#7C3AED',
-                                  textTransform: 'uppercase',
+                  <View style={{ marginBottom: 14 }}>
+                    <ScrollView
+                      nestedScrollEnabled={true}
+                      showsVerticalScrollIndicator={true}
+                      style={styles.skillGapScrollContainer}
+                      contentContainerStyle={styles.skillGapProgressSection}
+                    >
+                      {displaySkills.map((skill, idx) => (
+                        <View key={idx} style={styles.skillProgressItem}>
+                          <View style={styles.skillProgressHeader}>
+                            <View style={{ flex: 1, marginRight: 8 }}>
+                              <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
+                                <Text style={[styles.skillName, { color: colors.textPrimary, fontSize: 14, fontWeight: '700' }]} numberOfLines={1}>{skill.name}</Text>
+                                <View style={{
+                                  paddingHorizontal: 6,
+                                  paddingVertical: 2,
+                                  borderRadius: 6,
+                                  backgroundColor: isTech ? '#5B4BFF15' : (skill.isAcademic ? (isDark ? 'rgba(59,130,246,0.15)' : '#EFF6FF') : (isDark ? 'rgba(124,58,237,0.15)' : '#F5F3FF')),
+                                  borderWidth: 0.5,
+                                  borderColor: isTech ? '#5B4BFF' : (skill.isAcademic ? '#3B82F6' : '#7C3AED')
                                 }}>
-                                  {skill.isAcademic ? (isMed ? 'Theory' : 'Academic') : (isMed ? 'Clinical' : 'Industry')}
-                                </Text>
-                              </View>
-                              <View style={{
-                                paddingHorizontal: 6,
-                                paddingVertical: 2,
-                                borderRadius: 6,
-                                backgroundColor: skill.isMissing ? (isDark ? 'rgba(239,68,68,0.2)' : '#FEE2E2') : (isDark ? 'rgba(16,185,129,0.2)' : '#D1FAE5'),
-                              }}>
-                                <Text style={{
-                                  fontSize: 8,
-                                  fontWeight: '800',
-                                  color: skill.isMissing ? '#EF4444' : '#10B981',
-                                  textTransform: 'uppercase',
+                                  <Text style={{
+                                    fontSize: 8,
+                                    fontWeight: '800',
+                                    color: isTech ? '#5B4BFF' : (skill.isAcademic ? '#3B82F6' : '#7C3AED'),
+                                    textTransform: 'uppercase',
+                                  }}>
+                                    {isTech
+                                      ? (gapData.requiredSkillObjs?.find(r => r.name === skill.name)?.tag || 'Tech')
+                                      : (skill.isAcademic ? (isMed ? 'Theory' : 'Academic') : (isMed ? 'Clinical' : 'Industry'))}
+                                  </Text>
+                                </View>
+                                <View style={{
+                                  paddingHorizontal: 6,
+                                  paddingVertical: 2,
+                                  borderRadius: 6,
+                                  backgroundColor: skill.isMissing ? (isDark ? 'rgba(239,68,68,0.2)' : '#FEE2E2') : (isDark ? 'rgba(16,185,129,0.2)' : '#D1FAE5'),
                                 }}>
-                                  {skill.isMissing ? 'Gap' : 'Good'}
-                                </Text>
+                                  <Text style={{
+                                    fontSize: 8,
+                                    fontWeight: '800',
+                                    color: skill.isMissing ? '#EF4444' : '#10B981',
+                                    textTransform: 'uppercase',
+                                  }}>
+                                    {skill.isMissing ? 'Missing Gap' : 'Verified'}
+                                  </Text>
+                                </View>
                               </View>
+                              {isTech && gapData.skillEvidences?.[skill.name] && (
+                                <Text style={{ fontSize: 11, color: colors.textSecondary, marginTop: 2 }}>
+                                  {gapData.skillEvidences[skill.name]}
+                                </Text>
+                              )}
                             </View>
+                            <Text style={[styles.skillPercent, { color: skill.color, fontSize: 13, fontWeight: '800' }]}>{skill.score}%</Text>
                           </View>
-                          <Text style={[styles.skillPercent, { color: colors.textPrimary }]}>{skill.score}%</Text>
+                          <View style={[styles.progressBarBg, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : '#F1F5F9', marginTop: 6 }]}>
+                            <View style={[styles.progressBarFill, { width: `${Math.max(skill.score, 5)}%`, backgroundColor: skill.color }]} />
+                          </View>
                         </View>
-                        <View style={[styles.progressBarBg, { backgroundColor: isDark ? colors.background : '#F3F4F6' }]}>
-                          <View style={[styles.progressBarFill, { width: `${skill.score}%`, backgroundColor: skill.color }]} />
-                        </View>
+                      ))}
+                    </ScrollView>
+
+                    {displaySkills.length > 3 && (
+                      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, marginTop: 6 }}>
+                        <MaterialCommunityIcons name="swap-vertical" size={13} color={colors.textMuted} />
+                        <Text style={{ fontSize: 10, color: colors.textMuted, fontWeight: '700' }}>
+                          Showing 3 of {displaySkills.length} skills • Scroll inside for more
+                        </Text>
                       </View>
-                    ))}
+                    )}
                   </View>
                 </>
               );
@@ -1516,69 +2667,83 @@ const DashboardScreen = ({ navigation }) => {
           </View>
         </View>
 
-        {/* ========== CAREER ROADMAP ========== */}
+        {/* ========== CAREER ROADMAP (COMPACT VERTICAL TIMELINE) ========== */}
         <View style={styles.sectionContainer}>
           <View style={styles.roadmapHeader}>
-            <Text style={[styles.roadmapTitle, { color: colors.textPrimary }]}>{roadmapData ? `Suggested ${roadmapData.label}` : 'Suggested Career Roadmap'}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 6 }}>
+              <Text style={[styles.roadmapTitle, { color: colors.textPrimary }]}>
+                {roadmapData ? `Suggested ${roadmapData.label}` : 'Suggested Career Roadmap'}
+              </Text>
 
-            {roadmapData && roadmapData.target ? (
-              <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 6, backgroundColor: isDark ? '#451A03' : '#FEF3C7', alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: '#F59E0B' }}>
-                <MaterialCommunityIcons name="briefcase-check" size={16} color={isDark ? '#FCD34D' : '#D97706'} />
-                <Text style={{ marginLeft: 6, fontSize: 13, fontWeight: '800', color: isDark ? '#FCD34D' : '#D97706' }}>
-                  {isMed ? 'Target Specialty: ' : 'Target Role: '}{roadmapData.target}
-                </Text>
-              </View>
-            ) : (
-              <Text style={[styles.roadmapSubtitle, { color: colors.textSecondary }]}>Your projected path towards success</Text>
-            )}
+              {roadmapData && roadmapData.target ? (
+                <View style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  backgroundColor: isDark ? '#451A03' : '#FEF3C7',
+                  paddingHorizontal: 8,
+                  paddingVertical: 3,
+                  borderRadius: 6,
+                  borderWidth: 1,
+                  borderColor: '#F59E0B'
+                }}>
+                  <MaterialCommunityIcons name="briefcase-check" size={13} color={isDark ? '#FCD34D' : '#D97706'} />
+                  <Text style={{ marginLeft: 4, fontSize: 11, fontWeight: '800', color: isDark ? '#FCD34D' : '#D97706' }}>
+                    {isMed ? 'Specialty: ' : 'Target: '}{roadmapData.target}
+                  </Text>
+                </View>
+              ) : null}
+            </View>
           </View>
 
-          <View style={styles.timelineContainer}>
+          <View style={[styles.timelineContainer, { marginTop: 8 }]}>
             {isGeneratingRoadmap ? (
               <View style={{ paddingVertical: 8 }}>
                 <TimelineSkeleton steps={3} />
               </View>
             ) : (
               <>
-                  {roadmapData && (() => {
-                    // Enrich roadmap with real marks averages for MBBS students
-                    const displayRoadmap = enrichRoadmapWithMarks(roadmapData, academicResults, user);
-                    return displayRoadmap.steps.map((step, index) => {
-                  const isDone = step.status === 'done';
-                  const isCurrent = step.status === 'current';
-                  const dotColors = isCurrent ? ['#EA580C', '#9A3412'] : isDone ? ['#10B981', '#059669'] : ['#9CA3AF', '#6B7280'];
-                  const cardColors = isDark
-                    ? (isCurrent ? ['#7C2D12', '#EA580C'] : isDone ? ['#064E3B', '#10B981'] : ['#1F2937', '#374151'])
-                    : (isCurrent ? ['#FFF7ED', '#FFEDD5'] : isDone ? ['#F0FDF4', '#DCFCE7'] : ['#F3F4F6', '#E5E7EB']);
+                {roadmapData && (() => {
+                  // Enrich roadmap with real marks averages for MBBS students
+                  const displayRoadmap = enrichRoadmapWithMarks(roadmapData, academicResults, user);
+                  return displayRoadmap.steps.map((step, index) => {
+                    const isDone = step.status === 'done';
+                    const isCurrent = step.status === 'current';
+                    const dotColors = isCurrent ? ['#EA580C', '#9A3412'] : isDone ? ['#10B981', '#059669'] : ['#9CA3AF', '#6B7280'];
+                    const cardColors = isDark
+                      ? (isCurrent ? ['#7C2D12', '#EA580C'] : isDone ? ['#064E3B', '#10B981'] : ['#1F2937', '#374151'])
+                      : (isCurrent ? ['#FFF7ED', '#FFEDD5'] : isDone ? ['#F0FDF4', '#DCFCE7'] : ['#F3F4F6', '#E5E7EB']);
 
-                  return (
-                    <View key={index} style={styles.timelineItem}>
-                      <View style={styles.timelineDotWrapper}>
-                        <LinearGradient colors={dotColors} style={[styles.timelineDot, isCurrent && styles.timelineDotActive, { borderColor: isDark && isCurrent ? colors.primaryLight : isCurrent ? '#FED7AA' : 'transparent' }]} />
-                        {index < displayRoadmap.steps.length - 1 && <View style={[styles.timelineLine, { backgroundColor: colors.border }]} />}
-                      </View>
-                      <LinearGradient
-                        colors={cardColors}
-                        style={[styles.timelineCard, isCurrent && styles.timelineCardActive, { borderColor: isDark && isCurrent ? colors.primary : isCurrent ? '#EA580C' : colors.border, borderWidth: 1 }]}
-                      >
-                        {isCurrent && (
-                          <View style={styles.activeBadge}>
-                            <Text style={styles.activeBadgeText}>CURRENT PHASE</Text>
+                    return (
+                      <View key={index} style={styles.timelineItem}>
+                        <View style={styles.timelineDotWrapper}>
+                          <LinearGradient colors={dotColors} style={[styles.timelineDot, isCurrent && styles.timelineDotActive, { borderColor: isDark && isCurrent ? colors.primaryLight : isCurrent ? '#FED7AA' : 'transparent' }]} />
+                          {index < displayRoadmap.steps.length - 1 && <View style={[styles.timelineLine, { backgroundColor: colors.border }]} />}
+                        </View>
+                        <LinearGradient
+                          colors={cardColors}
+                          style={[styles.timelineCard, isCurrent && styles.timelineCardActive, { borderColor: isDark && isCurrent ? colors.primary : isCurrent ? '#EA580C' : colors.border, borderWidth: 1 }]}
+                        >
+                          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
+                            <Text style={[styles.timelineYear, { color: isDark && isCurrent ? '#FED7AA' : (isCurrent ? '#EA580C' : colors.textSecondary) }]}>
+                              {isMed ? `PROF PHASE ${step.n}` : `PHASE ${step.n}`}
+                            </Text>
+                            {isCurrent && (
+                              <View style={styles.activeBadge}>
+                                <Text style={styles.activeBadgeText}>CURRENT PHASE</Text>
+                              </View>
+                            )}
                           </View>
-                        )}
-                        <Text style={[styles.timelineYear, { color: isDark && isCurrent ? '#FED7AA' : colors.textSecondary }]}>{isMed ? `PROF PHASE ${step.n}` : `PHASE ${step.n}`}</Text>
-                        <Text style={[styles.timelineCardTitle, { color: isDark && isCurrent ? '#FFFFFF' : colors.textPrimary }]}>{step.title}</Text>
-
-                        <Text style={{ fontSize: 12, color: isDark && isCurrent ? '#FFFFFF' : (isCurrent ? '#4B5563' : colors.textSecondary), marginTop: 4 }}>{step.desc}</Text>
-                      </LinearGradient>
-                    </View>
-                  );
-                });
-                  })()}
+                          <Text style={[styles.timelineCardTitle, { color: isDark && isCurrent ? '#FFFFFF' : colors.textPrimary }]} numberOfLines={1}>{step.title}</Text>
+                          <Text style={{ fontSize: 11, lineHeight: 14, color: isDark && isCurrent ? '#FED7AA' : (isCurrent ? '#4B5563' : colors.textSecondary) }} numberOfLines={2}>{step.desc}</Text>
+                        </LinearGradient>
+                      </View>
+                    );
+                  });
+                })()}
 
                 {/* Pathway Outcome */}
                 {roadmapData && (
-                  <View style={[styles.timelineItem, { marginTop: 8 }]}>
+                  <View style={[styles.timelineItem, { marginTop: 2 }]}>
                     <View style={styles.timelineDotWrapper}>
                       <LinearGradient colors={['#F59E0B', '#D97706']} style={[styles.timelineDot, styles.timelineDotActive, { borderColor: isDark ? '#FEF3C7' : '#FEF3C7' }]} />
                     </View>
@@ -1586,11 +2751,11 @@ const DashboardScreen = ({ navigation }) => {
                       colors={isDark ? ['#451A03', '#78350F'] : ['#FEF3C7', '#FDE68A']}
                       style={[styles.timelineCard, { borderColor: '#F59E0B', borderWidth: 1 }]}
                     >
-                      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
-                        <MaterialCommunityIcons name="trophy" size={16} color={isDark ? '#FCD34D' : '#D97706'} />
-                        <Text style={[styles.timelineYear, { color: isDark ? '#FCD34D' : '#D97706', marginLeft: 6, marginBottom: 0 }]}>PATHWAY OUTCOME</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 2 }}>
+                        <MaterialCommunityIcons name="trophy" size={13} color={isDark ? '#FCD34D' : '#D97706'} />
+                        <Text style={[styles.timelineYear, { color: isDark ? '#FCD34D' : '#D97706', marginLeft: 4, marginBottom: 0 }]}>PATHWAY OUTCOME</Text>
                       </View>
-                      <Text style={[styles.timelineCardTitle, { color: isDark ? '#FFFFFF' : colors.textPrimary, fontSize: 15 }]}>
+                      <Text style={[styles.timelineCardTitle, { color: isDark ? '#FFFFFF' : colors.textPrimary, fontSize: 12, marginBottom: 0 }]}>
                         {roadmapData.outcome}
                       </Text>
                     </LinearGradient>
@@ -1599,52 +2764,126 @@ const DashboardScreen = ({ navigation }) => {
               </>
             )}
 
-            {/* Dynamic Interests Input */}
-            <View style={{ marginTop: 24, paddingHorizontal: 16, paddingBottom: 12, backgroundColor: colors.card, borderRadius: 16, borderWidth: 1, borderColor: colors.border }}>
-              <Text style={{ fontSize: 14, fontWeight: '700', color: colors.textPrimary, marginTop: 16, marginBottom: 8 }}>
-                {isMed ? 'Refine Your Clinical Pathway' : 'Refine Your Pathway'}
-              </Text>
-              <Text style={{ fontSize: 12, color: colors.textSecondary, marginBottom: 12 }}>
-                {isMedicalStudent(user)
-                  ? 'Tell us your clinical interests (e.g., Cardiology, Pediatrics, Neurology) and our AI will adapt your roadmap.'
-                  : 'Tell us your specific interests (e.g., AI, Robotics, Web Dev) and our AI will adapt your roadmap.'}
-              </Text>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                <TextInput
-                  style={{ flex: 1, backgroundColor: isDark ? colors.background : '#F3F4F6', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10, color: colors.textPrimary, fontSize: 14 }}
-                  placeholder={isMedicalStudent(user) ? 'E.g. Pediatrics, Cardiology, Surgery...' : 'E.g. Machine Learning, NLP...'}
-                  placeholderTextColor={colors.textSecondary}
-                  value={interestsInput}
-                  onChangeText={setInterestsInput}
-                />
-                <TouchableOpacity
-                  style={{ backgroundColor: pathwayRetriesLeft > 0 ? colors.primary : colors.textMuted, paddingHorizontal: 16, paddingVertical: 12, borderRadius: 10, flexDirection: 'row', alignItems: 'center', gap: 6 }}
-                  disabled={pathwayRetriesLeft === 0}
-                  onPress={async () => {
-                    const lastRefined = await AsyncStorage.getItem('@pathway_last_refined');
-                    if (lastRefined) {
-                      const daysSince = (Date.now() - parseInt(lastRefined)) / (1000 * 60 * 60 * 24);
-                      if (daysSince < 1) {
-                        Alert.alert('Daily Limit Reached', 'You can only refine your pathway once a day to ensure optimal AI performance.');
-                        setPathwayRetriesLeft(0);
-                        return;
-                      }
-                    }
-                    if (user?.id) {
-                      await AsyncStorage.setItem(`@pathway_interests_${user.id}`, interestsInput);
-                    }
-                    await AsyncStorage.setItem('@pathway_last_refined', Date.now().toString());
-                    setPathwayRetriesLeft(0);
-                    setActiveInterests(interestsInput);
-                  }}
-                >
-                  {pathwayRetriesLeft === 0 && <MaterialIcons name="lock" size={14} color="#fff" />}
-                  <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14 }}>
-                    {pathwayRetriesLeft > 0 ? `Refine (${pathwayRetriesLeft} left)` : 'Locked'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </View>
+            {/* Dynamic Interests Input (Course & Branch Adaptive) — Collapsible Accordion */}
+            {(() => {
+              const refineConfig = getPathwayRefineConfig(user);
+              return (
+                <View style={{ marginTop: 6 }}>
+                  <TouchableOpacity
+                    onPress={() => setIsRefineExpanded(prev => !prev)}
+                    activeOpacity={0.7}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      paddingHorizontal: 12,
+                      paddingVertical: 7,
+                      backgroundColor: colors.card,
+                      borderRadius: 10,
+                      borderWidth: 1,
+                      borderColor: colors.border,
+                    }}
+                  >
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1, marginRight: 8 }}>
+                      <MaterialCommunityIcons name="sparkles" size={13} color={colors.primary} />
+                      <Text style={{ fontSize: 11, fontWeight: '700', color: colors.textPrimary }} numberOfLines={1}>
+                        {interestsInput ? `Targeting: ${interestsInput}` : 'Customise Target Specialization / Goal'}
+                      </Text>
+                    </View>
+                    <MaterialIcons
+                      name={isRefineExpanded ? 'keyboard-arrow-up' : 'keyboard-arrow-down'}
+                      size={16}
+                      color={colors.textSecondary}
+                    />
+                  </TouchableOpacity>
+
+                  {isRefineExpanded && (
+                    <View style={{
+                      marginTop: 6,
+                      padding: 10,
+                      backgroundColor: colors.card,
+                      borderRadius: 10,
+                      borderWidth: 1,
+                      borderColor: colors.border,
+                    }}>
+                      <Text style={{ fontSize: 11, color: colors.textSecondary, marginBottom: 6, lineHeight: 14 }}>
+                        {refineConfig.desc}
+                      </Text>
+
+                      {/* Suggested Topic Quick Chips */}
+                      {Array.isArray(refineConfig.chips) && refineConfig.chips.length > 0 && (
+                        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginBottom: 8 }}>
+                          {refineConfig.chips.map((chip, cIdx) => {
+                            const isSelected = interestsInput.toLowerCase().includes(chip.toLowerCase());
+                            return (
+                              <TouchableOpacity
+                                key={cIdx}
+                                onPress={() => {
+                                  if (isSelected) {
+                                    setInterestsInput('');
+                                  } else {
+                                    setInterestsInput(chip);
+                                  }
+                                }}
+                                style={{
+                                  backgroundColor: isSelected ? (isDark ? '#312E81' : '#EEF2FF') : (isDark ? 'rgba(255,255,255,0.06)' : '#F1F5F9'),
+                                  borderColor: isSelected ? colors.primary : colors.border,
+                                  borderWidth: 1,
+                                  paddingHorizontal: 7,
+                                  paddingVertical: 3,
+                                  borderRadius: 6,
+                                }}
+                              >
+                                <Text style={{ fontSize: 10, fontWeight: isSelected ? '800' : '600', color: isSelected ? colors.primary : colors.textSecondary }}>
+                                  {isSelected ? `✓ ${chip}` : `+ ${chip}`}
+                                </Text>
+                              </TouchableOpacity>
+                            );
+                          })}
+                        </View>
+                      )}
+
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <TextInput
+                          style={{ flex: 1, backgroundColor: isDark ? colors.background : '#F3F4F6', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, color: colors.textPrimary, fontSize: 11 }}
+                          placeholder={refineConfig.placeholder}
+                          placeholderTextColor={colors.textSecondary}
+                          value={interestsInput}
+                          onChangeText={setInterestsInput}
+                        />
+                        <TouchableOpacity
+                          style={{ backgroundColor: pathwayRetriesLeft > 0 ? colors.primary : colors.textMuted, paddingHorizontal: 10, paddingVertical: 7, borderRadius: 8, flexDirection: 'row', alignItems: 'center', gap: 4 }}
+                          disabled={pathwayRetriesLeft === 0}
+                          onPress={async () => {
+                            const lastRefined = await AsyncStorage.getItem('@pathway_last_refined');
+                            if (lastRefined) {
+                              const daysSince = (Date.now() - parseInt(lastRefined)) / (1000 * 60 * 60 * 24);
+                              if (daysSince < 1) {
+                                Alert.alert('Daily Limit Reached', 'You can only refine your pathway once a day to ensure optimal AI performance.');
+                                setPathwayRetriesLeft(0);
+                                return;
+                              }
+                            }
+                            if (user?.id) {
+                              await AsyncStorage.setItem(`@pathway_interests_${user.id}`, interestsInput);
+                            }
+                            await AsyncStorage.setItem('@pathway_last_refined', Date.now().toString());
+                            setPathwayRetriesLeft(0);
+                            setActiveInterests(interestsInput);
+                            setIsRefineExpanded(false);
+                          }}
+                        >
+                          {pathwayRetriesLeft === 0 && <MaterialIcons name="lock" size={12} color="#fff" />}
+                          <Text style={{ color: '#fff', fontWeight: '700', fontSize: 11 }}>
+                            {pathwayRetriesLeft > 0 ? `Refine` : 'Locked'}
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  )}
+                </View>
+              );
+            })()}
           </View>
         </View>
 
@@ -1866,7 +3105,7 @@ const DashboardScreen = ({ navigation }) => {
                       </Text>
                       <View style={{ flexDirection: 'row', gap: 16 }}>
                         {statusLower === 'pending' && (
-                          <TouchableOpacity 
+                          <TouchableOpacity
                             onPress={() => navigation.navigate('RaiseIssue', { editMode: true, issue })}
                             style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
                           >
@@ -1874,7 +3113,7 @@ const DashboardScreen = ({ navigation }) => {
                             <Text style={{ color: colors.primary, fontSize: 13, fontWeight: '600' }}>Edit</Text>
                           </TouchableOpacity>
                         )}
-                        <TouchableOpacity 
+                        <TouchableOpacity
                           onPress={() => handleDeleteIssue(issue.id)}
                           style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
                         >
@@ -2057,83 +3296,6 @@ const styles = StyleSheet.create({
     borderWidth: 2,
   },
 
-  // Profile Dropdown Menu Styles
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.12)',
-  },
-  profileMenu: {
-    position: 'absolute',
-    right: 16,
-    width: 250,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 24,
-    padding: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.12,
-    shadowRadius: 24,
-    elevation: 10,
-    borderWidth: 1,
-    borderColor: '#F3F4F6',
-  },
-  menuHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingHorizontal: 8,
-    paddingVertical: 10,
-    marginBottom: 4,
-  },
-  menuAvatar: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    borderWidth: 2,
-    borderColor: '#EA580C',
-  },
-  menuName: {
-    fontSize: 16,
-    fontWeight: '800',
-  },
-  menuSub: {
-    fontSize: 12,
-    fontWeight: '500',
-    marginTop: 1,
-  },
-
-  menuDivider: {
-    height: 1,
-    backgroundColor: '#F3F4F6',
-    marginVertical: 6,
-    marginHorizontal: 4,
-  },
-  menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 13,
-    paddingHorizontal: 12,
-    borderRadius: 16,
-  },
-  menuItemLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  menuItemText: {
-    fontSize: 15,
-    fontWeight: '700',
-    marginLeft: 12,
-  },
-
-  logoutItem: {
-    backgroundColor: '#FEF2F2',
-    marginTop: 2,
-  },
-  logoutText: {
-    color: '#EF4444',
-  },
-
   scroll: {
     paddingBottom: 20,
   },
@@ -2217,37 +3379,38 @@ const styles = StyleSheet.create({
   },
 
   aiSuggestionBox: {
-    marginTop: 24,
-    borderRadius: 24,
-    padding: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
+    marginTop: 16,
+    borderRadius: 20,
+    padding: 14,
     borderWidth: 1,
   },
-
-  aiIconCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(6,95,70,0.1)',
-    justifyContent: 'center',
+  aiInsightHeaderRow: {
+    flexDirection: 'row',
     alignItems: 'center',
+    marginBottom: 6,
+  },
+  aiInsightBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  aiInsightBadgeText: {
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 0.5,
   },
   aiSuggestionText: {
-    flex: 1,
-    fontSize: 13,
-    lineHeight: 20,
-    paddingRight: 10,
+    fontSize: 12,
+    lineHeight: 18,
   },
 
   moduleTitle: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '800',
-    letterSpacing: 1,
+    letterSpacing: 0.8,
     textTransform: 'uppercase',
-    marginBottom: 16,
-    paddingHorizontal: 8,
+    marginBottom: 12,
+    paddingHorizontal: 4,
   },
 
   launchpadGrid: {
@@ -2257,20 +3420,42 @@ const styles = StyleSheet.create({
   },
   launchBtn: {
     alignItems: 'center',
-    gap: 8,
     width: '23%',
   },
+  launchIconWrapper: {
+    position: 'relative',
+    marginBottom: 8,
+  },
   launchIconBg: {
-    width: 60,
-    height: 60,
-    borderRadius: 20,
+    width: 54,
+    height: 54,
+    borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
-    shadowRadius: 10,
+    shadowRadius: 8,
     elevation: 3,
+  },
+  launchpadLockTag: {
+    position: 'absolute',
+    top: -3,
+    right: -3,
+    backgroundColor: '#EA580C',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    paddingHorizontal: 4,
+    paddingVertical: 2,
+    borderRadius: 4,
+    zIndex: 5,
+  },
+  launchpadLockTagText: {
+    color: '#FFFFFF',
+    fontSize: 7,
+    fontWeight: '900',
+    letterSpacing: 0.3,
   },
   launchText: {
     fontSize: 11,
@@ -2279,13 +3464,12 @@ const styles = StyleSheet.create({
   },
 
   pulseCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 32,
-    padding: 24,
+    borderRadius: 24,
+    padding: 16,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
+    shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.04,
-    shadowRadius: 20,
+    shadowRadius: 12,
     elevation: 3,
   },
   pulseHeaderRow: {
@@ -2294,72 +3478,55 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   sectionTitle: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: '900',
   },
   sectionSub: {
-    fontSize: 14,
-    marginTop: 4,
-  },
-
-  moodRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginVertical: 24,
-  },
-  moodBtn: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  moodIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  moodIconActive: {
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 5,
-  },
-
-  mentallyBox: {
-    backgroundColor: '#EEF2FF',
-    borderRadius: 20,
-    padding: 16,
-    flexDirection: 'row',
-    gap: 16,
-  },
-  mentallyIconCircle: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#E0E7FF',
-    justifyContent: 'center',
-    alignItems: 'center',
+    fontSize: 13,
     marginTop: 2,
   },
-  mentallyText: {
+
+  moodRowCompact: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  moodBtnCompact: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  mentallyInlineBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    marginTop: 12,
+  },
+  mentallyInlineText: {
     flex: 1,
-    fontSize: 13,
-    lineHeight: 20,
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  mentallyInlineActionBtn: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  mentallyInlineActionText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 0.4,
   },
 
-  mentallyAction: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: '#4338CA',
-    marginTop: 10,
-    letterSpacing: 0.5,
-  },
   innovationHeader: {
     paddingHorizontal: 16,
-    marginTop: 24,
+    marginTop: 20,
   },
   innovationBadge: {
     fontSize: 10,
@@ -2368,132 +3535,141 @@ const styles = StyleSheet.create({
   },
 
   innovationTitle: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: '900',
-    marginTop: 4,
-    letterSpacing: -1,
+    marginTop: 2,
+    letterSpacing: -0.5,
   },
 
   careerGrid: {
-    padding: 16,
-    gap: 16,
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    gap: 12,
   },
-  resumeCard: {
-    borderRadius: 32,
-    padding: 24,
-    position: 'relative',
-    overflow: 'hidden',
+  compactResumeCard: {
+    borderRadius: 24,
+    padding: 14,
+    minHeight: 200,
     borderWidth: 1,
-    shadowOffset: { width: 0, height: 10 },
+    justifyContent: 'space-between',
+    shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.05,
-    shadowRadius: 20,
+    shadowRadius: 12,
     elevation: 3,
   },
-
-  resumeIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 20,
+  compactResumeIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 20,
   },
-
-  cardTitle: {
-    fontSize: 22,
-    fontWeight: '900',
+  compactCardTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    lineHeight: 19,
   },
-
-  cardDesc: {
-    fontSize: 14,
-    marginTop: 8,
-    lineHeight: 22,
-    maxWidth: '80%',
+  compactCardDesc: {
+    fontSize: 11,
+    lineHeight: 15,
+    marginTop: 4,
   },
-
-  resumeBtn: {
+  compactResumeBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#111827',
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    borderRadius: 24,
-    alignSelf: 'flex-start',
-    marginTop: 24,
+    justifyContent: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    borderRadius: 14,
+    alignSelf: 'stretch',
+    marginTop: 6,
   },
-  resumeBtnText: {
+  compactResumeBtnText: {
     color: '#FFFFFF',
     fontWeight: '800',
-    fontSize: 14,
+    fontSize: 12,
   },
-  resumeBgIcon: {
-    position: 'absolute',
-    right: -20,
-    bottom: -20,
-    zIndex: -1,
-  },
-  interviewCard: {
-    borderRadius: 32,
-    padding: 28,
-    gap: 24,
-    minHeight: 220,
+  compactInterviewCard: {
+    borderRadius: 24,
+    padding: 14,
+    minHeight: 200,
     justifyContent: 'space-between',
     shadowColor: '#312E81',
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.3,
-    shadowRadius: 24,
-    elevation: 6,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 14,
+    elevation: 5,
   },
-  interviewTop: {
+  compactInterviewTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  interviewIconBg: {
-    backgroundColor: '#FFFFFF',
-    width: 56,
-    height: 56,
-    borderRadius: 20,
+  compactInterviewIconBg: {
+    width: 40,
+    height: 40,
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  interviewTitle: {
-    fontSize: 24,
-    fontWeight: '900',
+  compactInterviewTitle: {
+    fontSize: 15,
+    fontWeight: '800',
     color: '#FFFFFF',
+    lineHeight: 19,
   },
-  interviewDesc: {
-    fontSize: 14,
-    color: '#C7D2FE',
-    lineHeight: 22,
+  compactInterviewDesc: {
+    fontSize: 11,
+    lineHeight: 15,
+    marginTop: 4,
   },
   lockBadge: {
-    position: 'absolute',
-    top: 16,
-    right: 16,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    backgroundColor: 'rgba(239, 68, 68, 0.95)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-    zIndex: 10,
+    gap: 3,
+    backgroundColor: '#EA580C',
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 6,
   },
   lockBadgeText: {
     color: '#FFFFFF',
-    fontSize: 9,
+    fontSize: 8,
     fontWeight: '900',
+    letterSpacing: 0.4,
   },
-  practicingRow: {
+  compactPracticingRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 24,
-    alignSelf: 'flex-start',
-    gap: 12,
+    justifyContent: 'space-between',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+    marginTop: 6,
+  },
+  compactMiniAvatar: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 1.5,
+  },
+  compactCountBadge: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: -6,
+  },
+  compactCountText: {
+    fontSize: 8,
+    fontWeight: '900',
+  },
+  compactPracticingText: {
+    color: '#E0E7FF',
+    fontSize: 10,
+    fontWeight: '700',
   },
   practicingAvatars: {
     flexDirection: 'row',
@@ -2561,9 +3737,13 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginBottom: 20,
   },
+  skillGapScrollContainer: {
+    maxHeight: 185,
+  },
   skillGapProgressSection: {
-    gap: 16,
-    marginBottom: 24,
+    gap: 14,
+    paddingRight: 6,
+    paddingBottom: 4,
   },
   skillProgressItem: {
     gap: 8,
@@ -2621,58 +3801,60 @@ const styles = StyleSheet.create({
   },
   timelineItem: {
     flexDirection: 'row',
-    marginBottom: 16,
+    marginBottom: 8,
   },
   timelineDotWrapper: {
-    width: 40,
+    width: 22,
     alignItems: 'center',
     position: 'relative',
   },
   timelineDot: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    marginTop: 20,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    marginTop: 10,
   },
   timelineDotActive: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    borderWidth: 4,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    borderWidth: 2,
     borderColor: '#FED7AA',
+    marginTop: 8,
   },
   timelineLine: {
     width: 2,
     flex: 1,
     backgroundColor: '#E5E7EB',
     position: 'absolute',
-    top: 36,
-    bottom: -20,
+    top: 22,
+    bottom: -8,
     left: '50%',
     marginLeft: -1,
   },
   timelineCard: {
     flex: 1,
-    borderRadius: 20,
-    padding: 16,
-    marginLeft: 8,
-    marginBottom: 8,
+    borderRadius: 14,
+    paddingVertical: 9,
+    paddingHorizontal: 12,
+    marginLeft: 6,
+    marginBottom: 0,
   },
   timelineCardActive: {
-    borderWidth: 2,
+    borderWidth: 1.5,
     borderColor: '#EA580C',
   },
   timelineYear: {
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: '800',
     color: '#6B7280',
-    letterSpacing: 1,
-    marginBottom: 8,
+    letterSpacing: 0.8,
   },
   timelineCardTitle: {
-    fontSize: 16,
+    fontSize: 13,
     fontWeight: '800',
-    marginBottom: 12,
+    marginBottom: 2,
+    marginTop: 2,
   },
 
   timelineTags: {
@@ -2702,14 +3884,13 @@ const styles = StyleSheet.create({
   },
   activeBadge: {
     backgroundColor: '#EA580C',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 20,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
     alignSelf: 'flex-start',
-    marginBottom: 10,
   },
   activeBadgeText: {
-    fontSize: 10,
+    fontSize: 8,
     fontWeight: '800',
     color: '#FFFFFF',
     letterSpacing: 0.5,
@@ -2968,83 +4149,105 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   viewAllText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '800',
   },
-  libraryGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
+  libraryScrollContent: {
+    gap: 12,
+    paddingVertical: 4,
   },
-  libraryBookCard: {
-    width: (width - 48) / 2,
-    marginBottom: 20,
-  },
-  libraryBookImg: {
-    width: '100%',
-    aspectRatio: 2 / 3,
+  libraryBookCardCompact: {
+    width: 120,
     borderRadius: 16,
-    marginBottom: 8,
+    borderWidth: 1,
+    overflow: 'hidden',
+  },
+  libraryBookImgCompact: {
+    width: '100%',
+    height: 130,
     backgroundColor: '#F1F5F9',
   },
+  libraryBookMeta: {
+    padding: 8,
+  },
   libraryBookTitle: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '800',
   },
   libraryBookAuthor: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '600',
+    marginTop: 2,
   },
-  // Hostel Mode Styles
-  hostelHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  gatePassBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 12,
-    gap: 6,
-  },
-  gatePassText: {
-    fontSize: 12,
-    fontWeight: '900',
-    letterSpacing: 0.5,
-  },
-  hostelGrid: {
-    gap: 12,
-  },
-  hostelCard: {
+  libraryEmptyCard: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 16,
-    borderRadius: 24,
-    gap: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.03,
-    shadowRadius: 10,
-    elevation: 2,
+    borderRadius: 18,
+    borderWidth: 1,
+    marginTop: 4,
   },
-  hostelIconCircle: {
+  libraryEmptyIconBg: {
     width: 44,
     height: 44,
     borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
   },
+  // Hostel Mode Styles
+  hostelHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  gatePassBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
+    gap: 4,
+  },
+  gatePassText: {
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+  hostelGridRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  hostelCardCompact: {
+    flex: 1,
+    padding: 12,
+    borderRadius: 18,
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.03,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  hostelCardTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  hostelIconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   hostelCardTitle: {
-    fontSize: 15,
+    fontSize: 13,
     fontWeight: '800',
-    marginBottom: 2,
   },
   hostelCardSub: {
-    fontSize: 12,
-    fontWeight: '500',
+    fontSize: 11,
+    marginTop: 2,
   },
   messTime: {
     fontSize: 11,
@@ -3270,6 +4473,21 @@ const styles = StyleSheet.create({
   issueTimeText: {
     fontSize: 11,
     fontWeight: '600',
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+  },
+  dialogCard: {
+    borderRadius: 24,
+    padding: 22,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
+    elevation: 12,
   },
   modalContent: {
     backgroundColor: '#FFFFFF',

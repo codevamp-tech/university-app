@@ -1,5 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { getAvatarUrl } from "../../utils/avatar";
+import { SafeStudentAvatar } from '../../components/SafeStudentAvatar';
+import { ProfileDropdownModal } from '../../components/ProfileDropdownModal';
 import { useTheme } from '../../hooks/useTheme';
 import { useUser } from '../../context/UserContext';
 import { createOutpass, getAlerts, getStudentOutpasses } from '../../data/apiService';
@@ -17,7 +19,7 @@ import { getDisplayCourse, getMBBSProfLabel, isMedicalStudent } from '../../util
 const { width } = Dimensions.get('window');
 
 const ERPHubScreen = ({ navigation, route }) => {
-  const { user, accessToken } = useUser();
+  const { user, accessToken, isHostelMode } = useUser();
   const student = route?.params?.student || route?.params?.params?.student || user;
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
@@ -54,13 +56,14 @@ const ERPHubScreen = ({ navigation, route }) => {
 
   const [drawerVisible, setDrawerVisible] = useState(false);
   const slideAnim = useRef(new Animated.Value(width)).current;
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const avatarUrl = getAvatarUrl(user);
 
   // Added states for Outpass
   const [gatePassStatus, setGatePassStatus] = useState('idle'); // idle, pending, approved, rejected
   const [activeOutpass, setActiveOutpass] = useState(null);
   const [showQRModal, setShowQRModal] = useState(false);
   const [showBusPassModal, setShowBusPassModal] = useState(false);
-  const [showLibraryQRModal, setShowLibraryQRModal] = useState(false);
   const [showRequestModal, setShowRequestModal] = useState(false);
   const [outpassForm, setOutpassForm] = useState({ 
     reason: '', 
@@ -106,8 +109,14 @@ const ERPHubScreen = ({ navigation, route }) => {
   };
 
   React.useEffect(() => {
-    loadOutpassStatus();
-  }, [accessToken]);
+    if (isHostelMode && accessToken) {
+      loadOutpassStatus();
+    } else {
+      setGatePassStatus('idle');
+      setActiveOutpass(null);
+      setMyOutpasses([]);
+    }
+  }, [accessToken, isHostelMode]);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -166,8 +175,24 @@ const ERPHubScreen = ({ navigation, route }) => {
             <Text style={[styles.headerSub, { color: colors.textSecondary }]}>{APP_CONFIG.UNIVERSITY_NAME}</Text>
           </View>
         </View>
-        <View style={styles.headerRight} />
+        <View style={styles.headerRight}>
+          <TouchableOpacity onPress={() => setShowProfileMenu(true)} style={{ position: 'relative' }}>
+            <SafeStudentAvatar
+              uri={avatarUrl}
+              rollno={user?.rollno || user?.username}
+              name={user?.name || user?.full_name || 'S'}
+              style={[styles.avatarSmall, { borderColor: colors.primary }]}
+            />
+          </TouchableOpacity>
+        </View>
       </View>
+
+      {/* Profile Dropdown Modal */}
+      <ProfileDropdownModal
+        visible={showProfileMenu}
+        onClose={() => setShowProfileMenu(false)}
+        navigation={navigation}
+      />
 
 
 
@@ -208,13 +233,24 @@ const ERPHubScreen = ({ navigation, route }) => {
               const roman = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
               const displaySem = student?.semester ? (roman[student.semester - 1] || student.semester) : 'VII';
               const displayCgpa = formatCgpa(student?.cgpa);
-              const displayBranch = student?.branch && student.branch !== '-'
-                ? student.branch.split(' ').map(w => w[0]).join('').toUpperCase().substring(0, 4)
-                : student?.course && student.course.replace(/\./g, '').toUpperCase().includes('MBBS')
+
+              // Smart branch abbreviation:
+              // - If already short (≤5 chars, no spaces) e.g. 'CSE', 'IT', 'EE' — use as-is
+              // - If multi-word e.g. 'Computer Science' → initials 'CS'
+              // - Fallback to course initials
+              const getBranchAbbr = (b) => {
+                if (!b || b === '-') return null;
+                const trimmed = b.trim();
+                if (trimmed.length <= 5 && !trimmed.includes(' ')) {
+                  return trimmed.toUpperCase(); // already an abbreviation: CSE, IT, EE, MBA
+                }
+                return trimmed.split(' ').map(w => w[0]).join('').toUpperCase().substring(0, 4);
+              };
+              const displayBranch =
+                getBranchAbbr(student?.branch) ||
+                (student?.course?.replace(/\./g, '').toUpperCase().includes('MBBS')
                   ? 'MBBS'
-                  : student?.course
-                    ? student.course.split(' ').map(w => w[0]).join('').toUpperCase().substring(0, 4)
-                    : 'CSE';
+                  : getBranchAbbr(student?.course) || 'CSE');
 
               // For MBBS: compute year from semester and show Prof label
               const medYear = student?.year || student?.current_year || (student?.semester ? Math.ceil(parseInt(student.semester) / 2) : 1);
@@ -280,8 +316,8 @@ const ERPHubScreen = ({ navigation, route }) => {
 
 
 
-        {/* Digital Outpass */}
-        {!isStaffOrAdmin && (
+        {/* Digital Outpass — HOSTEL MODE ONLY */}
+        {!isStaffOrAdmin && isHostelMode && (
           <View style={styles.sectionContainer}>
             <LinearGradient
               colors={isDark ? ['#064E3B', '#065F46'] : ['#F0FDF4', '#DCFCE7']}
@@ -320,8 +356,8 @@ const ERPHubScreen = ({ navigation, route }) => {
           </View>
         )}
 
-        {/* My Outpasses List */}
-        {!isStaffOrAdmin && myOutpasses.length > 0 && (
+        {/* My Outpasses List — HOSTEL MODE ONLY */}
+        {!isStaffOrAdmin && isHostelMode && myOutpasses.length > 0 && (
           <View style={styles.sectionContainer}>
             <View style={styles.sectionHeaderRow}>
               <Text style={[styles.sectionHeading, { color: colors.textPrimary }]}>My Outpasses</Text>
@@ -458,7 +494,7 @@ const ERPHubScreen = ({ navigation, route }) => {
             {!isMedical && (
             <TouchableOpacity
               style={[styles.gridCard, { backgroundColor: colors.card, borderColor: colors.border }]}
-              onPress={() => navigation.navigate('StudentSchedule', { student })}
+              onPress={() => navigation.navigate('ERPScheduleTab', { student })}
               activeOpacity={0.85}
             >
               <LinearGradient colors={isDark ? ['#0F766E', '#115E59'] : ['#E6FDF9', '#CCFBF1']} style={styles.gridIconBg}>
@@ -488,237 +524,94 @@ const ERPHubScreen = ({ navigation, route }) => {
             </TouchableOpacity>
             )}
 
-            {/* Card 5: Group Chats — MEDICAL ONLY */}
-            {isMedical && (
+            {/* Card 5: Official Batch Chat */}
             <TouchableOpacity
               style={[styles.gridCard, { backgroundColor: colors.card, borderColor: colors.border }]}
-              onPress={() => navigation.navigate('Chat')}
+              onPress={() => navigation.navigate('Chat', { initialChannel: 'official-batch-chat' })}
               activeOpacity={0.85}
             >
               <LinearGradient colors={isDark ? ['#1E3A8A', '#3B82F6'] : ['#E0F2FE', '#BAE6FD']} style={styles.gridIconBg}>
                 <MaterialCommunityIcons name="forum-outline" size={24} color={isDark ? '#60A5FA' : '#2563EB'} />
               </LinearGradient>
-              <Text style={[styles.gridCardTitle, { color: colors.textPrimary }]}>Group Chats</Text>
+              <Text style={[styles.gridCardTitle, { color: colors.textPrimary }]}>Batch Chat</Text>
               <Text style={[styles.gridCardDesc, { color: colors.textSecondary }]}>
-                Faculty & Peers
+                Faculty & Broadcasts
+              </Text>
+            </TouchableOpacity>
+
+
+
+            {/* Card 6: Library Catalog */}
+            <TouchableOpacity
+              style={[styles.gridCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+              onPress={() => navigation.navigate('LibraryMain', { student })}
+              activeOpacity={0.85}
+            >
+              <LinearGradient colors={isDark ? ['#312E81', '#4338CA'] : ['#F5F3FF', '#EDE9FE']} style={styles.gridIconBg}>
+                <MaterialCommunityIcons name="bookshelf" size={24} color={isDark ? '#A78BFA' : '#7C3AED'} />
+              </LinearGradient>
+              <Text style={[styles.gridCardTitle, { color: colors.textPrimary }]}>E-Library</Text>
+              <Text style={[styles.gridCardDesc, { color: colors.textSecondary }]}>
+                Books & Catalog
+              </Text>
+            </TouchableOpacity>
+
+            {/* Card 7: Notices — NON-MEDICAL ONLY */}
+            {!isMedical && (
+            <TouchableOpacity
+              style={[styles.gridCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+              onPress={() => navigation.navigate('ERPNotices')}
+              activeOpacity={0.85}
+            >
+              <LinearGradient colors={isDark ? ['#7C2D12', '#9A3412'] : ['#FFF7ED', '#FFEDD5']} style={styles.gridIconBg}>
+                <MaterialIcons name="campaign" size={24} color={isDark ? '#FB923C' : '#EA580C'} />
+              </LinearGradient>
+              <Text style={[styles.gridCardTitle, { color: colors.textPrimary }]}>Notices</Text>
+              <Text style={[styles.gridCardDesc, { color: colors.textSecondary }]}>
+                Circulars & Alerts
               </Text>
             </TouchableOpacity>
             )}
 
-
-
-            {/* Card 6: Documents */}
+            {/* Card 8: Lessons & Notes — NON-MEDICAL ONLY */}
+            {!isMedical && (
             <TouchableOpacity
-              style={[styles.gridCard, { backgroundColor: colors.card, borderColor: colors.border, opacity: 0.85 }]}
-              onPress={() => Alert.alert('🔒 Premium Feature', 'Document Vault is locked in this demo. Contact admin to unlock.')}
+              style={[styles.gridCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+              onPress={() => navigation.navigate('ERPLessons')}
               activeOpacity={0.85}
             >
-              <LinearGradient colors={isDark ? ['#312E81', '#4338CA'] : ['#F5F3FF', '#EDE9FE']} style={styles.gridIconBg}>
-                <MaterialIcons name="folder-shared" size={24} color={isDark ? '#A78BFA' : '#7C3AED'} />
+              <LinearGradient colors={isDark ? ['#065F46', '#047857'] : ['#ECFDF5', '#D1FAE5']} style={styles.gridIconBg}>
+                <MaterialCommunityIcons name="book-open-page-variant" size={24} color={isDark ? '#34D399' : '#059669'} />
               </LinearGradient>
-              <Text style={[styles.gridCardTitle, { color: colors.textPrimary }]}>Documents</Text>
-              <Text style={[styles.gridCardDesc, { color: '#EF4444', fontWeight: '700' }]}>
-                LOCKED
+              <Text style={[styles.gridCardTitle, { color: colors.textPrimary }]}>Lessons</Text>
+              <Text style={[styles.gridCardDesc, { color: colors.textSecondary }]}>
+                Plans & Notes
               </Text>
             </TouchableOpacity>
+            )}
+
+            {/* Card 9: Internships — NON-MEDICAL ONLY */}
+            {!isMedical && (
+            <TouchableOpacity
+              style={[styles.gridCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+              onPress={() => navigation.navigate('ERPInternships')}
+              activeOpacity={0.85}
+            >
+              <LinearGradient colors={isDark ? ['#1E3A8A', '#1D4ED8'] : ['#E0F2FE', '#BAE6FD']} style={styles.gridIconBg}>
+                <MaterialCommunityIcons name="briefcase-search" size={24} color={isDark ? '#60A5FA' : '#2563EB'} />
+              </LinearGradient>
+              <Text style={[styles.gridCardTitle, { color: colors.textPrimary }]}>Internships</Text>
+              <Text style={[styles.gridCardDesc, { color: colors.textSecondary }]}>
+                Apply & Track
+              </Text>
+            </TouchableOpacity>
+            )}
+
           </View>
 
         </View>
 
-        {/* Smart Library */}
-        {!isStaffOrAdmin && (
-          <View style={styles.sectionContainer}>
-            <Text style={[styles.sectionHeading, { color: colors.textPrimary }]}>Smart Library</Text>
-            <View style={[styles.libraryCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-              <View style={styles.libraryHeader}>
-                <View>
-                  <Text style={[styles.libraryTitle, { color: colors.textPrimary }]}>Borrowed Books</Text>
-                  <Text style={[styles.librarySubtitle, { color: colors.textSecondary }]}>0 books currently checked out</Text>
-                </View>
-                <LinearGradient colors={['#EA580C', '#9A3412']} style={styles.libraryIconBg}>
-                  <MaterialIcons name="local-library" size={20} color="#FFFFFF" />
-                </LinearGradient>
-              </View>
 
-              {borrowedBooks.length === 0 ? (
-                <View style={{ padding: 24, alignItems: 'center' }}>
-                  <Text style={{ color: colors.textSecondary, fontWeight: '600' }}>No books currently checked out</Text>
-                </View>
-              ) : (
-                borrowedBooks.map((book) => (
-                  <View key={book.id} style={[styles.bookItem, { backgroundColor: isDark ? colors.background : '#F9FAFB', borderColor: colors.border }]}>
-                    <LinearGradient colors={isDark ? book.darkColors : book.colors} style={styles.bookCover}>
-                      <MaterialCommunityIcons name="book-open-variant" size={22} color={isDark ? book.color : book.color} />
-                    </LinearGradient>
-                    <View style={styles.bookInfo}>
-                      <Text style={[styles.bookTitle, { color: colors.textPrimary }]}>{book.title}</Text>
-                      <Text style={[styles.bookAuthor, { color: colors.textSecondary }]}>{book.author}</Text>
-                      <View style={styles.bookDueBadge}>
-                        <View style={[styles.urgentDot, { backgroundColor: book.urgent ? '#EF4444' : '#22C55E' }]} />
-                        <Text style={[styles.bookDueText, { color: book.urgent ? '#EF4444' : '#22C55E' }]}>Due in {book.dueDays} days</Text>
-                      </View>
-                    </View>
-                    {book.urgent ? (
-                      <TouchableOpacity style={styles.renewBtn}>
-                        <Text style={styles.renewBtnText}>Renew</Text>
-                      </TouchableOpacity>
-                    ) : (
-                      <View style={[styles.onTimeBadge, { backgroundColor: isDark ? 'rgba(34, 197, 94, 0.2)' : '#DCFCE7' }]}>
-                        <Text style={[styles.onTimeText, { color: isDark ? '#4ADE80' : '#15803D' }]}>On Time</Text>
-                      </View>
-                    )}
-                  </View>
-                ))
-              )}
-            </View>
-          </View>
-        )}
-
-        {/* Student Library Card */}
-        {!isStaffOrAdmin && (
-          <View style={styles.sectionContainer}>
-            <Text style={[styles.sectionHeading, { color: colors.textPrimary }]}>Student Library Card</Text>
-            <View style={{ borderRadius: 24, overflow: 'hidden' }}>
-              <LinearGradient
-                colors={['#1A1A2E', '#2D1B5E', '#EA580C']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={[styles.libraryCardWrapper, isLibraryLocked && { opacity: 0.6 }]}
-              >
-                <View style={styles.cardCircle1} />
-                <View style={styles.cardCircle2} />
-
-                <View style={styles.lcHeader}>
-                  <View style={styles.lcUniversityRow}>
-                    <LinearGradient colors={['#EA580C', '#9A3412']} style={styles.lcLogoBox}>
-                      <MaterialIcons name="school" size={14} color="#FFFFFF" />
-                    </LinearGradient>
-                    <View>
-                      <Text style={styles.lcUniversityName}>{APP_CONFIG.UNIVERSITY_NAME}</Text>
-                      <Text style={styles.lcLocation}>{APP_CONFIG.CAMPUS_LOCATION}</Text>
-                    </View>
-                  </View>
-                  <View style={styles.lcCardTypeBadge}>
-                    <Text style={styles.lcCardTypeText}>LIBRARY CARD</Text>
-                  </View>
-                </View>
-
-                <View style={styles.lcStudentRow}>
-                  {!studentImgErr ? (
-                    <Image
-                      source={{ uri: getAvatarUrl(student?.avatar_url || student?.name || student?.id || 'me', student?.rollno) }}
-                      style={styles.lcAvatar}
-                      onError={() => setStudentImgErr(true)}
-                    />
-                  ) : (
-                    <View style={[styles.lcAvatar, { backgroundColor: '#EA580C', alignItems: 'center', justifyContent: 'center' }]}>
-                      <Text style={{ color: '#FFF', fontWeight: '800', fontSize: 20 }}>
-                        {(student?.name || 'S').charAt(0).toUpperCase()}
-                      </Text>
-                    </View>
-                  )}
-                  <View style={styles.lcStudentInfo}>
-                    <Text style={styles.lcStudentName}>{student?.name || 'Aryan Kumar'}</Text>
-                    <Text style={styles.lcStudentDept}>
-                      {student?.course
-                        ? (isMedical ? student.course : `${student.course} ${student.branch ? '- ' + student.branch : ''}`)
-                        : 'B.Tech Computer Science & Engineering'}
-                    </Text>
-                    {(() => {
-                      const roman = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
-                      const displaySem = student?.semester ? (roman[student.semester - 1] || student.semester) : 'VII';
-                      // For MBBS: show current Prof label (e.g. "3rd Prof")
-                      const medYear = student?.year || student?.current_year || (student?.semester ? Math.ceil(parseInt(student.semester) / 2) : 1);
-                      return (
-                        <Text style={styles.lcStudentSem}>
-                          {isMedical ? getMBBSProfLabel(medYear) : `Semester ${displaySem}`}  •  Section A
-                        </Text>
-                      );
-                    })()}
-                    <View style={styles.lcIdRow}>
-                      <Text style={styles.lcIdLabel}>ID: </Text>
-                      <Text style={styles.lcIdValue}>{student?.id || `${APP_CONFIG.UNIVERSITY_ID_PREFIX}2024001`}</Text>
-                    </View>
-                  </View>
-                </View>
-
-                <View style={styles.lcStatsRow}>
-                  <View style={styles.lcStatItem}>
-                    <Text style={styles.lcStatValue}>0</Text>
-                    <Text style={styles.lcStatLabel}>BORROWED</Text>
-                  </View>
-                  <View style={styles.lcStatDivider} />
-                  <View style={styles.lcStatItem}>
-                    <Text style={styles.lcStatValue}>-</Text>
-                    <Text style={styles.lcStatLabel}>BOOKS READ</Text>
-                  </View>
-                  <View style={styles.lcStatDivider} />
-                  <View style={styles.lcStatItem}>
-                    <Text style={styles.lcStatValue}>₹0</Text>
-                    <Text style={[styles.lcStatLabel, { color: '#FCA5A5' }]}>FINE DUE</Text>
-                  </View>
-                </View>
-
-                <View style={styles.lcBarcodeRow}>
-                  <View style={styles.lcBarcode}>
-                    {Array.from({ length: 28 }).map((_, i) => (
-                      <View
-                        key={i}
-                        style={[
-                          styles.lcBarcodeBar,
-                          {
-                            height: i % 4 === 0 ? 28 : i % 3 === 0 ? 22 : 18,
-                            backgroundColor: i % 2 === 0 ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.3)',
-                            width: i % 5 === 0 ? 3 : 2,
-                          },
-                        ]}
-                      />
-                    ))}
-                  </View>
-                  <Text style={styles.lcBarcodeText}>{student?.id ? `${APP_CONFIG.UNIVERSITY_ID_PREFIX}-LIB-${student.id}` : `${APP_CONFIG.UNIVERSITY_ID_PREFIX}-LIB-2024-001`}</Text>
-                </View>
-
-                <View style={styles.lcFooterRow}>
-                  <View style={styles.lcValidRow}>
-                    <MaterialIcons name="event" size={12} color="rgba(255,255,255,0.5)" />
-                    <Text style={styles.lcValidText}>Valid until: 31 May 2027</Text>
-                  </View>
-                  <TouchableOpacity
-                    style={styles.lcQRBtn}
-                    onPress={() => {
-                      if (isLibraryLocked) {
-                        Alert.alert('🔒 Access Locked', 'Your library card is locked due to outstanding administrative clearance.');
-                      } else {
-                        setShowLibraryQRModal(true);
-                      }
-                    }}
-                  >
-                    <MaterialIcons name="qr-code-2" size={16} color="#EA580C" />
-                    <Text style={styles.lcQRBtnText}>Show QR</Text>
-                  </TouchableOpacity>
-                </View>
-              </LinearGradient>
-
-              {isLibraryLocked && (
-                <View style={{
-                  position: 'absolute',
-                  top: 0, left: 0, right: 0, bottom: 0,
-                  backgroundColor: 'rgba(0,0,0,0.55)',
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                  paddingHorizontal: 24,
-                  zIndex: 20
-                }}>
-                  <MaterialCommunityIcons name="card-bulleted-off-outline" size={48} color="#FFFFFF" />
-                  <Text style={{ color: '#FFFFFF', fontSize: 18, fontWeight: '900', marginTop: 12 }}>Library Card Locked</Text>
-                  <Text style={{ color: 'rgba(255,255,255,0.75)', fontSize: 13, textAlign: 'center', marginTop: 6, lineHeight: 18 }}>
-                    Your library clearance status is locked. Please contact the administrative desk to resolve outstanding updates.
-                  </Text>
-                </View>
-              )}
-            </View>
-          </View>
-        )}
 
         {/* Recent Alerts */}
         {!isStaffOrAdmin && (
@@ -846,47 +739,7 @@ const ERPHubScreen = ({ navigation, route }) => {
         </View>
       </Modal>
 
-      {/* Library QR Modal */}
-      <Modal
-        visible={showLibraryQRModal}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={() => setShowLibraryQRModal(false)}
-      >
-        <View style={styles.qrModalOverlay}>
-          <View style={[styles.qrContainer, { backgroundColor: colors.card }]}>
-            <View style={styles.qrHeader}>
-              <Text style={[styles.qrTitle, { color: colors.textPrimary }]}>Library Card QR</Text>
-              <TouchableOpacity onPress={() => setShowLibraryQRModal(false)}>
-                <MaterialIcons name="close" size={24} color={colors.textPrimary} />
-              </TouchableOpacity>
-            </View>
 
-            <View style={styles.qrWrapper}>
-              <MaterialCommunityIcons name="qrcode" size={200} color={isDark ? '#FFF' : '#111827'} />
-              <View style={[styles.qrStatusBadge, { backgroundColor: '#EA580C' }]}>
-                <Text style={styles.qrStatusText}>
-                  {user?.rollno ? `LIB-${user.rollno}` : user?.username ? `LIB-${user.username}` : `LIB-2024-001`}
-                </Text>
-              </View>
-            </View>
-
-            <View style={styles.qrInfo}>
-              <Text style={[styles.qrInfoName, { color: colors.textPrimary }]}>{user?.name || 'Student'}</Text>
-              <Text style={[styles.qrInfoSub, { color: colors.textSecondary }]}>
-                {user?.course ? (isMedical ? user.course : `${user.course} ${user.branch ? '- ' + user.branch : ''}`) : 'B.Tech CSE'}
-              </Text>
-            </View>
-
-            <TouchableOpacity
-              style={[styles.qrDownloadBtn, { backgroundColor: '#EA580C' }]}
-              onPress={() => setShowLibraryQRModal(false)}
-            >
-              <Text style={styles.qrDownloadText}>DONE</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
 
       {/* Outpass Request Form Modal */}
       <Modal
@@ -1089,19 +942,13 @@ const ERPHubScreen = ({ navigation, route }) => {
 
             <TouchableOpacity activeOpacity={1}>
               <LinearGradient colors={['#EA580C', '#9A3412']} style={styles.drawerHeader}>
-{!userImgErr ? (
-                  <Image
-                    source={{ uri: getAvatarUrl(user?.avatar_url || user?.name || user?.id || 'me', user?.rollno) }}
-                    style={styles.drawerAvatar}
-                    onError={() => setUserImgErr(true)}
-                  />
-                ) : (
-                  <View style={[styles.drawerAvatar, { backgroundColor: 'rgba(255,255,255,0.3)', alignItems: 'center', justifyContent: 'center' }]}>
-                    <Text style={{ color: '#FFF', fontWeight: '900', fontSize: 28 }}>
-                      {(user?.name || 'U').charAt(0).toUpperCase()}
-                    </Text>
-                  </View>
-                )}
+                <SafeStudentAvatar
+                  uri={getAvatarUrl(user?.avatar_url || user?.name || user?.id || 'me', user?.rollno)}
+                  rollno={user?.rollno || user?.username}
+                  name={user?.name || user?.full_name || 'S'}
+                  style={styles.drawerAvatar}
+                  primaryColor="rgba(255,255,255,0.3)"
+                />
                 <Text style={styles.drawerName}>{user?.name || 'Aryan Kumar'}</Text>
                 <Text style={styles.drawerRole}>{getDisplayCourse(user)}</Text>
                 <Text style={styles.drawerId}>ID: {user?.id || `${APP_CONFIG.UNIVERSITY_ID_PREFIX}2024001`}</Text>
@@ -1225,6 +1072,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
+  },
+  avatarSmall: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 2,
   },
   headerIconBtn: {
     width: 40,

@@ -8,6 +8,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 import { uploadAvatarAPI, updateMyProfile, connectionStatsAPI, getStartups, getPublicProfile, getMoodEntriesAPI, logMoodAPI } from '../../data/apiService';
 import { getAvatarUrl } from '../../utils/avatar';
+import { SafeStudentAvatar } from '../../components/SafeStudentAvatar';
 import { ActivityIndicator, Alert } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 
@@ -15,7 +16,7 @@ import { useTheme } from '../../hooks/useTheme';
 import { APP_CONFIG } from '../../config/appConfig';
 import { useUser } from '../../context/UserContext';
 import { getCategoryLabel } from '../../data/aiEngine';
-import { getDisplayCourse, isMedicalStudent } from '../../utils/courseDisplay';
+import { getDisplayCourse, isMedicalStudent, resolveCourseAndBranch } from '../../utils/courseDisplay';
 
 
 const { width } = Dimensions.get('window');
@@ -32,13 +33,70 @@ const AdminStudentProfileScreen = ({ navigation, route }) => {
 
   const isMed = user ? isMedicalStudent(user) : false;
 
-  const defaultBio = isMed
-    ? `Dedicated medical student in MBBS, passionate about clinical practice, community health, and patient care. Leading rotation reports at primary clinics and practicing diagnostic reasoning.`
-    : `Passionate student deeply interested in technology, learning, and projects. Active member of campus groups, always looking to build and collaborate with like-minded peers!`;
-  const [userBio, setUserBio] = React.useState(user?.bio || defaultBio);
+  const getRichStudentBio = React.useCallback((u) => {
+    if (!u) return '';
+    const currentBio = (u.bio || '').trim();
+    if (currentBio && currentBio.length > 40 && !currentBio.startsWith('Leadership:') && !currentBio.includes('| Extracurricular:')) {
+      return currentBio;
+    }
+
+    const { course: resCourse, branch: resBranch } = resolveCourseAndBranch(u);
+    const course = resCourse || (u.course || (isMed ? 'MBBS' : 'BCA')).trim();
+    const isMBA = course.toUpperCase().includes('MBA') || course.toUpperCase().includes('BBA') || course.toUpperCase().includes('COM') || (resBranch || u.branch || '').toUpperCase().includes('FINANCE') || (resBranch || u.branch || '').toUpperCase().includes('MANAG');
+    const isPharma = course.toUpperCase().includes('PHARM');
+    const isBCA = course.toUpperCase().includes('BCA');
+
+    const branch = resBranch || u.branch || u.department_name || (isMBA ? 'Management' : (isPharma ? 'Pharmaceutical Sciences' : (course.includes('MCA') ? 'Software Applications' : (isBCA ? 'Computer Applications' : 'Computer Science'))));
+    const yearNum = u.year || u.current_year || (u.semester ? Math.ceil(parseInt(u.semester) / 2) : 1);
+    const semNum = u.semester || (yearNum * 2 - 1);
+    const cgpa = u.cgpa ? `${u.cgpa} CGPA` : 'strong academic standing';
+
+    let leadership = '';
+    let extracurricular = '';
+    if (currentBio.includes('Leadership:') || currentBio.includes('Extracurricular:')) {
+      const lMatch = currentBio.match(/Leadership:\s*([^|]+)/i);
+      const eMatch = currentBio.match(/Extracurricular:\s*(.+)/i);
+      if (lMatch && lMatch[1].trim()) leadership = lMatch[1].trim();
+      if (eMatch && eMatch[1].trim()) extracurricular = eMatch[1].trim();
+    }
+    if (!leadership && u.leadership && u.leadership.length > 0) {
+      leadership = u.leadership.filter(Boolean).join(', ');
+    }
+    if (!extracurricular && u.extracurricular && u.extracurricular.length > 0) {
+      extracurricular = u.extracurricular.filter(Boolean).join(', ');
+    }
+
+    if (isMed) {
+      const phaseLabel = yearNum === 1 ? '1st Prof' : yearNum === 2 ? '2nd Prof' : '3rd Prof Part I';
+      return `Dedicated medical scholar in ${phaseLabel} MBBS at ${APP_CONFIG.UNIVERSITY_NAME}. Committed to clinical excellence, evidence-based patient diagnosis, and preventive healthcare. ${leadership ? `Serving as ${leadership}. ` : ''}Actively participating in hospital clinical ward postings, diagnostics, and community health initiatives.`;
+    }
+
+    const leadSentence = leadership 
+      ? ` Serving as ${leadership} with active contributions to ${extracurricular || 'campus initiatives and projects'}.`
+      : (extracurricular ? ` Active contributor to campus initiatives in ${extracurricular}.` : '');
+
+    let passionSentence = 'Passionate about building robust software architectures, scalable full-stack applications, and exploring cloud systems.';
+    if (isMBA) {
+      passionSentence = 'Passionate about corporate finance, financial modeling, taxation, and business analytics.';
+    } else if (isPharma) {
+      passionSentence = 'Passionate about clinical pharmacology, drug development, and pharmaceutical quality assurance.';
+    } else if (isBCA) {
+      passionSentence = 'Passionate about core programming in Python & C, modern web development, and software applications.';
+    }
+
+    return `${course} scholar in Year ${yearNum} (Semester ${semNum}) specializing in ${branch} with a ${cgpa}.${leadSentence} ${passionSentence}`;
+  }, [isMed]);
+
+  const [userBio, setUserBio] = React.useState(getRichStudentBio(user));
   const [stats, setStats] = React.useState({ followers: 0, following: 0, connections: 0 });
   const [myStartups, setMyStartups] = React.useState([]);
   const [loadingData, setLoadingData] = React.useState(true);
+
+  React.useEffect(() => {
+    if (user) {
+      setUserBio(getRichStudentBio(user));
+    }
+  }, [user, getRichStudentBio]);
 
   const [activeMood, setActiveMood] = React.useState(2);
 
@@ -149,20 +207,38 @@ const AdminStudentProfileScreen = ({ navigation, route }) => {
       : 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=400&auto=format&fit=crop'
   }));
 
-  const leadershipItems = (user.leadership || []).filter(c => {
-    const cl = (c || '').toLowerCase();
-    return cl !== 'yes' && cl !== 'no' && cl !== 'na' && cl !== 'n/a' && cl !== 'none' && cl !== '';
-  });
+  const allSocialActivities = React.useMemo(() => {
+    let leadership = '';
+    let extracurricular = '';
+    const bioText = user?.bio || '';
+    if (bioText.includes('Leadership:') || bioText.includes('Extracurricular:')) {
+      const lMatch = bioText.match(/Leadership:\s*([^|]+)/i);
+      const eMatch = bioText.match(/Extracurricular:\s*(.+)/i);
+      if (lMatch && lMatch[1].trim()) leadership = lMatch[1].trim();
+      if (eMatch && eMatch[1].trim()) extracurricular = eMatch[1].trim();
+    }
 
-  const extracurricularItems = (user.extracurricular || []).filter(c => {
-    const cl = (c || '').toLowerCase();
-    return cl !== 'yes' && cl !== 'no' && cl !== 'na' && cl !== 'n/a' && cl !== 'none' && cl !== '';
-  });
+    const leadershipItems = (Array.isArray(user?.leadership) && user.leadership.length > 0)
+      ? user.leadership
+      : (leadership ? leadership.split(',').map(s => s.trim()).filter(Boolean) : []);
 
-  const allSocialActivities = [
-    ...leadershipItems.map(item => ({ name: item, type: 'Leadership Role', icon: 'grade' })),
-    ...extracurricularItems.map(item => ({ name: item, type: 'Extracurricular', icon: 'stars' })),
-  ];
+    const extracurricularItems = (Array.isArray(user?.extracurricular) && user.extracurricular.length > 0)
+      ? user.extracurricular
+      : (extracurricular ? extracurricular.split(',').map(s => s.trim()).filter(Boolean) : []);
+
+    return [
+      ...leadershipItems.map(item => ({ name: item, type: 'Leadership Role', icon: 'grade' })),
+      ...extracurricularItems.map(item => ({ name: item, type: 'Extracurricular & Sports', icon: 'stars' })),
+    ];
+  }, [user]);
+
+  const totalSocialCredits = React.useMemo(() => {
+    if (allSocialActivities.length > 0) {
+      return allSocialActivities.length * 100;
+    }
+    const val = Number(user?.social_credits);
+    return !isNaN(val) && val > 0 ? val : 0;
+  }, [allSocialActivities, user?.social_credits]);
 
   const handlePickImage = async () => {
     try {
@@ -196,7 +272,7 @@ const AdminStudentProfileScreen = ({ navigation, route }) => {
     }
   };
 
-  const avatarUrl = getAvatarUrl(user?.avatar_url || user?.id || user?.email || 'me');
+  const avatarUrl = getAvatarUrl(user?.avatar_url || user?.id || user?.email || 'me', user?.rollno || user?.username);
 
 
   return (
@@ -239,10 +315,11 @@ const AdminStudentProfileScreen = ({ navigation, route }) => {
         {/* Profile Header Image */}
         <View style={styles.profileHeroSection}>
           <View style={[styles.profileHeroCard, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: isDark ? 1 : 0 }]}>
-            <Image
-              source={{ uri: avatarUrl }}
+            <SafeStudentAvatar
+              uri={avatarUrl}
+              rollno={user?.rollno || user?.username}
+              name={user?.name || user?.full_name || 'S'}
               style={styles.heroImg}
-              resizeMode="cover"
             />
             <LinearGradient colors={['transparent', isDark ? 'rgba(0,0,0,0.95)' : 'rgba(0,0,0,0.85)']} style={styles.heroOverlay}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' }}>
@@ -274,9 +351,9 @@ const AdminStudentProfileScreen = ({ navigation, route }) => {
 
           {/* LinkedIn-style Connections */}
           <View style={styles.networkStats}>
-            <Text style={[styles.networkText, { color: isDark ? colors.primary : '#3474ec' }]}><Text style={[styles.networkBold, { color: colors.textPrimary }]}>{stats.followers}</Text> Followers</Text>
-            <Text style={[styles.networkDivider, { color: colors.textMuted }]}>•</Text>
-            <Text style={[styles.networkText, { color: isDark ? colors.primary : '#3474ec' }]}><Text style={[styles.networkBold, { color: colors.textPrimary }]}>{stats.connections}</Text> Connections</Text>
+            <Text style={[styles.networkText, { color: isDark ? colors.primary : '#3474ec' }]}>
+              <Text style={[styles.networkBold, { color: colors.textPrimary }]}>{stats.connections}</Text> Connections
+            </Text>
           </View>
 
 
@@ -430,32 +507,43 @@ const AdminStudentProfileScreen = ({ navigation, route }) => {
               <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>Social Impact Credits</Text>
               <Text style={[styles.cardSubSub, { color: colors.textSecondary }]}>Community Service & Volunteering</Text>
             </View>
-            <View style={[styles.scoreBadge, { backgroundColor: colors.primaryLight }]}><Text style={[styles.scoreText, { color: colors.primary }]}>{user?.social_credits || allSocialActivities.length * 100} pts</Text></View>
+            <View style={[styles.scoreBadge, { backgroundColor: colors.primaryLight }]}><Text style={[styles.scoreText, { color: colors.primary }]}>{totalSocialCredits} pts</Text></View>
           </View>
 
-
-          <View style={styles.proofList}>
-            {allSocialActivities.length > 0 ? (
-              allSocialActivities.map((activity, index) => (
-                <View key={index} style={[styles.proofItem, { backgroundColor: index % 2 === 0 ? colors.background : (isDark ? 'rgba(255,255,255,0.03)' : '#F3F4F6'), borderColor: colors.border, borderWidth: 1 }]}>
-                  <View style={[styles.proofLeadIcon, { backgroundColor: colors.card }]}><MaterialIcons name={activity.icon} size={18} color={colors.primary} /></View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={[styles.proofName, { color: colors.textPrimary }]}>{activity.name}</Text>
-                    <Text style={[styles.proofMeta, { color: colors.textSecondary }]}>{activity.type}</Text>
+          {allSocialActivities.length > 0 ? (
+            <View>
+              <ScrollView
+                nestedScrollEnabled={true}
+                showsVerticalScrollIndicator={true}
+                style={{ maxHeight: 310 }}
+                contentContainerStyle={{ gap: 10, paddingRight: 4 }}
+              >
+                {allSocialActivities.map((activity, index) => (
+                  <View key={index} style={[styles.proofItem, { backgroundColor: index % 2 === 0 ? colors.background : (isDark ? 'rgba(255,255,255,0.03)' : '#F3F4F6'), borderColor: colors.border, borderWidth: 1 }]}>
+                    <View style={[styles.proofLeadIcon, { backgroundColor: colors.card }]}><MaterialIcons name={activity.icon} size={18} color={colors.primary} /></View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.proofName, { color: colors.textPrimary }]}>{activity.name}</Text>
+                      <Text style={[styles.proofMeta, { color: colors.textSecondary }]}>{activity.type}</Text>
+                    </View>
+                    <View style={{ backgroundColor: colors.primaryLight, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12 }}>
+                      <Text style={{ fontSize: 10, fontWeight: '700', color: colors.primary }}>100 pts</Text>
+                    </View>
                   </View>
-                  <View style={{ backgroundColor: colors.primaryLight, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12 }}>
-                    <Text style={{ fontSize: 10, fontWeight: '700', color: colors.primary }}>100 pts</Text>
-                  </View>
-                </View>
-              ))
-            ) : (
-              <View style={{ padding: 16, alignItems: 'center' }}>
-                <Text style={{ color: colors.textSecondary, fontSize: 12, textAlign: 'center' }}>
-                  No campus activities or volunteering records found.
+                ))}
+              </ScrollView>
+              {allSocialActivities.length > 4 && (
+                <Text style={{ fontSize: 10, color: colors.textMuted, textAlign: 'center', marginTop: 8 }}>
+                  Scroll to view all {allSocialActivities.length} verified activities
                 </Text>
-              </View>
-            )}
-          </View>
+              )}
+            </View>
+          ) : (
+            <View style={{ padding: 16, alignItems: 'center' }}>
+              <Text style={{ color: colors.textSecondary, fontSize: 12, textAlign: 'center' }}>
+                No campus activities or volunteering records found.
+              </Text>
+            </View>
+          )}
         </View>
 
 

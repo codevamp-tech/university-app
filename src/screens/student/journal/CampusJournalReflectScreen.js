@@ -11,6 +11,7 @@ import { uploadAvatarAPI, createJournalAPI, listJournalAPI } from '../../../data
 import { useUser } from '../../../context/UserContext';
 import { APP_CONFIG } from '../../../config/appConfig';
 import { getAvatarUrl } from '../../../utils/avatar';
+import { SafeStudentAvatar } from '../../../components/SafeStudentAvatar';
 
 const { width } = Dimensions.get('window');
 
@@ -155,8 +156,10 @@ const CampusJournalReflectScreen = ({ navigation }) => {
           <Ionicons name="arrow-back" size={28} color="#EA580C" />
         </TouchableOpacity>
         <View style={styles.headerTitleContainer}>
-          <Image
-            source={{ uri: getAvatarUrl(user?.avatar_url || user?.name) }}
+          <SafeStudentAvatar
+            uri={getAvatarUrl(user?.avatar_url || user?.name, user?.rollno || user?.username)}
+            rollno={user?.rollno || user?.username}
+            name={user?.name || user?.full_name || 'S'}
             style={styles.headerProfile}
           />
           <Text style={styles.headerTitle}>New Journal Entry</Text>

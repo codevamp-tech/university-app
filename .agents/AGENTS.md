@@ -125,3 +125,29 @@ These rules MUST be preserved in every edit to this file:
    - `defaultPhase === '1st Prof'` (Anatomy, Physiology, Biochemistry) with `Yr_FK=1` → `'1st Prof'` ✓
 
 2. `getPhaseForSubject` itself must NEVER return `'1st Prof'` for General Medicine, Pathology, Pharmacology, Microbiology, or any clinical subject. The fallback `return '3rd Prof Part II'` at the end ensures this — do NOT add any case above it that could catch clinical subjects into 1st Prof.
+
+---
+
+# 🔒 LOCKED: Scholar Feed, Post Creation & Document Viewer Pipeline
+
+> **This rule is PERMANENT and INVIOLABLE. No agent may alter or bypass the feed document pipeline, post creation overlay architecture, or deletion persistence below.**
+
+## 🚨 Architectural Invariants
+
+1. **CreatePostSheet Must Remain an In-Tree Overlay (NEVER a native `<Modal>`)**:
+   - On iOS, native `<Modal>` view controllers collide with `UIDocumentPickerViewController`, causing iOS to dismiss the parent modal and freeze the touch responder tree.
+   - Post creation MUST ALWAYS be rendered as an in-tree sheet (`CreatePostSheet.js` via `StyleSheet.absoluteFill` with high zIndex).
+
+2. **Dual-Sync Document Attachment Payload**:
+   - When creating posts with document attachments, attached document URLs MUST be included in BOTH `doc_urls` AND `media_urls` to ensure universal backward-compatibility across all backend versions and database schemas.
+
+3. **Standalone Modular `LinkedInDocCarousel.js`**:
+   - Document rendering in feed MUST use `LinkedInDocCarousel.js`.
+   - Cloudinary rasterization URL format MUST be:
+     `url.replace(/\/image\/upload\/(v\d+\/)?/i, '/image/upload/pg_${pageNum},w_1080,f_jpg,q_auto/').replace(/\.pdf$/i, '.jpg')`
+   - Every slide MUST render a high-contrast fallback canvas (`DocPageSlide`) if an image is loading or offline, NEVER leaving a black screen.
+   - Horizontal swipe paging with floating chevron arrows and active slide indicators (`Slide X of Y`) MUST be preserved.
+
+4. **Persistent Post Deletion (`@deleted_post_ids`)**:
+   - Post deletions MUST be stored in `AsyncStorage` (`@deleted_post_ids`) and `deletedPostIdsRef` so that server-side Redis caching (60-second cache window) or network latency can NEVER cause a deleted post to reappear on pull-to-refresh or app restart.
+

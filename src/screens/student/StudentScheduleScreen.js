@@ -19,44 +19,13 @@ import { useTheme } from '../../hooks/useTheme';
 import { useUser } from '../../context/UserContext';
 import { isMedicalStudent } from '../../utils/courseDisplay';
 import { APP_CONFIG } from '../../config/appConfig';
-import { getStudentSchedule, getTimetable } from '../../data/apiService';
+import { getStudentSchedule, getTimetable, getErpStudentSchedule } from '../../data/apiService';
 
 const { width } = Dimensions.get('window');
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-const DEFAULT_NON_MED_SCHEDULE = {
-  Mon: [
-    { time: '09:00 – 10:00', subject: 'Data Structures & Algorithms', faculty: 'Dr. R. K. Sharma', type: 'Lecture', room: 'LT-101' },
-    { time: '10:00 – 11:00', subject: 'Database Management Systems', faculty: 'Prof. A. Verma', type: 'Lecture', room: 'LT-102' },
-    { time: '11:15 – 12:15', subject: 'Operating Systems', faculty: 'Dr. S. Gupta', type: 'Lecture', room: 'LT-101' },
-    { time: '14:00 – 16:00', subject: 'DBMS Lab', faculty: 'Prof. A. Verma', type: 'Practical', room: 'Lab 3' },
-  ],
-  Tue: [
-    { time: '09:00 – 10:00', subject: 'Computer Networks', faculty: 'Prof. M. Patel', type: 'Lecture', room: 'LT-103' },
-    { time: '10:00 – 11:00', subject: 'Software Engineering', faculty: 'Dr. N. Singh', type: 'Lecture', room: 'LT-101' },
-    { time: '11:15 – 12:15', subject: 'Data Structures & Algorithms', faculty: 'Dr. R. K. Sharma', type: 'Lecture', room: 'LT-101' },
-    { time: '14:00 – 15:00', subject: 'Aptitude & Soft Skills', faculty: 'Trainer Team', type: 'Tutorial', room: 'Seminar Hall' },
-  ],
-  Wed: [
-    { time: '09:00 – 10:00', subject: 'Database Management Systems', faculty: 'Prof. A. Verma', type: 'Lecture', room: 'LT-102' },
-    { time: '10:00 – 11:00', subject: 'Operating Systems', faculty: 'Dr. S. Gupta', type: 'Lecture', room: 'LT-101' },
-    { time: '11:15 – 13:15', subject: 'DSA Lab', faculty: 'Dr. R. K. Sharma', type: 'Practical', room: 'Lab 1' },
-  ],
-  Thu: [
-    { time: '09:00 – 10:00', subject: 'Computer Networks', faculty: 'Prof. M. Patel', type: 'Lecture', room: 'LT-103' },
-    { time: '10:00 – 11:00', subject: 'Software Engineering', faculty: 'Dr. N. Singh', type: 'Lecture', room: 'LT-101' },
-    { time: '11:15 – 12:15', subject: 'Data Structures & Algorithms', faculty: 'Dr. R. K. Sharma', type: 'Lecture', room: 'LT-101' },
-  ],
-  Fri: [
-    { time: '09:00 – 10:00', subject: 'Operating Systems', faculty: 'Dr. S. Gupta', type: 'Lecture', room: 'LT-101' },
-    { time: '10:00 – 11:00', subject: 'Database Management Systems', faculty: 'Prof. A. Verma', type: 'Lecture', room: 'LT-102' },
-    { time: '14:00 – 16:00', subject: 'Web Technologies Lab', faculty: 'Prof. M. Patel', type: 'Practical', room: 'Lab 2' },
-  ],
-  Sat: [
-    { time: '09:30 – 11:30', subject: 'Industry Workshop / Guest Lecture', faculty: 'Guest Speaker', type: 'Lecture', room: 'Auditorium' },
-  ]
-};
+// No mock schedule allowed. Data is loaded dynamically via ERP schedule API.
 
 // ... inside StudentScheduleScreen component ...
 const FULL_DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -162,8 +131,53 @@ const StudentScheduleScreen = ({ route, navigation }) => {
   const defaultDay = today === 0 || today === 7 ? 'Mon' : DAYS[today - 1];
 
   const [selectedDay, setSelectedDay] = useState(defaultDay);
+  const [weekOffset, setWeekOffset] = useState(0);
   const [schedule, setSchedule] = useState({});
   const [loading, setLoading] = useState(false);
+
+  // Compute start of week (Monday) based on weekOffset
+  const currentWeekMonday = React.useMemo(() => {
+    const now = new Date();
+    const day = now.getDay(); // 0 = Sun, 1 = Mon, ...
+    const diffToMon = day === 0 ? -6 : 1 - day;
+    const monday = new Date(now);
+    monday.setDate(now.getDate() + diffToMon + (weekOffset * 7));
+    monday.setHours(0, 0, 0, 0);
+    return monday;
+  }, [weekOffset]);
+
+  // Compute dates for Mon, Tue, Wed, Thu, Fri, Sat
+  const weekDates = React.useMemo(() => {
+    return DAYS.map((d, index) => {
+      const date = new Date(currentWeekMonday);
+      date.setDate(currentWeekMonday.getDate() + index);
+      return {
+        day: d,
+        dateNum: date.getDate(),
+        monthShort: date.toLocaleDateString('en-IN', { month: 'short' }),
+        fullDateStr: date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }),
+        isToday: weekOffset === 0 && (index === (today === 0 ? 6 : today - 1)),
+        rawDate: date,
+      };
+    });
+  }, [currentWeekMonday, weekOffset, today]);
+
+  const selectedDateInfo = React.useMemo(() => {
+    const idx = DAYS.indexOf(selectedDay);
+    return weekDates[idx >= 0 ? idx : 0] || { fullDateStr: '' };
+  }, [selectedDay, weekDates]);
+
+  const weekRangeLabel = React.useMemo(() => {
+    if (weekOffset === 0) return 'Current Week';
+    if (weekOffset === 1) return 'Next Week';
+    if (weekOffset === -1) return 'Previous Week';
+    const start = weekDates[0];
+    const end = weekDates[5];
+    if (start && end) {
+      return `${start.dateNum} ${start.monthShort} – ${end.dateNum} ${end.monthShort}`;
+    }
+    return `Week offset: ${weekOffset}`;
+  }, [weekOffset, weekDates]);
 
   const shimmerAnim = useRef(new Animated.Value(0.3)).current;
 
@@ -214,35 +228,45 @@ const StudentScheduleScreen = ({ route, navigation }) => {
     try {
       const studentId = user?.user_id || user?.id || user?.rollno || user?.username;
 
-      // ── Non-medical students: live timetable from academic-ops endpoint ──────
+      // ── Non-medical students: ERP timetable (with Python fallback) ────────────
       if (!isMedical) {
         const semester = user?.semester ? parseInt(user.semester, 10) : null;
         const department_id = user?.department_id || null;
-        const slots = await getTimetable(accessToken, { semester, department_id });
+
+        // Try ERP NestJS /timetable/student-schedule first
+        let slots = [];
+        try {
+          slots = await getErpStudentSchedule(accessToken, { semester, department_id });
+        } catch (_) {}
+
+        // Fallback to Python academic-ops endpoint
+        if (!slots || slots.length === 0) {
+          try {
+            slots = await getTimetable(accessToken, { semester, department_id });
+          } catch (_) {}
+        }
 
         if (slots && slots.length > 0) {
           const mapped = {};
           DAYS.forEach(d => { mapped[d] = []; });
           slots.forEach(s => {
-            // day_of_week: 1=Mon … 6=Sat
             const idx = (s.day_of_week || 1) - 1;
             if (idx >= 0 && idx < DAYS.length) {
               mapped[DAYS[idx]].push({
-                time: `${s.start_time?.slice(0, 5)} – ${s.end_time?.slice(0, 5)}`,
-                subject: s.subject_name || 'Class',
-                topic: '',
-                faculty: s.faculty_name || '',
+                time: `${(s.start_time || '').slice(0, 5)} – ${(s.end_time || '').slice(0, 5)}`,
+                subject: s.subject_name || s.subject || 'Class',
+                topic: s.topic || '',
+                faculty: s.faculty_name || s.faculty || '',
                 type: s.lecture_type === 'practical' ? 'Practical'
                     : s.lecture_type === 'tutorial' ? 'Tutorial'
                     : 'Lecture',
-                room: s.room || '',
+                room: s.room || s.room_no || '',
               });
             }
           });
           setSchedule(mapped);
         } else {
-          // Fall back to standard default timetable so schedule is never blank
-          setSchedule(DEFAULT_NON_MED_SCHEDULE);
+          setSchedule({});
         }
         setLoading(false);
         return;
@@ -370,10 +394,10 @@ const StudentScheduleScreen = ({ route, navigation }) => {
           <View style={styles.heroRow}>
             <View>
               <Text style={[styles.heroDate, { color: isDark ? '#34D399' : '#059669' }]}>
-                {FULL_DAYS[DAYS.indexOf(selectedDay)]}, {new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                {FULL_DAYS[DAYS.indexOf(selectedDay)]}, {selectedDateInfo.fullDateStr || new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
               </Text>
               <Text style={[styles.heroSub, { color: isDark ? 'rgba(52,211,153,0.7)' : 'rgba(5,150,105,0.7)' }]}>
-                {dayClasses.filter(c => c.type !== 'break').length} classes scheduled
+                {dayClasses.filter(c => c.type !== 'break').length} classes scheduled · {weekRangeLabel}
               </Text>
             </View>
             <View style={styles.heroStats}>
@@ -390,25 +414,70 @@ const StudentScheduleScreen = ({ route, navigation }) => {
         </LinearGradient>
       </View>
 
+      {/* Week Switcher Bar */}
+      <View style={[styles.weekSwitcher, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
+        <TouchableOpacity
+          style={[styles.weekNavBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
+          onPress={() => setWeekOffset(prev => prev - 1)}
+          activeOpacity={0.7}
+        >
+          <MaterialIcons name="chevron-left" size={18} color={colors.textPrimary} />
+          <Text style={[styles.weekNavText, { color: colors.textPrimary }]}>Prev Week</Text>
+        </TouchableOpacity>
+
+        <View style={styles.weekCenterInfo}>
+          <Text style={[styles.weekLabel, { color: colors.textPrimary }]}>{weekRangeLabel}</Text>
+          <Text style={[styles.weekSubDates, { color: colors.textMuted }]}>
+            {weekDates[0]?.dateNum} {weekDates[0]?.monthShort} – {weekDates[5]?.dateNum} {weekDates[5]?.monthShort}
+          </Text>
+        </View>
+
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          {weekOffset !== 0 && (
+            <TouchableOpacity
+              style={[styles.todayResetBtn, { backgroundColor: isDark ? 'rgba(99,102,241,0.2)' : '#EEF2FF', borderColor: colors.primary }]}
+              onPress={() => {
+                setWeekOffset(0);
+                setSelectedDay(defaultDay);
+              }}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.todayResetText, { color: colors.primary }]}>Today</Text>
+            </TouchableOpacity>
+          )}
+
+          <TouchableOpacity
+            style={[styles.weekNavBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
+            onPress={() => setWeekOffset(prev => prev + 1)}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.weekNavText, { color: colors.textPrimary }]}>Next Week</Text>
+            <MaterialIcons name="chevron-right" size={18} color={colors.textPrimary} />
+          </TouchableOpacity>
+        </View>
+      </View>
+
       {/* Day Selector */}
       <View style={[styles.daySelector, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, gap: 8 }}>
-          {DAYS.map((day) => {
-            const isActive = selectedDay === day;
-            const isToday = day === defaultDay;
+          {weekDates.map((item) => {
+            const isActive = selectedDay === item.day;
+            const isToday = item.isToday;
             return (
               <TouchableOpacity
-                key={day}
+                key={item.day}
                 style={[styles.dayBtn, {
                   backgroundColor: isActive
                     ? colors.primary
                     : (isDark ? 'rgba(255,255,255,0.05)' : '#F3F4F6'),
                   borderColor: isToday && !isActive ? colors.primary : 'transparent',
                   borderWidth: isToday && !isActive ? 1.5 : 0,
+                  minWidth: 54,
                 }]}
-                onPress={() => setSelectedDay(day)}
+                onPress={() => setSelectedDay(item.day)}
               >
-                <Text style={[styles.dayBtnText, { color: isActive ? '#FFF' : colors.textSecondary }]}>{day}</Text>
+                <Text style={[styles.dayBtnText, { color: isActive ? '#FFF' : colors.textSecondary }]}>{item.day}</Text>
+                <Text style={[styles.dayDateText, { color: isActive ? '#FFF' : colors.textPrimary, fontWeight: isActive ? '800' : '600' }]}>{item.dateNum}</Text>
                 {isToday && <View style={[styles.todayDot, { backgroundColor: isActive ? '#FFF' : colors.primary }]} />}
               </TouchableOpacity>
             );
@@ -460,10 +529,55 @@ const styles = StyleSheet.create({
   heroStats: { alignItems: 'flex-end' },
   heroStatChip: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: 'rgba(255,255,255,0.5)', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20 },
 
-  daySelector: { paddingVertical: 12, borderBottomWidth: 1 },
-  dayBtn: { paddingHorizontal: 18, paddingVertical: 8, borderRadius: 20, alignItems: 'center' },
-  dayBtnText: { fontSize: 13, fontWeight: '700' },
-  todayDot: { width: 5, height: 5, borderRadius: 2.5, marginTop: 4 },
+  weekSwitcher: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+  },
+  weekNavBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 14,
+    borderWidth: 1,
+    gap: 2,
+  },
+  weekNavText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  weekCenterInfo: {
+    alignItems: 'center',
+  },
+  weekLabel: {
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  weekSubDates: {
+    fontSize: 10,
+    fontWeight: '500',
+    marginTop: 1,
+  },
+  todayResetBtn: {
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  todayResetText: {
+    fontSize: 11,
+    fontWeight: '800',
+  },
+
+  daySelector: { paddingVertical: 10, borderBottomWidth: 1 },
+  dayBtn: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 16, alignItems: 'center' },
+  dayBtnText: { fontSize: 12, fontWeight: '700' },
+  dayDateText: { fontSize: 13, marginTop: 2 },
+  todayDot: { width: 5, height: 5, borderRadius: 2.5, marginTop: 3 },
 
   breakRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 4 },
   breakLine: { flex: 1, height: 1 },

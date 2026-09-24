@@ -82,6 +82,7 @@ import CampusJournalExplorerScreen from '../screens/student/journal/CampusJourna
 import CampusJournalInsightsScreen from '../screens/student/journal/CampusJournalInsightsScreen';
 import SuggestWithAIScreen from '../screens/student/SuggestWithAIScreen';
 import ResumeBuilderScreen from '../screens/student/ResumeBuilderScreen';
+import MockInterviewScreen from '../screens/student/MockInterviewScreen';
 
 // Guest Detail Screens
 import FeeStructureScreen from '../screens/guest/FeeStructureScreen';
@@ -117,6 +118,12 @@ import PGLogbookHODVerifyScreen from '../screens/teacher/PGLogbookHODVerifyScree
 // Non-Medical ERP Screens
 import HODDashboardScreen from '../screens/teacher/HODDashboardScreen';
 import PlacementScreen from '../screens/student/PlacementScreen';
+import AlertsScreen from '../screens/student/AlertsScreen';
+import PlacementReadinessScreen from '../screens/student/PlacementReadinessScreen';
+import StudentScheduleScreen from '../screens/student/StudentScheduleScreen';
+import ERPNoticesScreen from '../screens/student/ERPNoticesScreen';
+import ERPLessonsScreen from '../screens/student/ERPLessonsScreen';
+import ERPInternshipsScreen from '../screens/student/ERPInternshipsScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -172,6 +179,7 @@ const AppNavigator = () => {
       <Stack.Screen name="TheHustle" component={TheHustleScreen} options={{ animation: 'fade' }} />
       <Stack.Screen name="ERPHub" component={ERPTabs} options={{ animation: 'fade' }} />
       <Stack.Screen name="ERPFees" component={ERPFeesScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="ERPLibrary" component={LibraryMainScreen} options={{ animation: 'slide_from_right' }} />
 
       {/* Campus Food Ordering */}
       <Stack.Screen name="CampusBitesMenu" component={CampusBitesMenuScreen} options={{ animation: 'slide_from_bottom' }} />
@@ -192,6 +200,7 @@ const AppNavigator = () => {
       <Stack.Screen name="LibraryMain" component={LibraryMainScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="BookDetail" component={BookDetailScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="ResumeBuilder" component={ResumeBuilderScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="MockInterview" component={MockInterviewScreen} options={{ animation: 'slide_from_right' }} />
 
       {/* Mentally Module */}
       <Stack.Screen name="MentallyMain" component={MentallyMainScreen} options={{ animation: 'slide_from_bottom' }} />
@@ -254,6 +263,12 @@ const AppNavigator = () => {
       {/* Non-Medical ERP Screens */}
       <Stack.Screen name="HODDashboard" component={HODDashboardScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="Placement" component={PlacementScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="PlacementReadiness" component={PlacementReadinessScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="Alerts" component={AlertsScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="StudentSchedule" component={StudentScheduleScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="ERPNotices" component={ERPNoticesScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="ERPLessons" component={ERPLessonsScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="ERPInternships" component={ERPInternshipsScreen} options={{ animation: 'slide_from_right' }} />
     </Stack.Navigator>
   );
 };

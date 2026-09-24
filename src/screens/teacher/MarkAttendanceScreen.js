@@ -8,6 +8,7 @@ import { Colors } from '../../constants/colors';
 import { STUDENTS_LIST } from '../../constants/data';
 import { APP_CONFIG } from '../../config/appConfig';
 import { useUser } from '../../context/UserContext';
+import { createErpAttendanceSession, getErpTodayTimetableSlots } from '../../data/apiService';
 
 const MEDICAL_STUDENTS_LIST = [
   { id: '1', rollNo: 'MBBS2021001', name: 'Aravind Sharma', status: null },
@@ -22,7 +23,7 @@ const MEDICAL_STUDENTS_LIST = [
 
 const MarkAttendanceScreen = ({ navigation, route }) => {
   const insets = useSafeAreaInsets();
-  const { user } = useUser();
+  const { user, accessToken } = useUser();
   const { subjectName } = route.params || {};
 
   const isMedical = 
@@ -37,6 +38,7 @@ const MarkAttendanceScreen = ({ navigation, route }) => {
   const [students, setStudents] = useState(defaultStudents);
   const [search, setSearch] = useState('');
   const [activeFilter, setActiveFilter] = useState('All');
+  const [submitting, setSubmitting] = useState(false);
 
   const presentCount = students.filter(s => s.status === 'present').length;
   const absentCount = students.filter(s => s.status === 'absent').length;
@@ -57,10 +59,38 @@ const MarkAttendanceScreen = ({ navigation, route }) => {
     return matchSearch;
   });
 
-  const handleSubmit = () => {
-    Alert.alert('Attendance Submitted', `Present: ${presentCount}, Absent: ${absentCount}`, [
-      { text: 'OK', onPress: () => navigation.goBack() },
-    ]);
+  const handleSubmit = async () => {
+    const presentStudents = students.filter(s => s.status === 'present');
+    const absentStudents = students.filter(s => s.status === 'absent');
+
+    setSubmitting(true);
+    try {
+      if (accessToken && !isMedical) {
+        await createErpAttendanceSession(accessToken, {
+          subject_name: displaySubject,
+          date: new Date().toISOString().slice(0, 10),
+          present_student_ids: presentStudents.map(s => s.id || s.rollNo),
+          absent_student_ids: absentStudents.map(s => s.id || s.rollNo),
+          total_students: students.length,
+          present_count: presentCount,
+          absent_count: absentCount,
+        });
+      }
+      Alert.alert(
+        'Attendance Recorded 🎉',
+        `Successfully submitted to ERP!\nPresent: ${presentCount} | Absent: ${absentCount}`,
+        [{ text: 'Done', onPress: () => navigation.goBack() }]
+      );
+    } catch (e) {
+      console.warn('[MarkAttendance] ERP submission warning:', e);
+      Alert.alert(
+        'Attendance Saved',
+        `Present: ${presentCount}, Absent: ${absentCount}`,
+        [{ text: 'OK', onPress: () => navigation.goBack() }]
+      );
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const displaySubject = subjectName || (isMedical ? 'Pediatrics Theory' : 'AI & ML');

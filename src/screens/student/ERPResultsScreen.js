@@ -32,6 +32,8 @@ import {
   getCompetencyChart,
   getNonMedicalSGPA,
   getNonMedicalUTMarks,
+  getErpExamResults,
+  getErpExamMarks,
 } from '../../data/apiService';
 
 const { width } = Dimensions.get('window');

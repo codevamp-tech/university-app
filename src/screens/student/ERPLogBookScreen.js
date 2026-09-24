@@ -8,7 +8,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../hooks/useTheme';
 import { useUser } from '../../context/UserContext';
-import { getLogbook, getSubjectList, getStudentSubjectLogbook } from '../../data/apiService';
+import { getLogbook, getSubjectList, getStudentSubjectLogbook, getErpLogbookTopics, getMyErpLogbookSubmissions, submitErpLogbookWork, getErpLogbookLeaderboard } from '../../data/apiService';
+import { isMedicalStudent } from '../../utils/courseDisplay';
 
 const { width } = Dimensions.get('window');
 
@@ -367,6 +368,529 @@ const isSubjectInPhase = (subj, phaseStr) => {
   return false;
 };
 
+// ─── Non-Medical ERP Academic Logbook Component ─────────────────────────────
+const NonMedLogbookView = ({ navigation, user, accessToken, isFaculty, passedStudent }) => {
+  const insets = useSafeAreaInsets();
+  const { colors, isDark } = useTheme();
+
+  const [activeTab, setActiveTab] = useState('topics'); // 'topics' | 'submissions' | 'leaderboard'
+  const [topics, setTopics] = useState([]);
+  const [submissions, setSubmissions] = useState([]);
+  const [leaderboard, setLeaderboard] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Submit Modal
+  const [showSubmitModal, setShowSubmitModal] = useState(false);
+  const [selectedTopic, setSelectedTopic] = useState(null);
+  const [submitNotes, setSubmitNotes] = useState('');
+  const [submitFileUrl, setSubmitFileUrl] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  const loadData = useCallback(async (isRefresh = false) => {
+    if (!accessToken) return;
+    if (isRefresh) setRefreshing(true);
+    else setLoading(true);
+
+    try {
+      const [topicsRes, subsRes, leadRes] = await Promise.allSettled([
+        getErpLogbookTopics(accessToken),
+        getMyErpLogbookSubmissions(accessToken),
+        getErpLogbookLeaderboard(accessToken),
+      ]);
+
+      setTopics(topicsRes.status === 'fulfilled' && Array.isArray(topicsRes.value) ? topicsRes.value : []);
+      setSubmissions(subsRes.status === 'fulfilled' && Array.isArray(subsRes.value) ? subsRes.value : []);
+      setLeaderboard(leadRes.status === 'fulfilled' && Array.isArray(leadRes.value) ? leadRes.value : []);
+    } catch (e) {
+      console.warn('[NonMedLogbook] Load error:', e);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [accessToken]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  const handleSubmitWork = async () => {
+    if (!selectedTopic) return;
+    if (!submitNotes.trim()) {
+      Alert.alert('Required', 'Please enter your notes / summary before submitting.');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      await submitErpLogbookWork(accessToken, {
+        topic_id: selectedTopic.id,
+        notes: submitNotes.trim(),
+        file_url: submitFileUrl.trim() || undefined,
+      });
+
+      Alert.alert('Success 🎉', 'Your logbook work has been submitted for faculty evaluation.');
+      setShowSubmitModal(false);
+      setSubmitNotes('');
+      setSubmitFileUrl('');
+      setSelectedTopic(null);
+      loadData(true);
+    } catch (err) {
+      Alert.alert('Submission Error', err.message || 'Failed to submit logbook entry.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const submittedTopicIds = new Set(submissions.map(s => s.topic_id || s.topic?.id));
+  const completedCount = submissions.length;
+  const totalTopicsCount = topics.length;
+  const completionPct = totalTopicsCount > 0 ? Math.round((completedCount / totalTopicsCount) * 100) : 0;
+
+  const filteredTopics = topics.filter(t => {
+    const q = searchQuery.toLowerCase();
+    return !q || (t.title && t.title.toLowerCase().includes(q)) || (t.subject_name && t.subject_name.toLowerCase().includes(q)) || (t.description && t.description.toLowerCase().includes(q));
+  });
+
+  const filteredSubmissions = submissions.filter(s => {
+    const q = searchQuery.toLowerCase();
+    const title = s.topic?.title || s.topic_title || '';
+    const notes = s.notes || '';
+    return !q || title.toLowerCase().includes(q) || notes.toLowerCase().includes(q);
+  });
+
+  return (
+    <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
+      {/* Header */}
+      <View style={[styles.header, { borderBottomColor: colors.border }]}>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <TouchableOpacity
+            onPress={() => {
+              if (isFaculty) navigation.navigate('FacultyStudentsDirectory');
+              else if (passedStudent) navigation.goBack();
+              else navigation.navigate('ERPHome');
+            }}
+            style={[styles.backBtn, { backgroundColor: colors.card }]}
+          >
+            <MaterialIcons name="arrow-back" size={22} color={colors.textPrimary} />
+          </TouchableOpacity>
+          <View style={{ marginLeft: 12 }}>
+            <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Academic Logbook</Text>
+            <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>Assignments, Lab Logs & Practicals</Text>
+          </View>
+        </View>
+        <TouchableOpacity onPress={() => loadData(true)} style={[styles.syncBtn, { backgroundColor: colors.card }]}>
+          <Feather name="refresh-cw" size={16} color={colors.primary} />
+        </TouchableOpacity>
+      </View>
+
+      {/* Progress Stats Banner */}
+      <View style={{ paddingHorizontal: 16, marginTop: 12, marginBottom: 8 }}>
+        <LinearGradient
+          colors={isDark ? ['#1E1B4B', '#312E81'] : ['#4338CA', '#5B4BFF']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={{ borderRadius: 16, padding: 16 }}
+        >
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <View>
+              <Text style={{ color: 'rgba(255,255,255,0.75)', fontSize: 11, fontWeight: '700', textTransform: 'uppercase' }}>Logbook Progress</Text>
+              <Text style={{ color: '#FFF', fontSize: 22, fontWeight: '900', marginTop: 2 }}>{completedCount} / {totalTopicsCount} Completed</Text>
+            </View>
+            <View style={{ backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 }}>
+              <Text style={{ color: '#FFF', fontSize: 13, fontWeight: '800' }}>{completionPct}%</Text>
+            </View>
+          </View>
+          <View style={{ height: 6, backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 3, marginTop: 12, overflow: 'hidden' }}>
+            <View style={{ height: '100%', width: `${Math.min(completionPct, 100)}%`, backgroundColor: '#34D399', borderRadius: 3 }} />
+          </View>
+        </LinearGradient>
+      </View>
+
+      {/* Tab Switcher */}
+      <View style={{ flexDirection: 'row', paddingHorizontal: 16, marginVertical: 8, gap: 8 }}>
+        {[
+          { key: 'topics', label: `Topics (${topics.length})`, icon: 'assignment' },
+          { key: 'submissions', label: `Submissions (${submissions.length})`, icon: 'verified' },
+          { key: 'leaderboard', label: 'Leaderboard', icon: 'emoji-events' },
+        ].map(tab => {
+          const isSel = activeTab === tab.key;
+          return (
+            <TouchableOpacity
+              key={tab.key}
+              onPress={() => setActiveTab(tab.key)}
+              style={{
+                flex: 1,
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 4,
+                paddingVertical: 8,
+                borderRadius: 10,
+                backgroundColor: isSel ? colors.primary : colors.card,
+                borderWidth: 1,
+                borderColor: isSel ? colors.primary : colors.border,
+              }}
+            >
+              <MaterialIcons name={tab.icon} size={15} color={isSel ? '#FFF' : colors.textSecondary} />
+              <Text style={{ fontSize: 11, fontWeight: '700', color: isSel ? '#FFF' : colors.textSecondary }} numberOfLines={1}>
+                {tab.label}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+
+      {/* Search bar */}
+      {activeTab !== 'leaderboard' && (
+        <View style={{ paddingHorizontal: 16, marginBottom: 8 }}>
+          <View style={[styles.searchBar, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <Ionicons name="search-outline" size={16} color={colors.textSecondary} />
+            <TextInput
+              placeholder={activeTab === 'topics' ? "Search topics, subjects..." : "Search submissions..."}
+              placeholderTextColor={colors.textMuted}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              style={[styles.searchInput, { color: colors.textPrimary }]}
+            />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity onPress={() => setSearchQuery('')}>
+                <Ionicons name="close-circle" size={16} color={colors.textSecondary} />
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+      )}
+
+      {loading ? (
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={{ color: colors.textSecondary, marginTop: 8, fontSize: 13 }}>Loading logbook...</Text>
+        </View>
+      ) : (
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 100, gap: 10 }}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={() => loadData(true)} colors={[colors.primary]} tintColor={colors.primary} />
+          }
+        >
+          {/* TAB 1: TOPICS */}
+          {activeTab === 'topics' && (
+            filteredTopics.length === 0 ? (
+              <View style={[styles.emptyStateCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                <MaterialCommunityIcons name="clipboard-text-outline" size={44} color={colors.textSecondary} />
+                <Text style={[styles.emptyStateTitle, { color: colors.textPrimary }]}>No Topics Found</Text>
+                <Text style={[styles.emptyStateSubtitle, { color: colors.textSecondary }]}>
+                  {searchQuery ? 'No topics match your search.' : 'No logbook topics have been assigned yet for your semester.'}
+                </Text>
+              </View>
+            ) : (
+              filteredTopics.map((topic, idx) => {
+                const isSubmitted = submittedTopicIds.has(topic.id);
+                return (
+                  <View
+                    key={topic.id || idx}
+                    style={{
+                      backgroundColor: colors.card,
+                      borderRadius: 14,
+                      borderWidth: 1,
+                      borderColor: isSubmitted ? '#10B981' : colors.border,
+                      padding: 14,
+                      gap: 8,
+                    }}
+                  >
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <View style={{ backgroundColor: isDark ? 'rgba(91, 75, 255, 0.15)' : '#EEF2FF', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 }}>
+                        <Text style={{ fontSize: 10, fontWeight: '800', color: colors.primary }}>
+                          {topic.subject_name || topic.subject_code || 'Academic Log'}
+                        </Text>
+                      </View>
+                      {isSubmitted ? (
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: isDark ? 'rgba(16, 185, 129, 0.15)' : '#D1FAE5', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 }}>
+                          <MaterialIcons name="check-circle" size={12} color="#059669" />
+                          <Text style={{ fontSize: 10, fontWeight: '800', color: '#059669' }}>SUBMITTED</Text>
+                        </View>
+                      ) : (
+                        <View style={{ backgroundColor: isDark ? 'rgba(245, 158, 11, 0.15)' : '#FEF3C7', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 }}>
+                          <Text style={{ fontSize: 10, fontWeight: '800', color: '#D97706' }}>PENDING</Text>
+                        </View>
+                      )}
+                    </View>
+
+                    <Text style={{ fontSize: 15, fontWeight: '800', color: colors.textPrimary }}>
+                      {topic.title || 'Untitled Topic'}
+                    </Text>
+
+                    {topic.description ? (
+                      <Text style={{ fontSize: 12, color: colors.textSecondary, lineHeight: 17 }} numberOfLines={3}>
+                        {topic.description}
+                      </Text>
+                    ) : null}
+
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 8, borderTopWidth: 1, borderTopColor: colors.border }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                        <MaterialIcons name="person-outline" size={14} color={colors.textSecondary} />
+                        <Text style={{ fontSize: 11, color: colors.textSecondary }}>
+                          {topic.faculty_name || 'Faculty'}
+                        </Text>
+                      </View>
+
+                      {!isSubmitted && (
+                        <TouchableOpacity
+                          onPress={() => {
+                            setSelectedTopic(topic);
+                            setShowSubmitModal(true);
+                          }}
+                          style={{
+                            backgroundColor: colors.primary,
+                            paddingHorizontal: 12,
+                            paddingVertical: 6,
+                            borderRadius: 8,
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            gap: 4,
+                          }}
+                        >
+                          <MaterialIcons name="upload" size={14} color="#FFF" />
+                          <Text style={{ color: '#FFF', fontSize: 11, fontWeight: '800' }}>Submit Work</Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  </View>
+                );
+              })
+            )
+          )}
+
+          {/* TAB 2: SUBMISSIONS */}
+          {activeTab === 'submissions' && (
+            filteredSubmissions.length === 0 ? (
+              <View style={[styles.emptyStateCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                <MaterialIcons name="assignment-turned-in" size={44} color={colors.textSecondary} />
+                <Text style={[styles.emptyStateTitle, { color: colors.textPrimary }]}>No Submissions Yet</Text>
+                <Text style={[styles.emptyStateSubtitle, { color: colors.textSecondary }]}>
+                  Submit assignments from the Topics tab to track verification and grades here.
+                </Text>
+              </View>
+            ) : (
+              filteredSubmissions.map((sub, sIdx) => {
+                const status = (sub.status || 'pending_review').toLowerCase();
+                const isApproved = status === 'approved' || status === 'verified' || status === 'graded';
+                return (
+                  <View
+                    key={sub.id || sIdx}
+                    style={{
+                      backgroundColor: colors.card,
+                      borderRadius: 14,
+                      borderWidth: 1,
+                      borderColor: isApproved ? '#10B981' : colors.border,
+                      padding: 14,
+                      gap: 8,
+                    }}
+                  >
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Text style={{ fontSize: 14, fontWeight: '800', color: colors.textPrimary, flex: 1, marginRight: 8 }} numberOfLines={1}>
+                        {sub.topic?.title || sub.topic_title || 'Logbook Entry'}
+                      </Text>
+                      <View style={{
+                        backgroundColor: isApproved ? (isDark ? 'rgba(16, 185, 129, 0.15)' : '#D1FAE5') : (isDark ? 'rgba(245, 158, 11, 0.15)' : '#FEF3C7'),
+                        paddingHorizontal: 8,
+                        paddingVertical: 3,
+                        borderRadius: 6,
+                      }}>
+                        <Text style={{
+                          fontSize: 10,
+                          fontWeight: '800',
+                          color: isApproved ? '#059669' : '#D97706',
+                        }}>
+                          {status.replace(/_/g, ' ').toUpperCase()}
+                        </Text>
+                      </View>
+                    </View>
+
+                    {sub.notes ? (
+                      <View style={{ backgroundColor: isDark ? '#1E293B' : '#F8FAFC', padding: 10, borderRadius: 8 }}>
+                        <Text style={{ fontSize: 11, color: colors.textSecondary, fontStyle: 'italic' }}>
+                          "{sub.notes}"
+                        </Text>
+                      </View>
+                    ) : null}
+
+                    {sub.faculty_remarks && (
+                      <View style={{ backgroundColor: isDark ? 'rgba(91, 75, 255, 0.1)' : '#EEF2FF', padding: 10, borderRadius: 8 }}>
+                        <Text style={{ fontSize: 11, fontWeight: '700', color: colors.primary }}>
+                          Faculty Remarks: {sub.faculty_remarks}
+                        </Text>
+                      </View>
+                    )}
+
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 6, borderTopWidth: 1, borderTopColor: colors.border }}>
+                      <Text style={{ fontSize: 10, color: colors.textSecondary }}>
+                        Submitted: {sub.created_at ? new Date(sub.created_at).toLocaleDateString() : 'Recent'}
+                      </Text>
+                      {sub.grade != null && (
+                        <Text style={{ fontSize: 12, fontWeight: '800', color: '#10B981' }}>
+                          Score: {sub.grade} pts
+                        </Text>
+                      )}
+                    </View>
+                  </View>
+                );
+              })
+            )
+          )}
+
+          {/* TAB 3: LEADERBOARD */}
+          {activeTab === 'leaderboard' && (
+            leaderboard.length === 0 ? (
+              <View style={[styles.emptyStateCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                <MaterialIcons name="emoji-events" size={44} color={colors.textSecondary} />
+                <Text style={[styles.emptyStateTitle, { color: colors.textPrimary }]}>Leaderboard Refreshing</Text>
+                <Text style={[styles.emptyStateSubtitle, { color: colors.textSecondary }]}>
+                  Points and rankings are computed as logbook assignments are evaluated.
+                </Text>
+              </View>
+            ) : (
+              leaderboard.map((item, lIdx) => {
+                const rank = lIdx + 1;
+                const isMe = item.student_id === user?.id || item.rollno === user?.rollno;
+                return (
+                  <View
+                    key={item.id || lIdx}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      backgroundColor: isMe ? (isDark ? 'rgba(91, 75, 255, 0.15)' : '#EEF2FF') : colors.card,
+                      borderRadius: 12,
+                      borderWidth: 1,
+                      borderColor: isMe ? colors.primary : colors.border,
+                      padding: 12,
+                      gap: 10,
+                    }}
+                  >
+                    <View style={{
+                      width: 28,
+                      height: 28,
+                      borderRadius: 14,
+                      backgroundColor: rank === 1 ? '#FEF08A' : rank === 2 ? '#E2E8F0' : rank === 3 ? '#FED7AA' : 'transparent',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                    }}>
+                      <Text style={{ fontSize: 12, fontWeight: '900', color: rank <= 3 ? '#000' : colors.textSecondary }}>
+                        #{rank}
+                      </Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 13, fontWeight: '800', color: colors.textPrimary }}>
+                        {item.name || item.student_name || `Student ${rank}`} {isMe ? '(You)' : ''}
+                      </Text>
+                      <Text style={{ fontSize: 10, color: colors.textSecondary }}>
+                        {item.submissions_count || item.completed || 0} Submissions
+                      </Text>
+                    </View>
+                    <Text style={{ fontSize: 14, fontWeight: '900', color: colors.primary }}>
+                      {item.total_points || item.points || 0} pts
+                    </Text>
+                  </View>
+                );
+              })
+            )
+          )}
+        </ScrollView>
+      )}
+
+      {/* Submission Modal */}
+      <Modal visible={showSubmitModal} animationType="slide" transparent onRequestClose={() => setShowSubmitModal(false)}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' }}>
+          <View style={{ backgroundColor: colors.background, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, maxHeight: '85%', gap: 14 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Text style={{ fontSize: 17, fontWeight: '900', color: colors.textPrimary }}>Submit Assignment</Text>
+              <TouchableOpacity onPress={() => setShowSubmitModal(false)}>
+                <Ionicons name="close-circle" size={24} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+
+            {selectedTopic && (
+              <View style={{ backgroundColor: isDark ? '#1E293B' : '#F1F5F9', padding: 12, borderRadius: 10 }}>
+                <Text style={{ fontSize: 11, fontWeight: '800', color: colors.primary }}>{selectedTopic.subject_name || 'Academic'}</Text>
+                <Text style={{ fontSize: 14, fontWeight: '800', color: colors.textPrimary, marginTop: 2 }}>{selectedTopic.title}</Text>
+              </View>
+            )}
+
+            <View>
+              <Text style={{ fontSize: 12, fontWeight: '700', color: colors.textPrimary, marginBottom: 6 }}>
+                Work Summary / Solution Notes *
+              </Text>
+              <TextInput
+                multiline
+                numberOfLines={4}
+                placeholder="Describe your lab results, code overview, or reflection..."
+                placeholderTextColor={colors.textMuted}
+                value={submitNotes}
+                onChangeText={setSubmitNotes}
+                style={{
+                  backgroundColor: colors.card,
+                  borderColor: colors.border,
+                  borderWidth: 1,
+                  borderRadius: 10,
+                  padding: 12,
+                  color: colors.textPrimary,
+                  fontSize: 13,
+                  minHeight: 100,
+                  textAlignVertical: 'top',
+                }}
+              />
+            </View>
+
+            <View>
+              <Text style={{ fontSize: 12, fontWeight: '700', color: colors.textPrimary, marginBottom: 6 }}>
+                Document / Drive Link (Optional)
+              </Text>
+              <TextInput
+                placeholder="https://drive.google.com/... or github.com/..."
+                placeholderTextColor={colors.textMuted}
+                value={submitFileUrl}
+                onChangeText={setSubmitFileUrl}
+                style={{
+                  backgroundColor: colors.card,
+                  borderColor: colors.border,
+                  borderWidth: 1,
+                  borderRadius: 10,
+                  padding: 10,
+                  color: colors.textPrimary,
+                  fontSize: 13,
+                }}
+              />
+            </View>
+
+            <TouchableOpacity
+              onPress={handleSubmitWork}
+              disabled={submitting}
+              style={{
+                backgroundColor: colors.primary,
+                paddingVertical: 14,
+                borderRadius: 12,
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginTop: 6,
+              }}
+            >
+              {submitting ? (
+                <ActivityIndicator color="#FFF" />
+              ) : (
+                <Text style={{ color: '#FFF', fontSize: 14, fontWeight: '800' }}>Submit to Faculty</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+    </View>
+  );
+};
+
+// ─── Main Screen (Medical + Non-Medical Gateway) ─────────────────────────────
 const ERPLogBookScreen = ({ route, navigation }) => {
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
@@ -375,6 +899,20 @@ const ERPLogBookScreen = ({ route, navigation }) => {
   const user = passedStudent || contextUser;
   const isFaculty = contextUser && contextUser.role === 'teacher';
 
+  // ── NON-MEDICAL GATEWAY: Render NonMedLogbookView ─────────────────────────
+  if (!isMedicalStudent(user)) {
+    return (
+      <NonMedLogbookView
+        navigation={navigation}
+        user={user}
+        accessToken={accessToken}
+        isFaculty={isFaculty}
+        passedStudent={passedStudent}
+      />
+    );
+  }
+
+  // ── MEDICAL MBBS SRMS PATH (PRESERVED 100% UNCHANGED) ──────────────────────
   const [logbook, setLogbook] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);

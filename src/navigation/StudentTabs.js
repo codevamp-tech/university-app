@@ -4,6 +4,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../hooks/useTheme';
 import { useUser } from '../context/UserContext';
+import { isCsEligibleForPlacement } from '../utils/placementReadiness';
 
 // Student Screens
 import DashboardScreen from '../screens/student/DashboardScreen';
@@ -12,6 +13,7 @@ import TalentIdentityScreen from '../screens/student/TalentIdentityScreen';
 import VentureScreen from '../screens/student/VentureScreen';
 import MarketplaceScreen from '../screens/student/MarketplaceScreen';
 import AlertsScreen from '../screens/student/AlertsScreen';
+import PlacementReadinessScreen from '../screens/student/PlacementReadinessScreen';
 
 const Tab = createBottomTabNavigator();
 
@@ -19,6 +21,7 @@ const StudentTabs = () => {
   const { colors, isDark } = useTheme();
   const { user } = useUser();
   const isMed = user && (user.course?.toLowerCase().includes('mbbs') || user.course?.toLowerCase().includes('medicine') || user.category?.toLowerCase().includes('medical'));
+  const isPlacementActive = isCsEligibleForPlacement(user);
 
   return (
     <Tab.Navigator
@@ -44,7 +47,7 @@ const StudentTabs = () => {
             label = 'Home';
           } else if (route.name === 'Community') {
             iconName = 'users';
-            label = 'Social';
+            label = 'Feed';
           } else if (route.name === 'Identity') {
             IconLibrary = MaterialCommunityIcons;
             iconName = 'card-account-details-outline';
@@ -57,6 +60,10 @@ const StudentTabs = () => {
             IconLibrary = MaterialCommunityIcons;
             iconName = 'storefront-outline';
             label = 'Shop';
+          } else if (route.name === 'Placement') {
+            IconLibrary = MaterialCommunityIcons;
+            iconName = focused ? 'briefcase-check' : 'briefcase-check-outline';
+            label = 'Placement';
           } else if (route.name === 'Alerts') {
             iconName = 'bell';
             label = 'Alerts';
@@ -93,7 +100,11 @@ const StudentTabs = () => {
       <Tab.Screen name="Community" component={CommunityScreen} />
       <Tab.Screen name="Venture" component={VentureScreen} />
       <Tab.Screen name="Marketplace" component={MarketplaceScreen} />
-      <Tab.Screen name="Alerts" component={AlertsScreen} />
+      {isPlacementActive ? (
+        <Tab.Screen name="Placement" component={PlacementReadinessScreen} />
+      ) : (
+        <Tab.Screen name="Alerts" component={AlertsScreen} />
+      )}
       <Tab.Screen name="Identity" component={TalentIdentityScreen} />
     </Tab.Navigator>
   );

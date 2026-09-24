@@ -12,6 +12,7 @@ import { useUser } from '../../../context/UserContext';
 import { APP_CONFIG } from '../../../config/appConfig';
 import { useTheme } from '../../../hooks/useTheme';
 import { getAvatarUrl } from '../../../utils/avatar';
+import { SafeStudentAvatar } from '../../../components/SafeStudentAvatar';
 
 const { width } = Dimensions.get('window');
 const JournalSkeleton = () => {
@@ -209,8 +210,10 @@ const CampusJournalFeedScreen = ({ navigation }) => {
           <TouchableOpacity onPress={() => navigation.navigate('StudentMain')} style={{ marginRight: 8 }}>
             <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
           </TouchableOpacity>
-          <Image
-            source={{ uri: getAvatarUrl(user?.avatar_url || user?.name) }}
+          <SafeStudentAvatar
+            uri={getAvatarUrl(user?.avatar_url || user?.name, user?.rollno || user?.username)}
+            rollno={user?.rollno || user?.username}
+            name={user?.name || user?.full_name || 'S'}
             style={[styles.profilePic, { borderColor: colors.primary }]}
           />
           <Text style={[styles.headerTitle, { color: colors.primary }]}>Campus Journal</Text>
