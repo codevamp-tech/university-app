@@ -32,7 +32,7 @@ export const APP_CONFIG = {
   // ─── UniCampus Academic ERP Backend (NestJS — unicampus-new-erp) ─────────
   // Handles: Attendance, Timetable, Placement, Results, Fees, Library,
   //          Internships, Notices, Lessons, Incubation
-  ERP_API_BASE_URL:  process.env.EXPO_PUBLIC_ERP_API_BASE_URL  || 'http://34.236.107.120:8081',
+  ERP_API_BASE_URL:  process.env.EXPO_PUBLIC_ERP_API_BASE_URL  || 'http://100.63.22.73:3000',
   ERP_TENANT_SLUG:   process.env.EXPO_PUBLIC_ERP_TENANT_SLUG   || 'srms-cet',
 
   // Internal password — user types '1234' in app, this is what gets sent to the API
