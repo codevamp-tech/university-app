@@ -234,15 +234,22 @@ const StudentScheduleScreen = ({ route, navigation }) => {
         const department_id = user?.department_id || null;
 
         // Try ERP NestJS /timetable/student-schedule first
-        let slots = [];
+        let rawSched = null;
         try {
-          slots = await getErpStudentSchedule(accessToken, { semester, department_id });
+          rawSched = await getErpStudentSchedule(accessToken, { semester, department_id });
         } catch (_) {}
+
+        let slots = Array.isArray(rawSched)
+          ? rawSched
+          : (Array.isArray(rawSched?.weeklySlots)
+              ? rawSched.weeklySlots
+              : (Array.isArray(rawSched?.todaysSlots) ? rawSched.todaysSlots : []));
 
         // Fallback to Python academic-ops endpoint
         if (!slots || slots.length === 0) {
           try {
-            slots = await getTimetable(accessToken, { semester, department_id });
+            const pySlots = await getTimetable(accessToken, { semester, department_id });
+            if (Array.isArray(pySlots) && pySlots.length > 0) slots = pySlots;
           } catch (_) {}
         }
 

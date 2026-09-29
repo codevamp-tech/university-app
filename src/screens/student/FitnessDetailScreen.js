@@ -357,7 +357,14 @@ const FitnessDetailScreen = ({ navigation }) => {
                     <Text style={{ fontSize: 10, fontWeight: '800', color: item.color, marginLeft: 4 }}>TAP TO START</Text>
                   </View>
                 )}
+                {!permissionGranted && item.label !== 'Focus' && (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 6, backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : '#F1F5F9', paddingHorizontal: 7, paddingVertical: 3, borderRadius: 8, alignSelf: 'center' }}>
+                    <MaterialCommunityIcons name="chart-timeline-variant-shimmer" size={11} color={colors.textSecondary} />
+                    <Text style={{ fontSize: 9, fontWeight: '700', color: colors.textSecondary }}>ESTIMATED</Text>
+                  </View>
+                )}
               </TouchableOpacity>
+
             );
           })}
         </View>

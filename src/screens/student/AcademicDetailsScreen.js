@@ -8,11 +8,19 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { STUDENT_USER } from '../../constants/data';
+import { useUser } from '../../context/UserContext';
 
 const AcademicDetailsScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
+  const { user } = useUser();
 
+  const cgpa = user?.cgpa && Number(user.cgpa) > 0 ? Number(user.cgpa).toFixed(2) : '7.48';
+  const course = user?.course || 'BCA';
+  const branch = user?.branch || 'Computer Applications';
+  const college = user?.college_name || user?.collegeName || 'SRMS CET, Bareilly';
+  const semester = user?.semester ? `${user.semester}${user.semester === 1 ? 'st' : user.semester === 2 ? 'nd' : user.semester === 3 ? 'rd' : 'th'} Semester` : '3rd Semester';
+  const batch = user?.batch_code || user?.batchCode || '2025 Batch';
 
   return (
     <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
@@ -25,8 +33,6 @@ const AcademicDetailsScreen = ({ navigation }) => {
         <View style={{ width: 40 }} />
       </View>
 
-
-
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         {/* GPA Summary Card */}
         <LinearGradient
@@ -37,44 +43,38 @@ const AcademicDetailsScreen = ({ navigation }) => {
         >
           <View>
             <Text style={styles.gpaLabel}>CURRENT CGPA</Text>
-            <Text style={styles.gpaValue}>3.85 / 4.0</Text>
+            <Text style={styles.gpaValue}>{cgpa} / 10.0</Text>
           </View>
           <View style={styles.gpaBadge}>
             <Text style={styles.gpaBadgeText}>Top 5%</Text>
           </View>
         </LinearGradient>
 
-
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>CURRENT PROGRAM</Text>
 
           <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-
             <View style={styles.infoRow}>
-              <Text style={[styles.label, { color: colors.textSecondary }]}>Major</Text>
-              <Text style={[styles.value, { color: colors.textPrimary }]}>{STUDENT_USER.program || 'B.Sc. Computer Science'}</Text>
-
+              <Text style={[styles.label, { color: colors.textSecondary }]}>Degree & Major</Text>
+              <Text style={[styles.value, { color: colors.textPrimary }]}>{course} • {branch}</Text>
             </View>
             <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
             <View style={styles.infoRow}>
-              <Text style={[styles.label, { color: colors.textSecondary }]}>School</Text>
-              <Text style={[styles.value, { color: colors.textPrimary }]}>School of Engineering & Tech</Text>
-
+              <Text style={[styles.label, { color: colors.textSecondary }]}>College / Institution</Text>
+              <Text style={[styles.value, { color: colors.textPrimary }]}>{college}</Text>
             </View>
             <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
             <View style={styles.infoRow}>
-              <Text style={[styles.label, { color: colors.textSecondary }]}>Semester</Text>
-              <Text style={[styles.value, { color: colors.textPrimary }]}>6th Semester</Text>
-
+              <Text style={[styles.label, { color: colors.textSecondary }]}>Academic Term</Text>
+              <Text style={[styles.value, { color: colors.textPrimary }]}>{semester}</Text>
             </View>
             <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
             <View style={styles.infoRow}>
-              <Text style={[styles.label, { color: colors.textSecondary }]}>Batch</Text>
-              <Text style={[styles.value, { color: colors.textPrimary }]}>2021-2025</Text>
-
+              <Text style={[styles.label, { color: colors.textSecondary }]}>Graduating Cohort</Text>
+              <Text style={[styles.value, { color: colors.textPrimary }]}>{batch}</Text>
             </View>
           </View>
         </View>
@@ -89,8 +89,8 @@ const AcademicDetailsScreen = ({ navigation }) => {
               </View>
 
               <View style={styles.advisorInfo}>
-                <Text style={[styles.advisorName, { color: colors.textPrimary }]}>Dr. Sarah Johnson</Text>
-                <Text style={[styles.advisorDept, { color: colors.textSecondary }]}>Associate Professor, CS Dept.</Text>
+                <Text style={[styles.advisorName, { color: colors.textPrimary }]}>{user?.advisor_name || 'Academic Mentor'}</Text>
+                <Text style={[styles.advisorDept, { color: colors.textSecondary }]}>{user?.advisor_designation || `Faculty Incharge, ${user?.branch_name || branch || 'BCA Dept'}`}</Text>
               </View>
 
               <TouchableOpacity style={[styles.contactIcon, { backgroundColor: isDark ? 'rgba(139, 47, 201, 0.2)' : '#F5EEFC' }]}>

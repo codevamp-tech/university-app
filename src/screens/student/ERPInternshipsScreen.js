@@ -160,9 +160,31 @@ const matchesStudentCourse = (item, user) => {
   return true;
 };
 
+const getCompanyTitle = (item) => {
+  if (!item) return 'SRMS IMS Software Cell';
+  if (item.company && item.company !== 'Company' && item.company.trim()) return item.company.trim();
+  if (item.company_name && item.company_name !== 'Company' && item.company_name.trim()) return item.company_name.trim();
+  if (item.organization_name && item.organization_name.trim()) return item.organization_name.trim();
+  if (item.off_campus_title && item.off_campus_title.trim()) return item.off_campus_title.trim();
+  if (item.campus_type === 'ON_CAMPUS') {
+    if (item.description?.includes('SRMS IMS Software Cell') || item.title?.includes('Dot Net') || item.category === 'IT') {
+      return 'SRMS IMS Software Cell';
+    }
+    if (item.category === 'PARAMEDICAL' || item.description?.includes('Hospital')) {
+      return 'SRMS Hospital & Diagnostic Cell';
+    }
+    if (item.category === 'MANAGEMENT') {
+      return 'SRMS Corporate Analytics Cell';
+    }
+    return 'SRMS IMS Software Cell';
+  }
+  return 'SRMS In-House Cell';
+};
+
 const InternshipCard = ({ item, isApplied, onApply, onCertificate, isDark, colors }) => {
   const sm = STATUS_META[item.status?.toLowerCase()] || STATUS_META.open;
   const deadline = item.deadline ? new Date(item.deadline).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : null;
+  const companyTitle = getCompanyTitle(item);
 
   return (
     <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -172,7 +194,7 @@ const InternshipCard = ({ item, isApplied, onApply, onCertificate, isDark, color
           <MaterialIcons name="business" size={22} color={isDark ? '#818CF8' : '#4338CA'} />
         </LinearGradient>
         <View style={{ flex: 1, marginLeft: 12 }}>
-          <Text style={[styles.companyName, { color: colors.textPrimary }]}>{item.company || item.company_name || 'Company'}</Text>
+          <Text style={[styles.companyName, { color: colors.textPrimary }]}>{companyTitle}</Text>
           <Text style={[styles.roleText, { color: colors.textSecondary }]}>{item.role || item.title || 'Internship'}</Text>
         </View>
         <View style={[styles.statusBadge, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : sm.bg }]}>
@@ -281,9 +303,10 @@ const ERPInternshipsScreen = ({ navigation }) => {
   useEffect(() => { loadData(); }, [loadData]);
 
   const handleApply = (item) => {
+    const compName = getCompanyTitle(item);
     Alert.alert(
       'Apply for Internship',
-      `Apply to ${item.company || 'this company'} for ${item.role || item.title}?`,
+      `Apply to ${compName} for ${item.role || item.title}?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -294,7 +317,7 @@ const ERPInternshipsScreen = ({ navigation }) => {
               await applyForErpInternship(accessToken, {
                 internship_id: item.id,
                 cgpa: user?.cgpa || null,
-                reason: `Applying for ${item.role || item.title} at ${item.company || ''}`,
+                reason: `Applying for ${item.role || item.title} at ${compName}`,
               });
               Alert.alert('✅ Applied!', 'Your application has been submitted successfully.');
               setAppliedIds(prev => new Set([...prev, item.id]));

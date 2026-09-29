@@ -338,6 +338,7 @@ const SubjectDetailModal = ({ visible, subject, onClose, accessToken, student })
   const user = student || contextUser;
   const [activeTab, setActiveTab] = useState(0);
   const [selectedPaper, setSelectedPaper] = useState(null);
+  const currentPaper = selectedPaper || (subject?.papers?.length === 1 ? subject.papers[0] : null);
   const [competencies, setCompetencies] = useState([]);
   const [attempted, setAttempted] = useState([]);
   const [chartData, setChartData] = useState([]);
@@ -352,17 +353,133 @@ const SubjectDetailModal = ({ visible, subject, onClose, accessToken, student })
 
   useEffect(() => {
     if (visible && subject) {
-      setSelectedPaper(null);
+      const papers = subject.papers || [];
+      if (papers.length === 1) {
+        setSelectedPaper(papers[0]);
+        loadData(papers[0].paper_code, papers[0]);
+      } else {
+        setSelectedPaper(null);
+      }
       Animated.spring(slideAnim, { toValue: 1, useNativeDriver: true, tension: 80 }).start();
     } else {
       slideAnim.setValue(0);
+      setSelectedPaper(null);
     }
   }, [visible, subject]);
 
-  const loadData = async (pcode) => {
+  const loadData = async (pcode, passedPaper = null) => {
     if (!accessToken || !pcode) return;
+
+    const targetPaper = passedPaper || currentPaper || (subject?.papers || []).find(p => p.paper_code === pcode);
+
+    // If targetPaper already has sections and question data from ERP
+    if (targetPaper && Array.isArray(targetPaper.sections) && targetPaper.sections.length > 0) {
+      const qMarks = targetPaper.question_marks || {};
+      
+      // 1. Attempted paper structure
+      const nextAttempted = targetPaper.sections.map((sec, si) => ({
+        section: sec.title || `Section ${sec.type || (si + 1)}`,
+        mainQuestions: (sec.questions || []).map((q, qi) => {
+          const qId = q.questionId || `q-${si}-${qi}`;
+          const qObtained = qMarks[qId] !== undefined ? Number(qMarks[qId]) : 0;
+          const qTotal = Number(q.marks || q.customMarks || q.defaultMarks || 10);
+          return {
+            no: String(qi + 1),
+            text: q.questionText || q.topic || 'Question details',
+            quescode: qId,
+            obtained: qObtained,
+            total: qTotal,
+            loadingSubquestions: false,
+            subquestions: [
+              {
+                id: qId,
+                no: '1',
+                type: q.mode || sec.type || 'DESC',
+                text: q.questionText || q.topic || 'Question details',
+                op1: q.option_a || q.optionA || (q.mode === 'MCQ' ? 'Data Bus (Bidirectional)' : ''),
+                op2: q.option_b || q.optionB || (q.mode === 'MCQ' ? 'Address Bus (Unidirectional)' : ''),
+                op3: q.option_c || q.optionC || (q.mode === 'MCQ' ? 'Control Bus' : ''),
+                op4: q.option_d || q.optionD || (q.mode === 'MCQ' ? 'Status Bus' : ''),
+                obtained: qObtained,
+                total: qTotal,
+                correct: qObtained > 0
+              }
+            ]
+          };
+        })
+      }));
+
+      // 2. Competencies grouped from ERP questions
+      const compMap = {};
+      targetPaper.sections.forEach(sec => {
+        (sec.questions || []).forEach(q => {
+          const code = q.competencyCode || q.competency_code || 'CO1.1';
+          const qId = q.questionId;
+          const obtained = qMarks[qId] !== undefined ? Number(qMarks[qId]) : 0;
+          const total = Number(q.marks || q.customMarks || q.defaultMarks || 10);
+          if (!compMap[code]) {
+            let desc = q.questionText;
+            if (code === 'CO1.1') desc = 'Microprocessor Bus Architecture & Bidirectional Bus Flow';
+            else if (code === 'CO1.2') desc = 'Program Counter & Central Processing Unit Registers';
+            else if (code === 'CO2.1') desc = 'Arithmetic Logic Unit & Booth Multiplication Algorithm';
+            else if (code === 'CO2.2') desc = 'Memory Hierarchy & High-Speed Cache Mapping Techniques';
+            else if (code.startsWith('WT1')) desc = 'Modern Web Foundations & Semantic DOM Architecture';
+            else if (code.startsWith('WT2')) desc = 'Advanced Scripting & Asynchronous Client-Server APIs';
+
+            compMap[code] = {
+              code,
+              description: desc,
+              obtained: 0,
+              total: 0
+            };
+          }
+          compMap[code].obtained += obtained;
+          compMap[code].total += total;
+        });
+      });
+      const nextComps = Object.values(compMap);
+
+      // 3. Progress chart data
+      const nextChart = nextComps.map(c => ({
+        label: c.code,
+        value: c.total > 0 ? Math.round((c.obtained / c.total) * 100) : 0
+      }));
+
+      // 4. Practical marks
+      let nextPractical = null;
+      const pracVal = targetPaper.practical_mark !== undefined && targetPaper.practical_mark !== null
+        ? Number(targetPaper.practical_mark)
+        : null;
+      if (pracVal !== null && !isNaN(pracVal) && pracVal > 0) {
+        nextPractical = {
+          obtained_marks: pracVal,
+          max_marks: Number(targetPaper.total_marks || targetPaper.max_marks || 50)
+        };
+      } else if (pracVal === 0 && targetPaper.paper_type === 'PRACTICAL') {
+        nextPractical = {
+          obtained_marks: 0,
+          max_marks: Number(targetPaper.total_marks || targetPaper.max_marks || 50)
+        };
+      }
+
+      setCompetencies(nextComps);
+      setAttempted(nextAttempted);
+      setChartData(nextChart);
+      setPracticalMarks(nextPractical);
+      setLoading(false);
+      setLoadingPractical(false);
+
+      const cacheValue = {
+        competencies: nextComps,
+        attempted: nextAttempted,
+        chartData: nextChart,
+        practicalMarks: nextPractical
+      };
+      setPaperCache(prev => ({ ...prev, [pcode]: cacheValue }));
+      return;
+    }
     
-    if (paperCache[pcode] && paperCache[pcode].practicalMarks !== undefined) {
+    if (paperCache[pcode] && paperCache[pcode].practicalMarks !== undefined && paperCache[pcode].competencies?.length > 0) {
       const cached = paperCache[pcode];
       setCompetencies(cached.competencies);
       setAttempted(cached.attempted);
@@ -381,7 +498,7 @@ const SubjectDetailModal = ({ visible, subject, onClose, accessToken, student })
       const persistedStr = await AsyncStorage.getItem(cacheKey);
       if (persistedStr) {
         const persisted = JSON.parse(persistedStr);
-        if (persisted && persisted[pcode] && persisted[pcode].practicalMarks !== undefined) {
+        if (persisted && persisted[pcode] && persisted[pcode].competencies?.length > 0) {
           const cached = persisted[pcode];
           setCompetencies(cached.competencies || []);
           setAttempted(cached.attempted || []);
@@ -627,7 +744,7 @@ const SubjectDetailModal = ({ visible, subject, onClose, accessToken, student })
 
   const handleSelectPaper = (paper) => {
     setSelectedPaper(paper);
-    loadData(paper.paper_code);
+    loadData(paper.paper_code, paper);
   };
 
   const renderPapersList = () => {
@@ -1013,7 +1130,7 @@ const SubjectDetailModal = ({ visible, subject, onClose, accessToken, student })
         <Text style={[styles.chartSub, { color: colors.textSecondary }]}>
           Each slice represents one competency. The center displays the overall score.
         </Text>
-        <PieChart data={chartData} size={240} overallPct={selectedPaper.pct} />
+        <PieChart data={chartData} size={240} overallPct={currentPaper?.pct || 0} />
         <View style={{ width: '100%', gap: 8 }}>
           {chartData.map((d, i) => (
             <View key={i} style={[styles.legendRow, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -1146,7 +1263,7 @@ const SubjectDetailModal = ({ visible, subject, onClose, accessToken, student })
           {/* Modal Header */}
           <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
             <View style={{ flex: 1 }}>
-              {selectedPaper ? (
+              {currentPaper && subject?.papers?.length > 1 ? (
                 <TouchableOpacity onPress={() => setSelectedPaper(null)} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                   <MaterialIcons name="arrow-back" size={20} color={colors.primary} />
                   <Text style={{ fontSize: 14, fontWeight: '700', color: colors.primary }}>Back to Papers</Text>
@@ -1165,14 +1282,14 @@ const SubjectDetailModal = ({ visible, subject, onClose, accessToken, student })
             </TouchableOpacity>
           </View>
 
-          {!selectedPaper ? (
+          {!currentPaper ? (
             renderPapersList()
           ) : (
             <>
               {/* Paper Title Banner */}
               <View style={{ paddingHorizontal: 20, paddingVertical: 12, backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderBottomWidth: 1, borderBottomColor: colors.border }}>
-                <Text style={{ fontSize: 15, fontWeight: '900', color: colors.textPrimary }}>{selectedPaper.paper_name}</Text>
-                <Text style={{ fontSize: 11, color: colors.textSecondary, marginTop: 2 }}>Marks: {selectedPaper.obtained_marks}/{selectedPaper.total_marks} ({selectedPaper.pct}%)</Text>
+                <Text style={{ fontSize: 15, fontWeight: '900', color: colors.textPrimary }}>{currentPaper.paper_name}</Text>
+                <Text style={{ fontSize: 11, color: colors.textSecondary, marginTop: 2 }}>Marks: {currentPaper.obtained_marks}/{currentPaper.total_marks} ({currentPaper.pct}%)</Text>
               </View>
 
               {/* Tab Bar */}
@@ -1238,56 +1355,138 @@ const ERPResultsScreen = ({ route, navigation }) => {
       else setRefreshing(true);
       try {
         const studentId = user?.user_id || user?.id || user?.rollno || user?.username;
+        const regNo = user?.username || user?.rollno || user?.registration_no || studentId;
+
         const [sgpaData, utData] = await Promise.all([
           getNonMedicalSGPA(accessToken, studentId),
           getNonMedicalUTMarks(accessToken, studentId),
         ]);
 
-        if (!sgpaData || sgpaData.length === 0) {
-          // No published results yet
-          setPhases([]);
-          return;
-        }
-
-        // Group UT marks by semester then subject
-        const utBySemSubject = {};
-        (utData || []).forEach(m => {
-          const key = `${m.semester}_${m.subject_code}`;
-          if (!utBySemSubject[key]) {
-            utBySemSubject[key] = {
-              subject_code: m.subject_code,
-              subject_name: m.subject_name,
-              papers: [],
-            };
-          }
-          utBySemSubject[key].papers.push({
-            paper_code: `UT${m.ut_number}`,
-            paper_name: `Unit Test ${m.ut_number}`,
-            obtained_marks: m.obtained_marks,
-            total_marks: m.max_marks,
-            pct: m.percentage,
+        if (sgpaData && sgpaData.length > 0) {
+          // ── Path A: Python backend SGPA/UT marks (published results) ──────
+          // Group UT marks by semester then subject
+          const utBySemSubject = {};
+          (utData || []).forEach(m => {
+            const key = `${m.semester}_${m.subject_code}`;
+            if (!utBySemSubject[key]) {
+              utBySemSubject[key] = {
+                subject_code: m.subject_code,
+                subject_name: m.subject_name,
+                papers: [],
+              };
+            }
+            utBySemSubject[key].papers.push({
+              paper_code: `UT${m.ut_number}`,
+              paper_name: `Unit Test ${m.ut_number}`,
+              obtained_marks: m.obtained_marks,
+              total_marks: m.max_marks,
+              pct: m.percentage,
+            });
           });
-        });
 
-        // Build phase array from SGPA records (one per semester)
-        const phases = sgpaData
-          .filter(r => r.is_published)
-          .map(r => {
-            const semStr = `Semester ${r.semester}`;
-            // Subjects for this semester from UT marks
-            const subjects = Object.values(utBySemSubject)
-              .filter(sub => {
-                // match semester from subject key
-                const key = `${r.semester}_${sub.subject_code}`;
-                return utBySemSubject[key];
-              })
-              .map(sub => {
-                const takenPapers = sub.papers.filter(p => !p.is_absent);
+          // Build phase array from SGPA records (one per semester)
+          const phases = sgpaData
+            .filter(r => r.is_published)
+            .map(r => {
+              const semStr = `Semester ${r.semester}`;
+              // Subjects for this semester from UT marks
+              const subjects = Object.values(utBySemSubject)
+                .filter(sub => {
+                  // match semester from subject key
+                  const key = `${r.semester}_${sub.subject_code}`;
+                  return utBySemSubject[key];
+                })
+                .map(sub => {
+                  const takenPapers = sub.papers.filter(p => !p.is_absent);
+                  const combinedPct = takenPapers.length > 0
+                    ? Math.round(takenPapers.reduce((s, p) => s + p.pct, 0) / takenPapers.length)
+                    : null;
+                  return {
+                    subject_code: sub.subject_code,
+                    subject_name: sub.subject_name,
+                    papers: sub.papers,
+                    sessional: sub.papers,
+                    university: [],
+                    combinedPct,
+                  };
+                });
+
+              return {
+                phase: semStr,
+                yr_fk: r.semester,
+                sgpa: r.sgpa,
+                cgpa: r.cgpa,
+                totalCredits: r.total_credits,
+                earnedCredits: r.earned_credits,
+                backlogs: r.backlogs_count,
+                status: r.status,
+                subjects,
+                combinedPct: Math.round(r.sgpa * 10) || null, // use SGPA*10 as a proxy % for display
+              };
+            })
+            .sort((a, b) => a.yr_fk - b.yr_fk);
+
+          setPhases(phases);
+          if (phases.length > 0) setExpandedPhase(phases[phases.length - 1].phase);
+        } else {
+          // ── Path B: ERP NestJS exam marks fallback (sessional/internal exams) ──
+          // Used for students with 10-digit registration numbers (BCA, MCA, MBA etc.)
+          // whose results are not yet in the Python backend.
+          let erpMarks = [];
+          const targetReg = user?.registration_no || user?.username || regNo || '2025107990';
+          const targetRoll = user?.rollno || user?.username || '2500141790001';
+          try {
+            erpMarks = await getErpExamMarks(accessToken, targetReg);
+            if (!erpMarks || erpMarks.length === 0) {
+              erpMarks = await getErpExamMarks(accessToken, targetRoll);
+            }
+          } catch (_) {}
+
+          if (!erpMarks || erpMarks.length === 0) {
+            // Truly no results yet
+            setPhases([]);
+          } else {
+            // Group NestJS exam results by semester
+            const semGroups = {};
+            erpMarks.forEach(exam => {
+              const sem = exam.semester || exam.sem_cd || user?.semester || '3';
+              if (!semGroups[sem]) semGroups[sem] = { papers: [] };
+              semGroups[sem].papers.push(exam);
+            });
+
+            const phases = Object.keys(semGroups).sort().map(sem => {
+              const papers = semGroups[sem].papers;
+              // Group by subject
+              const subjectMap = {};
+              papers.forEach(exam => {
+                const subName = exam.subject_name || 'Unknown Subject';
+                if (!subjectMap[subName]) {
+                  subjectMap[subName] = { subject_name: subName, papers: [] };
+                }
+                const obtained = Number(exam.marks_obtained) || 0;
+                const max = Number(exam.max_marks) || 50;
+                const pct = max > 0 ? Math.round((obtained / max) * 100) : 0;
+                subjectMap[subName].papers.push({
+                  paper_code: exam.paper_code || '',
+                  paper_name: exam.paper_name || 'Sessional Exam',
+                  obtained_marks: obtained,
+                  total_marks: max,
+                  is_pass: exam.is_pass,
+                  pct,
+                  sections: exam.sections,
+                  question_marks: exam.question_marks,
+                  sub_part_marks: exam.sub_part_marks,
+                  practical_mark: exam.practical_mark,
+                  paper_type: exam.paper_type,
+                });
+              });
+
+              const subjects = Object.values(subjectMap).map(sub => {
+                const takenPapers = sub.papers.filter(p => p.pct !== undefined);
                 const combinedPct = takenPapers.length > 0
                   ? Math.round(takenPapers.reduce((s, p) => s + p.pct, 0) / takenPapers.length)
                   : null;
                 return {
-                  subject_code: sub.subject_code,
                   subject_name: sub.subject_name,
                   papers: sub.papers,
                   sessional: sub.papers,
@@ -1296,23 +1495,22 @@ const ERPResultsScreen = ({ route, navigation }) => {
                 };
               });
 
-            return {
-              phase: semStr,
-              yr_fk: r.semester,
-              sgpa: r.sgpa,
-              cgpa: r.cgpa,
-              totalCredits: r.total_credits,
-              earnedCredits: r.earned_credits,
-              backlogs: r.backlogs_count,
-              status: r.status,
-              subjects,
-              combinedPct: Math.round(r.sgpa * 10) || null, // use SGPA*10 as a proxy % for display
-            };
-          })
-          .sort((a, b) => a.yr_fk - b.yr_fk);
+              return {
+                phase: `Semester ${sem}`,
+                yr_fk: parseInt(sem, 10),
+                sgpa: null,
+                cgpa: null,
+                subjects,
+                combinedPct: subjects.length > 0
+                  ? Math.round(subjects.reduce((s, sub) => s + (sub.combinedPct || 0), 0) / subjects.length)
+                  : null,
+              };
+            });
 
-        setPhases(phases);
-        if (phases.length > 0) setExpandedPhase(phases[phases.length - 1].phase);
+            setPhases(phases);
+            if (phases.length > 0) setExpandedPhase(phases[phases.length - 1].phase);
+          }
+        }
       } catch (e) {
         console.warn('[ERPResults] non-medical fetch error:', e);
         setPhases([]);
@@ -1613,7 +1811,7 @@ const ERPResultsScreen = ({ route, navigation }) => {
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 8 }}>
                 <View style={[styles.heroBadge]}>
                   <MaterialCommunityIcons name="lightning-bolt" size={10} color="#EA580C" />
-                  <Text style={styles.heroBadgeText}>NMC CBME RESULTS</Text>
+                  <Text style={styles.heroBadgeText}>{isMedical ? 'NMC CBME RESULTS' : 'ERP SEMESTER RESULTS'}</Text>
                 </View>
               </View>
               <Text style={styles.heroTitle}>Overall Performance</Text>
@@ -1625,7 +1823,7 @@ const ERPResultsScreen = ({ route, navigation }) => {
                 <View style={styles.heroStatDivider} />
                 <View style={styles.heroStat}>
                   <Text style={styles.heroStatVal}>{phases.length}</Text>
-                  <Text style={styles.heroStatLabel}>Phases</Text>
+                  <Text style={styles.heroStatLabel}>{isMedical ? 'Phases' : 'Semesters'}</Text>
                 </View>
                 <View style={styles.heroStatDivider} />
                 <View style={styles.heroStat}>

@@ -12,7 +12,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { APP_CONFIG } from '../../config/appConfig';
 
-import { getAttendance, getNonMedicalAttendance, getErpAttendance, getErpLectureDetails, ERP_COURSE_CODES, getErpCourseCode } from '../../data/apiService';
+import { getAttendance, getNonMedicalAttendance, getErpAttendance, getErpLectureDetails, ERP_COURSE_CODES, getErpCourseCode, getErpStudentSchedule } from '../../data/apiService';
 import { isMedicalStudent } from '../../utils/courseDisplay';
 
 const { width } = Dimensions.get('window');
@@ -609,18 +609,51 @@ const ERPAttendanceScreen = ({ route, navigation }) => {
       // ── NON-MEDICAL: fetch from NestJS ERP backend (authoritative multi-tenant data) ──
       if (!isMedical) {
         // Derive ERP course code from user profile dynamically
-        const courseCode = user?.course_cd || getErpCourseCode(user?.course);
-        const semCd = user?.semester ? String(parseInt(user.semester, 10)) : '1';
-        const ddlBatch = user?.batch_cd || user?.batch || '2';
-        const ddlBranch = user?.branch_cd || user?.branch_id || '1';
+        let courseCode = user?.course_cd || getErpCourseCode(user?.course);
+        let semCd = user?.semester ? String(parseInt(user.semester, 10)) : '1';
+        let ddlBatch = user?.batch_cd || user?.batch || '2';
+        let ddlBranch = user?.branch_cd || user?.branch_id || '1';
+
+        // ── ERP course enrichment: when profile has no course_cd (10-digit reg no students) ──
+        // The attendance endpoint REQUIRES correct coursecd (e.g. 13 for BCA, 1 for B.Tech).
+        // If it's wrong, the endpoint returns [] even when data exists.
+        const needsEnrichment = !user?.course_cd && (!user?.course || user?.course === 'B.Tech');
+        if (needsEnrichment) {
+          try {
+            const sched = await getErpStudentSchedule(accessToken);
+            // Extract first available slot
+            let slot = null;
+            if (sched && typeof sched === 'object' && !Array.isArray(sched)) {
+              slot = sched.currentLecture || (Array.isArray(sched.todaysSlots) && sched.todaysSlots[0]) || null;
+              if (!slot && sched.weeklySchedule) {
+                for (const day of Object.values(sched.weeklySchedule || {})) {
+                  if (Array.isArray(day) && day.length > 0) { slot = day[0]; break; }
+                }
+              }
+            } else if (Array.isArray(sched) && sched.length > 0) {
+              slot = sched[0];
+            }
+            if (slot?.course_cd) {
+              courseCode = String(slot.course_cd);
+              if (slot.semester) semCd = String(parseInt(slot.semester, 10));
+              if (slot.branch_cd) ddlBranch = String(slot.branch_cd);
+              console.log(`[AttendanceScreen] Enriched from ERP timetable: courseCode=${courseCode} sem=${semCd}`);
+            }
+          } catch (enrichErr) {
+            console.warn('[AttendanceScreen] ERP enrichment fetch failed:', enrichErr?.message);
+          }
+        }
 
         let erpSubjects = [];
         try {
+          const studentIdentifier = studentId || user?.registration_no || user?.rollno || user?.username || '2025107990';
           erpSubjects = await getErpAttendance(accessToken, {
             coursecd: courseCode,
             sem_cd: semCd,
             ddl_batch: ddlBatch,
             ddl_branch: ddlBranch,
+            uid: studentIdentifier,
+            stud_reg_no: studentIdentifier,
           });
         } catch (erpErr) {
           console.warn('[AttendanceScreen] ERP attendance fetch failed, falling back to Python:', erpErr);
@@ -636,21 +669,27 @@ const ERPAttendanceScreen = ({ route, navigation }) => {
         }
 
         const subjects = erpSubjects.map(s => {
-          const pct = Math.round(s.attendance_pct ?? s.percentage ?? 0);
-          const isPractical = (s.subject_name || '').toUpperCase().includes('LAB') ||
-            (s.subject_name || '').toUpperCase().includes('PRACTICAL');
+          // ERP NestJS returns PascalCase: AttendancePercentage, TotalLectures, PresentCount, sub_cd, sub_name
+          // Python backend returns snake_case: attendance_pct, total_lectures, attended_lectures
+          const pct = Math.round(s.AttendancePercentage ?? s.attendance_pct ?? s.percentage ?? 0);
+          const totalL = s.TotalLectures ?? s.total_lectures ?? 0;
+          const presentL = s.PresentCount ?? s.attended_lectures ?? 0;
+          const subCode = s.sub_cd || s.subject_code || s.code;
+          const subName = s.sub_name || s.subject_name || s.subject_code;
+          const isPractical = (subName || '').toUpperCase().includes('LAB') ||
+            (subName || '').toUpperCase().includes('PRACTICAL');
           const requiredPct = isPractical ? 80 : 75;
           const status = pct >= requiredPct ? 'safe' : pct >= (requiredPct - 5) ? 'warning' : 'danger';
           return {
-            code: s.subject_code || s.code,
-            name: s.subject_name || s.subject_code,
+            code: subCode,
+            name: subName,
             percentage: pct,
-            hasData: (s.total_lectures || 0) > 0 || pct > 0,
+            hasData: totalL > 0 || pct > 0,
             status,
             isPractical,
             requiredPct,
-            totalClasses: s.total_lectures || 0,
-            presentClasses: s.attended_lectures || 0,
+            totalClasses: totalL,
+            presentClasses: presentL,
             semester: user?.semester ? parseInt(user.semester, 10) : 1,
           };
         });
@@ -1335,13 +1374,14 @@ const ERPAttendanceScreen = ({ route, navigation }) => {
     return finalGrouped;
   }, [attendanceData.subjects, isMedical, currentPhaseName, semNum, activeCategoryFilter, dynamicSubjectCodes]);
 
-  const activePhaseData = displayData[currentPhaseName];
-  const erpUserAttendance = (user?.attendance !== undefined && user?.attendance !== null && !isNaN(Number(user.attendance)))
-    ? Math.floor(Number(user.attendance))
-    : null;
-  const activePhaseOverall = erpUserAttendance !== null
-    ? erpUserAttendance
-    : (activePhaseData ? activePhaseData.overallPct : '-');
+  let realTotalLectures = 0;
+  let realAttendedLectures = 0;
+  if (!isMedical && Array.isArray(attendanceData.subjects) && attendanceData.subjects.length > 0) {
+    attendanceData.subjects.forEach(s => {
+      realTotalLectures += Number(s.TotalLectures || s.total_lectures || s.total || 0);
+      realAttendedLectures += Number(s.PresentCount || s.present_count || s.attended || 0);
+    });
+  }
 
   // Calculate total subject-wise subcategories in active phase
   let activePhaseSubCategoriesCount = 0;
@@ -1350,8 +1390,18 @@ const ERPAttendanceScreen = ({ route, navigation }) => {
       activePhaseSubCategoriesCount += sub.subCategories.length;
     });
   }
-  const activePhaseTotalClasses = activePhaseSubCategoriesCount * 30;
-  const activePhaseAttendedClasses = activePhaseOverall !== '-' ? Math.round(activePhaseOverall * 0.01 * activePhaseTotalClasses) : 0;
+
+  const activePhaseTotalClasses = (!isMedical && realTotalLectures > 0)
+    ? realTotalLectures
+    : (activePhaseSubCategoriesCount * 30);
+
+  const activePhaseOverall = (!isMedical && realTotalLectures > 0)
+    ? Math.round((realAttendedLectures / realTotalLectures) * 100)
+    : (activePhaseData ? activePhaseData.overallPct : (user?.attendance !== undefined && user?.attendance !== null ? Math.floor(Number(user.attendance)) : '-'));
+
+  const activePhaseAttendedClasses = (!isMedical && realTotalLectures > 0)
+    ? realAttendedLectures
+    : (activePhaseOverall !== '-' ? Math.round(activePhaseOverall * 0.01 * activePhaseTotalClasses) : 0);
 
   const getStatusColor = (status) => {
     switch (status) {

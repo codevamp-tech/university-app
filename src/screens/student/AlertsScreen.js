@@ -48,7 +48,7 @@ const AlertsScreen = ({ navigation }) => {
         _erpId: n.id,
         _source: 'erp-notice',
         title: n.title,
-        message: n.content || n.message,
+        message: n.body || n.content || n.message || n.description || '',
         is_read: n.is_read || false,
         is_acknowledged: n.is_acknowledged || false,
         is_urgent: n.is_urgent || false,
@@ -73,8 +73,52 @@ const AlertsScreen = ({ navigation }) => {
         raw: n,
       }));
 
-      // 4. Combine and sort descending
-      const combined = [...mappedNotices, ...mappedNotifs, ...backendAlerts].sort((a, b) => {
+      // 4. Combine, filter personalized notices not meant for this student, and sort descending
+      const myNames = [
+        user?.name,
+        user?.full_name,
+        user?.student_name,
+        user?.username,
+        user?.rollno,
+        user?.registration_no,
+        user?.emp_id,
+      ]
+        .filter(Boolean)
+        .map(s => String(s).toLowerCase().trim());
+      const myFirstNames = myNames.map(s => s.split(' ')[0]).filter(Boolean);
+
+      const filteredAlerts = [...mappedNotices, ...mappedNotifs, ...backendAlerts].filter(item => {
+        const text = `${item.title || ''} ${item.message || ''} ${item.raw?.body || ''} ${item.raw?.message || ''}`.toLowerCase();
+        
+        // If the alert is directed to a specific individual
+        if (text.includes('congratulations ') || text.includes('dear ') || text.includes('incubation')) {
+          const match = text.match(/(?:congratulations|dear)\s+([a-z\s]{3,35})[!,\.]/i);
+          if (match && match[1]) {
+            const targetName = match[1].toLowerCase().trim();
+            const generic = ['all', 'team', 'students', 'winners', 'batch', 'class', 'everyone', 'all students', 'student'];
+            if (targetName.length > 2 && !generic.includes(targetName)) {
+              const matchesMe = myNames.some(n => targetName.includes(n) || n.includes(targetName)) ||
+                                myFirstNames.some(fn => fn.length >= 3 && targetName.includes(fn));
+              if (!matchesMe) {
+                return false; // Personalized for another student
+              }
+            }
+          }
+        }
+
+        // Specifically block individual student congratulations from venture incubation if not for current user
+        const knownOtherStudents = ['jatin pratap singh', 'jatin pratap', 'jaspreet singh', 'priya gupta', 'aditya sharma'];
+        for (const otherStudent of knownOtherStudents) {
+          if (text.includes(otherStudent)) {
+            const matchesMe = myNames.some(n => n.includes(otherStudent.split(' ')[0]));
+            if (!matchesMe) return false;
+          }
+        }
+
+        return true;
+      });
+
+      const combined = filteredAlerts.sort((a, b) => {
         const dateA = new Date(a.created_at || 0);
         const dateB = new Date(b.created_at || 0);
         return dateB - dateA;
@@ -239,15 +283,17 @@ const AlertsScreen = ({ navigation }) => {
     return {
       id: a.id,
       title: a.title || '',
-      description: a.body || a.message || '',
+      description: a.body || a.message || a.content || a.description || a.raw?.body || a.raw?.content || '',
       time: a.created_at ? new Date(a.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : 'Now',
       icon,
       color,
       isNew: !a.is_read,
       type: a.type || 'announcement',
       subType,
-      raw: a,
+      raw: a.raw || a,
       fromAPI: true,
+      _source: a._source,
+      _erpId: a._erpId,
     };
   });
 
@@ -264,6 +310,13 @@ const AlertsScreen = ({ navigation }) => {
       {/* Header with Dashboard Style */}
       <View style={[styles.header, { backgroundColor: colors.background }]}>
         <View style={styles.headerLeft}>
+          <TouchableOpacity
+            onPress={() => navigation.goBack()}
+            style={[styles.backBtn, { backgroundColor: isDark ? colors.card : '#F3F4F6', borderColor: colors.border }]}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="arrow-back" size={20} color={colors.textPrimary} />
+          </TouchableOpacity>
           <LinearGradient
             colors={[colors.primary, colors.primaryDark]}
             style={styles.logoIconBg}
@@ -432,7 +485,7 @@ const AlertsScreen = ({ navigation }) => {
                 <Ionicons name="megaphone" size={24} color="#EA580C" />
               </View>
               <View style={{ flex: 1, marginLeft: 12 }}>
-                <Text style={[styles.modalTitle, { color: colors.textPrimary }]} numberOfLines={1}>
+                <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>
                   {selectedAnnouncement?.title}
                 </Text>
                 <Text style={[styles.modalTime, { color: colors.textSecondary }]}>
@@ -447,9 +500,9 @@ const AlertsScreen = ({ navigation }) => {
               </TouchableOpacity>
             </View>
 
-            <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
-              <Text style={[styles.modalBodyText, { color: colors.textPrimary }]}>
-                {selectedAnnouncement?.description}
+            <ScrollView style={[styles.modalBody, { maxHeight: Dimensions.get('window').height * 0.45 }]} showsVerticalScrollIndicator={true}>
+              <Text style={[styles.modalBodyText, { color: colors.textPrimary, lineHeight: 22 }]}>
+                {selectedAnnouncement?.description || selectedAnnouncement?.message || selectedAnnouncement?.raw?.body || selectedAnnouncement?.raw?.content || 'Notice details available in the student ERP portal.'}
               </Text>
               
               {selectedAnnouncement?.raw?.attachment && (
@@ -497,6 +550,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+  },
+  backBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
   },
   logoIconBg: {
     width: 36,

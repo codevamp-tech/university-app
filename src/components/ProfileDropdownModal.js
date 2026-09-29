@@ -53,8 +53,17 @@ export function ProfileDropdownModal({ visible, onClose, navigation }) {
             },
           ]}
         >
-          {/* Header */}
-          <View style={styles.menuHeader}>
+          {/* Header (Clickable to view Personal Info) */}
+          <TouchableOpacity
+            style={styles.menuHeader}
+            activeOpacity={0.7}
+            onPress={() => {
+              if (onClose) onClose();
+              if (navigation?.navigate) {
+                navigation.navigate('PersonalInfo');
+              }
+            }}
+          >
             <SafeStudentAvatar
               uri={avatarUrl}
               rollno={user?.rollno || user?.username}
@@ -75,9 +84,34 @@ export function ProfileDropdownModal({ visible, onClose, navigation }) {
                 {user?.rollno || user?.username || 'Student Account'}
               </Text>
             </View>
-          </View>
+            <MaterialCommunityIcons name="chevron-right" size={18} color={colors.textSecondary} />
+          </TouchableOpacity>
 
           <View style={[styles.menuDivider, { backgroundColor: colors.border }]} />
+
+          {/* Personal Info */}
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => {
+              if (onClose) onClose();
+              if (navigation?.navigate) {
+                navigation.navigate('PersonalInfo');
+              }
+            }}
+          >
+            <View style={styles.menuItemLeft}>
+              <MaterialCommunityIcons
+                name="account-outline"
+                size={20}
+                color={colors.textSecondary}
+              />
+              <Text style={[styles.menuItemText, { color: colors.textPrimary }]}>
+                Personal Info
+              </Text>
+            </View>
+            <MaterialCommunityIcons name="chevron-right" size={18} color={colors.textSecondary} />
+          </TouchableOpacity>
+
 
           {/* Settings */}
           <TouchableOpacity
@@ -99,6 +133,7 @@ export function ProfileDropdownModal({ visible, onClose, navigation }) {
                 Settings
               </Text>
             </View>
+            <MaterialCommunityIcons name="chevron-right" size={18} color={colors.textSecondary} />
           </TouchableOpacity>
 
           {/* Dark Mode */}
@@ -176,7 +211,7 @@ const styles = StyleSheet.create({
   profileMenu: {
     position: 'absolute',
     right: 16,
-    width: 250,
+    width: 265,
     backgroundColor: '#FFFFFF',
     borderRadius: 24,
     padding: 12,

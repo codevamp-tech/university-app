@@ -52,9 +52,75 @@ const TheHustleScreen = ({ navigation }) => {
           if (accessToken) {
             const list = await getAllStudents(accessToken);
             if (active) {
-              const mapped = list.map(s => ({
+              const isInvalidStudent = (s) => {
+                const rawName = String(s.full_name || s.name || '').trim();
+                const rawUsername = String(s.username || '').trim();
+                const name = (rawName || rawUsername).toLowerCase();
+                const role = String(s.role || '').toLowerCase();
+                
+                // Exclude administrative/faculty roles
+                if (role.includes('admin') || role.includes('faculty') || role.includes('teacher') || role.includes('warden') || role.includes('staff')) {
+                  return true;
+                }
+                // Exclude test/admin placeholder accounts across all fields
+                const textToCheck = `${rawName} ${rawUsername} ${role}`.toLowerCase();
+                if (
+                  textToCheck.includes('admin') ||
+                  textToCheck.includes('superadmin') ||
+                  textToCheck.includes('test') ||
+                  textToCheck.includes('demo') ||
+                  textToCheck.includes('dummy') ||
+                  textToCheck.includes('sample') ||
+                  textToCheck.includes('temp') ||
+                  textToCheck.includes('system')
+                ) {
+                  return true;
+                }
+                // Exclude entries without letters in name (pure digits like phone numbers / raw IDs: 9494949948488, 202213305, etc.)
+                if (!/[a-zA-Z]/.test(name)) {
+                  return true;
+                }
+                // Exclude blank, generic, or malformed names (< 3 chars or placeholder text)
+                if (!name || name === 'undefined' || name === 'null' || name === 'student' || name.length < 3) {
+                  return true;
+                }
+                return false;
+              };
+
+              const isMeRecord = (s) => {
+                if (!user) return false;
+                const sId = String(s.rollno || s.username || s.id || '').trim().toLowerCase();
+                const sRoll = String(s.rollno || '').trim().toLowerCase();
+                const sName = String(s.full_name || s.name || s.username || '').trim().toLowerCase();
+                const sNameNorm = sName.replace(/\s+/g, '');
+
+                const myRoll = String(user.rollno || '').trim().toLowerCase();
+                const myReg = String(user.registration_no || '').trim().toLowerCase();
+                const myUser = String(user.username || '').trim().toLowerCase();
+                const myId = String(user.id || user.user_id || '').trim().toLowerCase();
+                const myName = String(user.name || user.full_name || '').trim().toLowerCase();
+                const myNameNorm = myName.replace(/\s+/g, '');
+
+                // Match on ID/roll/registration
+                if (myRoll && (sId === myRoll || sRoll === myRoll)) return true;
+                if (myReg && (sId === myReg || sRoll === myReg)) return true;
+                if (myUser && sId === myUser) return true;
+                if (myId && sId === myId) return true;
+                // Full name match (case-insensitive and whitespace normalized)
+                if (myNameNorm && sNameNorm && myNameNorm === sNameNorm) return true;
+                // Partial roll match (e.g. registration_no in id field)
+                if (myRoll && myRoll.length > 6 && (sId.includes(myRoll) || sRoll.includes(myRoll))) return true;
+                if (myReg && myReg.length > 6 && (sId.includes(myReg) || sRoll.includes(myReg))) return true;
+                if (myUser && myUser.length > 6 && sId.includes(myUser)) return true;
+                return false;
+              };
+
+              // Filter out invalid/admin accounts and any raw duplicates of current user
+              const validStudents = list.filter(s => !isInvalidStudent(s) && !isMeRecord(s));
+
+              const mapped = validStudents.map(s => ({
                 id: s.rollno || s.username || s.id,
-                name: s.full_name || s.username || 'Student',
+                name: s.full_name || s.name || s.username || 'Student',
                 course: s.course || (isMedicalStudent(s) ? 'MBBS' : 'MCA'),
                 branch: s.branch,
                 category: s.category,
@@ -73,30 +139,27 @@ const TheHustleScreen = ({ navigation }) => {
                 avatar_url: s.avatar_url,
               }));
 
-              // Ensure the current user is in the list with full active session user properties
-              const meMatchIndex = mapped.findIndex(s =>
-                (user?.rollno && s.id && String(s.id).trim() === String(user.rollno).trim()) ||
-                (user?.username && s.id && String(s.id).trim() === String(user.username).trim()) ||
-                (user?.id && s.id && String(s.id).trim() === String(user.id).trim()) ||
-                (user?.name && s.name && String(s.name).trim().toLowerCase() === String(user.name).trim().toLowerCase())
-              );
+              // Deduplicate other students so no student is ever listed twice
+              const seenNames = new Set();
+              const deduped = [];
 
-              if (meMatchIndex >= 0) {
-                mapped[meMatchIndex] = {
-                  ...mapped[meMatchIndex],
-                  name: user.name || user.full_name || mapped[meMatchIndex].name,
-                  course: user.course || mapped[meMatchIndex].course,
-                  branch: user.branch || mapped[meMatchIndex].branch,
-                  cgpa: user.cgpa !== undefined ? user.cgpa : mapped[meMatchIndex].cgpa,
-                  attendance: user.attendance !== undefined ? user.attendance : mapped[meMatchIndex].attendance,
-                  certsDone: (user.certsDone && user.certsDone.length > 0) ? user.certsDone : (user.certificates_done || mapped[meMatchIndex].certsDone),
-                  leadership: (user.leadership && user.leadership.length > 0) ? user.leadership : mapped[meMatchIndex].leadership,
-                  extracurricular: (user.extracurricular && user.extracurricular.length > 0) ? user.extracurricular : mapped[meMatchIndex].extracurricular,
-                  current_skills: (user.current_skills && user.current_skills.length > 0) ? user.current_skills : (user.skills || mapped[meMatchIndex].current_skills),
-                  avatar_url: user.avatar_url || mapped[meMatchIndex].avatar_url,
-                };
-              } else if (user) {
-                mapped.unshift({
+              // First register current user's name in seenNames so NO duplicate of current user can enter from API
+              if (user) {
+                const normMyName = String(user.name || user.full_name || '').toLowerCase().trim().replace(/\s+/g, '');
+                if (normMyName) seenNames.add(normMyName);
+              }
+
+              for (const st of mapped) {
+                const normName = (st.name || '').toLowerCase().trim().replace(/\s+/g, '');
+                if (normName && !seenNames.has(normName)) {
+                  seenNames.add(normName);
+                  deduped.push(st);
+                }
+              }
+
+              // Add exactly one single enriched record for the current user
+              if (user) {
+                deduped.unshift({
                   id: user.rollno || user.username || user.id,
                   name: user.name || user.full_name || 'Student',
                   course: user.course || (userIsMed ? 'MBBS' : 'BCA'),
@@ -106,9 +169,9 @@ const TheHustleScreen = ({ navigation }) => {
                   current_year: user.current_year || user.year || 1,
                   semester: user.semester || 1,
                   batch: user.admission_year || 2025,
-                  cgpa: user.cgpa || 8.0,
-                  attendance: user.attendance || 80.0,
-                  certsDone: user.certsDone || user.certificates_done || [],
+                  cgpa: user.cgpa !== undefined ? user.cgpa : 8.0,
+                  attendance: user.attendance !== undefined ? user.attendance : 80.0,
+                  certsDone: (user.certsDone && user.certsDone.length > 0) ? user.certsDone : (user.certificates_done || []),
                   certsInProgress: user.certsInProgress || [],
                   leadership: user.leadership || [],
                   extracurricular: user.extracurricular || [],
@@ -118,7 +181,7 @@ const TheHustleScreen = ({ navigation }) => {
                 });
               }
 
-              setAllStudents(mapped);
+              setAllStudents(deduped);
             }
           }
         } catch (err) {
@@ -148,106 +211,123 @@ const TheHustleScreen = ({ navigation }) => {
     return Array.from(set).sort();
   }, [allStudents]);
 
-  // Filter students based on selection (Course-wise / Year / All)
-  const filteredStudents = allStudents.filter(s => {
-    if (filterType === 'All') return true;
-    if (filterType === 'MyYear') {
-      const studentYr = getStudentYearNum(s);
-      return studentYr === userYearNum;
-    }
-    if (filterType === 'MyCourse') {
-      const myC = userCourse.toLowerCase();
-      const studentC = (s.course || '').toLowerCase().trim();
-      return studentC.includes(myC) || myC.includes(studentC);
-    }
-    // Specific course selection
-    const targetC = filterType.toLowerCase().trim();
-    const studentC = (s.course || '').toLowerCase().trim();
-    return studentC.includes(targetC) || targetC.includes(studentC);
-  });
+  const [visibleCount, setVisibleCount] = useState(20);
 
-  // Compute leaderboard scores dynamically based on all student KPIs
-  const computedLeaderboard = filteredStudents.map(s => {
-    // 1. Certificates done: 500 pts each
-    const certCount = (s.certsDone || []).filter(c => {
-      const cl = (c || '').toLowerCase();
-      return cl !== 'yes' && cl !== 'no' && cl !== 'na' && cl !== 'n/a' && cl !== 'none' && cl !== '';
-    }).length;
+  useEffect(() => {
+    setVisibleCount(20);
+  }, [viewFullRankings, filterType]);
 
-    // 2. Leadership positions: 1000 pts each
-    const leadCount = (s.leadership || []).filter(c => {
-      const cl = (c || '').toLowerCase();
-      return cl !== 'yes' && cl !== 'no' && cl !== 'na' && cl !== 'n/a' && cl !== 'none' && cl !== '';
-    }).length;
+  // Filter students based on selection (Course-wise / Year / All) with strict Medical/Non-Medical isolation
+  const filteredStudents = React.useMemo(() => {
+    return allStudents.filter(s => {
+      // Exclude medical students for non-medical users, and non-med for medical users
+      const studentIsMed = isMedicalStudent(s) || (s.course && (s.course.toLowerCase().includes('mbbs') || s.course.toLowerCase().includes('medicine')));
+      if (!userIsMed && studentIsMed) return false;
+      if (userIsMed && !studentIsMed) return false;
 
-    // 3. Extracurricular activities: 500 pts each
-    const extraCount = (s.extracurricular || []).filter(c => {
-      const cl = (c || '').toLowerCase();
-      return cl !== 'yes' && cl !== 'no' && cl !== 'na' && cl !== 'n/a' && cl !== 'none' && cl !== '';
-    }).length;
-
-    // 4. Skills & Competencies: 250 pts each
-    const rawSkills = s.current_skills || s.skills || [];
-    const skillCount = Array.isArray(rawSkills) ? rawSkills.filter(Boolean).length : 0;
-
-    // 5. Academic & Attendance: CGPA * 200 + Attendance * 10
-    const cgpaVal = Math.min(s.cgpa > 10 ? s.cgpa / 10 : (s.cgpa || 0), 10.0);
-    const attendanceVal = Number(s.attendance || 0);
-    const academicScore = Math.round(cgpaVal * 200) + Math.round(attendanceVal * 10);
-
-    // 6. Special Google Student Ambassador bonus (5000 points)
-    const hasAmbassador = (s.leadership || []).some(l => l && (l.toLowerCase().includes('ambassador') || l.toLowerCase().includes('ambassasor')));
-    const ambassadorBonus = hasAmbassador ? 5000 : 0;
-
-    const totalScore = (certCount * 500) + (extraCount * 500) + (leadCount * 1000) + (skillCount * 250) + academicScore + ambassadorBonus;
-
-    // Robust check if this student record matches the logged-in user
-    const isMe = !!(user && (
-      (s.id && user.id && String(s.id).trim().toLowerCase() === String(user.id).trim().toLowerCase()) ||
-      (s.id && user.username && String(s.id).trim().toLowerCase() === String(user.username).trim().toLowerCase()) ||
-      (s.id && user.rollno && String(s.id).trim().toLowerCase() === String(user.rollno).trim().toLowerCase()) ||
-      (s.email && user.email && s.email.trim().toLowerCase() === user.email.trim().toLowerCase()) ||
-      (s.name && user.name && s.name.trim().toLowerCase() === user.name.trim().toLowerCase())
-    ));
-
-    let avatar = s.avatar_url;
-    if (!avatar) {
-      if (isMe && user.avatar_url) {
-        avatar = user.avatar_url;
-      } else {
-        avatar = getAvatarUrl(s.name, s.id);
+      if (filterType === 'All') return true;
+      if (filterType === 'MyYear') {
+        const studentYr = getStudentYearNum(s);
+        return studentYr === userYearNum;
       }
-    }
+      if (filterType === 'MyCourse') {
+        const myC = userCourse.toLowerCase();
+        const studentC = (s.course || '').toLowerCase().trim();
+        return studentC.includes(myC) || myC.includes(studentC);
+      }
+      // Specific course selection
+      const targetC = filterType.toLowerCase().trim();
+      const studentC = (s.course || '').toLowerCase().trim();
+      return studentC.includes(targetC) || targetC.includes(studentC);
+    });
+  }, [allStudents, filterType, userIsMed, userCourse, userYearNum]);
 
-    return {
-      id: s.id,
-      name: s.name,
-      score: totalScore,
-      certCount,
-      leadCount,
-      extraCount,
-      skillCount,
-      cgpa: cgpaVal,
-      attendance: attendanceVal,
-      academicScore,
-      isMe,
-      avatar,
-      course: s.course,
-      branch: s.branch,
-      category: s.category,
-      year: s.year,
-      current_year: s.current_year,
-      semester: s.semester,
-    };
-  });
+  // Compute leaderboard scores dynamically based on all student KPIs (memoized for instantaneous speed)
+  const computedLeaderboard = React.useMemo(() => {
+    const list = filteredStudents.map(s => {
+      // 1. Certificates done: 500 pts each
+      const certCount = (s.certsDone || []).filter(c => {
+        const cl = (c || '').toLowerCase();
+        return cl !== 'yes' && cl !== 'no' && cl !== 'na' && cl !== 'n/a' && cl !== 'none' && cl !== '';
+      }).length;
 
-  // Sort by score descending
-  computedLeaderboard.sort((a, b) => b.score - a.score);
+      // 2. Leadership positions: 1000 pts each
+      const leadCount = (s.leadership || []).filter(c => {
+        const cl = (c || '').toLowerCase();
+        return cl !== 'yes' && cl !== 'no' && cl !== 'na' && cl !== 'n/a' && cl !== 'none' && cl !== '';
+      }).length;
 
-  // Assign ranks
-  computedLeaderboard.forEach((item, index) => {
-    item.rank = index + 1;
-  });
+      // 3. Extracurricular activities: 500 pts each
+      const extraCount = (s.extracurricular || []).filter(c => {
+        const cl = (c || '').toLowerCase();
+        return cl !== 'yes' && cl !== 'no' && cl !== 'na' && cl !== 'n/a' && cl !== 'none' && cl !== '';
+      }).length;
+
+      // 4. Skills & Competencies: 250 pts each
+      const rawSkills = s.current_skills || s.skills || [];
+      const skillCount = Array.isArray(rawSkills) ? rawSkills.filter(Boolean).length : 0;
+
+      // 5. Academic & Attendance: CGPA * 200 + Attendance * 10
+      const cgpaVal = Math.min(s.cgpa > 10 ? s.cgpa / 10 : (s.cgpa || 0), 10.0);
+      const attendanceVal = Number(s.attendance || 0);
+      const academicScore = Math.round(cgpaVal * 200) + Math.round(attendanceVal * 10);
+
+      // 6. Special Google Student Ambassador bonus (5000 points)
+      const hasAmbassador = (s.leadership || []).some(l => l && (l.toLowerCase().includes('ambassador') || l.toLowerCase().includes('ambassasor')));
+      const ambassadorBonus = hasAmbassador ? 5000 : 0;
+
+      const totalScore = (certCount * 500) + (extraCount * 500) + (leadCount * 1000) + (skillCount * 250) + academicScore + ambassadorBonus;
+
+      // Robust check if this student record matches the logged-in user
+      const isMe = !!(user && (
+        (s.id && user.id && String(s.id).trim().toLowerCase() === String(user.id).trim().toLowerCase()) ||
+        (s.id && user.username && String(s.id).trim().toLowerCase() === String(user.username).trim().toLowerCase()) ||
+        (s.id && user.rollno && String(s.id).trim().toLowerCase() === String(user.rollno).trim().toLowerCase()) ||
+        (s.email && user.email && s.email.trim().toLowerCase() === user.email.trim().toLowerCase()) ||
+        (s.name && user.name && s.name.trim().toLowerCase() === user.name.trim().toLowerCase())
+      ));
+
+      let avatar = s.avatar_url;
+      if (!avatar) {
+        if (isMe && user.avatar_url) {
+          avatar = user.avatar_url;
+        } else {
+          avatar = getAvatarUrl(s.name, s.id);
+        }
+      }
+
+      return {
+        id: s.id,
+        name: s.name,
+        score: totalScore,
+        certCount,
+        leadCount,
+        extraCount,
+        skillCount,
+        cgpa: cgpaVal,
+        attendance: attendanceVal,
+        academicScore,
+        isMe,
+        avatar,
+        course: s.course,
+        branch: s.branch,
+        category: s.category,
+        year: s.year,
+        current_year: s.current_year,
+        semester: s.semester,
+      };
+    });
+
+    // Sort by score descending
+    list.sort((a, b) => b.score - a.score);
+
+    // Assign ranks
+    list.forEach((item, index) => {
+      item.rank = index + 1;
+    });
+
+    return list;
+  }, [filteredStudents, user]);
 
   // Get my record dynamically
   const myRecord = computedLeaderboard.find(item => item.isMe) || {
@@ -272,8 +352,14 @@ const TheHustleScreen = ({ navigation }) => {
   const topScore = computedLeaderboard[0]?.score || 20000;
   const progressPercent = Math.min(Math.round((myScore / topScore) * 100), 100);
 
-  // Layout list of top students
-  const displayLeaderboard = viewFullRankings ? computedLeaderboard : computedLeaderboard.slice(0, 10);
+  // Paginated/Lazy list of students (prevents thread freeze on full rankings)
+  const displayLeaderboard = React.useMemo(() => {
+    if (!viewFullRankings) {
+      return computedLeaderboard.slice(0, 10);
+    }
+    return computedLeaderboard.slice(0, visibleCount);
+  }, [computedLeaderboard, viewFullRankings, visibleCount]);
+
   const showMeAtBottom = user && myRank > 10 && !viewFullRankings;
 
   if (loading) {
@@ -294,6 +380,15 @@ const TheHustleScreen = ({ navigation }) => {
       </View>
     );
   }
+
+  const handleScroll = (event) => {
+    if (!viewFullRankings) return;
+    const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
+    const isCloseToBottom = layoutMeasurement.height + contentOffset.y >= contentSize.height - 250;
+    if (isCloseToBottom && visibleCount < computedLeaderboard.length) {
+      setVisibleCount(prev => Math.min(prev + 20, computedLeaderboard.length));
+    }
+  };
 
   return (
     <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
@@ -324,7 +419,12 @@ const TheHustleScreen = ({ navigation }) => {
         </View>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        showsVerticalScrollIndicator={false}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
+      >
         {/* Main Pulse Points Card */}
         <View style={styles.sectionContainer}>
           <View style={[styles.pulseCard, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
@@ -552,6 +652,17 @@ const TheHustleScreen = ({ navigation }) => {
               </>
             )}
           </View>
+
+          {viewFullRankings && visibleCount < computedLeaderboard.length && (
+            <TouchableOpacity 
+              style={{ paddingVertical: 12, alignItems: 'center', marginBottom: 10, backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F3F4F6', borderRadius: 14 }}
+              onPress={() => setVisibleCount(prev => Math.min(prev + 20, computedLeaderboard.length))}
+            >
+              <Text style={{ fontSize: 13, fontWeight: '700', color: colors.primary }}>
+                Load More Students ({visibleCount} of {computedLeaderboard.length} displayed) ↓
+              </Text>
+            </TouchableOpacity>
+          )}
 
           <TouchableOpacity 
             style={[styles.viewFullBtn, { backgroundColor: colors.border }]}

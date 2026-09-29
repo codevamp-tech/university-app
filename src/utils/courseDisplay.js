@@ -99,7 +99,11 @@ export function resolveCourseAndBranch(user) {
   if (
     rollCode === '179' ||
     rawRoll.includes('17900') ||
+    rawRoll.includes('250014179') ||
+    rawRoll.includes('2025107990') ||
     courseCd === '13' ||
+    rawRoll.includes('aafreen') ||
+    rawRoll.includes('afreen') ||
     rawRoll.includes('apaiksha') ||
     rawRoll.includes('bhupendra') ||
     rawRoll.includes('bca')

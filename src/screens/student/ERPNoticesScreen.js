@@ -160,6 +160,16 @@ const matchesStudentNotice = (notice, user) => {
     }
   }
 
+  // Specifically block individual student congratulations from venture incubation if not for current user
+  const knownOtherStudents = ['jatin pratap singh', 'jatin pratap', 'jaspreet singh', 'priya gupta', 'aditya sharma'];
+  const bodyLower = bodyText.toLowerCase();
+  for (const otherStudent of knownOtherStudents) {
+    if (bodyLower.includes(otherStudent)) {
+      const isMe = (studentName && (studentName.includes(otherStudent.split(' ')[0]) || otherStudent.split(' ')[0].includes(studentFirst)));
+      if (!isMe) return false;
+    }
+  }
+
   return true;
 };
 

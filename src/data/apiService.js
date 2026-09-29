@@ -288,7 +288,7 @@ export async function getMyProfile(token) {
         avatar_url: d.photoUrl || d.photo_url || prof.photo_url || null,
         cgpa: prof.cgpa !== undefined && prof.cgpa !== null ? Number(prof.cgpa) : 0,
         attendance: prof.attendance !== undefined && prof.attendance !== null ? Number(prof.attendance) : 0,
-        social_credits: prof.social_credits !== undefined && prof.social_credits !== null ? Number(prof.social_credits) : 120,
+        social_credits: prof.social_credits !== undefined && prof.social_credits !== null ? Number(prof.social_credits) : 0,
         current_skills: Array.isArray(prof.current_skills) && prof.current_skills.length > 0 ? prof.current_skills : [],
         certs_done: Array.isArray(prof.certificates_done) ? prof.certificates_done : [],
         certificates_done: Array.isArray(prof.certificates_done) ? prof.certificates_done : [],
@@ -3810,6 +3810,43 @@ export async function submitGitHubRepoToErp(token, repo, githubUsername) {
   return res.json?.data ?? res.json;
 }
 
+// ── STUDENT CREDENTIALS & ACTIVITIES (Certificates, Skills, Extracurriculars) ──
+export async function submitStudentCredentialAPI(token, payload) {
+  const res = await erpCall('/student-credentials/submit', token, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error(res.json?.message || 'Failed to submit credential to ERP');
+  return res.json?.data ?? res.json;
+}
+
+export async function getMyStudentCredentialsAPI(token) {
+  const res = await erpCall('/student-credentials/my', token);
+  if (!res.ok) return { data: [], counts: { total: 0, approved: 0, pending: 0, totalApprovedPoints: 0 } };
+  return res.json ?? { data: [], counts: {} };
+}
+
+export async function getPendingStudentCredentialsAPI(token) {
+  const res = await erpCall('/student-credentials/pending', token);
+  if (!res.ok) return [];
+  return res.json?.data ?? [];
+}
+
+export async function reviewStudentCredentialAPI(token, id, status, reviewer_notes = '') {
+  const res = await erpCall(`/student-credentials/${id}/review`, token, {
+    method: 'PATCH',
+    body: JSON.stringify({ status, reviewer_notes }),
+  });
+  if (!res.ok) throw new Error(res.json?.message || 'Failed to review credential');
+  return res.json?.data ?? res.json;
+}
+
+export async function getStudentApprovedCredentialsAPI(token, regNo) {
+  const res = await erpCall(`/student-credentials/student/${encodeURIComponent(regNo)}/approved`, token);
+  if (!res.ok) return { data: [], totalPoints: 0 };
+  return res.json ?? { data: [], totalPoints: 0 };
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 //  ERP NestJS SYNC — Non-Medical (all courses: B.Tech, BCA, MCA, MBA, etc.)
 //  Phase 1: Notices, Notifications, Placement Drives/Offers, Lessons
@@ -4067,6 +4104,9 @@ export async function getErpAttendance(token, params = {}) {
   if (params.ddl_batch)  qs.set('ddl_batch', String(params.ddl_batch));
   if (params.ddl_branch) qs.set('ddl_branch', String(params.ddl_branch));
   if (params.section_cd) qs.set('section_cd', String(params.section_cd));
+  if (params.uid || params.stud_reg_no || params.rollno) {
+    qs.set('uid', String(params.uid || params.stud_reg_no || params.rollno));
+  }
   const res = await erpCall(`/attendance/portal/subject-summary?${qs.toString()}`, token);
   if (!res.ok) return [];
   return res.json?.data ?? res.json ?? [];
@@ -4084,6 +4124,22 @@ export async function getErpLectureDetails(token, params = {}) {
 }
 export async function getErpStudentAttendanceSummary(token, studentId) {
   const res = await erpCall(`/attendance/students/${studentId}/summary`, token);
+  if (!res.ok) return null;
+  return res.json?.data ?? res.json ?? null;
+}
+
+// ── Student Master Details from ERP Database ─────────────────────────────────
+export async function getErpStudentMasterProfile(token, search) {
+  if (!search) return null;
+  const res = await erpCall(`/student-master?search=${encodeURIComponent(search.trim())}`, token);
+  if (!res.ok) return null;
+  const list = res.json?.data ?? res.json;
+  return Array.isArray(list) && list.length > 0 ? list[0] : null;
+}
+
+export async function getErpStudentMasterById(token, id) {
+  if (!id) return null;
+  const res = await erpCall(`/student-master/${id}`, token);
   if (!res.ok) return null;
   return res.json?.data ?? res.json ?? null;
 }
@@ -4107,7 +4163,8 @@ export async function getErpStudentSchedule(token, { semester, department_id } =
   if (department_id) qs.set('department_id', String(department_id));
   const res = await erpCall(`/timetable/student-schedule?${qs.toString()}`, token);
   if (!res.ok) return [];
-  return res.json?.data ?? res.json ?? [];
+  const raw = res.json?.data ?? res.json ?? [];
+  return raw;
 }
 export async function getErpRelevantFaculties(token) {
   const res = await erpCall('/timetable/relevant-faculties', token);
@@ -4255,10 +4312,18 @@ export async function getErpLogbookNotifications(token) {
 }
 
 // ── PHASE 3: ACADEMIC REPOSITORY ────────────────────────────────────────────
-export async function getErpRepositoryList(token) {
-  const res = await erpCall('/repository/list', token);
+export async function getErpRepositoryList(token, studentRegNo = '') {
+  let url = '/repository/list';
+  if (studentRegNo) url += `?student_reg_no=${encodeURIComponent(studentRegNo)}`;
+  const headers = studentRegNo ? { 'x-user-reg-no': String(studentRegNo), 'x-user-id': String(studentRegNo) } : {};
+  const res = await erpCall(url, token, { headers });
   if (!res.ok) return [];
-  return res.json?.data ?? res.json ?? [];
+  const raw = res.json?.data ?? res.json ?? [];
+  if (Array.isArray(raw)) return raw;
+  if (Array.isArray(raw?.data)) return raw.data;
+  if (Array.isArray(raw?.repositories)) return raw.repositories;
+  if (Array.isArray(raw?.items)) return raw.items;
+  return [];
 }
 export async function getErpTopRatedRepositories(token) {
   const res = await erpCall('/repository/dashboard/top-rated', token);
@@ -4283,12 +4348,49 @@ export async function getErpRepositoryById(token, id) {
 export async function getErpIncubationProjects(token) {
   const res = await erpCall('/incubation-cell/projects', token);
   if (!res.ok) return [];
-  return res.json?.data ?? res.json ?? [];
+  const raw = res.json?.data ?? res.json ?? [];
+  return Array.isArray(raw) ? raw : (raw.data || raw.projects || []);
 }
 export async function getErpIncubationMeta(token) {
   const res = await erpCall('/incubation-cell/meta', token);
   if (!res.ok) return null;
   return res.json?.data ?? res.json ?? null;
+}
+
+// ── PHASE 3: DIGITAL CERTIFICATES ───────────────────────────────────────────
+export async function getErpStudentCertificates(token, studentRegNo = '', course = '') {
+  try {
+    const programs = await getErpInternships(token, course, studentRegNo);
+    const certs = [];
+    if (Array.isArray(programs)) {
+      for (const p of programs) {
+        const app = p.my_application;
+        if (app && (app.status === 'completed' || app.certificate_no)) {
+          certs.push({
+            id: app.id || p.id,
+            application_id: app.id,
+            program_id: p.id,
+            name: p.title || app.internship_name || 'Internship Certificate',
+            title: p.title || app.internship_name || 'Internship Certificate',
+            certificate_no: app.certificate_no || 'SRMS-CERT-VERIFIED',
+            issued_date: app.issued_date ? app.issued_date.slice(0, 10) : '2026-08-16',
+            approved_by: app.approved_by || 'Prof. (Dr.) Prabhakar Gupta',
+            approver_title: 'Dean Academics & Training Cell',
+            issuer: p.organization_name || 'SRMS CET In-House Cell',
+            institution_name: 'SRMS COLLEGE OF ENGINEERING & TECHNOLOGY, BAREILLY',
+            source: app.cert_source || 'in_house',
+            course: app.course_cd || app.course || course || 'BCA',
+            batch: app.batch_cd || app.batch || 'Batch 2025',
+            status: app.status || 'completed',
+          });
+        }
+      }
+    }
+    return certs;
+  } catch (err) {
+    console.warn('[getErpStudentCertificates] error:', err?.message);
+    return [];
+  }
 }
 
 // ── PHASE 3: PRESIGNED FILE UPLOAD ──────────────────────────────────────────

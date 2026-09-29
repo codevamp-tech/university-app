@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, ActivityIndicator, Modal, Image, Alert, RefreshControl,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, ActivityIndicator, Modal, Image, Alert, RefreshControl, Linking,
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -9,7 +9,10 @@ import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useUser } from '../../context/UserContext';
 import { useNotifications, NotificationBadge } from '../../context/NotificationContext';
-import { getFacultyTimetable, getFacultyTopics, uploadAvatarAPI, listGrievancesAPI, deleteGrievanceAPI, getFacultyAttendance } from '../../data/apiService';
+import {
+  getFacultyTimetable, getFacultyTopics, uploadAvatarAPI, listGrievancesAPI, deleteGrievanceAPI, getFacultyAttendance,
+  getPendingStudentCredentialsAPI, reviewStudentCredentialAPI,
+} from '../../data/apiService';
 import ActivityRing from '../../components/ActivityRing';
 import { getAvatarUrl } from '../../utils/avatar';
 import { useHealthMetrics } from '../../hooks/useHealthMetrics';
@@ -95,6 +98,63 @@ const TeacherDashboardScreen = ({ navigation }) => {
   const [raisedIssues, setRaisedIssues] = useState([]);
   const [isLoadingIssues, setIsLoadingIssues] = useState(false);
 
+  // ─── Student Credentials Verification State ────────────────────────────────
+  const [pendingCredentials, setPendingCredentials] = useState([]);
+  const [isLoadingPendingCreds, setIsLoadingPendingCreds] = useState(false);
+  const [showPendingCredsModal, setShowPendingCredsModal] = useState(false);
+  const [reviewFilter, setReviewFilter] = useState('all'); // 'all' | 'certificate' | 'skill' | 'extracurricular'
+  const [processingCredId, setProcessingCredId] = useState(null);
+
+  const fetchPendingCredentials = useCallback(async () => {
+    if (!accessToken) return;
+    setIsLoadingPendingCreds(true);
+    try {
+      const data = await getPendingStudentCredentialsAPI(accessToken);
+      if (Array.isArray(data)) {
+        setPendingCredentials(data);
+      }
+    } catch (err) {
+      console.warn('[TeacherDashboard] pending credentials error:', err);
+    } finally {
+      setIsLoadingPendingCreds(false);
+    }
+  }, [accessToken]);
+
+  const handleReviewCredential = useCallback(async (cred, status) => {
+    const actionLabel = status === 'approved' ? 'Approve' : 'Reject';
+    const pts = cred.points || (cred.type === 'certificate' ? 100 : cred.type === 'skill' ? 25 : 50);
+    const pointsText = status === 'approved' ? ` and award +${pts} pts` : '';
+
+    Alert.alert(
+      `${actionLabel} Submission?`,
+      `Are you sure you want to ${status} "${cred.title}" for ${cred.student_name} (${cred.student_reg_no})${pointsText}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: actionLabel,
+          style: status === 'approved' ? 'default' : 'destructive',
+          onPress: async () => {
+            setProcessingCredId(cred.id);
+            try {
+              await reviewStudentCredentialAPI(accessToken, cred.id, status, 'Reviewed by faculty');
+              Alert.alert(
+                status === 'approved' ? 'Credential Approved! 🎉' : 'Credential Rejected',
+                status === 'approved'
+                  ? `Approved successfully!\n\n+${pts} Social Credits & Hustle points have been credited to ${cred.student_name}'s ERP profile.`
+                  : 'Credential has been marked as rejected.'
+              );
+              fetchPendingCredentials();
+            } catch (err) {
+              Alert.alert('Review Error', err.message || 'Could not review credential.');
+            } finally {
+              setProcessingCredId(null);
+            }
+          }
+        }
+      ]
+    );
+  }, [accessToken, fetchPendingCredentials]);
+
   const fetchRaisedIssues = useCallback(async () => {
     if (!accessToken || !user?.id) return;
     setIsLoadingIssues(true);
@@ -138,11 +198,13 @@ const TeacherDashboardScreen = ({ navigation }) => {
 
   useEffect(() => {
     fetchRaisedIssues();
+    fetchPendingCredentials();
     const unsubscribe = navigation.addListener('focus', () => {
       fetchRaisedIssues();
+      fetchPendingCredentials();
     });
     return unsubscribe;
-  }, [navigation, fetchRaisedIssues]);
+  }, [navigation, fetchRaisedIssues, fetchPendingCredentials]);
 
   // Populate pgFlags from the user object (set at login via FacultyLoginCredential API)
   // Falls back to a fresh API fetch only if the session predates this feature
@@ -741,6 +803,22 @@ const TeacherDashboardScreen = ({ navigation }) => {
             <Text style={styles.quickActionLabel}>Salary Slip</Text>
           </TouchableOpacity>
 
+          <TouchableOpacity
+            style={styles.quickActionCard}
+            onPress={() => setShowPendingCredsModal(true)}
+            activeOpacity={0.8}
+          >
+            <View style={[styles.quickActionIconBg, { backgroundColor: '#EEF2FF', position: 'relative' }]}>
+              <Ionicons name="ribbon-outline" size={20} color="#5B4BFF" />
+              {pendingCredentials.length > 0 && (
+                <View style={styles.credCountBadge}>
+                  <Text style={styles.credCountBadgeText}>{pendingCredentials.length}</Text>
+                </View>
+              )}
+            </View>
+            <Text style={styles.quickActionLabel}>Verify Creds</Text>
+          </TouchableOpacity>
+
           {pgFlags.pg_verify === 2 && (
             <TouchableOpacity
               style={styles.quickActionCard}
@@ -767,6 +845,38 @@ const TeacherDashboardScreen = ({ navigation }) => {
             </TouchableOpacity>
           )}
         </View>
+
+        {/* Executive Pending Student Verifications Banner */}
+        {pendingCredentials.length > 0 && (
+          <TouchableOpacity
+            style={styles.pendingExecutiveCard}
+            onPress={() => setShowPendingCredsModal(true)}
+            activeOpacity={0.85}
+          >
+            <LinearGradient
+              colors={['#4F46E5', '#7C3AED']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.pendingExecutiveInner}
+            >
+              <View style={styles.pendingExecutiveIconBg}>
+                <Ionicons name="shield-checkmark" size={22} color="#FFFFFF" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.pendingExecutiveTitle}>
+                  {pendingCredentials.length} Student Submission{pendingCredentials.length > 1 ? 's' : ''} Pending
+                </Text>
+                <Text style={styles.pendingExecutiveSub}>
+                  Certificates, skills & activities awaiting faculty approval
+                </Text>
+              </View>
+              <View style={styles.pendingExecutiveArrow}>
+                <Text style={styles.pendingExecutiveBtnText}>Review</Text>
+                <MaterialIcons name="chevron-right" size={18} color="#FFFFFF" />
+              </View>
+            </LinearGradient>
+          </TouchableOpacity>
+        )}
 
         {/* Campus Fitness (same as student app) */}
         <Text style={styles.sectionTitle}>❤️ Campus Fitness</Text>
@@ -1127,6 +1237,198 @@ const TeacherDashboardScreen = ({ navigation }) => {
                 </Text>
               </TouchableOpacity>
             </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Student Credential Verifications Modal */}
+      <Modal
+        visible={showPendingCredsModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowPendingCredsModal(false)}
+      >
+        <View style={styles.reviewModalOverlay}>
+          <View style={styles.reviewModalContent}>
+            {/* Header */}
+            <View style={styles.reviewModalHeader}>
+              <View style={{ flex: 1 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Text style={styles.reviewModalTitle}>Student Verifications</Text>
+                  {pendingCredentials.length > 0 && (
+                    <View style={styles.reviewModalCountBadge}>
+                      <Text style={styles.reviewModalCountText}>{pendingCredentials.length} Pending</Text>
+                    </View>
+                  )}
+                </View>
+                <Text style={styles.reviewModalSubtitle}>Review certificates, skills & activities for ERP crediting</Text>
+              </View>
+              <TouchableOpacity
+                style={styles.reviewModalCloseBtn}
+                onPress={() => setShowPendingCredsModal(false)}
+              >
+                <Ionicons name="close" size={22} color="#111827" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Filter Tabs */}
+            <View style={styles.reviewFilterRow}>
+              {[
+                { key: 'all', label: `All (${pendingCredentials.length})` },
+                { key: 'certificate', label: `Certs (${pendingCredentials.filter(c => c.type === 'certificate').length})` },
+                { key: 'skill', label: `Skills (${pendingCredentials.filter(c => c.type === 'skill').length})` },
+                { key: 'extracurricular', label: `Activities (${pendingCredentials.filter(c => c.type === 'extracurricular').length})` },
+              ].map(tab => (
+                <TouchableOpacity
+                  key={tab.key}
+                  style={[
+                    styles.reviewFilterTab,
+                    reviewFilter === tab.key && styles.reviewFilterTabActive,
+                  ]}
+                  onPress={() => setReviewFilter(tab.key)}
+                >
+                  <Text
+                    style={[
+                      styles.reviewFilterTabText,
+                      reviewFilter === tab.key && styles.reviewFilterTabTextActive,
+                    ]}
+                  >
+                    {tab.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* Content List */}
+            {isLoadingPendingCreds ? (
+              <View style={{ padding: 40, alignItems: 'center' }}>
+                <ActivityIndicator size="large" color="#5B4BFF" />
+                <Text style={{ marginTop: 12, fontSize: 13, color: '#6B7280' }}>Loading submissions...</Text>
+              </View>
+            ) : (
+              <ScrollView
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={{ padding: 16, gap: 14, paddingBottom: 40 }}
+              >
+                {(() => {
+                  const filtered = pendingCredentials.filter(c => reviewFilter === 'all' || c.type === reviewFilter);
+                  if (filtered.length === 0) {
+                    return (
+                      <View style={{ padding: 36, alignItems: 'center', backgroundColor: '#F9FAFB', borderRadius: 20 }}>
+                        <Ionicons name="checkmark-done-circle" size={48} color="#10B981" />
+                        <Text style={{ fontSize: 16, fontWeight: '700', color: '#111827', marginTop: 12 }}>
+                          All Caught Up!
+                        </Text>
+                        <Text style={{ fontSize: 13, color: '#6B7280', textAlign: 'center', marginTop: 6, lineHeight: 18 }}>
+                          There are no pending {reviewFilter !== 'all' ? reviewFilter : 'student'} submissions awaiting verification.
+                        </Text>
+                      </View>
+                    );
+                  }
+
+                  return filtered.map((cred) => {
+                    const isProcessing = processingCredId === cred.id;
+                    const pts = cred.points || (cred.type === 'certificate' ? 100 : cred.type === 'skill' ? 25 : 50);
+
+                    return (
+                      <View key={cred.id} style={styles.reviewCard}>
+                        {/* Top: Student & Type Badge */}
+                        <View style={styles.reviewCardTop}>
+                          <View style={{ flex: 1 }}>
+                            <Text style={styles.reviewStudentName}>{cred.student_name}</Text>
+                            <Text style={styles.reviewStudentReg}>Reg / Roll: {cred.student_reg_no}</Text>
+                          </View>
+                          <View style={[
+                            styles.reviewTypeBadge,
+                            cred.type === 'certificate' ? { backgroundColor: '#EEF2FF', borderColor: '#C7D2FE' }
+                            : cred.type === 'skill' ? { backgroundColor: '#ECFDF5', borderColor: '#A7F3D0' }
+                            : { backgroundColor: '#FFFBEB', borderColor: '#FDE68A' }
+                          ]}>
+                            <Text style={[
+                              styles.reviewTypeBadgeText,
+                              cred.type === 'certificate' ? { color: '#4F46E5' }
+                              : cred.type === 'skill' ? { color: '#059669' }
+                              : { color: '#D97706' }
+                            ]}>
+                              {cred.type === 'certificate' ? '📜 Certificate' : cred.type === 'skill' ? '💡 Skill' : '🏆 Activity'}
+                            </Text>
+                          </View>
+                        </View>
+
+                        {/* Title & Category */}
+                        <View style={{ marginVertical: 8 }}>
+                          <Text style={styles.reviewTitle}>{cred.title}</Text>
+                          {cred.category ? (
+                            <Text style={styles.reviewMeta}>Category: {cred.category}</Text>
+                          ) : null}
+                          {cred.issuer ? (
+                            <Text style={styles.reviewMeta}>Issuer / Org: {cred.issuer}</Text>
+                          ) : null}
+                          {cred.date ? (
+                            <Text style={styles.reviewMeta}>Date: {cred.date}</Text>
+                          ) : null}
+                          {cred.description ? (
+                            <Text style={styles.reviewDesc}>{cred.description}</Text>
+                          ) : null}
+                        </View>
+
+                        {/* Attachment Link if provided */}
+                        {cred.file_url ? (
+                          <TouchableOpacity
+                            style={styles.reviewDocBtn}
+                            onPress={() => Linking.openURL(cred.file_url).catch(() => Alert.alert('Error', 'Unable to open file link.'))}
+                            activeOpacity={0.8}
+                          >
+                            <Ionicons name="document-attach" size={16} color="#4F46E5" />
+                            <Text style={styles.reviewDocBtnText} numberOfLines={1}>
+                              View Attached Document / Proof
+                            </Text>
+                            <Ionicons name="open-outline" size={14} color="#4F46E5" />
+                          </TouchableOpacity>
+                        ) : null}
+
+                        {/* Point Reward Indicator */}
+                        <View style={styles.reviewPointBanner}>
+                          <Ionicons name="sparkles" size={14} color="#7C3AED" />
+                          <Text style={styles.reviewPointText}>
+                            Awards <Text style={{ fontWeight: '800' }}>+{pts} Social Credits & Hustle Score</Text> upon approval
+                          </Text>
+                        </View>
+
+                        {/* Action Buttons: Reject & Approve */}
+                        <View style={styles.reviewActionRow}>
+                          <TouchableOpacity
+                            style={[styles.reviewRejectBtn, isProcessing && { opacity: 0.5 }]}
+                            onPress={() => handleReviewCredential(cred, 'rejected')}
+                            disabled={isProcessing}
+                            activeOpacity={0.8}
+                          >
+                            <Ionicons name="close-circle-outline" size={16} color="#DC2626" />
+                            <Text style={styles.reviewRejectBtnText}>Reject</Text>
+                          </TouchableOpacity>
+
+                          <TouchableOpacity
+                            style={[styles.reviewApproveBtn, isProcessing && { opacity: 0.5 }]}
+                            onPress={() => handleReviewCredential(cred, 'approved')}
+                            disabled={isProcessing}
+                            activeOpacity={0.85}
+                          >
+                            {isProcessing ? (
+                              <ActivityIndicator size="small" color="#FFFFFF" />
+                            ) : (
+                              <>
+                                <Ionicons name="checkmark-circle" size={16} color="#FFFFFF" />
+                                <Text style={styles.reviewApproveBtnText}>Approve (+{pts} pts)</Text>
+                              </>
+                            )}
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    );
+                  });
+                })()}
+              </ScrollView>
+            )}
           </View>
         </View>
       </Modal>
@@ -1701,6 +2003,280 @@ const styles = StyleSheet.create({
     width: 1,
     height: 32,
     backgroundColor: '#F7D7C4',
+  },
+  credCountBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    backgroundColor: '#DC2626',
+    borderRadius: 9,
+    minWidth: 18,
+    height: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+    borderWidth: 1.5,
+    borderColor: '#FFFFFF',
+  },
+  credCountBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 9,
+    fontWeight: '900',
+  },
+  pendingExecutiveCard: {
+    marginHorizontal: 16,
+    marginTop: -10,
+    marginBottom: 20,
+    borderRadius: 18,
+    shadowColor: '#4F46E5',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    elevation: 4,
+  },
+  pendingExecutiveInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 18,
+    gap: 12,
+  },
+  pendingExecutiveIconBg: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pendingExecutiveTitle: {
+    color: '#FFFFFF',
+    fontSize: 14.5,
+    fontWeight: '800',
+  },
+  pendingExecutiveSub: {
+    color: 'rgba(255,255,255,0.85)',
+    fontSize: 11.5,
+    marginTop: 2,
+  },
+  pendingExecutiveArrow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 20,
+    gap: 2,
+  },
+  pendingExecutiveBtnText: {
+    color: '#FFFFFF',
+    fontSize: 11.5,
+    fontWeight: '700',
+  },
+  // Review Modal Styles
+  reviewModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'flex-end',
+  },
+  reviewModalContent: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    maxHeight: '92%',
+    paddingBottom: 20,
+  },
+  reviewModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  reviewModalTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#111827',
+  },
+  reviewModalCountBadge: {
+    backgroundColor: '#FEE2E2',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  reviewModalCountText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#DC2626',
+  },
+  reviewModalSubtitle: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 2,
+  },
+  reviewModalCloseBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#F3F4F6',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  reviewFilterRow: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    gap: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  reviewFilterTab: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    backgroundColor: '#F3F4F6',
+  },
+  reviewFilterTabActive: {
+    backgroundColor: '#5B4BFF',
+  },
+  reviewFilterTabText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#4B5563',
+  },
+  reviewFilterTabTextActive: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+  },
+  reviewCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    padding: 16,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  reviewCardTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+    paddingBottom: 10,
+  },
+  reviewStudentName: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#111827',
+  },
+  reviewStudentReg: {
+    fontSize: 11.5,
+    color: '#6B7280',
+    marginTop: 2,
+  },
+  reviewTypeBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  reviewTypeBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  reviewTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#111827',
+    marginBottom: 4,
+  },
+  reviewMeta: {
+    fontSize: 12,
+    color: '#4B5563',
+    marginTop: 2,
+  },
+  reviewDesc: {
+    fontSize: 12.5,
+    color: '#6B7280',
+    marginTop: 6,
+    lineHeight: 17,
+    fontStyle: 'italic',
+  },
+  reviewDocBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#EEF2FF',
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    borderRadius: 10,
+    marginVertical: 6,
+    borderWidth: 1,
+    borderColor: '#C7D2FE',
+  },
+  reviewDocBtnText: {
+    flex: 1,
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#4F46E5',
+  },
+  reviewPointBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#F5F3FF',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    marginVertical: 6,
+  },
+  reviewPointText: {
+    fontSize: 11.5,
+    color: '#6D28D9',
+  },
+  reviewActionRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 10,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#F3F4F6',
+  },
+  reviewRejectBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 11,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#FCA5A5',
+    backgroundColor: '#FEF2F2',
+  },
+  reviewRejectBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#DC2626',
+  },
+  reviewApproveBtn: {
+    flex: 2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 11,
+    borderRadius: 12,
+    backgroundColor: '#10B981',
+  },
+  reviewApproveBtnText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#FFFFFF',
   },
 });
 

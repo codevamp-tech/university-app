@@ -325,30 +325,12 @@ const DashboardScreen = ({ navigation }) => {
 
   // ── Dynamic social credits calculation matching TalentIdentityScreen ──
   const totalSocialCredits = React.useMemo(() => {
-    let leadership = '';
-    let extracurricular = '';
-    const bioText = user?.bio || '';
-    if (bioText.includes('Leadership:') || bioText.includes('Extracurricular:')) {
-      const lMatch = bioText.match(/Leadership:\s*([^|]+)/i);
-      const eMatch = bioText.match(/Extracurricular:\s*(.+)/i);
-      if (lMatch && lMatch[1].trim()) leadership = lMatch[1].trim();
-      if (eMatch && eMatch[1].trim()) extracurricular = eMatch[1].trim();
-    }
-
-    const leadershipItems = (Array.isArray(user?.leadership) && user.leadership.length > 0)
-      ? user.leadership
-      : (leadership ? leadership.split(',').map(s => s.trim()).filter(Boolean) : []);
-
-    const extracurricularItems = (Array.isArray(user?.extracurricular) && user.extracurricular.length > 0)
-      ? user.extracurricular
-      : (extracurricular ? extracurricular.split(',').map(s => s.trim()).filter(Boolean) : []);
-
-    const totalActivities = leadershipItems.length + extracurricularItems.length;
-    if (totalActivities > 0) {
-      return totalActivities * 100;
-    }
     const val = Number(user?.social_credits);
-    return !isNaN(val) && val > 0 ? val : 0;
+    if (!isNaN(val) && val > 0) return val;
+    const leadershipItems = (Array.isArray(user?.leadership) && user.leadership.length > 0) ? user.leadership : [];
+    const extracurricularItems = (Array.isArray(user?.extracurricular) && user.extracurricular.length > 0) ? user.extracurricular : [];
+    const totalActs = leadershipItems.length + extracurricularItems.length;
+    return totalActs > 0 ? totalActs * 60 : 0;
   }, [user]);
 
   // ── State for ERP & SRMS E-Library books ──
@@ -1059,12 +1041,16 @@ const DashboardScreen = ({ navigation }) => {
           style={styles.modalBackdrop}
         >
           <View style={[styles.dialogCard, { backgroundColor: isDark ? colors.card : '#FFFFFF', borderColor: colors.border, borderWidth: 1 }]}>
-            <View style={styles.modalHeader}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                 <MaterialCommunityIcons name="github" size={26} color={isDark ? '#FFFFFF' : '#24292F'} />
-                <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>Connect GitHub</Text>
+                <Text style={[styles.modalTitle, { color: colors.textPrimary, marginBottom: 0 }]}>Connect GitHub</Text>
               </View>
-              <TouchableOpacity onPress={() => setShowGitHubModal(false)}>
+              <TouchableOpacity 
+                onPress={() => setShowGitHubModal(false)}
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                style={{ padding: 4 }}
+              >
                 <Ionicons name="close" size={24} color={colors.textSecondary} />
               </TouchableOpacity>
             </View>
@@ -1406,15 +1392,21 @@ const DashboardScreen = ({ navigation }) => {
 
             {/* Stats Row */}
             <View style={styles.statsRow}>
-              <LinearGradient
-                colors={isDark ? ['rgba(234, 88, 12, 0.2)', 'rgba(234, 88, 12, 0.1)'] : ['#FFF7ED', '#FFEDD5']}
-                style={[styles.statPillOrange, { borderColor: isDark ? 'rgba(234, 88, 12, 0.3)' : '#FFEDD5', flex: 1 }]}
+              <TouchableOpacity
+                style={{ flex: 1 }}
+                activeOpacity={0.8}
+                onPress={() => navigation.navigate('AcademicDetails')}
               >
-                <Text style={[styles.statValueOrange, { color: isDark ? '#FB923C' : '#9A3412' }]}>
-                  {user?.cgpa !== undefined && user?.cgpa !== null && !isNaN(Number(user.cgpa)) && Number(user.cgpa) > 0 ? Number(user.cgpa).toFixed(2) : 'N/A'}
-                </Text>
-                <Text style={[styles.statLabelOrange, { color: isDark ? '#FB923C' : '#9A3412' }]}>ACADEMIC CGPA</Text>
-              </LinearGradient>
+                <LinearGradient
+                  colors={isDark ? ['rgba(234, 88, 12, 0.2)', 'rgba(234, 88, 12, 0.1)'] : ['#FFF7ED', '#FFEDD5']}
+                  style={[styles.statPillOrange, { borderColor: isDark ? 'rgba(234, 88, 12, 0.3)' : '#FFEDD5' }]}
+                >
+                  <Text style={[styles.statValueOrange, { color: isDark ? '#FB923C' : '#9A3412' }]}>
+                    {user?.cgpa !== undefined && user?.cgpa !== null && !isNaN(Number(user.cgpa)) && Number(user.cgpa) > 0 ? Number(user.cgpa).toFixed(2) : 'N/A'}
+                  </Text>
+                  <Text style={[styles.statLabelOrange, { color: isDark ? '#FB923C' : '#9A3412' }]}>ACADEMIC CGPA</Text>
+                </LinearGradient>
+              </TouchableOpacity>
 
               <LinearGradient
                 colors={isDark ? ['rgba(67, 56, 202, 0.2)', 'rgba(67, 56, 202, 0.1)'] : ['#EEF2FF', '#E0E7FF']}

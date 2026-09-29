@@ -53,6 +53,8 @@ const PushSetup = () => {
 const AppContent = () => {
   const { isDark, colors } = React.useContext(ThemeContext);
   
+
+
   return (
     <NavigationContainer ref={navigationRef}>
       <StatusBar style={isDark ? 'light' : 'dark'} backgroundColor={colors.background} />
