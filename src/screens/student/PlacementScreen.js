@@ -45,11 +45,37 @@ const STATUS_COLOR = {
   selected: '#10B981',
 };
 
-const normalizeCourse = (c) => (c || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+const COURSE_CODE_MAP = {
+  '13': ['13', 'bca', 'computerapplications', 'bachelorofcomputerapplications'],
+  'bca': ['13', 'bca', 'computerapplications', 'bachelorofcomputerapplications'],
+  '1': ['1', 'btech', 'b.tech', 'cse', 'it', 'computerscience', 'informationtechnology', 'engineering'],
+  'btech': ['1', 'btech', 'b.tech', 'cse', 'it', 'computerscience', 'informationtechnology', 'engineering'],
+  '4': ['4', 'mba', 'management', 'masterofbusinessadministration'],
+  'mba': ['4', 'mba', 'management', 'masterofbusinessadministration'],
+  '12': ['12', 'bba', 'bachelorofbusinessadministration'],
+  'bba': ['12', 'bba', 'bachelorofbusinessadministration'],
+  '3': ['3', 'mca', 'masterofcomputerapplications', 'softwareapplications'],
+  'mca': ['3', 'mca', 'masterofcomputerapplications', 'softwareapplications'],
+  '2': ['2', 'bpharm', 'pharmaceutical', 'pharmacy', 'mtech'],
+};
+
+const expandCourseTokens = (tokens) => {
+  const set = new Set();
+  (tokens || []).forEach(t => {
+    if (!t) return;
+    const clean = String(t).toLowerCase().replace(/[^a-z0-9]/g, '');
+    if (!clean) return;
+    set.add(clean);
+    if (COURSE_CODE_MAP[clean]) {
+      COURSE_CODE_MAP[clean].forEach(syn => set.add(syn));
+    }
+  });
+  return Array.from(set);
+};
 
 const matchesStudentCourse = (drive, user) => {
   if (!user) return true;
-  const userCourses = [
+  const rawUserTokens = [
     user.course,
     user.course_name,
     user.course_cd,
@@ -58,8 +84,9 @@ const matchesStudentCourse = (drive, user) => {
     user.department_name,
     user.branch,
     user.branch_cd,
-  ].filter(Boolean).map(normalizeCourse);
+  ].filter(Boolean);
 
+  const userCourses = expandCourseTokens(rawUserTokens);
   if (userCourses.length === 0) return true;
 
   const driveTarget = drive.courses || drive.eligible_courses || drive.eligibility_course_cd;
@@ -72,7 +99,7 @@ const matchesStudentCourse = (drive, user) => {
     driveCourseList = driveTarget.split(/[,;/|]+/);
   }
 
-  const normDriveCourses = driveCourseList.map(normalizeCourse).filter(Boolean);
+  const normDriveCourses = expandCourseTokens(driveCourseList);
   if (
     normDriveCourses.length === 0 ||
     normDriveCourses.includes('all') ||

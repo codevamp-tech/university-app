@@ -75,6 +75,34 @@ const parseGithubHandle = (input) => {
   return clean.split('/')[0].trim();
 };
 
+const COURSE_CODE_MAP = {
+  '13': ['13', 'bca', 'computerapplications', 'bachelorofcomputerapplications'],
+  'bca': ['13', 'bca', 'computerapplications', 'bachelorofcomputerapplications'],
+  '1': ['1', 'btech', 'b.tech', 'cse', 'it', 'computerscience', 'informationtechnology', 'engineering'],
+  'btech': ['1', 'btech', 'b.tech', 'cse', 'it', 'computerscience', 'informationtechnology', 'engineering'],
+  '4': ['4', 'mba', 'management', 'masterofbusinessadministration'],
+  'mba': ['4', 'mba', 'management', 'masterofbusinessadministration'],
+  '12': ['12', 'bba', 'bachelorofbusinessadministration'],
+  'bba': ['12', 'bba', 'bachelorofbusinessadministration'],
+  '3': ['3', 'mca', 'masterofcomputerapplications', 'softwareapplications'],
+  'mca': ['3', 'mca', 'masterofcomputerapplications', 'softwareapplications'],
+  '2': ['2', 'bpharm', 'pharmaceutical', 'pharmacy', 'mtech'],
+};
+
+const expandCourseTokens = (tokens) => {
+  const set = new Set();
+  (tokens || []).forEach(t => {
+    if (!t) return;
+    const clean = String(t).toLowerCase().replace(/[^a-z0-9]/g, '');
+    if (!clean) return;
+    set.add(clean);
+    if (COURSE_CODE_MAP[clean]) {
+      COURSE_CODE_MAP[clean].forEach(syn => set.add(syn));
+    }
+  });
+  return Array.from(set);
+};
+
 const PlacementReadinessScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
@@ -214,22 +242,25 @@ const PlacementReadinessScreen = ({ navigation }) => {
     setLoadingDrives(true);
     try {
       const studentCourse = user?.course || user?.course_cd || user?.department;
+      const studentRegNo = user?.rollno || user?.username || user?.registration_no || user?.id;
       const [drivesRes, regsRes, offersRes, internshipsRes, repoRes] = await Promise.all([
-        getErpPlacementDrives(accessToken, 'open', studentCourse),
+        getErpPlacementDrives(accessToken, 'open', studentCourse, studentRegNo),
         getMyPlacementRegistrations(accessToken),
         getErpPlacementOffers(accessToken),
         getErpInternships(accessToken),
         getErpRepositoryList(accessToken).catch(() => []),
       ]);
       const rawDrives = Array.isArray(drivesRes) ? drivesRes : [];
-      const userCourses = [
+      const rawUserCourses = [
         user?.course,
         user?.course_name,
         user?.course_cd,
         user?.course_id,
         user?.department,
         user?.branch,
-      ].filter(Boolean).map(c => (c || '').toLowerCase().replace(/[^a-z0-9]/g, ''));
+      ].filter(Boolean);
+
+      const userCourses = expandCourseTokens(rawUserCourses);
 
       const filteredDrives = userCourses.length === 0 ? rawDrives : rawDrives.filter(drive => {
         const driveTarget = drive.courses || drive.eligible_courses || drive.eligibility_course_cd;
@@ -240,7 +271,7 @@ const PlacementReadinessScreen = ({ navigation }) => {
         } else if (typeof driveTarget === 'string') {
           driveCourseList = driveTarget.split(/[,;/|]+/);
         }
-        const normList = driveCourseList.map(c => (c || '').toLowerCase().replace(/[^a-z0-9]/g, '')).filter(Boolean);
+        const normList = expandCourseTokens(driveCourseList);
         if (normList.length === 0 || normList.includes('all') || normList.includes('any')) return true;
         return normList.some(dCourse =>
           userCourses.some(sCourse =>
@@ -515,7 +546,7 @@ const PlacementReadinessScreen = ({ navigation }) => {
           <View style={{ marginLeft: 12 }}>
             <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Placement & Careers</Text>
             <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>
-              {user?.course || 'B.Tech'} • {user?.branch || 'Computer Science'}
+              {user?.course || 'Campus Program'} • {user?.branch || user?.department || 'All Departments'}
             </Text>
           </View>
         </View>
@@ -1443,7 +1474,7 @@ const PlacementReadinessScreen = ({ navigation }) => {
                 <MaterialCommunityIcons name="briefcase-off-outline" size={48} color={colors.textMuted} />
                 <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>No Open Drives Currently</Text>
                 <Text style={[styles.emptyDesc, { color: colors.textSecondary }]}>
-                  New placement drives for B.Tech CS 2025/2026 batches will be announced here.
+                  {`New placement drives for ${user?.course || 'your course'}${user?.branch ? ` (${user.branch})` : ''} will be announced here.`}
                 </Text>
               </View>
             ) : (
