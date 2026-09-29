@@ -1034,21 +1034,31 @@ const TalentIdentityScreen = ({ navigation }) => {
           </View>
 
           <View style={styles.skillsContainer}>
-            {studentSkills.map((skill, sIdx) => (
-              <View 
-                key={sIdx} 
-                style={[
-                  styles.skillBadge, 
-                  { 
-                    backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F1F5F9',
-                    borderColor: isDark ? 'rgba(255,255,255,0.1)' : '#E2E8F0',
-                  }
-                ]}
-              >
-                <View style={[styles.skillDot, { backgroundColor: colors.primary }]} />
-                <Text style={[styles.skillText, { color: colors.textPrimary }]}>{skill}</Text>
-              </View>
-            ))}
+            {studentSkills.map((skill, sIdx) => {
+              const isCustomApproved = approvedSkills.some(as => as.title.toLowerCase() === skill.toLowerCase());
+              return (
+                <View 
+                  key={sIdx} 
+                  style={[
+                    styles.skillBadge, 
+                    { 
+                      backgroundColor: isCustomApproved 
+                        ? (isDark ? 'rgba(16, 185, 129, 0.12)' : '#ECFDF5') 
+                        : (isDark ? 'rgba(255,255,255,0.05)' : '#F1F5F9'),
+                      borderColor: isCustomApproved 
+                        ? (isDark ? 'rgba(16, 185, 129, 0.3)' : '#A7F3D0') 
+                        : (isDark ? 'rgba(255,255,255,0.1)' : '#E2E8F0'),
+                    }
+                  ]}
+                >
+                  <Ionicons name="checkmark-circle" size={13} color="#10B981" />
+                  <Text style={[styles.skillText, { color: colors.textPrimary }]}>{skill}</Text>
+                  <View style={{ backgroundColor: isDark ? 'rgba(16, 185, 129, 0.2)' : '#D1FAE5', paddingHorizontal: 5, paddingVertical: 1.5, borderRadius: 6, marginLeft: 4 }}>
+                    <Text style={{ fontSize: 9, fontWeight: '800', color: '#059669' }}>✓ Approved</Text>
+                  </View>
+                </View>
+              );
+            })}
           </View>
 
           {pendingSkills.length > 0 && (
@@ -1056,7 +1066,7 @@ const TalentIdentityScreen = ({ navigation }) => {
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
                 <Ionicons name="time-outline" size={13} color="#D97706" />
                 <Text style={{ fontSize: 11, fontWeight: '700', color: '#D97706', textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                  Pending Faculty Approval ({pendingSkills.length})
+                  Under Review by Faculty ({pendingSkills.length})
                 </Text>
               </View>
               <View style={styles.skillsContainer}>
@@ -1066,14 +1076,16 @@ const TalentIdentityScreen = ({ navigation }) => {
                     style={[
                       styles.skillBadge, 
                       { 
-                        backgroundColor: isDark ? 'rgba(245, 158, 11, 0.1)' : '#FEF3C7',
-                        borderColor: isDark ? 'rgba(245, 158, 11, 0.25)' : '#FDE68A',
+                        backgroundColor: isDark ? 'rgba(245, 158, 11, 0.12)' : '#FEF3C7',
+                        borderColor: isDark ? 'rgba(245, 158, 11, 0.3)' : '#FDE68A',
                       }
                     ]}
                   >
                     <Ionicons name="time" size={12} color="#D97706" />
                     <Text style={[styles.skillText, { color: isDark ? '#FDE68A' : '#92400E' }]}>{ps.title}</Text>
-                    <Text style={{ fontSize: 9.5, color: '#D97706', fontWeight: '700', marginLeft: 2 }}>(Pending)</Text>
+                    <View style={{ backgroundColor: isDark ? 'rgba(245, 158, 11, 0.25)' : '#FDE68A', paddingHorizontal: 5, paddingVertical: 1.5, borderRadius: 6, marginLeft: 4 }}>
+                      <Text style={{ fontSize: 9, fontWeight: '800', color: '#B45309' }}>⏳ In Review</Text>
+                    </View>
                   </View>
                 ))}
               </View>
@@ -1169,10 +1181,15 @@ const TalentIdentityScreen = ({ navigation }) => {
                       <Text style={[styles.proofName, { color: colors.textPrimary }]}>{activity.name}</Text>
                       <Text style={[styles.proofMeta, { color: colors.textSecondary }]}>{activity.type}</Text>
                     </View>
-                    <View style={{ backgroundColor: colors.primaryLight, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12 }}>
-                      <Text style={{ fontSize: 10, fontWeight: '700', color: colors.primary }}>
-                        {activity.points || (totalSocialCredits > 0 ? Math.round(totalSocialCredits / allSocialActivities.length) : 40)} pts
-                      </Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <View style={{ backgroundColor: isDark ? 'rgba(16, 185, 129, 0.15)' : '#DCFCE7', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, borderWidth: 1, borderColor: isDark ? 'rgba(16, 185, 129, 0.3)' : '#86EFAC' }}>
+                        <Text style={{ fontSize: 9.5, fontWeight: '800', color: '#15803D' }}>✓ Approved</Text>
+                      </View>
+                      <View style={{ backgroundColor: colors.primaryLight, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12 }}>
+                        <Text style={{ fontSize: 10, fontWeight: '700', color: colors.primary }}>
+                          +{activity.points || (totalSocialCredits > 0 ? Math.round(totalSocialCredits / allSocialActivities.length) : 40)} pts
+                        </Text>
+                      </View>
                     </View>
                   </View>
                 ))}
@@ -1222,8 +1239,13 @@ const TalentIdentityScreen = ({ navigation }) => {
                       <Text style={[styles.proofName, { color: colors.textPrimary }]}>{pa.title}</Text>
                       <Text style={[styles.proofMeta, { color: colors.textSecondary }]}>{pa.category || 'Extracurricular'} • {pa.date || 'Pending Review'}</Text>
                     </View>
-                    <View style={{ backgroundColor: isDark ? 'rgba(245, 158, 11, 0.2)' : '#FDE68A', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12 }}>
-                      <Text style={{ fontSize: 10, fontWeight: '700', color: '#92400E' }}>0 pts (Pending)</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <View style={{ backgroundColor: isDark ? 'rgba(245, 158, 11, 0.25)' : '#FDE68A', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, borderWidth: 1, borderColor: isDark ? 'rgba(245, 158, 11, 0.4)' : '#F59E0B' }}>
+                        <Text style={{ fontSize: 9.5, fontWeight: '800', color: '#92400E' }}>⏳ In Review</Text>
+                      </View>
+                      <View style={{ backgroundColor: isDark ? 'rgba(245, 158, 11, 0.15)' : '#FEF3C7', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12 }}>
+                        <Text style={{ fontSize: 10, fontWeight: '700', color: '#B45309' }}>0 pts (Pending)</Text>
+                      </View>
                     </View>
                   </View>
                 ))}
@@ -1377,7 +1399,10 @@ const TalentIdentityScreen = ({ navigation }) => {
                       <View style={styles.certCanvasHeader}>
                         <MaterialCommunityIcons name="shield-check" size={13} color="#D97706" />
                         <Text style={styles.certCanvasCollege} numberOfLines={1}>SRMS CET • BAREILLY</Text>
-                        <MaterialIcons name="verified" size={12} color="#10B981" />
+                        <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#DCFCE7', paddingHorizontal: 5, paddingVertical: 1.5, borderRadius: 6, marginLeft: 'auto', gap: 2 }}>
+                          <MaterialIcons name="verified" size={10} color="#15803D" />
+                          <Text style={{ fontSize: 8.5, fontWeight: '800', color: '#15803D' }}>Approved</Text>
+                        </View>
                       </View>
                       <Text style={styles.certCanvasBadge}>e-CERTIFICATE OF COMPLETION</Text>
                       <Text style={styles.certCanvasStudent} numberOfLines={1}>{user?.name || user?.full_name || 'AAFREEN KHAN'}</Text>
@@ -1696,6 +1721,10 @@ const TalentIdentityScreen = ({ navigation }) => {
                         {selectedCert.institution_name || 'SHRI RAM MURTI SMARAK COLLEGE OF ENGINEERING & TECHNOLOGY, BAREILLY'}
                       </Text>
                       <Text style={styles.modalCertRibbon}>OFFICIAL e-CERTIFICATE OF COMPLETION</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#DCFCE7', borderColor: '#86EFAC', borderWidth: 1, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, alignSelf: 'center', marginTop: 6, gap: 4 }}>
+                        <MaterialIcons name="verified" size={13} color="#15803D" />
+                        <Text style={{ fontSize: 10, fontWeight: '800', color: '#15803D', letterSpacing: 0.5 }}>FACULTY VERIFIED & APPROVED</Text>
+                      </View>
                     </View>
 
                     <Text style={styles.modalCertAwardedText}>This digital certificate is proudly awarded to</Text>
